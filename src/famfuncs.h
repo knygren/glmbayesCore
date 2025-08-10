@@ -70,6 +70,18 @@ NumericVector f2_binomial_logit_accum(
 );
 
 
+
+NumericVector f2_accum(
+    std::string family,
+    std::string link,
+    NumericMatrix xb,        // n × m matrix of π = P(y=1)
+    NumericVector qf,        // length m: 0.5*(b-μ)'P(b-μ)
+    NumericVector y,         // length n observed {0,1}
+    NumericVector wt,        // length n weights
+    int progbar          // 0 = no bar, 1 = show bar
+);
+
+
 NumericVector  f1_binomial_probit(NumericMatrix b,NumericVector y,NumericMatrix x,NumericVector alpha,NumericVector wt);
 NumericVector  f2_binomial_probit(NumericMatrix b,NumericVector y, NumericMatrix x,NumericMatrix mu,NumericMatrix P,NumericVector alpha,NumericVector wt,int progbar);
 // arma::vec  f2_binomial_probit_arma(NumericMatrix b,NumericVector y, NumericMatrix x,NumericMatrix mu,NumericMatrix P,NumericVector alpha,NumericVector wt,int progbar);

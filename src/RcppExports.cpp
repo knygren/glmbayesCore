@@ -132,6 +132,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// f2_accum
+Rcpp::NumericVector f2_accum(std::string family, std::string link, Rcpp::NumericMatrix xb, Rcpp::NumericVector qf, Rcpp::NumericVector y, Rcpp::NumericVector wt, int progbar);
+RcppExport SEXP _glmbayes_f2_accum(SEXP familySEXP, SEXP linkSEXP, SEXP xbSEXP, SEXP qfSEXP, SEXP ySEXP, SEXP wtSEXP, SEXP progbarSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
+    Rcpp::traits::input_parameter< std::string >::type link(linkSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type xb(xbSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type qf(qfSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< int >::type progbar(progbarSEXP);
+    rcpp_result_gen = Rcpp::wrap(f2_accum(family, link, xb, qf, y, wt, progbar));
+    return rcpp_result_gen;
+END_RCPP
+}
 // RSS
 NumericVector RSS(NumericVector y, NumericMatrix x, NumericMatrix b, NumericVector alpha, NumericVector wt);
 RcppExport SEXP _glmbayes_RSS(SEXP ySEXP, SEXP xSEXP, SEXP bSEXP, SEXP alphaSEXP, SEXP wtSEXP) {
@@ -504,6 +521,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayes_arithmetic_test_wrapper", (DL_FUNC) &_glmbayes_arithmetic_test_wrapper, 0},
     {"_glmbayes_f2_binomial_logit_prep", (DL_FUNC) &_glmbayes_f2_binomial_logit_prep, 8},
     {"_glmbayes_f2_binomial_logit_prep_v3", (DL_FUNC) &_glmbayes_f2_binomial_logit_prep_v3, 8},
+    {"_glmbayes_f2_accum", (DL_FUNC) &_glmbayes_f2_accum, 7},
     {"_glmbayes_RSS", (DL_FUNC) &_glmbayes_RSS, 5},
     {"_glmbayes_f2_gaussian", (DL_FUNC) &_glmbayes_f2_gaussian, 7},
     {"_glmbayes_Inv_f3_gaussian", (DL_FUNC) &_glmbayes_Inv_f3_gaussian, 7},

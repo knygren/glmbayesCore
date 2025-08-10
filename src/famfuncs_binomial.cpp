@@ -1709,3 +1709,42 @@ NumericVector f2_binomial_logit_accum(
   
   return res;
 }
+
+// [[Rcpp::export]]
+Rcpp::NumericVector f2_accum(
+    std::string family,
+    std::string link,
+    Rcpp::NumericMatrix xb,        // n × m matrix of π = P(y=1)
+    Rcpp::NumericVector qf,        // length m: 0.5*(b-μ)'P(b-μ)
+    Rcpp::NumericVector y,         // length n observed {0,1}
+    Rcpp::NumericVector wt,        // length n weights
+    int progbar                    // 0 = no bar, 1 = show bar
+) {
+  int n = xb.nrow();
+  int m = xb.ncol();
+  Rcpp::NumericVector res(m);
+  
+  for (int i = 0; i < m; ++i) {
+    Rcpp::checkUserInterrupt();
+    
+    // extract column i of xb
+    Rcpp::NumericVector xbi = xb(_, i);
+    
+    // dispatch to appropriate likelihood function
+    Rcpp::NumericVector ll;
+    
+    if (family == "binomial") {
+      ll = dbinom_glmb(y, wt, xbi, true);
+    } else {
+      Rcpp::stop("Unsupported family: " + family);
+    }
+    
+    // sum of log-likelihoods
+    double sumll = std::accumulate(ll.begin(), ll.end(), 0.0);
+    
+    // total negative log-lik = quadratic form + (− sum log-lik)
+    res[i] = qf[i] - sumll;
+  }
+  
+  return res;
+}

@@ -258,11 +258,15 @@ List EnvelopeBuild_c(NumericVector bStar,NumericMatrix A,
   if(use_opencl==0 ){
     NegLL=f2_binomial_logit(G4,y, x, mu, P, alpha, wt,progbar);  
 
+
+    
      if (verbose) {
        Rcpp::Rcout << "Initiating Gradient Evaluations: "
                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                    << "\n";
-     }
+
+       
+            }
     
     cbars2=f3_binomial_logit(G4,y, x,mu,P,alpha,wt,progbar);
   
@@ -298,38 +302,72 @@ List EnvelopeBuild_c(NumericVector bStar,NumericMatrix A,
 
         
         if(verbose){
-    Rcpp::Rcout << "Initiating f2_binomial_logit_accumulator: "
+    Rcpp::Rcout << "Initiating f2_accumulator: "
                 << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                 << "\n";
       }
 
             // 2. Call the accumulator with identical signature style
-    NegLL = f2_binomial_logit_accum(
-        xb      ,
-        qf      ,
-        y       = y,
-        wt      = wt,
-        progbar = 0
-    );
+    // NegLL = f2_binomial_logit_accum(
+    //     xb      ,
+    //     qf      ,
+    //     y       = y,
+    //     wt      = wt,
+    //     progbar = 0
+    // );
+  
+  
+  
+  
+  // 2. Call the accumulator with identical signature style
+  NegLL = f2_accum(
+    family,
+    link,
+    xb      ,
+    qf      ,
+    y       = y,
+    wt      = wt,
+    progbar = 0
+  );
+  
+  
     
     }
 
     
   }
   if(family=="binomial"  && link=="probit"){
-    if (verbose) {
+
+    if(use_opencl==0 ){
+
+      if (verbose) {
+        
+        Rcpp::Rcout << "Initiating NegLL Calculations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
       
-      Rcpp::Rcout << "Initiating NegLL Calculations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    NegLL=f2_binomial_probit(G4,y, x, mu, P, alpha, wt,progbar);  
+        NegLL=f2_binomial_probit(G4,y, x, mu, P, alpha, wt,progbar);  
     if (verbose) {
       Rcpp::Rcout << "Initiating Gradient Evaluations: "
                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                   << "\n";
     }
     cbars2=f3_binomial_probit(G4,y, x,mu,P,alpha,wt,progbar);
+    
+    }
+    
+else{
+  if (verbose) {
+    Rcpp::Rcout << "Initiating f2_prep_grad_opencl: "
+                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                << "\n";
+  }
+  
+  
+}    
+    
+    
   }
   if(family=="binomial"   && link=="cloglog"){
     if (verbose) {
