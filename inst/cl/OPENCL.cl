@@ -15,9 +15,26 @@
 #pragma OPENCL EXTENSION cl_khr_printf : enable
 
 // -----------------------------------------------------------------------------
-// 2. Standard headers
+// 2. Constants
 // -----------------------------------------------------------------------------
-//#include <math.h>
+//#ifndef <math.h> // placeholder only — OpenCL doesn't support this
+//#ifndef DBL_EPSILON
+//#define DBL_EPSILON 0x1p-52 // IEEE-754 double-precision epsilon
+//#endif
+
+
+#if defined(__OPENCL_C_VERSION__) && (__OPENCL_C_VERSION__ >= 120)
+  #define HAVE_EXPM1   1
+  #define HAVE_LOG1P   1
+  #define HAVE_COSPI   1
+  #define HAVE_HYPOT   1
+#else
+  #define HAVE_EXPM1   0
+  #define HAVE_LOG1P   0
+  #define HAVE_COSPI   0
+  #define HAVE_HYPOT   0
+#endif
+
 
 // -----------------------------------------------------------------------------
 // 3. IEEE constants
@@ -51,3 +68,4 @@
 
 
 #endif // OPENCL_CL
+

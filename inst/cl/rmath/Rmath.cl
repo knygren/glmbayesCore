@@ -146,6 +146,17 @@ typedef enum { FALSE = 0, TRUE = 1 } Rboolean;
 #define R_FINITE(x)  isfinite(x)
 #define ML_VALID(x)  (R_FINITE(x) && !ISNAN(x))
 
+//─────────────────────────────────────────────────────────────────────────────
+// 4) Remapping base math functions → local portable versions
+//     (used by Newton steps, Taylor expansions, and envelope kernels)
+//─────────────────────────────────────────────────────────────────────────────
+
+//#define log1p  Rlog1p
+//#define expm1  Rexpm1
+//#define hypot  Rhypot
+//#define gamma  Rgamma
+//#define lgamma Rlgamma
+//#define round  Rround
 
 
 //─────────────────────────────────────────────────────────────────────────────
