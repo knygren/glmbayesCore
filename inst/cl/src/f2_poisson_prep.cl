@@ -1,11 +1,11 @@
 // f2_binomial_logit_prep_parallel.cl
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
+#pragma OPENCL EXTENSION cl_khr_printf : enable   // for printf
 
 #define MAX_L2 64   // upper bound on l2; tune as needed
 
-#pragma OPENCL EXTENSION cl_khr_fp64   : enable   // for double
-#pragma OPENCL EXTENSION cl_khr_printf : enable   // for printf
+
 
 
 __kernel void f2_poisson_prep_grad(

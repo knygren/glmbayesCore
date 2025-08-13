@@ -475,9 +475,12 @@ Rcpp::List f2_f3_opencl(
       kernel_file = "src/f2_f3_binomial_logit.cl";
     } 
     else if (link == "probit") {
-      kernel_name = "f2_binomial_probit_prep_grad";
-      kernel_file = "src/f2_binomial_probit_prep.cl";
-    }
+//      kernel_name = "f2_binomial_probit_prep_grad";
+//      kernel_file = "src/f2_binomial_probit_prep.cl";
+      kernel_name = "f2_f3_binomial_probit";
+      kernel_file = "src/f2_f3_binomial_probit.cl";
+      
+          }
     else if (link == "cloglog") {
       kernel_name = "f2_binomial_cloglog_prep_grad";
       kernel_file = "src/f2_binomial_cloglog_prep.cl";

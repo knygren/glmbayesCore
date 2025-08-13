@@ -305,6 +305,7 @@ List EnvelopeBuild_c(NumericVector bStar,NumericMatrix A,
   
   //    NumericMatrix xb = prepGrad_v3["xb"];
   //    NumericVector qf = prepGrad_v3["qf"];
+  NegLL = prepGrad_v3["qf"];
   cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
   
   
@@ -327,7 +328,6 @@ List EnvelopeBuild_c(NumericVector bStar,NumericMatrix A,
   // 
   
 //  NumericVector qf2 = prepGrad_v3["qf"];
-  NegLL = prepGrad_v3["qf"];
   
 
   // if (verbose) {
@@ -499,79 +499,141 @@ List EnvelopeBuild_c(NumericVector bStar,NumericMatrix A,
     }
     
 else{
+
+  
   if (verbose) {
-    Rcpp::Rcout << "Initiating f2_prep_grad_opencl: "
+    Rcpp::Rcout << "Initiating f2_f3_opencl: "
                 << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                 << "\n";
-
-    
-      }
+  }
   
   
-  Rcpp::List prepGrad_v2 = f2_prep_grad_opencl(
-    family,
-    link,
-    G4,          // NumericMatrix b
-    y,           // NumericVector y
-    x,           // NumericMatrix x
-    mu,          // NumericMatrix mu 
-    P,           // NumericMatrix P
-    alpha,       // NumericVector alpha
-    wt,          // NumericVector wt
-    progbar     // int progbar
-  );
-
+   Rcpp::List prepGrad_v3= f2_f3_opencl(
+     family,
+     link,
+     G4,          // NumericMatrix b
+     y,           // NumericVector y
+     x,           // NumericMatrix x
+     mu,          // NumericMatrix mu 
+     P,           // NumericMatrix P
+     alpha,       // NumericVector alpha
+     wt,          // NumericVector wt
+     progbar     // int progbar
+   );
   
-  NumericMatrix xb = prepGrad_v2["xb"];
-  NumericVector qf = prepGrad_v2["qf"];
-  cbars2 = Rcpp::as<arma::mat>(prepGrad_v2["grad"]);
   
-
-   // int n_rows = static_cast<int>(cbars2.n_rows);
-   // int n_cols = static_cast<int>(cbars2.n_cols);
+  //    NumericMatrix xb = prepGrad_v3["xb"];
+  //    NumericVector qf = prepGrad_v3["qf"];
+   NegLL = prepGrad_v3["qf"];
+   cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+  
+  
+        // int n_rows = static_cast<int>(cbars2.n_rows);
+        // int n_cols = static_cast<int>(cbars2.n_cols);
+        // 
+    // Rcpp::Rcout << "cbars2 dimensions: " << n_rows << " rows x " << n_cols << " columns\n";
+    // 
+    // Rcpp::Rcout << "First 10 grid points :\n";
+    // for (int j = 0; j < std::min(10, n_rows); ++j)
+    //   
+    // {
+    //   Rcpp::Rcout << "  [" << j << "] ";
+    //   for (int i = 0; i < n_cols; ++i) {
+    //     Rcpp::Rcout << cbars2(j, i);
+    //     if (i < n_cols - 1) Rcpp::Rcout << ", ";
+    //   }
+    //   Rcpp::Rcout << "\n";
+    // }  
    // 
-   // Rcpp::Rcout << "cbars2 dimensions: " << n_rows << " rows x " << n_cols << " columns\n";
    // 
-   //  Rcpp::Rcout << "First 10 grid points :\n";
-   //  for (int j = 0; j < std::min(10, n_rows); ++j)
-   //    
-   //    {
-   //    Rcpp::Rcout << "  [" << j << "] ";
-   //    for (int i = 0; i < n_cols; ++i) {
-   //      Rcpp::Rcout << cbars2(j, i);
-   //      if (i < n_cols - 1) Rcpp::Rcout << ", ";
-   //    }
-   //    Rcpp::Rcout << "\n";
-   //  }  
 
-    if(verbose){
-      Rcpp::Rcout << "Initiating f2_accumulator: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    
-    // 2. Call the accumulator with identical signature style
-    NegLL = f2_accum(
-      family,
-      link,
-      xb      ,
-      qf      ,
-      y       ,
-      wt      ,
-      progbar = 0
-    );
-
-     // if (verbose) {
-     //   Rcpp::Rcout << "First 10 NegLL values (GPU):\n";
-     //   for (int i = 0; i < std::min(10, static_cast<int>(NegLL.size())); ++i)          
-     //     {
-     //     Rcpp::Rcout << "  [" << i << "] GPU: " << NegLL[i];
-     //   }
-     // }
-     // 
-        
-      
-//   Rcpp::stop("Halting after Probit f2_prep_grad_opencl");
+  
+    // if (verbose) {
+    //   Rcpp::Rcout << "First 10 NegLL values (New method):\n";
+    //   for (int i = 0; i < std::min(10, static_cast<int>(NegLL.size())); ++i)          
+    //   {
+    //     Rcpp::Rcout << "  [" << i << "] New: " << NegLL[i];
+    //   }
+    // }
+    // 
+  
+  
+  
+//   
+//     if (verbose) {
+//     Rcpp::Rcout << "Initiating f2_prep_grad_opencl: "
+//                 << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                 << "\n";
+// 
+//     
+//       }
+//   
+//   
+//   Rcpp::List prepGrad_v2 = f2_prep_grad_opencl(
+//     family,
+//     link,
+//     G4,          // NumericMatrix b
+//     y,           // NumericVector y
+//     x,           // NumericMatrix x
+//     mu,          // NumericMatrix mu 
+//     P,           // NumericMatrix P
+//     alpha,       // NumericVector alpha
+//     wt,          // NumericVector wt
+//     progbar     // int progbar
+//   );
+// 
+//   
+//   NumericMatrix xb = prepGrad_v2["xb"];
+//   NumericVector qf = prepGrad_v2["qf"];
+//   cbars2 = Rcpp::as<arma::mat>(prepGrad_v2["grad"]);
+//   
+// 
+// //    int n_rows = static_cast<int>(cbars2.n_rows);
+// //    int n_cols = static_cast<int>(cbars2.n_cols);
+//    // 
+//    // Rcpp::Rcout << "cbars2 dimensions: " << n_rows << " rows x " << n_cols << " columns\n";
+//    // 
+//      Rcpp::Rcout << "First 10 grid points :\n";
+//      for (int j = 0; j < std::min(10, n_rows); ++j)
+//        
+//        {
+//        Rcpp::Rcout << "  [" << j << "] ";
+//        for (int i = 0; i < n_cols; ++i) {
+//          Rcpp::Rcout << cbars2(j, i);
+//          if (i < n_cols - 1) Rcpp::Rcout << ", ";
+//        }
+//        Rcpp::Rcout << "\n";
+//      }  
+// 
+//     if(verbose){
+//       Rcpp::Rcout << "Initiating f2_accumulator: "
+//                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                   << "\n";
+//     }
+//     
+//     // 2. Call the accumulator with identical signature style
+//     NegLL = f2_accum(
+//       family,
+//       link,
+//       xb      ,
+//       qf      ,
+//       y       ,
+//       wt      ,
+//       progbar = 0
+//     );
+// 
+//       if (verbose) {
+//         Rcpp::Rcout << "First 10 NegLL values (GPU):\n";
+//         for (int i = 0; i < std::min(10, static_cast<int>(NegLL.size())); ++i)          
+//           {
+//           Rcpp::Rcout << "  [" << i << "] GPU: " << NegLL[i];
+//         }
+//       }
+//       
+//         
+//         //      Rcpp::stop("Halting after Logit NLL Validation");
+//         
+//    Rcpp::stop("Halting after Probit f2_prep_grad_opencl");
   
   
 }    

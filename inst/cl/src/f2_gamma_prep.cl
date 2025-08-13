@@ -1,17 +1,13 @@
 // f2_binomial_logit_prep_parallel.cl
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
+#pragma OPENCL EXTENSION cl_khr_printf : enable   // for printf
 
 #define MAX_L2 64   // upper bound on l2; tune as needed
 
 #pragma OPENCL EXTENSION cl_khr_fp64   : enable   // for double
-#pragma OPENCL EXTENSION cl_khr_printf : enable   // for printf
 
 
-// Define or pass via compiler options
-#ifndef MAX_L2
-#define MAX_L2 1024
-#endif
 
 __kernel void f2_gamma_prep_grad(
     __global const double* X,      // design matrix, size = l1×l2, column-major
