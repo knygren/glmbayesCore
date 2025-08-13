@@ -6,8 +6,12 @@
 #include "Set_Grid.h"
 
 
+
+//#if !defined(__EMSCRIPTEN__) && !defined(__wasm__)
+//static std::mutex f2_mutex;
+//#endif
+
 // mutex to protect Rcpp calls
-static std::mutex f2_mutex;
 
 
   // operator() implements the parallel loop
@@ -145,7 +149,12 @@ static std::mutex f2_mutex;
         
         // 4) compute log‐lik and print test under lock
         {
-          std::lock_guard<std::mutex> guard(f2_mutex);
+         
+#if !defined(__EMSCRIPTEN__) && !defined(__wasm__)
+         tbb::mutex::scoped_lock lock(f2_mutex);
+#endif  
+         
+//          std::lock_guard<std::mutex> guard(f2_mutex);
           
           
           

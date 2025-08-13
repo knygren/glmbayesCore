@@ -5,7 +5,10 @@
 // Required headers
 #include <RcppArmadillo.h>
 #include <RcppParallel.h>
+#if !defined(__EMSCRIPTEN__) && !defined(__wasm__)
 #include <tbb/mutex.h>
+static tbb::mutex f2_mutex;
+#endif
 #include <string>
 #include "rng_utils.h"  // for safe_runif()
 
