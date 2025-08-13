@@ -9,7 +9,11 @@
 #include "Envelopefuncs.h"
 #include "Set_Grid.h"
 #include <math.h>
+
+#if !defined(__EMSCRIPTEN__) && !defined(__wasm__)
 #include <tbb/mutex.h>
+#endif
+
 #include <thread>
 #include "rng_utils.h"
 #include "rnnorm_reg_worker.h"
