@@ -13,11 +13,17 @@
 
 
 #include <Rmath.h>       // For R::qnorm
+
+// Don't add mutex if EMSCRIPTEN
+
+#if !defined(__EMSCRIPTEN__) && !defined(__wasm__)
 #include <tbb/mutex.h>   // For thread locking
+tbb::mutex qnorm_mutex;  // Local mutex for this file
+#endif
+
 
 using namespace Rcpp;
 
-tbb::mutex qnorm_mutex;  // Local mutex for this file
 
 double safe_qnorm_logp(double logp, double mu, double sigma, bool lower_tail) {
   tbb::mutex::scoped_lock lock(qnorm_mutex);
