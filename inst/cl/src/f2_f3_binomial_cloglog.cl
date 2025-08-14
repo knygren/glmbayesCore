@@ -11,16 +11,16 @@
 
 // f2 + f3 for Binomial–cloglog, single‐pass: prior + data‐term + gradient
 __kernel void f2_f3_binomial_cloglog(
-    __global const double* X,      // design matrix,    l1 × l2, column‐major
-    __global const double* B,      // grid points,      m1 × l2, row‐major per grid
-    __global const double* mu,     // prior mean,       length = l2
-    __global const double* P,      // prior precision,  l2 × l2, row‐major
-    __global const double* alpha,  // offsets,          length = l1
-    __global const double* y,      // successes,        length = l1
-    __global const double* wt,     // trials/weights,   length = l1
-    __global double*       qf,     // out: neg-log-posterior, length = m1
-    __global double*       xb,     // out: cloglog(p),       size = m1 × l1
-    __global double*       grad,   // out: ∂(neg-log-post)/∂B, size = m1 × l2 (col-major)
+    __global const double* X,      // design matrix, size = l1×l2, col-major
+    __global const double* B,      // grid,        size = m1×l2, row-major per‐grid
+    __global const double* mu,     // prior mean,  length = l2
+    __global const double* P,      // prior prec., size = l2×l2, row-major
+    __global const double* alpha,  // offset,      length = l1
+    __global const double* y,      // response,    length = l1
+    __global const double* wt,     // weights,     length = l1
+    __global double*       qf,     // out: quadratics,    length = m1
+    __global double*       xb,     // out: p = cloglog,   size = m1×l1
+    __global double*       grad,   // out: dfdB,          size = m1×l2
     const int l1,
     const int l2,
     const int m1
@@ -28,7 +28,7 @@ __kernel void f2_f3_binomial_cloglog(
     int j = get_global_id(0);
     if (j >= m1) return;
 
-    // 1) Prior term: tmp[k] = [P × (B_j – mu)]_k
+    // 1) compute tmp = P * (B_j - mu)
     double tmp[MAX_L2];
     for (int k = 0; k < l2; ++k) {
         double acc = 0.0;
@@ -38,56 +38,61 @@ __kernel void f2_f3_binomial_cloglog(
         tmp[k] = acc;
     }
 
-    // 2) Quadratic form: 0.5 * (B_j – mu)' P (B_j – mu)
+    // 2) quadratic form qf[j] = 0.5 * (B_j - mu)' * tmp
     double qsum = 0.0;
     for (int k = 0; k < l2; ++k) {
-        double d_k = B[j*l2 + k] - mu[k];
-        qsum += d_k * tmp[k];
+        qsum += (B[j*l2 + k] - mu[k]) * tmp[k];
     }
+    
+    qf[j] = 0.5 * qsum;
     double res_acc = 0.5 * qsum;
 
-    // 3) Gradient accumulator starts with prior part
+
+    // 3) initialize gradient accumulator with prior part
     double g_loc[MAX_L2];
     for (int k = 0; k < l2; ++k) {
         g_loc[k] = tmp[k];
     }
 
-    // 4) Data term: loop over observations
+    // 4) cloglog prep + data‐term for gradient
     int base = j * l1;
     for (int i = 0; i < l1; ++i) {
-        // linear predictor η_i = α[i] + X[i,·]·B_j
-        double eta = alpha[i];
+        // compute linpred = α[i] + x_i·B_j as dot
+        double dot = alpha[i];
         for (int k = 0; k < l2; ++k) {
-            eta += X[k*l1 + i] * B[j*l2 + k];
+            dot += X[k*l1 + i] * B[j*l2 + k];
         }
 
-        // cloglog link and density factor
-        double exp_eta    = exp(eta);
-        double exp_neg    = exp(-exp_eta);
-        double p1         = 1.0 - exp_neg;           // cloglog inverse
-        double density    = exp(eta - exp_eta);      // derivative factor
-
+        double p1 = 1.0 - exp(-exp(dot));
+        double p2 = exp(-exp(dot));
+        double atemp = exp(dot - exp(dot));
         xb[base + i] = p1;
+
+
+//      int trials  = (int)(rint(wt[i]));
+//      int success = (int)(rint(y[i] * wt[i]));
+
+//      double p = fmin(1.0, fmax(0.0, p1));  // clamp to [0, 1]
+
+//      double ll = dbinom((double)success, (double)trials, p, /*give_log=*/1);
+//      res_acc -= ll;
+
 
         // use dbinom for log-likelihood
         double ll = dbinom(y[i], wt[i], p1, /*give_log=*/1);
         res_acc -= ll;
 
-        // gradient residual: ∂ℓ/∂η times wt
-        // dℓ/dη = (y * density/p1) - ((wt - y) * density/(1-p1))
-        double resid = ((y[i] * density / p1)
-                      - ((wt[i] - y[i]) * density / exp_neg))
-                      * wt[i];
 
-        // accumulate gradient
+        double resid = ((y[i] * atemp / p1) - ((1.0 - y[i]) * atemp / p2)) * wt[i];
         for (int k = 0; k < l2; ++k) {
             g_loc[k] -= X[k*l1 + i] * resid;
         }
     }
 
-    // 5) Write back results
     qf[j] = res_acc;
+
+    // 5) write back gradient row for grid‐point j
     for (int k = 0; k < l2; ++k) {
-        grad[k * m1 + j] = g_loc[k];
+        grad[k * m1 + j] = g_loc[k];  // column-major layout
     }
 }

@@ -34,13 +34,13 @@ __kernel void f2_f3_poisson(
         tmp[k] = acc;
     }
 
-    // 2) Quadratic form: 0.5 * (B_j - mu)' P (B_j - mu)
-    double qfj = 0.0;
+    // 2) quadratic form qf[j] = 0.5 * (B_j - mu)' * tmp
+    double qsum = 0.0;
     for (int k = 0; k < l2; ++k) {
-        double d_k = B[j*l2 + k] - mu[k];
-        qfj += d_k * tmp[k];
+        qsum += (B[j*l2 + k] - mu[k]) * tmp[k];
     }
-    qfj *= 0.5;
+    qf[j] = 0.5 * qsum;
+ 
 
     // 3) Initialize gradient with prior part
     double g_loc[MAX_L2];
@@ -62,9 +62,13 @@ __kernel void f2_f3_poisson(
         xb[base + i] = mui;
 
         // negate log-likelihood contribution
-        // dpois returns log-density when give_log=1
-        double logp = dpois(y[i], mui, 1);
-        qfj -= wt[i] * logp;
+
+        // Non-integer values requires replacement of dpois with version using lgamma function
+
+//        double logp = dpois(y[i], mui, 1);
+          double logp = -mui + y[i] * log(mui) - lgamma(y[i] + 1.0);
+        
+        qf[j] -= wt[i] * logp;
 
         // gradient contribution: -(y - μ) * X * wt
         double resid = (y[i] - mui) * wt[i];
@@ -73,8 +77,10 @@ __kernel void f2_f3_poisson(
         }
     }
 
+
+
     // 5) Write back
-    qf[j] = qfj;
+  
     for (int k = 0; k < l2; ++k) {
         grad[k*m1 + j] = g_loc[k];
     }

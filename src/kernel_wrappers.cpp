@@ -486,7 +486,7 @@ Rcpp::List f2_f3_opencl(
 //      kernel_file = "src/f2_binomial_cloglog_prep.cl";
 
       kernel_name = "f2_f3_binomial_cloglog";
-      kernel_file = "src/f2_f3_binomial_cloglog_.cl";
+      kernel_file = "src/f2_f3_binomial_cloglog.cl";
       
                 }
     else {
@@ -497,7 +497,7 @@ Rcpp::List f2_f3_opencl(
   else if (family =="poisson"){
 //    kernel_name = "f2_poisson_prep_grad";
 //    kernel_file  = "src/f2_poisson_prep.cl";
-    kernel_name = "f2_f3_poisson_prep";
+    kernel_name = "f2_f3_poisson";
     kernel_file  = "src/f2_f3_poisson.cl";
     
       }
@@ -522,76 +522,38 @@ Rcpp::List f2_f3_opencl(
   // load & call kernel runner
   std::string ksrc    = load_kernel_source(kernel_file);
   
-  // For the probit model, we include some basic OpenCL enablement and inline functions 
-  if (family == "binomial"&&link == "logit") {
-    
-    all_src = OPENCL_source +
-      //       "\n" +   rmath_source + 
-      "\n" +   rmath_source2 + 
-      //       "\n" + dpq_source +
-      "\n" +dpq_prelude_source+
-      "\n" +dpq_source2+
-      "\n" +nmath_source2   
-    + "\n" + chebyshev_source
-    + "\n" + d1mach_source
-    + "\n" + dnorm_source
-    + "\n" + fmax2_source
-    + "\n" + gammalims_source
-    + "\n" + lgammacor_source
-    + "\n" + log1p_source
-    + "\n" + pnorm_source
-          + "\n" + stirlerr_large_source
- //         + "\n" + DBL_EPSILON_TEST
-          + "\n" + expm1_source
-          + "\n" + gamma_source
-          + "\n" + lgamma_source
-          + "\n" + lgamma1p_source
-          + "\n" + stirlerr_small_source
-          + "\n" + stirlerr_source
-          + "\n" + bd0_source
-          + "\n" + dbinom_source
-          + "\n" + dpois_source
-          + "\n" + dgamma_source
-    + "\n" +   ksrc;
-    
-   //     all_src= ksrc;
-  }    
-  else if (family == "binomial"&&link == "probit") {
-    
-    all_src = OPENCL_source +
-      //       "\n" +   rmath_source + 
-      "\n" +   rmath_source2 + 
-      //       "\n" + dpq_source +
-      "\n" +dpq_prelude_source+
-      "\n" +dpq_source2+
-      "\n" +nmath_source2   
-    + "\n" + chebyshev_source
-    + "\n" + d1mach_source
-    + "\n" + dnorm_source
-    + "\n" + fmax2_source
-    + "\n" + gammalims_source
-    + "\n" + lgammacor_source
-    + "\n" + log1p_source
-    + "\n" + pnorm_source
-    //      + "\n" + stirlerr_large_source
-    //      + "\n" + expm1_source
-    //      + "\n" + gamma_source
-    //      + "\n" + lgamma_source
-    //      + "\n" + lgamma1p_source
-    //      + "\n" + stirlerr_small_source
-    //      + "\n" + stirlerr_source
-    //      + "\n" + bd0_source
-    //      + "\n" + dbinom_source
-    //      + "\n" + dpois_source
-    //      + "\n" + dgamma_source
-    + "\n" +   ksrc;
-
-        
-    //    all_src= ksrc;
-  }
-  else{
-    all_src = ksrc;
-  }
+  
+  /// Updated to use same "Program" logic for all models
+  
+  all_src = OPENCL_source +
+    //       "\n" +   rmath_source + 
+    "\n" +   rmath_source2 + 
+    //       "\n" + dpq_source +
+    "\n" +dpq_prelude_source+
+    "\n" +dpq_source2+
+    "\n" +nmath_source2   
+  + "\n" + chebyshev_source
+  + "\n" + d1mach_source
+  + "\n" + dnorm_source
+  + "\n" + fmax2_source
+  + "\n" + gammalims_source
+  + "\n" + lgammacor_source
+  + "\n" + log1p_source
+  + "\n" + pnorm_source
+  + "\n" + stirlerr_large_source
+  //         + "\n" + DBL_EPSILON_TEST
+  + "\n" + expm1_source
+  + "\n" + gamma_source
+  + "\n" + lgamma_source
+  + "\n" + lgamma1p_source
+  + "\n" + stirlerr_small_source
+  + "\n" + stirlerr_source
+  + "\n" + bd0_source
+  + "\n" + dbinom_source
+  + "\n" + dpois_source
+  + "\n" + dgamma_source
+  + "\n" +   ksrc;
+  
   
   
   f2_binomial_logit_prep_grad_kernel_runner(
