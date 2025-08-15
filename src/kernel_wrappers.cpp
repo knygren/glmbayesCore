@@ -427,42 +427,42 @@ Rcpp::List f2_f3_opencl(
 #ifdef USE_OPENCL
   
   std::string OPENCL_source     = load_kernel_source("OPENCL.CL");
-  //   std::string rmath_source     = load_kernel_library("rmath");
+     std::string rmath_source     = load_kernel_library("rmath","glmbayes", false);
      std::string nmath_source     = load_kernel_library("nmath","glmbayes", false);
-  //   std::string dpq_source     = load_kernel_library("dpq");
+     std::string dpq_source     = load_kernel_library("dpq","glmbayes", false);
   
-  std::string rmath_source2     = load_kernel_source("rmath/Rmath.cl");
-  std::string dpq_prelude_source     = load_kernel_source("dpq/dpq_prelude.cl");
-  std::string dpq_source2     = load_kernel_source("dpq/dpq.cl");
+//  std::string rmath_source2     = load_kernel_source("rmath/Rmath.cl");
+//  std::string dpq_prelude_source     = load_kernel_source("dpq/dpq_prelude.cl");
+//  std::string dpq_source2     = load_kernel_source("dpq/dpq.cl");
   //   - dpq_prelude
   //   - dpq
 
 //  std::string DBL_EPSILON_TEST    = load_kernel_source("test/DBL_EPSILON_TEST.cl");
   
     
-  std::string nmath_source2     = load_kernel_source("nmath/nmath.cl");
+//  std::string nmath_source2     = load_kernel_source("nmath/nmath.cl");
   
   
-  std::string chebyshev_source     = load_kernel_source("nmath/chebyshev.cl");
-  std::string d1mach_source     = load_kernel_source("nmath/d1mach.cl");
-  std::string dnorm_source     = load_kernel_source("nmath/dnorm.cl");
-  std::string fmax2_source     = load_kernel_source("nmath/fmax2.cl");
-  std::string gammalims_source     = load_kernel_source("nmath/gammalims.cl");
-  std::string lgammacor_source     = load_kernel_source("nmath/lgammacor.cl");
-  std::string log1p_source     = load_kernel_source("nmath/log1p.cl");
-  std::string pnorm_source     = load_kernel_source("nmath/pnorm.cl");
-  std::string stirlerr_large_source     = load_kernel_source("nmath/stirlerr_large.cl");
-  std::string expm1_source     = load_kernel_source("nmath/expm1.cl");
-  std::string gamma_source     = load_kernel_source("nmath/gamma.cl");
-  std::string lgamma_source     = load_kernel_source("nmath/lgamma.cl");
-  std::string lgamma1p_source     = load_kernel_source("nmath/lgamma1p.cl");
-  std::string stirlerr_small_source     = load_kernel_source("nmath/stirlerr_small.cl");
-  std::string dgamma_source     = load_kernel_source("nmath/dgamma.cl");
-  std::string stirlerr_source     = load_kernel_source("nmath/stirlerr.cl");
-  std::string bd0_source     = load_kernel_source("nmath/bd0.cl");
-  std::string dbinom_source     = load_kernel_source("nmath/dbinom.cl");
-  std::string dpois_source     = load_kernel_source("nmath/dpois.cl");
-  std::string pgamma_source     = load_kernel_source("nmath/pgamma.cl");
+  // std::string chebyshev_source     = load_kernel_source("nmath/chebyshev.cl");
+  // std::string d1mach_source     = load_kernel_source("nmath/d1mach.cl");
+  // std::string dnorm_source     = load_kernel_source("nmath/dnorm.cl");
+  // std::string fmax2_source     = load_kernel_source("nmath/fmax2.cl");
+  // std::string gammalims_source     = load_kernel_source("nmath/gammalims.cl");
+  // std::string lgammacor_source     = load_kernel_source("nmath/lgammacor.cl");
+  // std::string log1p_source     = load_kernel_source("nmath/log1p.cl");
+  // std::string pnorm_source     = load_kernel_source("nmath/pnorm.cl");
+  // std::string stirlerr_large_source     = load_kernel_source("nmath/stirlerr_large.cl");
+  // std::string expm1_source     = load_kernel_source("nmath/expm1.cl");
+  // std::string gamma_source     = load_kernel_source("nmath/gamma.cl");
+  // std::string lgamma_source     = load_kernel_source("nmath/lgamma.cl");
+  // std::string lgamma1p_source     = load_kernel_source("nmath/lgamma1p.cl");
+  // std::string stirlerr_small_source     = load_kernel_source("nmath/stirlerr_small.cl");
+  // std::string dgamma_source     = load_kernel_source("nmath/dgamma.cl");
+  // std::string stirlerr_source     = load_kernel_source("nmath/stirlerr.cl");
+  // std::string bd0_source     = load_kernel_source("nmath/bd0.cl");
+  // std::string dbinom_source     = load_kernel_source("nmath/dbinom.cl");
+  // std::string dpois_source     = load_kernel_source("nmath/dpois.cl");
+  // std::string pgamma_source     = load_kernel_source("nmath/pgamma.cl");
   
   
   
@@ -526,32 +526,32 @@ Rcpp::List f2_f3_opencl(
   /// Updated to use same "Program" logic for all models
   
   all_src = OPENCL_source +
-    //       "\n" +   rmath_source + 
-    "\n" +   rmath_source2 + 
-    //       "\n" + dpq_source +
-    "\n" +dpq_prelude_source+
-    "\n" +dpq_source2+
-    "\n" +nmath_source2   
-  + "\n" + chebyshev_source
-  + "\n" + d1mach_source
-  + "\n" + dnorm_source
-  + "\n" + fmax2_source
-  + "\n" + gammalims_source
-  + "\n" + lgammacor_source
-  + "\n" + log1p_source
-  + "\n" + pnorm_source
-  + "\n" + stirlerr_large_source
-  //         + "\n" + DBL_EPSILON_TEST
-  + "\n" + expm1_source
-  + "\n" + gamma_source
-  + "\n" + lgamma_source
-  + "\n" + lgamma1p_source
-  + "\n" + stirlerr_small_source
-  + "\n" + stirlerr_source
-  + "\n" + bd0_source
-  + "\n" + dbinom_source
-  + "\n" + dpois_source
-  + "\n" + dgamma_source
+           "\n" +   rmath_source + 
+    //"\n" +   rmath_source2 + 
+           "\n" + dpq_source +
+    //"\n" +dpq_prelude_source+
+    //"\n" +dpq_source2+
+    "\n" +nmath_source   
+  //   "\n" +nmath_source2   
+  // + "\n" + chebyshev_source
+  // + "\n" + d1mach_source
+  // + "\n" + dnorm_source
+  // + "\n" + fmax2_source
+  // + "\n" + gammalims_source
+  // + "\n" + lgammacor_source
+  // + "\n" + log1p_source
+  // + "\n" + pnorm_source
+  // + "\n" + stirlerr_large_source
+  // + "\n" + expm1_source
+  // + "\n" + gamma_source
+  // + "\n" + lgamma_source
+  // + "\n" + lgamma1p_source
+  // + "\n" + stirlerr_small_source
+  // + "\n" + stirlerr_source
+  // + "\n" + bd0_source
+  // + "\n" + dbinom_source
+  // + "\n" + dpois_source
+  // + "\n" + dgamma_source
   + "\n" +   ksrc;
   
   
