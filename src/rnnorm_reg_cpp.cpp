@@ -671,9 +671,7 @@ Rcpp::List rnnorm_reg_cpp(int n,NumericVector y,NumericMatrix x,
   
   //  Rcpp::Rcout << "Finished Envelope Creation:" << std::endl;
   
-  Rcpp::Rcout << "Finished EnvelopeBuild: "
-              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-              << "\n";
+  
   
   
   

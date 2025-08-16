@@ -149,7 +149,7 @@
 glmb<-function (formula, family = binomial,pfamily=dNormal(mu,Sigma,dispersion=1),n=1000,data, weights,
                 use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE,
                 subset,
-                offset,na.action, Gridtype=1,start = NULL, etastart, 
+                offset,na.action, Gridtype=2,start = NULL, etastart, 
                 mustart,  control = list(...), model = TRUE, 
                 method = "glm.fit", x = FALSE, y = TRUE, contrasts = NULL, 
                 ...) 

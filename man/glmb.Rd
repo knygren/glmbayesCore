@@ -18,7 +18,7 @@ glmb(
   subset,
   offset,
   na.action,
-  Gridtype = 1,
+  Gridtype = 2,
   start = NULL,
   etastart,
   mustart,

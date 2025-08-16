@@ -200,10 +200,7 @@ List EnvelopeBuild_c(NumericVector bStar,NumericMatrix A,
   }
 
   
-//  Rcpp::Rcout << "Exiting Envelope Loop: "
-//              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-//              << "\n";
-  
+
     
   NumericMatrix G3=asMat(expGrid(G2));
   NumericMatrix GIndex=asMat(expGrid(GIndex1));

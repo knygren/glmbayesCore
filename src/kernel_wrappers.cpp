@@ -398,9 +398,13 @@ Rcpp::List f2_f3_opencl(
     int                  progbar
 ) {
   int l1 = x.nrow(), l2 = x.ncol(), m1 = b.ncol();
+
   
+    
   // flatten inputs
+  
   auto X_flat     = flattenMatrix(x);
+  
   auto B_flat     = flattenMatrix(b);
   auto mu_flat    = flattenMatrix(mu);
   auto P_flat     = flattenMatrix(P);
@@ -410,14 +414,6 @@ Rcpp::List f2_f3_opencl(
   
   
 
-    
-    Rcpp::Rcout << "Allocating Required Memory: "
-                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                << "\n";
-
-  
-  
-  
   // allocate outputs
   std::vector<double> qf_flat(m1);
   std::vector<double> grad_flat(static_cast<size_t>(m1) * l2);
@@ -426,23 +422,6 @@ Rcpp::List f2_f3_opencl(
   Rcpp::NumericVector qf(m1);
   
 
-    Rcpp::Rcout << "Allocating xb Memory: "
-                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                << "\n";
-
-  
-//    std::vector<double> xb_flat(static_cast<size_t>(l1) * m1);
-  // Rcpp::NumericMatrix xb(l1, m1);
-  
-
-    Rcpp::Rcout << "Dispatch kernel: "
-                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                << "\n";
-
-  
-    
-  
-  
   // Dispatch kernel name and source
   std::string kernel_name;
   std::string kernel_file;
