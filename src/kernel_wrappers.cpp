@@ -431,7 +431,7 @@ Rcpp::List f2_f3_opencl(
                 << "\n";
 
   
-    std::vector<double> xb_flat(static_cast<size_t>(l1) * m1);
+//    std::vector<double> xb_flat(static_cast<size_t>(l1) * m1);
   // Rcpp::NumericMatrix xb(l1, m1);
   
 
@@ -513,13 +513,15 @@ Rcpp::List f2_f3_opencl(
   
   
   
-  f2_binomial_logit_prep_grad_kernel_runner(
+  f2_f3_kernel_runner(
     all_src,
     kernel_name.c_str(),  // ✅ convert to const char*
     l1, l2, m1,
     X_flat, B_flat, mu_flat, P_flat, alpha_flat,
     y_flat, wt_flat,
-    qf_flat, xb_flat, grad_flat,
+    qf_flat, 
+    // xb_flat,
+    grad_flat,
     progbar
   );
   

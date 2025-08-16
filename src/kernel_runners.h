@@ -70,3 +70,23 @@ void f2_binomial_logit_prep_grad_kernel_runner(
     std::vector<double>&          grad_flat,
     int                           progbar = 0
 );
+
+
+void f2_f3_kernel_runner(
+    const std::string&            kernel_source,
+    const char*                   kernel_name,
+    int                           l1,
+    int                           l2,
+    int                           m1,
+    const std::vector<double>&    X_flat,
+    const std::vector<double>&    B_flat,
+    const std::vector<double>&    mu_flat,
+    const std::vector<double>&    P_flat,
+    const std::vector<double>&    alpha_flat,
+    const std::vector<double>&    y_flat,
+    const std::vector<double>&    wt_flat,
+    std::vector<double>&          qf_flat,
+    // std::vector<double>&          xb_flat,
+    std::vector<double>&          grad_flat,
+    int                           progbar = 0
+);
