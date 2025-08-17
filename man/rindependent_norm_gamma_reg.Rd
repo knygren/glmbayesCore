@@ -240,7 +240,7 @@ offset=NULL,weights=1,max_disp_perc=0.99)
  
 }
 \seealso{
-Other family simulation functions:
+Other simfuncs: 
 \code{\link{rGamma_reg}()},
 \code{\link{rNormal_Gamma_reg}()},
 \code{\link{rNormal_reg}()}

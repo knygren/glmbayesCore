@@ -192,7 +192,7 @@ v_old
 A reference
 }
 \seealso{
-Other family simulation functions:
+Other simfuncs: 
 \code{\link{rNormal_Gamma_reg}()},
 \code{\link{rNormal_reg}()},
 \code{\link{rindependent_norm_gamma_reg}()}

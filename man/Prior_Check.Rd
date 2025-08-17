@@ -139,7 +139,7 @@ Prior_Check(counts ~ outcome + treatment,family = poisson(),
             pfamily=dNormal(mu=mu,Sigma=V))
 }
 \seealso{
-Other prior utility Functions:
+Other prior: 
 \code{\link{Prior_Setup}()}
 }
 \concept{prior}

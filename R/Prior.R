@@ -4,6 +4,7 @@
 #' @param na.action how \code{NAs} are treated. The default is first, any \code{\link{na.action}} attribute of 
 #' data, second a \code{na.action} setting of \link{options}, and third \code{na.fail} if that is unset. 
 #' The \code{factory-fresh} default is \code{na.omit}. Another possible value is \code{NULL}.
+#' @param family a description of the error distribution and linke function to be used in the model.
 #' @inheritParams stats::model.frame
 #' @return A list with items related to the prior.
 #' \item{mu}{An initial version of the prior mean vector, populated with all zeros}
@@ -20,7 +21,7 @@
 
 ## Note arguments outside of first two are currently not used
 
-Prior_Setup<-function(formula,data=NULL, subset = NULL, na.action = na.fail, 
+Prior_Setup<-function(formula,data=NULL,family=gaussian, subset = NULL, na.action = na.fail, 
                          drop.unused.levels = FALSE, xlev = NULL, ...){
   
   #mf<-model.frame(formula,data,subset=subset,na.action=na.action,
@@ -28,6 +29,8 @@ Prior_Setup<-function(formula,data=NULL, subset = NULL, na.action = na.fail,
   
   mf<-model.frame(formula,data)
   x<-model.matrix(formula,mf)
+  
+  
   
   nvar=ncol(x)
   var_names=colnames(x)
@@ -38,6 +41,17 @@ Prior_Setup<-function(formula,data=NULL, subset = NULL, na.action = na.fail,
     lm_out=lm(formula,data=mf,y=TRUE)
     y=lm_out$y
     mu[1,1]=mean(y)
+    
+    f<-formula
+    
+    lhs<-f[[2]]
+    intercept_only<-as.formula(paste(deparse(lhs),"~1") ,env=environment(f))
+    
+    glm_out2=glm(formula, family = family)
+
+    glm_out1=update(glm_out2,formula=intercept_only)
+    mu[1,1]=glm_out1$coefficients[1]
+
     
   } 
   

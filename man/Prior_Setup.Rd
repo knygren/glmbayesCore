@@ -7,6 +7,7 @@
 Prior_Setup(
   formula,
   data = NULL,
+  family = gaussian,
   subset = NULL,
   na.action = na.fail,
   drop.unused.levels = FALSE,
@@ -22,6 +23,8 @@ Prior_Setup(
     coercible by \code{\link{as.data.frame}} to a data frame),
     containing the variables in \code{formula}.  Neither a matrix nor an
     array will be accepted.}
+
+\item{family}{a description of the error distribution and linke function to be used in the model.}
 
 \item{subset}{a specification of the rows/observations to be used:
     defaults to all. This can be any valid indexing vector (see
@@ -74,7 +77,7 @@ V=ps$Sigma
 print(ps)
 }
 \seealso{
-Other prior utility Functions:
+Other prior: 
 \code{\link{Prior_Check}()}
 }
 \concept{prior}

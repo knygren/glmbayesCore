@@ -599,7 +599,7 @@ else{
       
       if (verbose) {
         
-        Rcpp::Rcout << "Existing f2_f3_opencl: "
+        Rcpp::Rcout << "Exiting f2_f3_opencl: "
                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                     << "\n";
       }

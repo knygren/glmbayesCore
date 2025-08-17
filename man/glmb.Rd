@@ -301,7 +301,7 @@ New York: Springer.
 \code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for \code{glmb} 
 and the methods and generic functions for classes \code{glm} and \code{lm} from which class \code{glmb} inherits.
 
-Other glmbayes modeling functions:
+Other modelfuns: 
 \code{\link{lmb}()},
 \code{\link{rglmb}()},
 \code{\link{rlmb}()}

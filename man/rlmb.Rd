@@ -174,7 +174,7 @@ The classical modeling functions \code{\link[stats]{lm}} and \code{\link[stats]{
 inherited from class \code{glmb} and the methods and generic functions for classes \code{glm} and 
 \code{lm} from which class \code{lmb} also inherits.
 
-Other glmbayes modeling functions:
+Other modelfuns: 
 \code{\link{glmb}()},
 \code{\link{lmb}()},
 \code{\link{rglmb}()}

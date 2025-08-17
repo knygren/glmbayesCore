@@ -273,7 +273,7 @@ to the outcome variable, and two coefficients related to the treatment variable.
 #glm.D93 <- glm(counts ~ outcome + treatment, family = poisson(),x=TRUE)
 
 
-Setup.D93=Prior_Setup(counts ~ outcome + treatment)
+Setup.D93=Prior_Setup(counts ~ outcome + treatment,family=poisson())
 ```
 
 Printing the output from the Prior_Check function gives us a printed view of the initialized prior as
@@ -301,7 +301,7 @@ numdead <- c(1, 4, 9, 13, 18, 20, 0, 2, 6, 10, 12, 16)
 sex <- factor(rep(c("M", "F"), c(6, 6)))
 SF <- cbind(numdead, numalive = 20-numdead)
 
-Setup.budworm=Prior_Setup(SF ~ sex*ldose)
+Setup.budworm=Prior_Setup(SF ~ sex*ldose,family=binomial())
 ```
 
 Reviewing the full printed output, we see that the intercept corresponds to *Females* at ldose=0. The *sex* dummy for *males* represent how much higher (or lower) the percentage dead would be for males at ldose=0. The *ldose* variable in turn represents the linear impact of ldose for females (so the slope), while the interaction variable represents how much larger (or smaller) the slope would be for males.

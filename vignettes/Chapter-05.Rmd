@@ -76,7 +76,7 @@ weight <- c(ctl, trt)
 lm.D9 <- lm(weight ~ group)
 
 # Bayesian Prior Setup and Call-Prior Should Generally be Customized
-p_info=Prior_Setup(weight~group)
+p_info=Prior_Setup(weight~group, family=gaussian())
 mu1=p_info$mu    
 Sigma1=p_info$Sigma
 
@@ -96,7 +96,7 @@ treatment <- gl(3,3)
 glm.D93 <- glm(counts ~ outcome + treatment, family = poisson())
 
 # Bayesian Prior Setup and Call-Prior Should Generally be Customized
-p_info2=Prior_Setup(counts ~ outcome + treatment)
+p_info2=Prior_Setup(counts ~ outcome + treatment,family=poisson())
 mu2=p_info2$mu    
 Sigma2=p_info2$Sigma
 
@@ -149,12 +149,12 @@ when extracting the information about the prior used by an existing model object
 
 *The Prior_Setup function
 
-This function can be used to set up the prior arguments so they have the correct dimensions and so that the various dimensions have names that correspond to those in the model. In addition to initialized prior structrues, these functions also return the model frame and the model matrix as a reference (the latter when it was requested from the underlying model). It is worth noting that this function is intended as a tool for initializig the prior objects and not for setting them to the final values used in the estimation. How to populate the arguments with sensible values is discussed in a separate vignette.
+This function can be used to set up the prior arguments so they have the correct dimensions and so that the various dimensions have names that correspond to those in the model. In addition to initialized prior structures, these functions also return the model frame and the model matrix as a reference (the latter when it was requested from the underlying model). It is worth noting that this function is intended as a tool for initializing the prior objects and not for setting them to the final values used in the estimation. How to populate the arguments with sensible values is discussed in a separate vignette.
 
 NOTE: ADD A PRINT METHOD FOR THIS FUNCTION SO THAT THE OUTPUT CAN BE CONTROLLED
 
 ```{r Calling Prior_Setup,results = "hide"}
-Prior_Setup(weight ~ group)
+Prior_Setup(weight ~ group,family=gaussian())
 ```
 *The Prior_Check function
 

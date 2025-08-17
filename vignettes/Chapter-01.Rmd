@@ -53,7 +53,7 @@ To use the *glmb* function, we first use a call to a function *Prior_Setup" to i
 ```{r Prior_Setup,results = "hide"}
 ## Using glmb
 ## Step 1: Set up Prior
-ps=Prior_Setup(counts ~ outcome + treatment)
+ps=Prior_Setup(counts ~ outcome + treatment,family=poisson())
 mu=ps$mu
 V=ps$Sigma
 ```

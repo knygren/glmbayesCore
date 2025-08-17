@@ -1,10 +1,10 @@
 Yaml
 
 ---
-title: "Chapter 11: An overview of the glmbayes examples"
+title: "Chapter 00: Introduction"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter 11: An overview of the glmbayes examples}
+  %\VignetteIndexEntry{Chapter 00: Introduction}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -19,3 +19,78 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(glmbayes)
 ```
+## Chapter 1: Getting started with glmbayes
+
+This chapter walks you through installing and loading glmbayes, setting up your first Bayesian GLM, and interpreting the basic output. You’ll see how the package parallels R’s built-in `glm()` interface, how to call `glmb()` for common families, and how to extract posterior summaries like means and credible intervals.
+
+---
+
+## Chapter 2: Specifying Multivariate Normal Priors and Interpreting Model Outputs
+
+Here you learn how to build and supply a multivariate normal prior via `Prior_Setup()`, including choosing a prior mean vector and covariance matrix. The chapter shows how these choices influence posterior estimates, and how to read the detailed output tables—posterior means, standard deviations, and high-density intervals—to draw substantive conclusions about parameter uncertainty.
+
+---
+
+## Chapter 3: Using the Prior_Setup and Prior_Check Functions
+
+This chapter delves deeper into prior specification by introducing `Prior_Check()`, which evaluates whether your prior is compatible with the observed data. You’ll see diagnostic plots of prior and likelihood overlap, learn to detect prior-data conflicts, and adjust hyperparameters to ensure your analysis rests on reasonable prior beliefs.
+
+---
+
+## Chapter 4: Reviewing Model Predictions, Deviance Residuals and Model Statistics
+
+After fitting a model, this chapter shows how to generate fitted values and posterior predictive draws, compute deviance residuals, and summarize overall model fit statistics such as the Deviance Information Criterion (DIC). Through worked examples, you’ll compare classical and Bayesian residual plots to assess goodness-of-fit.
+
+---
+
+## Chapter 5: A detailed overview of the glmbayes package
+
+Serving as a roadmap, this chapter describes the core architecture: the three main samplers (`rglmb`, `glmb`, `rglmbdisp`), supported families (Gaussian, Poisson, Binomial, Gamma), and the likelihood-subgradient accept-reject engine under the hood. It outlines the S3 method extensions for `summary()`, `predict()`, and diagnostic functions, helping you navigate the package’s components.
+
+---
+
+## Chapter 6: Estimating Bayesian Linear Models
+
+Focused on the Gaussian identity-link case, this chapter explains how `rglmb()` draws directly from the multivariate normal posterior without subgradient methods. You’ll work through setting up priors, calling the sampler, and comparing Bayesian estimates to classical least squares, highlighting scenarios where Bayesian shrinkage improves inference.
+
+---
+
+## Chapter 7: Using Custom Prior Families
+
+If the built-in normal and normal-gamma priors don’t fit your needs, this chapter shows you how to define a new prior family class. It walks through implementing the necessary S3 methods (`density()`, `rprior()`, envelope constructor) so you can seamlessly plug in bespoke priors and still leverage the package’s sampling engine.
+
+---
+
+## Chapter 8: Working with the Gamma Regression Model
+
+Here you explore fitting Gamma-family GLMs with a log link, including joint sampling of regression coefficients and dispersion via a two-stage sampler. The chapter details setting up a Normal-Gamma prior, using `rglmbdisp()` for dispersion draws, and interpreting overdispersion in count-like data.
+
+---
+
+## Chapter 9: Using Two-Block Gibbs Sampling for Hierarchical Bayesian Models: Part 1
+
+This first installment introduces hierarchical GLMs, where group-level effects vary. You learn to alternate between sampling regression parameters and hyperparameters in two blocks. The chapter covers model formulation, data preparation, and implementing the first block (coefficient draws) with `rglmb()`.
+
+---
+
+## Chapter 10: Using Two-Block Gibbs Sampling for Hierarchical Bayesian Models: Part 2
+
+Continuing from Part 1, this chapter completes the Gibbs cycle by sampling variance components (e.g., random-effect variances) in the second block. You’ll see how to monitor convergence, adjust priors for hyperparameters, and chain together blocks to perform full posterior inference for mixed-effects models.
+
+---
+
+## Chapter 11: An overview of the glmbayes examples
+
+This concise tour highlights each demo dataset and vignette included with glmbayes: from classic case studies like overdose data to custom simulations. For every example, you get a snapshot of the research question, the model setup, and the key takeaways, so you can quickly adapt them to your own analyses.
+
+---
+
+## Chapter A1: Overview of Estimation Procedures
+
+As a technical appendix, this chapter lays out the mathematical foundations behind each sampler. You’ll review the derivation of the full posterior, understand how the enveloping functions are constructed, and see the theoretical acceptance-rate bounds that guarantee algorithmic efficiency.
+
+---
+
+## Chapter A2: Simulation_Methods – Likelihood Subgradient Densities
+
+This appendix dives into the likelihood-subgradient approach for non-Gaussian families. It details how subgradients define tangent envelopes, walks through envelope construction step by step, and explains why this method yields valid acceptance-rejection sampling for log-concave likelihoods.
