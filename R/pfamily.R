@@ -132,6 +132,11 @@ dNormal<-function(mu,Sigma,dispersion=NULL){
   tol<- 1e-06 # Link this to Magnitude of P	
   eS <- eigen(Sigma, symmetric = TRUE,only.values = FALSE)
   ev <- eS$values
+  thr <- -tol * abs(ev[1])   # = -1e-06 * 12.56941 ≈ -1.256941e-05
+  
+  
+  
+  
   if (!all(ev >= -tol * abs(ev[1L]))) 
     stop("'Sigma' is not positive definite")
   

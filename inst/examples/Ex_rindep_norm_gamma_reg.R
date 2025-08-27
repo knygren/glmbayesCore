@@ -29,7 +29,7 @@ Prior_Check(weight ~ group,gaussian(),dNormal(mu=mu,Sigma=Sigma_prior))
 ## and setting the variance equal to the variance of the dependent variable
 
 mu[1,1]=mean(y)
-Sigma_prior[1,1]=var(y)
+##Sigma_prior[1,1]=var(y)
 
 ## For factors, set the "standad prior to mean=0 and variance driven by the range
 ## of the dependent variable 
