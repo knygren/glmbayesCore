@@ -55,8 +55,8 @@ summary.glmb<-function(object,...){
   percentiles<-matrix(0,nrow=l1,ncol=7)
   se<-sqrt(diag(var(object$coefficients)))
 #  if(object$family$family=="quasipoisson") se=se*sqrt(mean(dispersion))
-  mc<-se/object$n
-  mc<-se/n
+#  mc<-se/sqrt(object$n)
+  mc<-se/sqrt(n)
   priorrank<-matrix(0,nrow=l1,ncol=1)
   pval1<-matrix(0,nrow=l1,ncol=1)
   pval2<-matrix(0,nrow=l1,ncol=1)
@@ -71,6 +71,9 @@ summary.glmb<-function(object,...){
     pval2[i,1]<-min(pval1[i,1],1-pval1[i,1])
     
   }
+
+  se_pval2 <- sqrt(pval2 * (1 - pval2) / n)
+  
 
   ## Note: This restricts function to classes glmb and lmb
   ## Could break calls to this function from other classes
@@ -91,7 +94,14 @@ summary.glmb<-function(object,...){
     
   Tab1<-cbind("Prior Mean"=object$Prior$mean,"Prior.sd"=as.numeric(sqrt(diag(object$Prior$Variance)))
               ,"Max Like."=ml,"Like.sd"=se1)
-  TAB<-cbind("Post.Mode"=as.numeric(object$coef.mode),"Post.Mean"=object$coef.means,"Post.Sd"=se,"MC Error"=as.numeric(mc),"Pr(tail)"=as.numeric(pval2))
+  TAB<-cbind("Post.Mode"=as.numeric(object$coef.mode),
+             "Post.Mean"=object$coef.means,
+             "Post.Sd"=se,
+             "MC Error"=as.numeric(mc),             
+             "SE(tail)"  = as.numeric(se_pval2),
+             "Pr(tail)"=as.numeric(pval2)  
+)
+  
   TAB2<-cbind("1.0%"=percentiles[,1],"2.5%"=percentiles[,2],"5.0%"=percentiles[,3],Median=as.numeric(percentiles[,4]),"95.0%"=percentiles[,5],"97.5%"=as.numeric(percentiles[,6]),"99.0%"=as.numeric(percentiles[,7]))
   
   rownames(TAB2)<-rownames(TAB)

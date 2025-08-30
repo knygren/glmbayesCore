@@ -297,12 +297,15 @@ glmb<-function (formula, family = binomial,pfamily=dNormal(mu,Sigma,dispersion=1
         DICinfo<-DIC_Info(sim$coefficients,y=y,x=x,alpha=offset,f1=famfunc$f1,f4=famfunc$f4,wt=wtin/sim$dispersion,dispersion=1)
         res=residuals(summary(sim))
         DICinfo$Deviance=rowSums(res*res)    
+
         DICinfo$DIC=DICinfo$DIC*sim$dispersion    
+        
       }
       #else  DICinfo<-DIC_Info(sim$coefficients,y=y,x=x,alpha=offset,f1=famfunc$f1,f4=famfunc$f4,wt=wtin,dispersion=dispersion2)
       else{DICinfo<-DIC_Info(sim$coefficients,y=y,x=x,alpha=offset,f1=famfunc$f1,f4=famfunc$f4,wt=wtin/sim$dispersion,dispersion=1)
       res=residuals(summary(sim))
-      DICinfo$Deviance=rowSums(res*res)    
+      DICinfo$Deviance=rowSums(res*res)   
+
       DICinfo$DIC=DICinfo$DIC*sim$dispersion    }
       
     }
@@ -320,6 +323,7 @@ glmb<-function (formula, family = binomial,pfamily=dNormal(mu,Sigma,dispersion=1
 
         res=residuals(summary(sim))
         DICinfo$Deviance=rowSums(res*res)    
+
         DICinfo$DIC=DICinfo$DIC*sim$dispersion    
         #  DICinfo$DIC=NULL      
       }
@@ -331,6 +335,7 @@ glmb<-function (formula, family = binomial,pfamily=dNormal(mu,Sigma,dispersion=1
         
       res=residuals(summary(sim))
       DICinfo$Deviance=rowSums(res*res)    
+
   ##    DICinfo$DIC=DICinfo$DIC*sim$dispersion
       } 
       
