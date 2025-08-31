@@ -346,11 +346,11 @@ print.PriorSetup <- function(x, ...) {
   
   # Print table
   cat("Prior Estimates with 95% Confidence Intervals\n")
-  print(out)
+  invisible(print(out))
   
   if (nvar <= 10) {
     cat("\nPrior Correlation Matrix\n")
-    print(round(prior_cor, 4))
+    invisible(print(round(prior_cor, 4)))
   }
   
   # Optional: print dispersion

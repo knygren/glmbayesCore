@@ -73,7 +73,20 @@ ps=Prior_Setup(weight ~ group,family=gaussian())
 mu=ps$mu
 V=ps$Sigma
 disp_ML=ps$dispersion
+
 ```
+
+We now utilize the print function for **Prior_Setup** to understand the default prior specification.
+
+```{r Plant_Prior_Spec}
+ps
+```
+The printed output begins by echoing the original function call, confirming the model formula and the specified likelihood family. Next, the setup of a Zellner g-type prior is displayed, where pwt = 0.01 indicates that the prior contributes just 1% of the total information, while the likelihood contributes the remaining 99%. This reflects a weakly informative prior, allowing the data to dominate the posterior. The derived value of g = 99 quantifies the relative weight of the likelihood to the prior (or more precisely how much the Prior Variance-Covariance matrix is scaled up relative to the Likelihood Variance-Covariance matrix). 
+
+The note on n_prior shows how this pseudo-sample size was computed from pwt and the effective sample size of the likelihood (n_likelihood = 20). The summary section includes prior means, standard deviations, and confidence intervals for each coefficient. The prior correlation matrix reveals the structure of dependencies induced by the design matrix—here, a strong negative correlation between the intercept and treatment effect. Finally, the conditional dispersion (0.485) reflects the residual variance under the Gaussian model, consistent with the classical GLM fit.
+
+In the next vignette, we discuss the default prior in more details. We also discuss how users can utilize the options in the Prior_Setup function to get different **g-prior** specifications that rescale the Prior-Variance covariance matrix as well as options for using alternative prior mean specifications. In a later vignette, we dig deeper into the use of differential **pwt** specifications for different dimensions and the use of more informative priors.
+
 
 ### 3.2.2 Calling the lmb function
 
@@ -178,38 +191,40 @@ summary(lmb.D9)
 
 Before diving into the posterior, `summary(lmb.D9)` reports the prior means (and variances) you supplied alongside the maximum-likelihood estimates under a fixed‐dispersion Gaussian model. Seeing these side by side helps you gauge how much influence your prior exerts relative to the data.
 
-|                | Prior Mean | Prior sd | Max Like. | Like sd |
-|----------------|-----------:|---------:|----------:|--------:|
-| (Intercept)    |      5.0320|   0.9599 |    5.0320 |  0.2200 |
-| groupTrt       |      0.0000|   1.3575 |   -0.3710 |  0.3110 |
+```{r Plant_lmb_coefficients1}
+sumlmb<-summary(lmb.D9)
+sumlmb$coefficients1
+```
+
+
 
 The default prior specification from `Prior_Setup()` is designed to align closely with the classical fit while still imposing mild regularization:
 
-- The intercept prior mean is set equal to its maximum‐likelihood estimate (5.0320), so you start with no location bias.
+- The intercept prior mean is set equal to the maximum‐likelihood estimate from a "Null" intercept only model.
 - All other “effects” (here, the groupTrt slope) default to zero, expressing no a priori directional pull.
 - The prior variance–covariance matrix is inflated by a factor  
   \[
     g \;=\;\frac{1 - \text{pwt}}{\text{pwt}}
-    \quad\text{with}\quad \text{pwt}=0.05,
+    \quad\text{with}\quad \text{pwt}=0.01,
   \]
-  giving \(g=19\). This is exactly Zellner’s g-prior:  
+  giving \(g=99\). This is exactly Zellner’s g-prior:  
   \[
     V_{\text{prior}} \;=\; g \times V_{\text{likelihood}},
   \]
-  so each prior standard deviation (0.9599 and 1.3575) is \(\sqrt{g}\) times the corresponding classical standard error (0.2200 and 0.3110). This choice delivers moderate shrinkage toward the prior without overwhelming the data.  
+  so each prior standard deviation (2.191 and 3.099) is \(\sqrt{g}\) times the corresponding classical standard error (0.2200 and 0.3110). This choice delivers minimal shrinkage towards the prior.  
 
 ### 4.2.2 Posterior estimates
 
 The main table lists posterior mode and mean for each coefficient, plus the posterior standard deviation, Monte Carlo standard error, and the tail probability for a zero‐effect test. These values integrate your prior and the likelihood to give a full distributional summary.
 
-Bayesian Estimates Based on 1000 iid draws  
 
-|                | Post.Mode | Post.Mean | Post.Sd | MC Error | Pr(tail) |
-|----------------|----------:|----------:|--------:|---------:|---------:|
-| (Intercept)    |    5.0320 |    5.0299 |  0.2162 |    0.000 |   0.486  |
-| groupTrt       |   -0.3525 |   -0.3392 |  0.3084 |    0.000 |   0.145  |
 
-When the likelihood covariance is diagonal—so the MLEs are independent—and you set the prior covariance to be a scalar multiple of that same diagonal matrix via the `pwt` argument, each parameter’s posterior mean reduces to  
+```{r Plant_lmb_coefficients}
+sumlmb<-summary(lmb.D9)
+sumlmb$coefficients
+```
+
+When a g prior is used, the posterior means simplify and becomes a weighted average of the prior mean and the Maximum likelihood estimates.  
 
 \[
   \text{Post.Mean}
@@ -234,14 +249,14 @@ For models with a zero prior mean and roughly symmetric posteriors, `Pr(tail)` w
 Below the moments, you get a grid of key quantiles (1%, 2.5%, 5%, median, 95%, 97.5%, 99%) for each parameter. Percentiles let you quickly read off credible‐interval bounds and assess skew or heavy tails in the posterior.
 
 
-| Parameter    |   1.0% |   2.5% |   5.0% |  Median |  95.0% |  97.5% |  99.0% |
-|--------------|-------:|-------:|-------:|--------:|-------:|-------:|-------:|
-| (Intercept)  |  4.5832|  4.6327|  4.6860|  5.0215|  5.3557|  5.4273|  5.4860|
-| groupTrt     | -1.0553| -0.9418| -0.8395| -0.3337|  0.1235|  0.2376|  0.3380|
+```{r Plant_lmb_Percentiles}
+sumlmb<-summary(lmb.D9)
+sumlmb$Percentiles
+```
 
 **Interpretation for `groupTrt`:**  
-- The 95% credible interval (2.5%–97.5%) is **[–0.9418, 0.2376]**, which spans zero and indicates uncertainty about the direction of the treatment effect.  
-- The 90% credible interval (5%–95%) is **[–0.8395, 0.1235]**, also including zero and reinforcing that a null or small positive effect remains plausible.  
+- The 95% credible interval (2.5%–97.5%) is approximately **[–0.9315, 0.2334]**, which spans zero and indicates uncertainty about the direction of the treatment effect.  
+- The 90% credible interval (5%–95%) is approxinately **[–0.8722, 0.1557]**, also including zero and reinforcing that a null or small positive effect remains plausible.  
 - The posterior distribution is slightly negatively skewed: the lower tail (1.0% = –1.0553) extends farther below the median (–0.3337) than the upper tail (99.0% = 0.3380) extends above it.  
 - Although the median effect is –0.3337 (suggesting a small negative treatment effect), the credible intervals remind us that the data do not provide strong evidence to rule out no effect or even a slight positive effect.
 ```

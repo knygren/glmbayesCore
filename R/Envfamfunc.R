@@ -123,20 +123,49 @@ glmbfamfunc<-function(family){
     #  f5<-f2_poisson
     #  f6<-f3_poisson
     
-    f7<-function(b,y,x,mu,P,alpha=0,wt=1){
-      l2<-length(y)
-      ltemp<-length(wt)
-      yxb2<-NULL
-      if(ltemp==1){
-        Ptemp<-wt*diag(l2)
+#    f7<-function(b,y,x,mu,P,alpha=0,wt=1){
+#      l2<-length(y)
+#      ltemp<-length(wt)
+#      yxb2<-NULL
+#      if(ltemp==1){
+#        Ptemp<-wt*diag(l2)
+#      }
+#      else {
+#        Ptemp<-diag(wt)      
+#      }
+#      Pout<-t(x)%*%(Ptemp)%*%x*exp(alpha+x%*%b)
+#      Pout
+#    }
+ 
+    f7<-function(b, y, x, mu, P, alpha = 0, wt = 1) {
+      l2 <- length(y)
+      l1 <- length(b)
+      ltemp <- length(wt)
+      
+      # Construct diagonal weight matrix
+      if (ltemp == 1) {
+        Ptemp <- wt * diag(l2)
+      } else {
+        Ptemp <- diag(wt)
       }
-      else {
-        Ptemp<-diag(wt)      
+      
+      # Compute expected counts
+      mu_i <- exp(alpha + x %*% b)
+      
+      # Initialize output matrix
+      Pout <- matrix(0, nrow = l1, ncol = l1)
+      
+      # Loop over observations
+      for (i in 1:l2) {
+        xi <- x[i, , drop = FALSE]  # row as matrix
+        weight_i <- Ptemp[i, i] * mu_i[i]
+        Pout <- Pout + weight_i * (t(xi) %*% xi)
       }
-      Pout<-t(x)%*%(Ptemp)%*%x*exp(alpha+x%*%b)
+      
       Pout
     }
     
+       
     
     
   }

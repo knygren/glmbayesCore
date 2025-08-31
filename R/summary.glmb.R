@@ -18,6 +18,7 @@
 #' \item{coefficients}{Matrix with columns for the posterior mode, posterior mean, posterior standard
 #' deviation, monte carlo error, and tail probabilities (posterior probability of observing a 
 #' value for the coefficient as extreme as the prior mean)}
+#' \item{dir_tail}{List containing information related to the directional tail}
 #' \item{Percentiles}{Matrix with estimated percentiles associated with the posterior density}
 #' \item{pD}{Estimated effective number of parameters}
 #' \item{deviance}{Vector with draws for the deviance}
@@ -45,6 +46,11 @@ summary.glmb<-function(object,...){
   #df.r <- length(object$y)-object$pD
   
   dispersion=get_dispersion(object)
+  print("Entering directional_tail")
+  
+  dir_tail <- directional_tail(object)
+  print("Exiting directional_tail")
+  
   #if(!is.null(object$DIC)) DIC=object$DIC
   #else DIC=NA
   #print("Mean Dispersion")
@@ -112,6 +118,7 @@ summary.glmb<-function(object,...){
             residuals=mres,
             coefficients1=Tab1,
             coefficients=TAB,
+            dir_tail=dir_tail,
             Percentiles=TAB2,
             pD=object$pD,
             deviance=object$deviance,
@@ -141,6 +148,12 @@ print.summary.glmb<-function(x,digits = max(3, getOption("digits") - 3),...){
   printCoefmat(x$coefficients1,digits=digits)
   cat("\nBayesian Estimates Based on",x$n,"iid draws\n\n")
   printCoefmat(x$coefficients,digits=digits,P.values=TRUE,has.Pvalue=TRUE)
+  cat("\nDirectional Prior-Posterior Summary:\n")
+  cat("  Standardized Mahalanobis Distance :", 
+      formatC(x$dir_tail$mahalanobis_shift, digits = 4, format = "f"), "\n")
+  cat("  Directional Tail Probability      :", 
+      formatC(x$dir_tail$p_directional, digits = 4, format = "f"), 
+      "  [P(delta^T * Z <= 0)]\n")
   cat("\nDistribution Percentiles\n\n")
   printCoefmat(x$Percentiles,digits=digits)
   cat("\nEffective Number of Parameters:",x$pD,"\n")

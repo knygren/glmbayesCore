@@ -8,6 +8,8 @@
 #'
 #' @param fit A fitted model object of class 'glmb' or 'lmb'
 #' @return An object of class 'directional_tail' containing:
+#'   \item{mahalanobis_shift}{Measures the standardized Mahalanobis distance between the posterior and prior means, 
+#' using posterior precision for scaling. In the Gaussian case, this directly determines the directional tail probability via Phi(-||w||).}
 #'   \item{p_directional}{Directional tail probability (proportion of draws in the direction of disagreement)}
 #'   \item{delta}{Mean shift in whitened space}
 #'   \item{draws}{List containing whitened draws, raw draws, and tail flags}
@@ -34,12 +36,24 @@ directional_tail <- function(fit) {
   if (main_class == "glmb") {
     f7     <- fit$famfunc$f7
     bstar  <- fit$coef.mode
+##    bstar <- matrix(bstar, ncol = 1)
     y      <- fit$y
     x      <- fit$x
     P0     <- solve(V0)
     alpha  <- tryCatch(fit$offset, error = function(e) fit$glm$offset)
     if (is.null(alpha)) alpha <- 0
     wt     <- fit$prior.weights
+    
+    # Debug printout of key inputs
+    cat("Calling f7 with the following inputs:\n")
+    cat("  dim(bstar):", paste(dim(bstar), collapse = " x "), "\n")
+    cat("  dim(y):", paste(dim(y), collapse = " x "), "\n")
+    cat("  dim(x):", paste(dim(x), collapse = " x "), "\n")
+    cat("  dim(P0):", paste(dim(P0), collapse = " x "), "\n")
+    cat("  dim(alpha):", paste(dim(alpha), collapse = " x "), "\n")
+    cat("  dim(wt):", paste(dim(wt), collapse = " x "), "\n")
+    
+    
     Prec_lik <- f7(bstar, y, x, mu0, P0, alpha, wt)
   } else if (main_class == "lmb") {
     Prec_lik <- solve(vcov(fit$lm))
@@ -69,14 +83,16 @@ directional_tail <- function(fit) {
   
   ## 7) Return simplified output
   out <- list(
-    p_directional = p_tail,
-    delta         = delta,
+    mahalanobis_shift = sqrt(sum(delta^2)),
+    p_directional   = p_tail,
+    delta           = delta,
     draws = list(
       is_tail = flag,
       Z       = Z,
       B       = B
     )
   )
+  
   
   class(out) <- "directional_tail"
   return(out)
@@ -89,14 +105,19 @@ print.directional_tail <- function(x, ...) {
   n_draws <- nrow(x$draws$Z)
   
   cat("Bayesian Estimates Based on", n_draws, "iid draws\n")
-  cat("---------------------------------------------\n")
-  cat("  p_directional   :", formatC(x$p_directional, digits = 4, format = "f"), "\n\n")
+  cat("--------------------------------------------------\n")
+  cat("Standardized Prior-Posterior Mahalanobis distance, and\n")
+  cat("associated tail probability (P[delta^T * Z <= 0]):\n\n")
+  cat("  Mahalanobis Prior-Posterior Distance    :", formatC(x$mahalanobis_shift, digits = 4, format = "f"), "\n")
+  cat("  Associated Directional Tail Probability :", formatC(x$p_directional, digits = 4, format = "f"), "\n\n")
   
   # Compute MC error for delta on the fly
   Z <- x$draws$Z
   mcse_delta <- apply(Z, 2, function(zj) sd(zj) / sqrt(length(zj)))
   
-  # Create and print table of delta and MCSE
+  cat("Standardized Prior-posterior shifts mcses: \n")
+  
+    # Create and print table of delta and MCSE
   delta_table <- data.frame(
     Delta = round(x$delta, 4),
     MCSE  = round(mcse_delta, 4),

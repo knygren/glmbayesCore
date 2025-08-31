@@ -11,6 +11,8 @@ directional_tail(fit)
 }
 \value{
 An object of class 'directional_tail' containing:
+  \item{mahalanobis_shift}{Measures the standardized Mahalanobis distance between the posterior and prior means, 
+using posterior precision for scaling. In the Gaussian case, this directly determines the directional tail probability via Phi(-||w||).}
   \item{p_directional}{Directional tail probability (proportion of draws in the direction of disagreement)}
   \item{delta}{Mean shift in whitened space}
   \item{draws}{List containing whitened draws, raw draws, and tail flags}
@@ -103,7 +105,8 @@ asp = 1
 
 # Plot posterior draws in whitened space
 plot(Z, col = ifelse(flag, "red", "blue"), pch = 19,
-     xlab = "Z₁", ylab = "Z₂", main = "Directional Tail Diagnostic")
+     xlab = "Z1", ylab = "Z2", main = "Directional Tail Diagnostic")
+
 
 # Add direction vector (scaled for visibility), still from origin
 #arrows(0, 0, w[1] * 2, w[2] * 2, col = "darkgreen", lwd = 2, length = 0.1)

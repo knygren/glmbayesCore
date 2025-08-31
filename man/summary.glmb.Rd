@@ -28,6 +28,7 @@ list with components:
 \item{coefficients}{Matrix with columns for the posterior mode, posterior mean, posterior standard
 deviation, monte carlo error, and tail probabilities (posterior probability of observing a 
 value for the coefficient as extreme as the prior mean)}
+\item{dir_tail}{List containing information related to the directional tail}
 \item{Percentiles}{Matrix with estimated percentiles associated with the posterior density}
 \item{pD}{Estimated effective number of parameters}
 \item{deviance}{Vector with draws for the deviance}
