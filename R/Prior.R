@@ -32,7 +32,8 @@ Prior_Setup<-function(formula,data=NULL,family=gaussian(),pwt=0.01 ,
                       effects_source = c("null_effects", "full_model"),
                       subset = NULL, na.action = na.fail, 
                          drop.unused.levels = FALSE, xlev = NULL, ...){
-  
+
+  call <- match.call()  
   #mf<-model.frame(formula,data,subset=subset,na.action=na.action,
   #                drop.unused.levels=drop.unused.levels,xlev=xlev)
   
@@ -93,6 +94,15 @@ Prior_Setup<-function(formula,data=NULL,family=gaussian(),pwt=0.01 ,
             " and n_likelihood = ", n_likelihood)
   }
   
+  # Compute n_prior if not supplied and pwt is scalar
+  if (is.null(n_prior) && length(pwt) == 1L) {
+    n_prior <- (pwt/(1-pwt)) * n_likelihood
+  #  message("Computed n_prior = ", round(n_prior, 4),
+  #          " from pwt = ", round(pwt, 4),
+  #          " and n_likelihood = ", n_likelihood)
+  }
+  
+
   
   ## conditional dispersion
   if (family$family == "gaussian") {
@@ -188,8 +198,116 @@ Prior_Setup<-function(formula,data=NULL,family=gaussian(),pwt=0.01 ,
   rownames(Sigma)=var_names
   colnames(Sigma)=var_names
   
-  return(list(mu=mu,Sigma=Sigma,dispersion=dispersion,model=mf,x=x))    
+  prior_list <- list(
+    mu = mu,
+    Sigma = Sigma,
+    dispersion = dispersion,
+    model = mf,
+    x = x,
+    call=call,
+    PriorSettings = list(
+      pwt = pwt,
+      n_prior = n_prior,
+      intercept_source = intercept_source,
+      effects_source = effects_source,
+      n_likelihood=n_likelihood
+    )
+  )
   
+  class(prior_list) <- "PriorSetup"
+  return(prior_list)
+  
+}
+
+#' @export
+#' @method print PriorSetup
+
+print.PriorSetup <- function(x, ...) {
+
+  cat("\nCall:  ", paste(deparse(x$call), sep = "\n", collapse = "\n"), "\n\n", sep = "")
+    
+  settings <- x$PriorSettings
+  
+  if (!is.null(settings$pwt) && length(settings$pwt) == 1L) {
+    g <- (1 - settings$pwt) / settings$pwt
+    cat("Setting up a Zellner g-type prior: \n")
+    cat("  pwt =", round(settings$pwt, 4), "\n")
+    cat("  g   = (1 - pwt)/pwt =", round(g, 4), "\n\n")
+  }
+  
+  if (!is.null(settings$n_prior) && !is.null(settings$n_likelihood)) {
+    cat("Note: n_prior was computed as (pwt / (1 - pwt)) * n_likelihood: \n")
+    cat("  n_prior      =", round(settings$n_prior, 4), "\n")
+    cat("  n_likelihood =", round(settings$n_likelihood, 4), "\n\n")
+  }
+  
+
+  if (!is.null(settings$pwt) && length(settings$pwt) > 1L) {
+    cat("Note: Differential prior weights (pwt) were specified per coefficient.\n\n")
+  }
+  
+  
+  cat("Prior Setup Summary\n")
+  cat("====================\n\n")
+  
+  # Check for Zellner g-prior structure
+  Sigma <- x$Sigma
+  mu <- x$mu
+  var_names <- rownames(mu)
+  nvar <- length(var_names)
+  
+  # Extract diagonal SDs
+  prior_sd <- sqrt(diag(Sigma))
+  
+  # Always compute prior correlation matrix
+  prior_cor <- cov2cor(Sigma)
+  
+  # Extract pwt vector for display
+  if (!is.null(settings$pwt)) {
+    if (length(settings$pwt) == 1L) {
+      pwt_vec <- rep(settings$pwt, nvar)
+    } else if (length(settings$pwt) == nvar) {
+      pwt_vec <- settings$pwt
+    } else {
+      warning("Length of pwt does not match number of variables; skipping pwt column.")
+      pwt_vec <- rep(NA_real_, nvar)
+    }
+  } else {
+    pwt_vec <- rep(NA_real_, nvar)
+  }
+  
+
+  # Compute 95% intervals
+  z <- qnorm(0.975)
+  lower <- mu[, 1] - z * prior_sd
+  upper <- mu[, 1] + z * prior_sd
+  
+
+  # Build output table
+
+  out <- data.frame(
+    Prior.Mean = round(mu[, 1], 6),
+    Prior.SD   = round(prior_sd, 6),
+    CI.Lower   = round(lower, 6),
+    CI.Upper   = round(upper, 6),
+    pwt        = round(pwt_vec, 6)
+  )
+  
+  # Print table
+  cat("Prior Estimates with 95% Confidence Intervals\n")
+  print(out)
+  
+  if (nvar <= 10) {
+    cat("\nPrior Correlation Matrix\n")
+    print(round(prior_cor, 4))
+  }
+  
+  # Optional: print dispersion
+  if (!is.null(x$dispersion)) {
+    cat("\nConditional Dispersion (Gaussian family): ", round(x$dispersion, 4), "\n")
+  }
+  
+  invisible(x)
 }
 
 
@@ -262,4 +380,7 @@ Prior_Check<-function(formula,family,pfamily,level=0.95,data=NULL, weights, subs
   return(abs_ratio)
   
 }
+
+
+
 
