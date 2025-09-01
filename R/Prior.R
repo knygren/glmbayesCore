@@ -1,10 +1,10 @@
 #' Setup Prior Objects
 #' 
-#' Sets up the structure for the Prior mean and Variance Matrices using information from a classical model.
+#' Helper function to facilitate the Setup of Prior Distributions for glm models.
 #' @param na.action how \code{NAs} are treated. The default is first, any \code{\link{na.action}} attribute of 
 #' data, second a \code{na.action} setting of \link{options}, and third \code{na.fail} if that is unset. 
 #' The \code{factory-fresh} default is \code{na.omit}. Another possible value is \code{NULL}.
-#' @param family a description of the error distribution and linke function to be used in the model.
+#' @param family a description of the error distribution and link function to be used in the model.
 #' @param pwt Weight on the prior relative to the likelihood function at the the maximum likelihood estimate. If n_prior is provided, it is calculated as pwt=n_prior/(n_prior+n_likelihood) where n_likelihood is the number of observations for the likelihood function.
 #' @param n_prior Optional argument with number of prior observations (either a scalar or a vector). When provided, this is used together with the number of likelihood observations to compute pwt. If not provided but pwt is a scalar, it is computed as n_prior=n_likelihood*(pwt/(1-pwt)).
 #' @param sd Optional vector argument with the prior standard deviations for the coefficients
@@ -13,17 +13,90 @@
 #' @param mu Optional vector argument with the prior means for the coefficients
 #' @inheritParams stats::model.frame
 #' @details
-#' The `PriorSettings` component of the returned list contains metadata used to construct the prior distribution.
-#' It includes:
-#' \describe{
-#'   \item{pwt}{Prior weight (scalar or vector). If scalar, used to compute Zellner's g.}
-#'   \item{n_prior}{Effective prior sample size.}
-#'   \item{n_likelihood}{Effective likelihood sample size.}
-#'   \item{intercept_source}{Source of prior mean for intercept.}
-#'   \item{effects_source}{Source of prior mean for coefficients.}
-#' }
+#' `Prior_Setup()` initializes a structured set of prior parameters for generalized linear models (GLMs), supporting both Gaussian and non-Gaussian families.
+#'  It is designed to provide the full set of inputs required for multiple prior specifications (referred to as "pfamilies"), including conjugate normal priors, 
+#'  Normal-Gamma priors, and independent normal-gamma priors.
 #'
-#' These values are derived from user input or inferred from the classical model structure.
+#' The function returns a list containing:
+#' * `mu`: the prior mean vector
+#' * `Sigma`: the prior variance-covariance matrix
+#' * `dispersion`: the estimated dispersion (for Gaussian models)
+#' * `shape`: the shape parameter for Normal-Gamma priors (if applicable)
+#' * `rate`: the rate parameter for Normal-Gamma priors (if applicable)
+#' * `model`: the model frame used to construct the design matrix
+#' * `x`: the design matrix
+#' * `call`: the matched call to `Prior_Setup()`
+#' * `PriorSettings`: a list of metadata including:
+#'   - `pwt`: prior weight (scalar or vector)
+#'   - `n_prior`: effective prior sample size
+#'   - `n_likelihood`: effective likelihood sample size
+#'   - `intercept_source`: method used to set the prior mean for the intercept
+#'   - `effects_source`: method used to set the prior mean for the effects
+#'
+#' ### Inputs to the function
+#'
+#' The inputs to `Prior_Setup()` fall into three conceptual categories:
+#'
+#' **1. Model specification**
+#' * `formula`: defines the structure of the GLM, including response and predictors.
+#' * `family`: specifies the error distribution and link function (e.g., `gaussian()`, `binomial()`).
+#' * `data`: optional data frame used to evaluate the formula and extract variables.
+#'
+#' **2. Prior variance-covariance specification**
+#' * `pwt`: prior weight relative to the likelihood. If scalar, used to compute Zellner's g-prior.
+#' * `n_prior`: optional effective prior sample size. If provided, overrides `pwt`.
+#' * `sd`: optional vector of prior standard deviations. If provided, used to compute `pwt`.
+#'
+#' **3. Prior mean specification**
+#' * `intercept_source`: method for setting the prior mean of the intercept (`"null_model"` or `"full_model"`).
+#' * `effects_source`: method for setting the prior mean of the effects (`"null_effects"` or `"full_model"`).
+#' * `mu`: optional user-specified prior mean vector. Overrides other centering logic if provided.
+#'
+#' ### Mathematical structure and interpretation
+#'
+#' When `pwt` is a scalar, the prior covariance is scaled from the likelihood covariance using a Zellner g-prior:
+#' \deqn{\Sigma_{Prior} = \frac{1 - pwt}{pwt} \cdot V_{MLE}}
+#' where \eqn{V_{MLE}} is the variance–covariance matrix of the maximum likelihood estimator.
+#'
+#' If the likelihood covariance is not full rank, the function aborts with an error, as a g-prior cannot be constructed.
+#'  While Bayesian models can still be estimated in such cases, users should proceed with caution.
+#'  
+#' The corresponding prior precision is:
+#' \deqn{P_{Prior} = \frac{pwt}{1 - pwt} \cdot P_{MLE}}
+#' and the posterior mean (in the Gaussian case) simplifies to:
+#' \deqn{\mu_{Post} = (1 - pwt) \cdot \widehat{\beta}_{MLE} + pwt \cdot \mu_{Prior}}
+#'
+#' Default prior centering reflects classical reference structures:
+#' \itemize{
+#'   \item The intercept prior is centered at the null model estimate (`intercept_source = "null_model"`), consistent with how R\eqn{^2}, F-tests, and t-statistics are defined.
+#'   \item The effect priors are centered at zero (`effects_source = "null_effects"`), supporting intuitive posterior summaries and direct interpretation of tail probabilities.
+#' }
+#' 
+#' These defaults ensure that posterior means remain close to classical estimates when `pwt` is small, 
+#' while allowing additional flexible prior specifications through `mu`, `sd`, and `n_prior`. 
+#' 
+#' If `n_prior` is not provided, it is derived from `pwt` and the effective likelihood sample size `n_likelihood` using:
+#' \deqn{n_{\mathrm{prior}} = \frac{pwt}{1 - pwt} \cdot n_{\mathrm{likelihood}}}
+#' where `n_likelihood` is the number of observations in the model.
+#'
+#' Likewise, if `n_prior` is provided, `pwt` is computed as:
+#' \deqn{pwt = \frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}}
+#'
+#'#' When applicable, `Prior_Setup()` computes the shape and rate parameters for a Gamma prior on the residual precision (inverse variance), used in 
+#'compound prior families such as `dNormal_Gamma()` , `dIndependent_Normal_Gamma()`, and `dGamma()`. These are derived from the effective prior sample size and the estimated dispersion:
+#'
+#' \deqn{\text{shape} = \frac{n_{\mathrm{prior}}}{2}}
+#' \deqn{\text{rate} = \text{shape} \cdot \text{dispersion} = \frac{n_{\mathrm{prior}}}{2} \cdot \text{dispersion}}
+#'    
+#' where RSS is the residual sum of squares from the likelihood model.
+#' 
+#' The posterior shape and rate parameters under a Normal-Gamma model are then:
+#' \deqn{\text{shape}_{\mathrm{post}} = \text{shape} + \frac{n_{\mathrm{likelihood}}}{2} = \frac{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}{2}}
+#' \deqn{\text{rate}_{\mathrm{post}} = \text{rate} + \frac{1}{2} \cdot \text{RSS} =  \frac{n_{\mathrm{prior}}+n_{\mathrm{likelihood}} - k}{2}  \cdot dispersion}
+#' 
+#' This structure allows the prior to contribute pseudo-observations to the residual precision estimate, enabling adaptive shrinkage and hierarchical regularization — especially valuable in small-sample or high-dimensional settings.
+#' especially in small-sample or high-dimensional settings.
+#'
 #' @return A list with items related to the prior.
 #' \item{mu}{A prior mean vector}
 #' \item{Sigma}{A prior variance-covariance matrix}
@@ -44,7 +117,7 @@
 
 ## Note arguments outside of first two are currently not used
 
-Prior_Setup<-function(formula,data=NULL,family=gaussian(),pwt=0.01 ,
+Prior_Setup<-function(formula,family=gaussian(),data=NULL, pwt=0.01 ,
                       n_prior=NULL, sd=NULL,
                       intercept_source = c("null_model", "full_model"),
                       effects_source = c("null_effects", "full_model"),
