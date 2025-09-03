@@ -189,8 +189,23 @@ lmb.D9_v3=lmb(weight ~ group,dIndependent_Normal_Gamma(ps$mu,ps$Sigma,shape=ps$s
 summary(lmb.D9_v3)
 
 ## 
+anova(lmb.D9)
 
-#anova(lmb.D9)
+ps=Prior_Setup(weight ~ 1)
+#mu=ps$mu
+#V=ps$Sigma
+#mu[1,1]=mean(weight)
+
+## Classical model 
+lm.D9 <- lm(weight ~ 1,x=TRUE,y=TRUE)
+summary(lm.D9)
+
+## Conjugate Normal Prior (fixed dispersion)
+lmb.D9=lmb(weight ~ 1,pfamily=dNormal(mu=ps$mu,ps$Sigma,dispersion = ps$dispersion))
+summary(lmb.D9)
+
+directional_tail(lmb.D9)
+
 }
 \references{
 Chambers, J.M.(1992) \emph{Linear models.} Chapter 4 of \emph{Statistical Models in S}

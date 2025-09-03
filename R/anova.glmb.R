@@ -23,7 +23,16 @@ anova.glmb<-function(object,...){
   n=nrow(object$coefficients)
   mu=as.matrix(object$Prior$mean,ncol=1)
   V=object$Prior$Variance
-  obj_family=family(object)
+  primary_class <- class(object)[1]
+  
+  if (primary_class == "lmb") {
+    obj_family=gaussian()
+    
+  } else
+  {
+    obj_family=family(object)
+    
+  }    
   pf=object$pfamily
 
   if(!attr(object$pfamily,"Prior Type")=="dNormal") stop("Not Yet Implemented")
@@ -59,7 +68,12 @@ anova.glmb<-function(object,...){
                        'Resid. Df'=rep(nobs(object),(nterms_all+1)),
                        'Resid. Dev'=rep(0,nterms_all+1),
                        'Mod. pD'=rep(0,(nterms_all+1)),
-                       DIC=rep(0,(nterms_all+1)))
+                       DIC=rep(0,(nterms_all+1)),
+                       'Mahalanobis Shift' = rep(NA, nterms_all + 1),
+                       'pDirectional' = rep(NA, nterms_all + 1)
+                       )
+  
+  
   rownames(anova_out)[1]="NULL"
   rownames(anova_out)[2:(nterms_all+1)]=tl_all
   
@@ -70,10 +84,17 @@ anova.glmb<-function(object,...){
   anova_out[(nterms_all+1),4]=mean(object$deviance)
   anova_out[(nterms_all+1),3]=nobs(object)-object$pD
   
+  dir_tail_full <- summary(object)$dir_tail
+  anova_out[nterms_all + 1, 7] <- dir_tail_full$mahalanobis_shift
+  anova_out[nterms_all + 1, 8] <- dir_tail_full$p_directional
+  
+
   # Initialize nterms_left and tt2
   nterms_left=nterms_all
   tt2=terms_all
-  
+
+
+    
   
   message("Full model formula: ", deparse(formula(object)))  
 
@@ -116,6 +137,8 @@ anova.glmb<-function(object,...){
     prior=list(mu=mu2,Sigma=V2)
   
     message("Running model: ", deparse(newff))
+    
+
         
 #    object2<-glmb(n=n,newff, family = obj_family,prior=prior,Gridtype=2)
     object2<-glmb(n=n,newff, family = obj_family,pfamily=dNormal(mu2,V2,dispersion),data=data, Gridtype = 2,
@@ -137,6 +160,10 @@ anova.glmb<-function(object,...){
     anova_out[(nterms_left),5]=object2$pD
     anova_out[(nterms_left),6]=object2$DIC
     
+    dir_tail <- summary(object2)$dir_tail
+    anova_out[nterms_left, 7] <- dir_tail$mahalanobis_shift
+    anova_out[nterms_left, 8] <- dir_tail$p_directional
+    
     # decrement nterms_left by 1
     
     nterms_left=nterms_left-1
@@ -153,6 +180,15 @@ anova.glmb<-function(object,...){
     anova_out[(i+1),2]=anova_out[i,4]-anova_out[(i+1),4]
     
   }
+  
+  anova_out$pDirectional <- sapply(anova_out$pDirectional, function(x) {
+    if (is.na(x)) return(NA)
+    if (x < 0.001) {
+      formatC(x, format = "e", digits = 3)
+    } else {
+      formatC(x, format = "f", digits = 3)
+    }
+  })
   
   # Consider whether to add class info here
   

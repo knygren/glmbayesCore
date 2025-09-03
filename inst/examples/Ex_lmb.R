@@ -27,5 +27,6 @@ lmb.D9_v3=lmb(weight ~ group,dIndependent_Normal_Gamma(ps$mu,ps$Sigma,shape=ps$s
 summary(lmb.D9_v3)
 
 ## 
+anova(lmb.D9)
 
-#anova(lmb.D9)
+

@@ -55,11 +55,12 @@ directional_tail <- function(fit) {
   
   ## 3) Combine with prior precision
   Prec_post <- Prec_lik + chol2inv(chol(V0))
-  
+
   ## 4) Whiten draws relative to prior mean
-  P      <- Prec_post
-  eig    <- eigen(P, symmetric = TRUE)
-  W      <- eig$vectors %*% diag(sqrt(eig$values)) %*% t(eig$vectors)
+  P <- Prec_post
+  eig <- eigen(P, symmetric = TRUE)
+  D_eig <- diag(sqrt(eig$values), nrow = length(eig$values))
+  W      <- eig$vectors %*% D_eig %*% t(eig$vectors)
   Z      <- t(W %*% t(sweep(B, 2, mu0)))       # M * p
   
   
