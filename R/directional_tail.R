@@ -7,6 +7,7 @@
 #' and is especially useful for visualizing rejection regions in whitened space.
 #'
 #' @param fit A fitted model object of class 'glmb' or 'lmb'
+#' @param mu0 An optional argument containing a reference vector relative to which the directional tail is computed. Defaults to the prior mean.
 #' @return An object of class 'directional_tail' containing:
 #'   \item{mahalanobis_shift}{Measures the standardized Mahalanobis distance between the posterior and prior means, 
 #' using posterior precision for scaling. In the Gaussian case, this directly determines the directional tail probability via Phi(-||w||).}
@@ -23,12 +24,15 @@
 
 
 
-directional_tail <- function(fit) {
+directional_tail <- function(fit, mu0 = NULL) {
   main_class <- class(fit)[1]
   
   ## 1) Extract posterior draws and prior mean
   B      <- as.matrix(fit$coefficients)       # M * p
-  mu0    <- as.numeric(fit$Prior$mean)        # length p
+  if (is.null(mu0)) {
+    mu0 <- as.numeric(fit$Prior$mean)
+  }
+##  mu0    <- as.numeric(fit$Prior$mean)        # length p
   V0     <- fit$Prior$Variance                # p * p
   Sigma  <- as.matrix(vcov(fit))              # p * p
   

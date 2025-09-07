@@ -4,10 +4,12 @@
 \alias{directional_tail}
 \title{Directional Tail Diagnostic}
 \usage{
-directional_tail(fit)
+directional_tail(fit, mu0 = NULL)
 }
 \arguments{
 \item{fit}{A fitted model object of class 'glmb' or 'lmb'}
+
+\item{mu0}{An optional argument containing a reference vector relative to which the directional tail is computed. Defaults to the prior mean.}
 }
 \value{
 An object of class 'directional_tail' containing:

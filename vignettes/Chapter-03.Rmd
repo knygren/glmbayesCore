@@ -557,8 +557,34 @@ The intercept, with a prior SD of 0.005, shows minimal shrinkage and remains cen
 
 This model demonstrates how targeted prior specification can clarify which predictors are robustly supported by the data and which are sensitive to prior skepticism. The differential shrinkage across dimensions is both diagnostically informative and theoretically justified.
 
-# 4. 
+# 4. Adjusting the prior means using **intercept_source**, **effects_source**, and **mu**
 
+By default, Prior_Setup() centers the prior mean for the intercept at the value estimated from the null model (i.e., the mean of the outcome), and sets the prior means for all effects to zero. However, in many modeling contexts, it is useful to shift these prior means to reflect domain knowledge, empirical estimates, or structural expectations. This can be done in three ways: by using intercept_source, by using effects_source, or by manually specifying a prior mean vector via mu.
+
+### 4.1 Using intercept_source and effects_source
+
+These arguments allow the prior mean to be derived from fitted models:
+- intercept_source = "null_model": sets the prior mean for the intercept based on a model with no predictors (i.e., just the mean of the outcome).
+- intercept_source = "full_model": uses the intercept from the full model fit.
+- effects_source = "null_effects": sets prior means for predictors to zero.
+- effects_source = "full_model": uses the coefficients from the full model fit as prior means.
+
+This approach is useful when the analyst wants to regularize toward empirical estimates, especially in hierarchical or shrinkage settings.
+
+
+```{r Mt_cars_prior_full_model}
+pscars8 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data =mtcars,intercept_source = "full_model",effects_source = "full_model")  ## 
+pscars8
+```
+
+
+```{r sumlmb_out9}
+
+set.seed(333)
+lmb_cars8<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars8$mu,Sigma=pscars8$Sigma, dispersion = pscars8$dispersion),data =mtcars)
+sum_lmbcars8<-summary(lmb_cars8)
+sum_lmbcars8
+```
 
 
 ```{r Mt_cars_Default_Prior5}
@@ -808,7 +834,7 @@ sum_default=summary(lmb.women_default)
 intercept_default <- coef(sum_default)["(Intercept)", "Post.Mean"]
 estimate_default <- sum_default$coefficients["height", "Post.Mean"]
 sd_default       <- sum_default$coefficients["height", "Post.Sd"]
-pr_tail_default  <- sum_default$coefficients["height", "Pr(tail)"]
+pr_tail_default  <- sum_default$coefficients["height", "Pr(Prior_tail)"]
 eff_params_default <- sum_default$pD
 DIC_default <- sum_default$DIC
 
@@ -818,7 +844,7 @@ sum_null=summary(lmb.women_null)
 intercept_null <- coef(sum_null)["(Intercept)", "Post.Mean"]
 estimate_null <- sum_null$coefficients["height", "Post.Mean"]
 sd_null       <- sum_null$coefficients["height", "Post.Sd"]
-pr_tail_null  <- sum_null$coefficients["height", "Pr(tail)"]
+pr_tail_null  <- sum_null$coefficients["height", "Pr(Prior_tail)"]
 eff_params_null <- sum_null$pD
 DIC_null <- sum_null$DIC
 
@@ -827,7 +853,7 @@ sum_null_midpwt=summary(lmb.women_null_midpwt)
 intercept_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Post.Mean"]
 estimate_null_midpwt <- sum_null_midpwt$coefficients["height", "Post.Mean"]
 sd_null_midpwt       <- sum_null_midpwt$coefficients["height", "Post.Sd"]
-pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["height", "Pr(tail)"]
+pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["height", "Pr(Prior_tail)"]
 eff_params_null_midpwt <- sum_null_midpwt$pD
 DIC_null_midpwt <- sum_null_midpwt$DIC
 
@@ -836,7 +862,7 @@ sum_null_hipwt=summary(lmb.women_null_hipwt)
 intercept_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Post.Mean"]
 estimate_null_hipwt <- sum_null_hipwt$coefficients["height", "Post.Mean"]
 sd_null_hipwt       <- sum_null_hipwt$coefficients["height", "Post.Sd"]
-pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["height", "Pr(tail)"]
+pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["height", "Pr(Prior_tail)"]
 eff_params_null_hipwt <- sum_null_hipwt$pD
 DIC_null_hipwt <- sum_null_hipwt$DIC
 
@@ -847,7 +873,7 @@ sum_full=summary(lmb.women_full)
 intercept_full <- coef(sum_full)["(Intercept)", "Post.Mean"]
 estimate_full <- sum_full$coefficients["height", "Post.Mean"]
 sd_full       <- sum_full$coefficients["height", "Post.Sd"]
-pr_tail_full  <- sum_full$coefficients["height", "Pr(tail)"]
+pr_tail_full  <- sum_full$coefficients["height", "Pr(Prior_tail)"]
 eff_params_full <- sum_full$pD
 DIC_full <- sum_full$DIC
 
@@ -856,7 +882,7 @@ sum_full_midpwt=summary(lmb.women_full_midpwt)
 intercept_full_midpwt <- coef(sum_full_midpwt)["(Intercept)", "Post.Mean"]
 estimate_full_midpwt <- sum_full_midpwt$coefficients["height", "Post.Mean"]
 sd_full_midpwt       <- sum_full_midpwt$coefficients["height", "Post.Sd"]
-pr_tail_full_midpwt  <- sum_full_midpwt$coefficients["height", "Pr(tail)"]
+pr_tail_full_midpwt  <- sum_full_midpwt$coefficients["height", "Pr(Prior_tail)"]
 eff_params_full_midpwt <- sum_full_midpwt$pD
 DIC_full_midpwt <- sum_full_midpwt$DIC
 
@@ -865,7 +891,7 @@ sum_full_hipwt=summary(lmb.women_full_hipwt)
 intercept_full_hipwt <- coef(sum_full_hipwt)["(Intercept)", "Post.Mean"]
 estimate_full_hipwt <- sum_full_hipwt$coefficients["height", "Post.Mean"]
 sd_full_hipwt       <- sum_full_hipwt$coefficients["height", "Post.Sd"]
-pr_tail_full_hipwt  <- sum_full_hipwt$coefficients["height", "Pr(tail)"]
+pr_tail_full_hipwt  <- sum_full_hipwt$coefficients["height", "Pr(Prior_tail)"]
 eff_params_full_hipwt <- sum_full_hipwt$pD
 DIC_full_hipwt <- sum_full_hipwt$DIC
 
@@ -875,7 +901,7 @@ sum_midpwt=summary(lmb.women_midpwt)
 intercept_midpwt <- coef(sum_midpwt)["(Intercept)", "Post.Mean"]
 estimate_midpwt <- sum_midpwt$coefficients["height", "Post.Mean"]
 sd_midpwt       <- sum_midpwt$coefficients["height", "Post.Sd"]
-pr_tail_midpwt  <- sum_midpwt$coefficients["height", "Pr(tail)"]
+pr_tail_midpwt  <- sum_midpwt$coefficients["height", "Pr(Prior_tail)"]
 eff_params_midpwt <- sum_midpwt$pD
 DIC_midpwt <- sum_midpwt$DIC
 
@@ -884,7 +910,7 @@ sum_hipwt=summary(lmb.women_hipwt)
 intercept_hipwt <- coef(sum_hipwt)["(Intercept)", "Post.Mean"]
 estimate_hipwt <- sum_hipwt$coefficients["height", "Post.Mean"]
 sd_hipwt       <- sum_hipwt$coefficients["height", "Post.Sd"]
-pr_tail_hipwt  <- sum_hipwt$coefficients["height", "Pr(tail)"]
+pr_tail_hipwt  <- sum_hipwt$coefficients["height", "Pr(Prior_tail)"]
 eff_params_hipwt <- sum_hipwt$pD
 DIC_hipwt <- sum_hipwt$DIC
 
@@ -1124,7 +1150,7 @@ sum_null=summary(lmb.women_null)
 intercept_null <- coef(sum_null)["(Intercept)", "Post.Mean"]
 estimate_null <- sum_null$coefficients["height_c", "Post.Mean"]
 sd_null       <- sum_null$coefficients["height_c", "Post.Sd"]
-pr_tail_null  <- sum_null$coefficients["height_c", "Pr(tail)"]
+pr_tail_null  <- sum_null$coefficients["height_c", "Pr(Prior_tail)"]
 eff_params_null <- sum_null$pD
 DIC_null <- sum_null$DIC
 
@@ -1133,7 +1159,7 @@ sum_null_midpwt=summary(lmb.women_null_midpwt)
 intercept_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Post.Mean"]
 estimate_null_midpwt <- sum_null_midpwt$coefficients["height_c", "Post.Mean"]
 sd_null_midpwt       <- sum_null_midpwt$coefficients["height_c", "Post.Sd"]
-pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["height_c", "Pr(tail)"]
+pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["height_c", "Pr(Prior_tail)"]
 eff_params_null_midpwt <- sum_null_midpwt$pD
 DIC_null_midpwt <- sum_null_midpwt$DIC
 
@@ -1142,7 +1168,7 @@ sum_null_hipwt=summary(lmb.women_null_hipwt)
 intercept_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Post.Mean"]
 estimate_null_hipwt <- sum_null_hipwt$coefficients["height_c", "Post.Mean"]
 sd_null_hipwt       <- sum_null_hipwt$coefficients["height_c", "Post.Sd"]
-pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["height_c", "Pr(tail)"]
+pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["height_c", "Pr(Prior_tail)"]
 eff_params_null_hipwt <- sum_null_hipwt$pD
 DIC_null_hipwt <- sum_null_hipwt$DIC
 
@@ -1153,7 +1179,7 @@ sum_full=summary(lmb.women_full)
 intercept_full <- coef(sum_full)["(Intercept)", "Post.Mean"]
 estimate_full <- sum_full$coefficients["height_c", "Post.Mean"]
 sd_full       <- sum_full$coefficients["height_c", "Post.Sd"]
-pr_tail_full  <- sum_full$coefficients["height_c", "Pr(tail)"]
+pr_tail_full  <- sum_full$coefficients["height_c", "Pr(Prior_tail)"]
 eff_params_full <- sum_full$pD
 DIC_full <- sum_full$DIC
 
@@ -1163,7 +1189,7 @@ sum_default=summary(lmb.women_default)
 intercept_default <- coef(sum_default)["(Intercept)", "Post.Mean"]
 estimate_default <- sum_default$coefficients["height_c", "Post.Mean"]
 sd_default       <- sum_default$coefficients["height_c", "Post.Sd"]
-pr_tail_default  <- sum_default$coefficients["height_c", "Pr(tail)"]
+pr_tail_default  <- sum_default$coefficients["height_c", "Pr(Prior_tail)"]
 eff_params_default <- sum_default$pD
 DIC_default <- sum_default$DIC
 
@@ -1173,7 +1199,7 @@ sum_midpwt=summary(lmb.women_midpwt)
 intercept_midpwt <- coef(sum_midpwt)["(Intercept)", "Post.Mean"]
 estimate_midpwt <- sum_midpwt$coefficients["height_c", "Post.Mean"]
 sd_midpwt       <- sum_midpwt$coefficients["height_c", "Post.Sd"]
-pr_tail_midpwt  <- sum_midpwt$coefficients["height_c", "Pr(tail)"]
+pr_tail_midpwt  <- sum_midpwt$coefficients["height_c", "Pr(Prior_tail)"]
 eff_params_midpwt <- sum_midpwt$pD
 DIC_midpwt <- sum_midpwt$DIC
 
@@ -1182,7 +1208,7 @@ sum_hipwt=summary(lmb.women_hipwt)
 intercept_hipwt <- coef(sum_hipwt)["(Intercept)", "Post.Mean"]
 estimate_hipwt <- sum_hipwt$coefficients["height_c", "Post.Mean"]
 sd_hipwt       <- sum_hipwt$coefficients["height_c", "Post.Sd"]
-pr_tail_hipwt  <- sum_hipwt$coefficients["height_c", "Pr(tail)"]
+pr_tail_hipwt  <- sum_hipwt$coefficients["height_c", "Pr(Prior_tail)"]
 eff_params_hipwt <- sum_hipwt$pD
 DIC_hipwt <- sum_hipwt$DIC
 
@@ -1563,11 +1589,11 @@ AIC_Classical_null <-AIC(fit_classical_null)-2
 sum_default=summary(lmb.D9_default)
 
 intercept_default <- coef(sum_default)["(Intercept)", "Post.Mean"]
-intercept_Prtail_default <- coef(sum_default)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_default <- coef(sum_default)["(Intercept)", "Pr(Prior_tail)"]
 
 estimate_default <- sum_default$coefficients["groupTrt", "Post.Mean"]
 sd_default       <- sum_default$coefficients["groupTrt", "Post.Sd"]
-pr_tail_default  <- sum_default$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_default  <- sum_default$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_default <- sum_default$pD
 DIC_default <- sum_default$DIC
 
@@ -1575,10 +1601,10 @@ DIC_default <- sum_default$DIC
 sum_null=summary(lmb.D9_null)
 
 intercept_null <- coef(sum_null)["(Intercept)", "Post.Mean"]
-intercept_Prtail_null <- coef(sum_null)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_null <- coef(sum_null)["(Intercept)", "Pr(Prior_tail)"]
 estimate_null <- sum_null$coefficients["groupTrt", "Post.Mean"]
 sd_null       <- sum_null$coefficients["groupTrt", "Post.Sd"]
-pr_tail_null  <- sum_null$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_null  <- sum_null$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_null <- sum_null$pD
 DIC_null <- sum_null$DIC
 
@@ -1586,10 +1612,10 @@ DIC_null <- sum_null$DIC
 sum_null_midpwt=summary(lmb.D9_null_midpwt)
 
 intercept_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Pr(Prior_tail)"]
 estimate_null_midpwt <- sum_null_midpwt$coefficients["groupTrt", "Post.Mean"]
 sd_null_midpwt       <- sum_null_midpwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_null_midpwt <- sum_null_midpwt$pD
 DIC_null_midpwt <- sum_null_midpwt$DIC
 
@@ -1597,10 +1623,10 @@ DIC_null_midpwt <- sum_null_midpwt$DIC
 sum_null_hipwt=summary(lmb.D9_null_hipwt)
 
 intercept_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Pr(Prior_tail)"]
 estimate_null_hipwt <- sum_null_hipwt$coefficients["groupTrt", "Post.Mean"]
 sd_null_hipwt       <- sum_null_hipwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_null_hipwt <- sum_null_hipwt$pD
 DIC_null_hipwt <- sum_null_hipwt$DIC
 
@@ -1609,10 +1635,10 @@ DIC_null_hipwt <- sum_null_hipwt$DIC
 sum_full=summary(lmb.D9_full)
 
 intercept_full <- coef(sum_full)["(Intercept)", "Post.Mean"]
-intercept_Prtail_full <- coef(sum_full)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_full <- coef(sum_full)["(Intercept)", "Pr(Prior_tail)"]
 estimate_full <- sum_full$coefficients["groupTrt", "Post.Mean"]
 sd_full       <- sum_full$coefficients["groupTrt", "Post.Sd"]
-pr_tail_full  <- sum_full$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_full  <- sum_full$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_full <- sum_full$pD
 DIC_full <- sum_null$DIC
 
@@ -1621,10 +1647,10 @@ DIC_full <- sum_null$DIC
 sum_full_midpwt=summary(lmb.D9_full_midpwt)
 
 intercept_full_midpwt <- coef(sum_full_midpwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_full_midpwt <- coef(sum_full_midpwt)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_full_midpwt <- coef(sum_full_midpwt)["(Intercept)", "Pr(Prior_tail)"]
 estimate_full_midpwt <- sum_full_midpwt$coefficients["groupTrt", "Post.Mean"]
 sd_full_midpwt       <- sum_full_midpwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_full_midpwt  <- sum_full_midpwt$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_full_midpwt  <- sum_full_midpwt$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_full_midpwt <- sum_full_midpwt$pD
 DIC_full_midpwt <- sum_null_midpwt$DIC
 
@@ -1633,10 +1659,10 @@ DIC_full_midpwt <- sum_null_midpwt$DIC
 sum_full_hipwt=summary(lmb.D9_full_hipwt)
 
 intercept_full_hipwt <- coef(sum_full_hipwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_full_hipwt <- coef(sum_full_hipwt)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_full_hipwt <- coef(sum_full_hipwt)["(Intercept)", "Pr(Prior_tail)"]
 estimate_full_hipwt <- sum_full_hipwt$coefficients["groupTrt", "Post.Mean"]
 sd_full_hipwt       <- sum_full_hipwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_full_hipwt  <- sum_full_hipwt$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_full_hipwt  <- sum_full_hipwt$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_full_hipwt <- sum_full_hipwt$pD
 DIC_full_hipwt <- sum_full_hipwt$DIC
 
@@ -1644,10 +1670,10 @@ DIC_full_hipwt <- sum_full_hipwt$DIC
 sum_midpwt=summary(lmb.D9_midpwt)
 
 intercept_midpwt <- coef(sum_midpwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_midpwt <- coef(sum_midpwt)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_midpwt <- coef(sum_midpwt)["(Intercept)", "Pr(Prior_tail)"]
 estimate_midpwt <- sum_midpwt$coefficients["groupTrt", "Post.Mean"]
 sd_midpwt       <- sum_midpwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_midpwt  <- sum_midpwt$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_midpwt  <- sum_midpwt$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_midpwt <- sum_midpwt$pD
 DIC_midpwt <- sum_midpwt$DIC
 
@@ -1655,10 +1681,10 @@ DIC_midpwt <- sum_midpwt$DIC
 sum_hipwt=summary(lmb.D9_hipwt)
 
 intercept_hipwt <- coef(sum_hipwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_hipwt <- coef(sum_hipwt)["(Intercept)", "Pr(tail)"]
+intercept_Prtail_hipwt <- coef(sum_hipwt)["(Intercept)", "Pr(Prior_tail)"]
 estimate_hipwt <- sum_hipwt$coefficients["groupTrt", "Post.Mean"]
 sd_hipwt       <- sum_hipwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_hipwt  <- sum_hipwt$coefficients["groupTrt", "Pr(tail)"]
+pr_tail_hipwt  <- sum_hipwt$coefficients["groupTrt", "Pr(Prior_tail)"]
 eff_params_hipwt <- sum_hipwt$pD
 DIC_hipwt <- sum_hipwt$DIC
 
