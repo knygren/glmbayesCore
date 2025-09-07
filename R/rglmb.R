@@ -124,9 +124,12 @@ rglmb<-function(n=1,y,x,family=gaussian(),pfamily,offset=NULL,weights=1,Gridtype
   ##outlist = simfun(n = n, y = y, x = x, prior_list = prior_list,offset = offset, weights = weights, family = family, use_parallel = use_parallel, use_opencl = use_opencl, verbose = verbose)
   outlist = simfun(n = n, y = y, x = x, prior_list = prior_list,offset = offset, weights = weights, family = family, Gridtype=Gridtype, use_parallel = use_parallel, use_opencl = use_opencl, verbose = verbose)
   
-
-  
-    outlist$pfamily=pfamily
+  outlist$call <- match.call()  # overwrite with the rglmb call
+  outlist$pfamily=pfamily
+  if (is.null(colnames(outlist$coefficients))) {
+    colnames(outlist$coefficients) <- colnames(outlist$x)
+  }
+  names(outlist$coef.mode) <- colnames(outlist$x)
   
   return(outlist)
   

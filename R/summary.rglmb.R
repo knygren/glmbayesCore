@@ -100,13 +100,42 @@ summary.rglmb<-function(object,...){
     
   }
   
-  Tab1<-cbind("Prior Mean"=object$Prior$mean,"Prior.sd"=as.numeric(sqrt(diag(solve(object$Prior$Precision)))),"Approx.Prior.wt"=Priorwt)
-  TAB<-cbind("Post.Mode"=as.numeric(object$coef.mode),"Post.Mean"=colMeans(coef(object)),"Post.Sd"=se,"MC Error"=as.numeric(mc),"Pr(tail)"=as.numeric(pval2))
-  TAB2<-cbind("1.0%"=percentiles[,1],"2.5%"=percentiles[,2],"5.0%"=percentiles[,3],Median=as.numeric(percentiles[,4]),"95.0%"=percentiles[,5],"97.5%"=as.numeric(percentiles[,6]),"99.0%"=as.numeric(percentiles[,7]))
+  Tab1<-cbind("Prior Mean"=as.numeric(object$Prior$mean),
+              "Prior.sd"=as.numeric(sqrt(diag(solve(object$Prior$Precision)))),
+              "Approx.Prior.wt"=as.numeric(Priorwt))
+  TAB<-cbind("Post.Mode"=as.numeric(object$coef.mode),
+             "Post.Mean"=as.numeric(colMeans(coef(object))),
+             "Post.Sd"=se,"MC Error"=as.numeric(mc),
+             "Pr(tail)"=as.numeric(pval2))
+  TAB2<-cbind("1.0%"=percentiles[,1],
+              "2.5%"=percentiles[,2],
+              "5.0%"=percentiles[,3],
+              Median=as.numeric(percentiles[,4]),
+              "95.0%"=percentiles[,5],
+              "97.5%"=as.numeric(percentiles[,6]),"99.0%"=
+                as.numeric(percentiles[,7])
+              )
+
+  # Recover coefficient names from the most reliable source
+  coef_names <- colnames(object$coefficients)
   
-  rownames(Tab1)<-rownames(TAB)
-  rownames(TAB2)<-rownames(TAB)
+  if (is.null(coef_names)) {
+    coef_names <- names(object$coef.mode)
+  }
   
+  if (is.null(coef_names)) {
+    coef_names <- colnames(object$x)
+  }
+  
+  if (is.null(coef_names)) {
+    coef_names <- paste0("V", seq_len(ncol(object$coefficients)))
+  }
+  
+  # Apply names to all summary tables
+  rownames(Tab1) <- coef_names
+  rownames(TAB)  <- coef_names
+  rownames(TAB2) <- coef_names
+    
   glm_temp=glm(y~x-1,family=object$family)
   
     res<-list(
@@ -127,7 +156,7 @@ summary.rglmb<-function(object,...){
     y=object$y,
     x=object$x,
     model=model.frame(glm_temp),
-    call<-object$call,
+    call = object$call,
     formula=object$formula,
     data=object$data,
     famfunc=object$famfunc,
