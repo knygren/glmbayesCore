@@ -168,6 +168,20 @@ Prior_Setup <- function(
   
   mt <- attr(mf, "terms")
   Y <- model.response(mf, "any")
+  
+  if (family$family == "binomial"
+      && is.numeric(Y) && is.vector(Y)
+      && all(Y >= 0 & Y <= 1)    # use <= instead of ≤
+      && is.null(weights)) {
+    warning(
+      "You supplied a proportion response (0 <= y <= 1) to a binomial family\n",
+      "without `weights`. Each case will be treated as a single trial (n=1).\n",
+      "If you meant to model counts, either use `cbind(success, failure)`\n",
+      "or supply `weights =` the number of trials."
+    )
+  }
+  
+  
 ##  X <- if (!is.empty.model(mt)) model.matrix(mt, mf, contrasts) else matrix(, NROW(Y), 0L)
   X <- if (!is.empty.model(mt)) model.matrix(mt, mf, ...) else matrix(, NROW(Y), 0L)
   
