@@ -11,6 +11,7 @@
 #' @param intercept_source Specifies the method through which the prior mean for the intercept term is set. Options are based on the null intercept only model (null_model) or full_models. The default is the null model which is safer if variables are not centered. 
 #' @param effects_source Specifies the method through which the prior means for the effects terms are set. Options are null_effects (prior means set to zero) or full_model (effect means set to match maximum likelihood estimates).  
 #' @param mu Optional vector argument with the prior means for the coefficients
+#' @inheritParams stats::glm
 #' @inheritParams stats::model.frame
 #' @details
 #' `Prior_Setup()` initializes a structured set of prior parameters for generalized linear models (GLMs), supporting both Gaussian and non-Gaussian families.
@@ -117,24 +118,79 @@
 
 ## Note arguments outside of first two are currently not used
 
-Prior_Setup<-function(formula,family=gaussian(),data=NULL, pwt=0.01 ,
-                      n_prior=NULL, sd=NULL,
-                      intercept_source = c("null_model", "full_model"),
-                      effects_source = c("null_effects", "full_model"),
-                      mu=NULL,
-                      subset = NULL, na.action = na.fail, 
-                         drop.unused.levels = FALSE, xlev = NULL, ...){
+Prior_Setup <- function(
+    formula,
+    family      = gaussian(),
+    data=NULL,
+    weights=NULL,
+    subset=NULL,
+    na.action   = na.fail,
+    offset=NULL,
+    contrasts   = NULL,
+    pwt         = 0.01,
+    n_prior     = NULL,
+    sd          = NULL,
+    intercept_source = c("null_model", "full_model"),
+    effects_source   = c("null_effects",  "full_model"),
+    mu          = NULL,  ...
+  ) 
+  
+  {
 
   call <- match.call()  
-  #mf<-model.frame(formula,data,subset=subset,na.action=na.action,
-  #                drop.unused.levels=drop.unused.levels,xlev=xlev)
-  
   intercept_source <- match.arg(intercept_source)
   effects_source <- match.arg(effects_source)
   
-
-  mf<-model.frame(formula,data)
-  x<-model.matrix(formula,mf)
+  #mf<-model.frame(formula,data,subset=subset,na.action=na.action,
+  #                drop.unused.levels=drop.unused.levels,xlev=xlev)
+  
+  
+  if (is.character(family)) 
+    family <- get(family, mode = "function", envir = parent.frame())
+  if (is.function(family)) 
+    family <- family()
+  if (is.null(family$family)) {
+    print(family)
+    stop("'family' not recognized")
+  }
+  
+  if (missing(data))   data <- environment(formula)
+  
+  mf <- match.call(expand.dots = FALSE)
+  m <- match(c("formula", "data", "subset", "weights", "na.action", 
+               "etastart", "mustart", "offset"), names(mf), 0L)
+  mf <- mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]] <- quote(stats::model.frame)
+  mf <- eval(mf, parent.frame())
+  
+##  mf<-model.frame(formula,data)
+  
+  mt <- attr(mf, "terms")
+  Y <- model.response(mf, "any")
+##  X <- if (!is.empty.model(mt)) model.matrix(mt, mf, contrasts) else matrix(, NROW(Y), 0L)
+  X <- if (!is.empty.model(mt)) model.matrix(mt, mf, ...) else matrix(, NROW(Y), 0L)
+  
+  weights <- as.vector(model.weights(mf))
+  if (!is.null(weights) && !is.numeric(weights)) 
+    stop("'weights' must be a numeric vector")
+  if (!is.null(weights) && any(weights < 0)) 
+    stop("negative weights not allowed")
+  
+  
+  offset <- as.vector(model.offset(mf))
+  if (!is.null(offset)) {
+    if (length(offset) != NROW(Y)) 
+      stop(gettextf("number of offsets is %d should equal %d (number of observations)", 
+                    length(offset), NROW(Y)), domain = NA)
+  }
+  
+  mustart <- model.extract(mf, "mustart")
+  etastart <- model.extract(mf, "etastart")
+  
+  
+  x<-X  
+##  x<-model.matrix(formula,mf)
   
   nvar=ncol(x)
   
@@ -169,7 +225,46 @@ Prior_Setup<-function(formula,family=gaussian(),data=NULL, pwt=0.01 ,
  
   
   
-  glm_full=glm(formula, family = family,data=data)
+##  glm_full=glm(formula, family = family,data=data)
+  
+##  glm_full <- glm(
+##    formula = formula,
+##    family = family,
+##    data = data,
+##    data = mf,
+##    weights = weights,
+##    offset = offset,
+##    subset = subset,
+##    na.action = na.action,
+##    ...
+##  )
+  
+  glm_full <- glm.fit(
+    x       = X,
+    y       = Y,
+    weights = weights,
+    offset  = offset,
+    family  = family
+    ,control = glm.control(...)
+  )
+  
+  #glm.fit(x, y, weights = rep.int(1, nobs),
+  #        start = NULL, etastart = NULL, mustart = NULL,
+  #        offset = rep.int(0, nobs), family = gaussian(),
+  #        control = list(), intercept = TRUE, singular.ok = TRUE)
+  
+  
+  glm_full$call      <- call
+  glm_full$formula   <- formula
+  glm_full$terms     <- mt
+  glm_full$data      <- mf
+  glm_full$offset    <- offset
+  glm_full$contrasts <- attr(X, "contrasts")
+  glm_full$xlevels   <- .getXlevels(mt, mf)
+  class(glm_full)    <- c("glm", "lm")
+  
+##    glm_full=glm(formula, family = family,data=data)
+  
   V0 <- vcov(glm_full)
   
   glm_summary=summary(glm_full)
@@ -259,28 +354,50 @@ if (!is.null(sd)) {
   
   
   
-  if(var_names[1]=='(Intercept)'){
+##  if(var_names[1]=='(Intercept)'){
     ##lm_out=lm(formula,data=mf,y=TRUE)
     ##y=lm_out$y
     ##mu[1,1]=mean(y)
     
-    f<-formula
+##    f<-formula
     
-    lhs<-f[[2]]
-    intercept_only<-as.formula(paste(deparse(lhs),"~1") ,env=environment(f))
+##    lhs<-f[[2]]
+##    intercept_only<-as.formula(paste(deparse(lhs),"~1") ,env=environment(f))
     
 
-    glm_null=update(glm_full,formula=intercept_only)
+##    glm_null=update(glm_full,formula=intercept_only)
     
-    chosen_int <- switch(intercept_source,
-                         null_model = coef(glm_null)[1],
-                         full_model = coef(glm_full)[1])
+##    chosen_int <- switch(intercept_source,
+##                         null_model = coef(glm_null)[1],
+##                         full_model = coef(glm_full)[1])
+##    mu_internal[1, 1] <- chosen_int
+  
+##  } 
+  
+  if (var_names[1] == "(Intercept)") {
+    # build 1-column design matrix for intercept only
+    X0 <- matrix(1, nrow = NROW(Y), ncol = 1,
+                 dimnames = list(NULL, "(Intercept)"))
+    
+    # fit intercept-only model via glm.fit()
+    fit0 <- glm.fit(
+      x       = X0,
+      y       = Y,
+      weights = weights,
+      offset  = offset,
+      family  = family,
+      control = glm.control(...)
+    )
+    
+    # pick the intercept from null or full model
+    chosen_int <- switch(
+      intercept_source,
+      null_model = fit0$coefficients[1],
+      full_model = glm_full$coefficients[1]
+    )
+    
     mu_internal[1, 1] <- chosen_int
-    
-    
-    
-    
-  } 
+  }
   
   
   

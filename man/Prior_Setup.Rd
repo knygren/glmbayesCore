@@ -8,29 +8,53 @@ Prior_Setup(
   formula,
   family = gaussian(),
   data = NULL,
+  weights = NULL,
+  subset = NULL,
+  na.action = na.fail,
+  offset = NULL,
+  contrasts = NULL,
   pwt = 0.01,
   n_prior = NULL,
   sd = NULL,
   intercept_source = c("null_model", "full_model"),
   effects_source = c("null_effects", "full_model"),
   mu = NULL,
-  subset = NULL,
-  na.action = na.fail,
-  drop.unused.levels = FALSE,
-  xlev = NULL,
   ...
 )
 }
 \arguments{
-\item{formula}{a model \code{\link[stats]{formula}} or \code{\link[stats]{terms}}
-    object or an \R object.}
+\item{formula}{an object of class \code{"\link[stats]{formula}"} (or one that
+    can be coerced to that class): a symbolic description of the
+    model to be fitted.  The details of model specification are given
+    under \sQuote{Details}.}
 
 \item{family}{a description of the error distribution and link function to be used in the model.}
 
-\item{data}{a data frame, list or environment (or object
-    coercible by \code{\link{as.data.frame}} to a data frame),
-    containing the variables in \code{formula}.  Neither a matrix nor an
-    array will be accepted.}
+\item{data}{an optional data frame, list or environment (or object
+    coercible by \code{\link{as.data.frame}} to a data frame) containing
+    the variables in the model.  If not found in \code{data}, the
+    variables are taken from \code{environment(formula)},
+    typically the environment from which \code{glm} is called.}
+
+\item{weights}{an optional vector of \sQuote{prior weights} to be used
+    in the fitting process.  Should be \code{NULL} or a numeric vector.}
+
+\item{subset}{an optional vector specifying a subset of observations
+    to be used in the fitting process.}
+
+\item{na.action}{how \code{NAs} are treated. The default is first, any \code{\link{na.action}} attribute of 
+data, second a \code{na.action} setting of \link{options}, and third \code{na.fail} if that is unset. 
+The \code{factory-fresh} default is \code{na.omit}. Another possible value is \code{NULL}.}
+
+\item{offset}{this can be used to specify an \emph{a priori} known
+    component to be included in the linear predictor during fitting.
+    This should be \code{NULL} or a numeric vector of length equal to
+    the number of cases.  One or more \code{\link[stats]{offset}} terms can be
+    included in the formula instead or as well, and if more than one is
+    specified their sum is used.  See \code{\link[stats]{model.offset}}.}
+
+\item{contrasts}{an optional list. See the \code{contrasts.arg}
+    of \code{model.matrix.default}.}
 
 \item{pwt}{Weight on the prior relative to the likelihood function at the the maximum likelihood estimate. If n_prior is provided, it is calculated as pwt=n_prior/(n_prior+n_likelihood) where n_likelihood is the number of observations for the likelihood function.}
 
@@ -44,33 +68,12 @@ Prior_Setup(
 
 \item{mu}{Optional vector argument with the prior means for the coefficients}
 
-\item{subset}{a specification of the rows/observations to be used:
-    defaults to all. This can be any valid indexing vector (see
-    \code{\link{[.data.frame}}) for the rows of \code{data}, or
-    a (logical) expression using variables in \code{data} or
-    if that is not supplied, in
-    \code{formula}.  (See additional details about how this argument
-    interacts with data-dependent bases under \sQuote{Details} below.)}
+\item{...}{
+    For \code{glm}: arguments to be used to form the default
+    \code{control} argument if it is not supplied directly.
 
-\item{na.action}{how \code{NAs} are treated. The default is first, any \code{\link{na.action}} attribute of 
-data, second a \code{na.action} setting of \link{options}, and third \code{na.fail} if that is unset. 
-The \code{factory-fresh} default is \code{na.omit}. Another possible value is \code{NULL}.}
-
-\item{drop.unused.levels}{should factors have unused levels dropped?
-    Defaults to \code{FALSE}.}
-
-\item{xlev}{a named list of character vectors giving the full set of levels
-    to be assumed for each factor.}
-
-\item{...}{for \code{model.frame} methods, a mix of further
-    arguments such as \code{data}, \code{na.action}, \code{subset} to pass
-    to the default method.  Any additional arguments (such as
-    \code{offset} and \code{weights} or other named arguments) which
-    reach the default method are used to create further columns in the
-    model frame, with parenthesised names such as \code{"(offset)"}.
-
-    For \code{get_all_vars}, further named columns to include
-    in the model frame.}
+    For \code{weights}: further arguments passed to or from other methods.
+  }
 }
 \value{
 A list with items related to the prior.
