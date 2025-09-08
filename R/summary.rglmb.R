@@ -83,7 +83,7 @@ summary.rglmb<-function(object,...){
   l1<-length(object$coef.mode)
   percentiles<-matrix(0,nrow=l1,ncol=7)
   se<-sqrt(diag(var(object$coefficients)))
-  mc<-se/n
+  mc<-se/sqrt(n)
   Priorwt<-(se/sqrt(diag(solve(object$Prior$Precision))))^2
   priorrank<-matrix(0,nrow=l1,ncol=1)
   pval1<-matrix(0,nrow=l1,ncol=1)
@@ -99,10 +99,17 @@ summary.rglmb<-function(object,...){
     pval2[i,1]<-min(pval1[i,1],1-pval1[i,1])
     
   }
-  
-  Tab1<-cbind("Prior Mean"=as.numeric(object$Prior$mean),
+
+  ## Add call to glm to recover the mle information
+  glm_mle=glm(y~x-1,family=object$family,weights=wtin)
+  ml<-coef(glm_mle) 
+  se1<-sqrt(diag(vcov(glm_mle)))
+    
+      Tab1<-cbind("Prior Mean"=as.numeric(object$Prior$mean),
               "Prior.sd"=as.numeric(sqrt(diag(solve(object$Prior$Precision)))),
-              "Approx.Prior.wt"=as.numeric(Priorwt))
+              "Max Like."= as.numeric(ml),
+              "Like.sd"= as.numeric(se1)
+              )
   TAB<-cbind("Post.Mode"=as.numeric(object$coef.mode),
              "Post.Mean"=as.numeric(colMeans(coef(object))),
              "Post.Sd"=se,"MC Error"=as.numeric(mc),
@@ -136,7 +143,11 @@ summary.rglmb<-function(object,...){
   rownames(TAB)  <- coef_names
   rownames(TAB2) <- coef_names
     
-  glm_temp=glm(y~x-1,family=object$family)
+  ##
+  
+  
+  
+#3  glm_temp=glm(y~x-1,family=object$family)
   
     res<-list(
     coefficients=object$coefficients,
@@ -145,7 +156,7 @@ summary.rglmb<-function(object,...){
     dispersion=object$dispersion,
     Prior=object$Prior,
     fitted.values=fitted.values,
-    family=family(glm_temp),
+    family=family(glm_mle),
     linear.predictors=linear.predictors,
     deviance=DICinfo$Deviance,
     pD=DICinfo$pD,
@@ -155,7 +166,7 @@ summary.rglmb<-function(object,...){
     prior.weights=object$prior.weights,
     y=object$y,
     x=object$x,
-    model=model.frame(glm_temp),
+    model=model.frame(glm_mle),
     call = object$call,
     formula=object$formula,
     data=object$data,
@@ -166,8 +177,7 @@ summary.rglmb<-function(object,...){
     n=n,
     coefficients.Tab0=Tab1,
     coefficients.Tab1=TAB,
-    Percentiles=TAB2
-    )
+    Percentiles=TAB2)    
   
   class(res)<-c(res$class,"summary.rglmb","glmb","glm","lm")
   
@@ -190,6 +200,8 @@ print.summary.rglmb<-function(x,digits = max(3, getOption("digits") - 3),...){
                has.Pvalue=TRUE)
   cat("\nDistribution Percentiles\n\n")
   printCoefmat(x$Percentiles,digits=digits)
+  cat("\nMean Likelihood Subgradient Candidates Per iid sample:",mean(x$iters),"\n\n")
+  
   
 }
 

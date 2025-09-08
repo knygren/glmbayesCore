@@ -577,8 +577,10 @@ pscars8 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data =mtcar
 pscars8
 ```
 
+From this output, we can see that the prior means is very close to the MLE estimate even with a diffuse prior.   Let's now estimate the model using that prior.
 
-```{r sumlmb_out9}
+
+```{r sumlmb_out8}
 
 set.seed(333)
 lmb_cars8<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars8$mu,Sigma=pscars8$Sigma, dispersion = pscars8$dispersion),data =mtcars)
@@ -587,17 +589,24 @@ sum_lmbcars8
 ```
 
 
-```{r Mt_cars_Default_Prior5}
+```{r Mt_cars_small}
 # Use Prior_Setup to illustrate prior strength
-ps3 <- Prior_Setup(  formula = gpm ~  c_wt+c_cyl,family=gaussian(),  data = mtcars,  pwt=0.5)
+lmcars_small <- lm(formula = gpm ~  c_wt,  data = mtcars)
+lmcars_small
 ```
 
-```{r Mt_cars_lmb2}
+
+```{r Mt_cars_Default_Prior5}
 # Use Prior_Setup to illustrate prior strength
-lmb_cars<-lmb(formula = gpm ~  c_wt+c_cyl,
-  pfamily=dNormal(mu=ps3$mu,Sigma=ps3$Sigma, dispersion = ps3$dispersion),
-    data = mtcars)
-summary(lmb_cars)
+pscars9 <- Prior_Setup(  formula = gpm ~  c_wt+c_cyl,family=gaussian(),  data = mtcars,  pwt=0.01,mu=c(0.05423,0.01494,0))
+pscars9
+```
+
+```{r sumlmb_out9}
+set.seed(333)
+lmb_cars9<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars9$mu,Sigma=pscars9$Sigma, dispersion = pscars9$dispersion),data =mtcars)
+sum_lmbcars9<-summary(lmb_cars9)
+sum_lmbcars9
 ```
 
 ```{r Mt_cars_Default_Prior4}
