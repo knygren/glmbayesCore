@@ -126,8 +126,6 @@ out<-rglmb(n = 1000, y=y, x=x, pfamily=dNormal(mu=mu,Sigma=V1), weights = wt,
            family = binomial(logit)) 
 summary(out)
 
-# Add mean(out$iters to rglmb summary function)
-mean(out$iters)
 }
 \references{
 Dobson, A. J. (1990)
