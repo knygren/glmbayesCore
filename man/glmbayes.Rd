@@ -30,10 +30,10 @@ for details).
 For the regression parameters, multivariate normal priors are assumed. Simulation for the 
 gaussian family with the identify link function is performed using standard procedures for 
 multivariate normal densities.  For all other families and link functions, simulation is performed using 
-the likelihood subgradient approach of Nygren and Nygren (2006). This approach involves the 
+the likelihood subgradient approach of \insertCite{Nygren2006}{glmbayes}. This approach involves the 
 construction of an enveloping function for the full posterior density followed by accept-reject 
 sampling. For models that are approximately multivariate normal, the expected number of draws 
-required per acceptance are bounded from above as noted in Nygren and Nygren (2006). 
+required per acceptance are bounded from above as noted in \insertCite{Nygren2006}{glmbayes}. 
 
 Currently implemented models include the gaussian (identity link), poisson/quasipoisson (log link), 
 binomial/quasibinomial (logit, probit, and cloglog links), and Gamma (log link) families. These 
@@ -198,6 +198,8 @@ show(glm.D93)
 show(glmb.D93)
 }
 \references{
+\insertAllCited{}
+
 Dobson, A. J. (1990)
 \emph{An Introduction to Generalized Linear Models.}
 London: Chapman and Hall.

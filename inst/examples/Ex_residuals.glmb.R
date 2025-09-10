@@ -42,6 +42,9 @@ res_ysim_out1=residuals(glmb.out1,ysim=ysim1)
 res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025))
 res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975))
 
+
+par(mar = c(5, 4, 4, 2) + 0.1)  # Standard margin setup
+
 # Plot Credible Interval bounds for Deviance Residuals
 
 plot(res_mean~Age,ylim=c(-2.5,2.5),

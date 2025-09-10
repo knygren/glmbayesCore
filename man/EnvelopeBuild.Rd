@@ -23,176 +23,80 @@ EnvelopeBuild(
 )
 }
 \arguments{
-\item{bStar}{Point at which envelope should be centered (typically posterior mode}
+\item{bStar}{Point at which envelope should be centered (typically posterior mode)}
 
-\item{A}{Diagonal precision matrix for log-likelihood function associated with model in standard form}
+\item{A}{Diagonal precision matrix for the log-likelihood in standard form}
 
-\item{y}{a vector of observations of length \code{m}}
+\item{y}{A vector of observations of length \code{m}}
 
-\item{x}{a design matrix of dimension \code{m * p}}
+\item{x}{A design matrix of dimension \code{m * p}}
 
-\item{mu}{a vector giving the prior means of the variables}
+\item{mu}{A vector giving the prior means of the variables}
 
-\item{P}{a positive-definite symmetric matrix specifying the prior precision matrix of the variables}
+\item{P}{Prior precision matrix of the variables (positive-definite)}
 
-\item{alpha}{offset vector}
+\item{alpha}{Offset vector}
 
-\item{wt}{a vector of weights}
+\item{wt}{A vector of weights}
 
-\item{family}{Family for the envelope. Can take on values binomial, quasibinomial, poisson, quasibinomial, and Gamma}
+\item{family}{Family for the envelope: binomial, quasibinomial, poisson, quasipoisson, or Gamma}
 
-\item{link}{Link function for the envelope. Valid links for the binomial and quasibinomial families are logit, probit, and cloglog. The valid value for the poisson, quasipoisson, and the Gamma families is the log}
+\item{link}{Link function ("logit", "probit", "cloglog" for binomial; "log" for Poisson/Gamma)}
 
-\item{Gridtype}{an optional argument specifying the method used to determine number of likelihood subgradient 
-densities used to construct the enveloping function}
+\item{Gridtype}{Method to determine the number of subgradient densities in the grid}
 
-\item{n}{number of draws to generate from posterior density. Used here to help determine the size of the grid (Gridtype 1 and 2 only)}
+\item{n}{Number of draws from the posterior (used for grid sizing)}
 
-\item{sortgrid}{an optional Logical argument determining whether the final envelope should be sorted in descending order based on probability for each part of the envelope}
+\item{sortgrid}{Logical; if TRUE, sort the envelope descending by component probability}
+
+\item{use_opencl}{Logical; if TRUE, use OpenCL for gradient evaluations}
+
+\item{verbose}{Logical; if TRUE, print progress messages}
 }
 \value{
-The function returns a list consisting of the following components (
-the first six of which are matrices with the number of rows equal to the 
-number of components in the Grid and columns equal to the number of parameters):
-\item{GridIndex}{A matrix containing information on how each dimension should be 
-sampled (1 means left tail of a restricted normal, 2 center, 3 right tail, and 4 the 
-entire line)}
-\item{thetabars}{A matrix containing the points of tangencies associated with each component of the grid}
-\item{cbars}{A matrix containing the gradients for the negative log-likelihood at each tangency}
-\item{logU}{A matrix containing the log of the cummulative probability associated with each dimension}
-\item{logrt}{A matrix containing the log of the probability associated with the right tail (i.e. 
-that to the right of the lower bound)}
-\item{loglt}{A matrix containing the log of the probability associated with the left tail (i.e.,
-that to the left of the upper bound)}
-\item{LLconst}{A vector containing constant for each component of the grid used during the accept-reject procedure}
-\item{logP}{A matrix containing log-probabilities related to the components of the grid}
-\item{PLSD}{A vector containing the probability of each component in the Grid}
+A list with elements:
+  \item{GridIndex}{Matrix indicating tail/center/line sampling per dimension}
+  \item{thetabars}{Matrix of tangency points for each grid component}
+  \item{cbars}{Matrix of negative log-likelihood gradients at each tangency}
+  \item{logU}{Matrix of log CDF differences per dimension}
+  \item{logrt}{Matrix of log right-tail probabilities}
+  \item{loglt}{Matrix of log left-tail probabilities}
+  \item{LLconst}{Vector of constants for each component used in the accept–reject step}
+  \item{logP}{Matrix of log-probabilities for each grid component}
+  \item{PLSD}{Vector of sampling probabilities for the grid components}
 }
 \description{
-Builds an Enveloping function for simulation using a grid and tangencies for 
-the posterior density
+Builds an enveloping function for simulation using a grid and tangencies for
+the posterior density. To construct this enveloping function, we follow
+the approach in \insertCite{Nygren2006}{glmbayes}, which involves the
+following steps when a maximally sized grid is constructed (if the prior
+for some dimensions is relatively strong, this may not be needed):
 }
 \details{
-To construct an enveloping function, we follow the approach in Nygren and Nygren (2006)
-which involves the following steps when a maximally sized grid is constructed 
-(if the prior for some dimensions is relatively strong, this may not be needed)
+1) For each dimension, a constant \code{omega_i} is found that depends on the
+   corresponding diagonal element in the precision matrix.
 
+2) Corresponding intervals \code{(thetastar_i - 0.5 * omega_i,
+   thetastar_i + 0.5 * omega_i)} are constructed around the posterior mode
+   \code{thetastar} for each dimension.
 
-1) For each dimension, a constant \code{omega_i} is found that depends on the 
-corresponding diagonal element in the precision matrix.
+3) The mode as well as the points
+   \code{thetastar_i - omega_i} and \code{thetastar_i + omega_i} are selected
+   as the components of the points at which tangencies will be found.
 
- 
-2) Corresponding intervals \code{(thetastar_i-0.5 *omega,thetastar_i-0.5 *omega)} 
- are constructed around the posterior mode thetastar for each dimension
- 
- 
-3) The mode as well as the points \code{thetastar_i-omega_i} and \code{thetastar_i+omega_i}
-are selected as the components of the points at which tangencies will be found for each of 
-the dimensions.  
+4) A grid is constructed with all possible combinations of points and negative
+   log-likelihood and gradient for the negative log-likelihood are evaluated.
 
+5) The \code{\link{Set_Grid}} function is called to evaluate the log-density
+   of each restricted multivariate normal by taking differences between its
+   CDF at the lower and upper bounds.
 
-4) A Grid is constructed with all possible combinations of points and 
-negative log-likelihood and gradient for the negative log-likelihood are evaluated (see the
-EnvelopeBuild_c.cpp function source code for details)
+6) The \code{\link{setlogP}} function is called to set sampling probabilities
+   for each grid component, following Remark 6 in
+   \insertCite{Nygren2006}{glmbayes}.
 
-
-5) The \code{\link{Set_Grid}} function is called in order to evaluate the log of the density associated
-with each of the resulting restricted multivariate normals by evaluating the differences between the cummulative 
-density for each dimension between its lower and upper bound.
-
-
-6)  The Set_LogP is called in order to help set the probabilities with which each of the components
-of the grid should be sampled (see remark 6 in Nygren and Nygren (2006)).
-
-
-Any constants needed by the sampling are added to a list and returned by the function.
+Any constants needed by the sampling are added to a list and returned.
 }
-\examples{
-data(menarche2)
-
-summary(menarche2)
-plot(Menarche/Total ~ Age, data=menarche2)
-
-Age2=menarche2$Age-13
-
-x<-matrix(as.numeric(1.0),nrow=length(Age2),ncol=2)
-x[,2]=Age2
-
-y=menarche2$Menarche/menarche2$Total
-wt=menarche2$Total
-
-mu<-matrix(as.numeric(0.0),nrow=2,ncol=1)
-mu[2,1]=(log(0.9/0.1)-log(0.5/0.5))/3
-
-V1<-1*diag(as.numeric(2.0))
-
-# 2 standard deviations for prior estimate at age 13 between 0.1 and 0.9
-## Specifies uncertainty around the point estimates
-
-V1[1,1]<-((log(0.9/0.1)-log(0.5/0.5))/2)^2 
-V1[2,2]=(3*mu[2,1]/2)^2  # Allows slope to be up to 1 times as large as point estimate 
-
-famfunc<-glmbfamfunc(binomial(logit))
-
-f1<-famfunc$f1
-f2<-famfunc$f2
-f3<-famfunc$f3
-f5<-famfunc$f5
-f6<-famfunc$f6
-
-dispersion2<-as.numeric(1.0)
-start <- mu
-offset2=rep(as.numeric(0.0),length(y))
-P=solve(V1)
-n=1000
-
-
-###### Adjust weight for dispersion
-
-wt2=wt/dispersion2
-
-######################### Shift mean vector to offset so that adjusted model has 0 mean
-
-alpha=x\%*\%as.vector(mu)+offset2
-mu2=0*as.vector(mu)
-P2=P
-x2=x
-
-
-#####  Optimization step to find posterior mode and associated Precision
-
-parin=start-mu
-
-opt_out=optim(parin,f2,f3,y=as.vector(y),x=as.matrix(x),mu=as.vector(mu2),
-              P=as.matrix(P),alpha=as.vector(alpha),wt=as.vector(wt2),
-              method="BFGS",hessian=TRUE
-)
-
-bstar=opt_out$par  ## Posterior mode for adjusted model
-bstar
-bstar+as.vector(mu)  # mode for actual model
-A1=opt_out$hessian # Approximate Precision at mode
-
-## Standardize Model
-
-Standard_Mod=glmb_Standardize_Model(y=as.vector(y), x=as.matrix(x),P=as.matrix(P),
-                                    bstar=as.matrix(bstar,ncol=1), A1=as.matrix(A1))
-
-bstar2=Standard_Mod$bstar2  
-A=Standard_Mod$A
-x2=Standard_Mod$x2
-mu2=Standard_Mod$mu2
-P2=Standard_Mod$P2
-L2Inv=Standard_Mod$L2Inv
-L3Inv=Standard_Mod$L3Inv
-
-Env2=EnvelopeBuild(as.vector(bstar2), as.matrix(A),y, as.matrix(x2),
-as.matrix(mu2,ncol=1),as.matrix(P2),as.vector(alpha),as.vector(wt2),
-family="binomial",link="logit",Gridtype=as.integer(3), n=as.integer(n),
-sortgrid=TRUE)
-
-## These now seem to match
-
-Env2
+\references{
+\insertAllCited{}
 }
-\keyword{internal}
