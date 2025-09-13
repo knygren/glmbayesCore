@@ -20,7 +20,7 @@
 #' (i.e., \code{\link{summary.rglmb}}) can be used to obtain or print a summary of the results.
 #' The generic accessor functions \code{\link{coefficients}}, \code{\link{fitted.values}},
 #' \code{\link{residuals}}, and \code{\link{extractAIC}} can be used to extract
-#' various useful features of the value returned by \code{\link{rglmb}}.
+#' various useful features of the value returned by \code{\link{rlmb}}.
 #' An object of class \code{"rlmb"} is a list containing at least the following components:
 #' \item{coefficients}{a matrix of dimension \code{n} by \code{length(mu)} with one sample in each row}
 #' \item{coef.mode}{a vector of \code{length(mu)} with the estimated posterior mode coefficients}
@@ -33,30 +33,49 @@
 #' \item{famfunc}{Family functions used during estimation process}
 #' \item{iters}{an \code{n} by \code{1} matrix giving the number of candidates generated before acceptance for each sample.}
 #' \item{Envelope}{the envelope that was used during sampling}
-#' @details The \code{rlmb} function produces iid samples for Bayesian generalized linear 
-#' models. It has a more minimialistic interface than than the \code{\link{lmb}} 
-#' function. Core required inputs for the function include the data vector, the design  
-#' matrix and a prior specification. In addition, the dispersion parameter must 
-#' currently be provided for the gaussian, Gamma, quasipoisson, and quasibinomial 
-#' families (future implementations may incorporate a prior for these into the 
-#' \code{rlmb} function).
 #' 
-#' Current implemented models include the gaussian family (identity link function), the
-#' poisson and quasipoisson families (log link function), the gamma family (log link 
-#' function), as well as the binomial and quasibinomial families (logit, probit, and 
-#' cloglog link functions). The function returns the simulated Bayesian coefficients 
-#' and some associated outputs.
+#' Objects of class \code{"rlmb"} are normally of class \code{c("rlmb","rglmb","glmb","glm","lm")},
+#' meaning they inherit from \code{rglmb}, \code{glmb}, \code{glm}, and \code{lm}. Well-designed
+#' methods for these classes will be applied when appropriate, allowing \code{"rlmb"} objects to
+#' benefit from existing infrastructure while supporting specialized behavior for restricted linear
+#' model priors.
 #' 
-#' For the gaussian family, iid samples from the posterior density are genererated using 
-#' standard simulation procedures for multivariate normal densities. For all other 
-#' families, the samples are generated using accept-reject procedures by leveraging the 
-#' likelihood subgradient approach of Nygren and Nygren (2006). This approach relies on
-#' tight enveloping functions that bound the posterior density from above. The Gridtype 
-#' parameter is used to select the method used for determining the size of a Grid used 
-#' to build the enveloping function. See \code{\link{EnvelopeBuild}} for details. 
-#' Depending on the selection, the time to build the envelope and the acceptance rate 
-#' during the simulation process may vary. The returned value \code{iters} contains the 
-#' number of candidates generated before acceptance for each draw.
+#' @details
+#' The function \code{rlmb} is a minimalistic Bayesian simulation engine for Gaussian linear models. 
+#' It bypasses classical model fitting and formula parsing, operating directly on numeric inputs such as 
+#' the design matrix, response vector, and prior specification via the \code{\link{pfamily}} argument. 
+#' Internally, \code{rlmb} generates independent draws from the posterior distribution using multivariate 
+#' normal simulation when conjugate priors are specified.
+#'
+#' The modeling framework follows the conventions introduced by Wilkinson and Rogers 
+#' \insertCite{WilkinsonRogers1973}{glmbayes}, and the prior structure builds on the S system 
+#' \insertCite{Chambers1992}{glmbayes}, Zellner’s g-prior \insertCite{zellner1986gprior}{glmbayes}, and 
+#' the conjugate prior formulation of Raiffa and Schlaifer \insertCite{Raiffa1961}{glmbayes}.
+#'
+#' Prior specification is handled via the \code{\link{pfamily}} argument, which defines the prior mean, 
+#' covariance, and dispersion. The design of the \code{pfamily} family of functions was created by Kjell Nygren 
+#' and is modeled on how \code{\link{glm}} uses \code{family} to specify the likelihood. A helper function, 
+#' \code{\link{Prior_Setup}}, assists users in choosing prior parameters. It ships with sensible defaults but 
+#' also allows full customization. Available priors include the  \code{dNormal}, \code{dNormalGamma} and 
+#' \code{dIndependent_Normal_Gamma} priors. The last of these allows for more flexible prior structures 
+#' including independent priors on variance components.
+#'
+#' Posterior draws are generated using standard simulation procedures for conjugate priors \insertCite{Raiffa1961}{glmbayes}. 
+#' For non-conjugate setups, the function uses envelope-based accept–reject sampling via the 
+#' likelihood-subgradient method \insertCite{Nygren2006}{glmbayes}. The \code{Gridtype} parameter controls 
+#' how many tangent points are used to construct the envelope—trading off tightness against computational cost—
+#' and the \code{iters} component reports the number of candidate samples generated before acceptance.
+#'
+#' The output includes posterior samples, prior specifications, dispersion estimates, and envelope diagnostics. 
+#' While \code{rlmb} does not return a full model object or support generic methods like \code{predict} or 
+#' \code{summary}, it is designed for efficient posterior simulation in Gaussian models where full model 
+#' reconstruction is unnecessary.
+#'
+#' The \code{\link{rlmb}} function called from within \code{\link{lmb}}. 
+#' It is intended for simulation-heavy workflows such as Gibbs sampling or posterior 
+#' predictive checks where minimal overhead is preferred.
+#'  
+#' 
 #' @family modelfuns
 #' @seealso The classical modeling functions \code{\link[stats]{lm}} and \code{\link[stats]{glm}}.
 #' 
@@ -69,23 +88,9 @@
 #' inherited from class \code{glmb} and the methods and generic functions for classes \code{glm} and 
 #' \code{lm} from which class \code{lmb} also inherits.
 #'
-#' @references 
-#' Chambers, J.M.(1992) \emph{Linear models.} Chapter 4 of \emph{Statistical Models in S}
-#' eds J. M. Chambers and T. J. Hastie, Wadsworth & Brooks/Cole.
-#' 
-#' Wilkinson, G.N. and Rogers, C.E. (1973). Symbolic descriptions of factorial models for 
-#' analysis of variance. \emph{Applied Statistics}, \bold{22}, 392-399.
-#' doi: \href{https://doi.org/10.2307/2346786}{10.2307/2346786}.
-#' 
-#' Nygren, K.N. and Nygren, L.M (2006)
-#' Likelihood Subgradient Densities. \emph{Journal of the American Statistical Association}.
-#' vol.101, no.475, pp 1144-1156.
-#' doi: \href{https://doi.org/10.1198/016214506000000357}{10.1198/016214506000000357}.
-#' 
-#' Raiffa, Howard and Schlaifer, R (1961)
-#' \emph{Applied Statistical Decision Theory.}
-#' Boston: Clinton Press, Inc.
-#' 
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_rlmb.R
 #' @export
 #' @rdname rlmb
@@ -186,6 +191,8 @@ rlmb<-function(n=1,y,x,pfamily,offset=rep(0,nobs),weights=NULL)
   outlist$call <- match.call()  # overwrite with the rglmb call
   outlist$pfamily=pfamily
 
+  class(outlist) <- c("rlmb", "rglmb", "glmb", "glm", "lm")  # <- Add this line
+  
   return(outlist)
   
 

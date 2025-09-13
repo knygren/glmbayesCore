@@ -82,12 +82,56 @@ list may vary based on the type of prior}
 \item{famfunc}{Family functions used during estimation process}
 \item{iters}{an \code{n} by \code{1} matrix giving the number of candidates generated before acceptance for each sample.}
 \item{Envelope}{the envelope that was used during sampling}
+
+Objects of class \code{"rglmb"} are normally of class \code{c("rglmb","glmb","glm","lm")},
+meaning they inherit from \code{glmb}, \code{glm}, and \code{lm}. This allows methods defined
+for these upstream classes to be applied to \code{"rglmb"} objects when appropriate, while
+supporting extensions for regularized Bayesian GLMs with structured priors.
 }
 \description{
 \code{rglmb} is used to generate iid samples for Bayesian Generalized Linear Models.
 The model is specified by providing a data vector, a design matrix, 
 the family (determining the likelihood function) and the pfamily (determining the 
 prior distribution).
+}
+\details{
+The function \code{rglmb} is a minimalistic engine for Bayesian generalized linear model simulation. 
+It is designed to generate independent draws from the posterior distribution of a GLM, given a design matrix, 
+response vector, likelihood family, and prior specification. Unlike \code{\link{glmb}}, which wraps formula parsing, 
+model setup, and method dispatch, \code{rglmb} operates directly on numeric inputs and is optimized for speed, 
+transparency, and integration into simulation workflows.
+
+The original R implementation of \code{glm} was written by Simon Davies (under Ross Ihaka at the University of Auckland) 
+and has since been extensively rewritten by members of the R Core Team; its design was inspired by the S function 
+described in \insertCite{Hastie1992}{glmbayes}, which in turn relies on the formula framework described in 
+\insertCite{WilkinsonRogers1973}{glmbayes}.
+
+The design of the \code{pfamily} family of functions was created by Kjell Nygren and is modeled on how 
+\code{glm} uses \code{family} to specify the likelihood. For any implemented combination of family, link, and 
+\code{pfamily}, \code{rglmb} generates independent draws from the posterior density—no MCMC chains are required.
+
+A helper, \code{\link{Prior_Setup}}, assists users in choosing prior parameters. It ships with sensible defaults 
+but also allows full customization. In particular, the default for \code{dNormal} is a reparameterization of 
+Zellner’s g-prior \insertCite{zellner1986gprior}{glmbayes}.
+
+Currently supported response families are \code{gaussian} (identity link), \code{poisson} and \code{quasipoisson} 
+(log link), \code{gamma} (log link), and \code{binomial} and \code{quasibinomial} (logit, probit, cloglog). 
+All families support a \code{dNormal} prior; the Gaussian family also offers \code{dNormalGamma} and 
+\code{dIndependent_Normal_Gamma}.
+
+For the Gaussian family, draws under \code{dNormal} and \code{dNormalGamma} come from posterior distributions 
+resulting from conjugate prior distributions \insertCite{Raiffa1961}{glmbayes}. For all other priors or response families, 
+we use an accept–reject sampler built on the likelihood-subgradient envelope method 
+\insertCite{Nygren2006}{glmbayes}. The \code{Gridtype} argument controls how many tangent points are used 
+in the envelope—trading off envelope tightness against construction cost—and \code{iters} reports candidate 
+counts before acceptance.
+
+By default, \code{rglmb} draws \code{n = 1} sample, uses parallel CPU simulation, and—if \code{use_opencl = TRUE}—
+GPU-accelerated envelope building. The function returns a list containing posterior samples, prior specifications, 
+dispersion estimates, and the envelope used during sampling. It does not return a full model object, and does not 
+support formula-based modeling or method dispatch. Instead, it is called internally by \code{\link{glmb}} and 
+and may be useful for Gibbs sampling implementations or other workflows where full model 
+reconstruction is unnecessary.
 }
 \examples{
 data(menarche2)
@@ -128,30 +172,7 @@ summary(out)
 
 }
 \references{
-Dobson, A. J. (1990)
-\emph{An Introduction to Generalized Linear Models.}
-London: Chapman and Hall.
-
-Hastie, T. J. and Pregibon, D. (1992)
-\emph{Generalized linear models.}
-Chapter 6 of \emph{Statistical Models in S}
-eds J. M. Chambers and T. J. Hastie, Wadsworth & Brooks/Cole.
-McCullagh P. and Nelder, J. A. (1989)
-\emph{Generalized Linear Models.}
-London: Chapman and Hall.
-
-Nygren, K.N. and Nygren, L.M (2006)
-Likelihood Subgradient Densities. \emph{Journal of the American Statistical Association}.
-vol.101, no.475, pp 1144-1156.
-doi: \href{https://doi.org/10.1198/016214506000000357}{10.1198/016214506000000357}.
-
-Raiffa, Howard and Schlaifer, R (1961)
-\emph{Applied Statistical Decision Theory.}
-Boston: Clinton Press, Inc.
-
-Venables, W. N. and Ripley, B. D. (2002)
-\emph{Modern Applied Statistics with S.}
-New York: Springer.
+\insertAllCited{}
 }
 \seealso{
 \code{\link[stats]{lm}} and \code{\link[stats]{glm}} for classical modeling functions.
@@ -165,7 +186,7 @@ New York: Springer.
 \code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for \code{glmb} 
 and the methods and generic functions for classes \code{glm} and \code{lm} from which class \code{glmb} inherits.
 
-Other modelfuns: 
+glmbayes Modeling Functions
 \code{\link{glmb}()},
 \code{\link{lmb}()},
 \code{\link{rlmb}()}

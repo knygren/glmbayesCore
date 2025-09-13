@@ -95,7 +95,8 @@
 #' \deqn{\text{shape}_{\mathrm{post}} = \text{shape} + \frac{n_{\mathrm{likelihood}}}{2} = \frac{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}{2}}
 #' \deqn{\text{rate}_{\mathrm{post}} = \text{rate} + \frac{1}{2} \cdot \text{RSS} =  \frac{n_{\mathrm{prior}}+n_{\mathrm{likelihood}} - k}{2}  \cdot dispersion}
 #' 
-#' This structure allows the prior to contribute pseudo-observations to the residual precision estimate, enabling adaptive shrinkage and hierarchical regularization — especially valuable in small-sample or high-dimensional settings.
+#' This structure allows the prior to contribute pseudo-observations to the residual precision estimate, enabling adaptive shrinkage and hierarchical 
+#' regularization — especially valuable in small-sample or high-dimensional settings.
 #' especially in small-sample or high-dimensional settings.
 #'
 #' @return A list with items related to the prior.
@@ -108,9 +109,9 @@
 #' \item{x}{The design matrix from \code{object} if it exists}
 #' \item{PriorSettings}{A list containing prior configuration details}
 #' @family prior
-
-
-
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_Prior_Setup.R
 #' @export
 #' @rdname Prior_Setup

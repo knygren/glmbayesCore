@@ -179,33 +179,59 @@ of the result is the proportion of successes.
 the linear predictor,  the error distribution, and the prior distribution.
 }
 \details{
-The function \code{glmb} is a Bayesian version of the classical \code{\link{glm}} function.  Setup of
-the models mirrors those for the \code{\link{glm}} function but add additional required arguments
-\code{mu} and \code{Sigma}, representing a multivariate normal prior. In addition, the dispersion 
-parameter must currently be provided for the gaussian, Gamma, quasipoisson, and quasibinomial families 
-(future implementations may incoporate priors for these into the \code{glmb} function).  The function 
-generates random iid samples from the posterior density associated with the model (assuming a fixed 
-dispersion parameter). 
+The function \code{glmb} is a Bayesian version of the classical
+\code{\link{glm}} function. The original R implementation of
+\code{glm} was written by Simon Davies (under Ross Ihaka at the
+University of Auckland) and has since been extensively rewritten by
+members of the R Core Team; its design was inspired by the S
+function described in \insertCite{Hastie1992}{glmbayes}, which in turn relies on the 
+formula framework described in \insertCite{WilkinsonRogers1973}{glmbayes}.
 
-Current implemented models include the gaussian family (identity link function), the poisson and
-quasipoisson families (log link function), the gamma family (log link function), as well as the 
-binomial and quasibinomial families (logit, probit, and cloglog link functions).
+Setup (including the use of formulas and families) mirrors that of \code{\link{glm}} but adds a 
+required \code{pfamily} argument to specify the prior distribution. The design of the \code{pfamily} family of 
+functions was created by Kjell Nygren and is modeled on how \code{glm} 
+uses \code{family} to specify the likelihood.
 
-The function returns the output from a call to the function \code{\link{glm}} as well as the simulated 
-Bayesian coefficients and associated outputs. In addition, the function returns model diagnostic 
-information related to the \code{DIC}, a Bayesian Information Criterion similar to the \code{AIC} for 
-classical models.   
+For any implemented combination of family, link, and \code{pfamily}, 
+\code{glmb} generates independent draws from the posterior density—
+no MCMC chains are required. Results can be printed or summarized
+with methods that mirror those for \code{\link{glm}} (e.g.\ \code{\link{print.glmb}},
+\code{\link{summary.glmb}}), as well as all the usual \code{glm}/\code{lm}
+generics (\code{\link{predict}}, \code{\link{residuals}}, etc.).
 
-For the gaussian family, iid samples from the posterior density are genererated using 
-standard simulation procedures for multivariate normal densities. For all other 
-families, the samples are generated using accept-reject procedures by leveraging the 
-likelihood subgradient approach of Nygren and Nygren (2006). This approach relies on
-tight enveloping functions that bound the posterior density from above. The Gridtype 
-parameter is used to select the method used for determining the size of a Grid used 
-to build the enveloping function. See \code{\link{EnvelopeBuild}} for details. 
-Depending on the selection, the time to build the envelope and the acceptance rate 
-during the simulation process may vary. The returned value \code{iters} contains the 
-number of candidates generated before acceptance for each draw.
+A helper, \code{\link{Prior_Setup}}, assists users in choosing prior
+parameters. It ships with sensible defaults but also allows full
+customization. In particular, the default for \code{dNormal} is a
+reparameterization of Zellner’s g-prior \insertCite{zellner1986gprior}{glmbayes}.
+
+Currently supported response families are
+\code{gaussian} (identity link), \code{poisson} and \code{quasipoisson}
+(log link), \code{gamma} (log link), and \code{binomial} and
+\code{quasibinomial} (logit, probit, cloglog). All families support a
+\code{dNormal} prior; the Gaussian family also offers
+\code{dNormalGamma} and \code{dIndependent_Normal_Gamma}.
+
+For the Gaussian family, draws under \code{dNormal} and
+\code{dNormalGamma} come from posterior distributions resulting from conjugate 
+prior distributions \insertCite{Raiffa1961}{glmbayes}. For all other priors or response families, 
+we use an accept–reject sampler built on the likelihood-subgradient envelope
+method \insertCite{Nygren2006}{glmbayes}. The
+\code{Gridtype} argument controls how many tangent points are used
+in the envelope—trading off envelope tightness against construction
+cost—and \code{iters} reports candidate counts before acceptance.
+
+By default, \code{glmb} draws \code{n = 1000} samples, uses parallel
+CPU simulation, and—if \code{use_opencl = TRUE}—GPU-accelerated
+envelope building. \code{"glmb"} comes with many of the same kinds of method functions
+that come with \code{"glm"} and \code{"lm"}, so you can still call \code{\link{extractAIC}},
+\code{\link{fitted.values}}, or any other standard method.
+
+The \code{\link{lmb}} function is a Bayesian version of the \code{\link[stats]{lm}} function that can 
+be used to estimate models from the Gaussian family without the need for a \code{family} argument.
+
+\code{\link{rglmb}} and \code{\link{rlmb}} are functions with more minimalistic interfaces for estimating the same 
+models without most of the internal overhead (these functions are called internally by \code{glmb} and \code{lmb}). 
+The reduced overhead may be beneficial for Gibbs sampling implementations.
 }
 \examples{
 set.seed(333)
@@ -265,43 +291,24 @@ colnames(DIC_Out)=c("pD","DIC")
 DIC_Out
 }
 \references{
-Dobson, A. J. (1990)
-\emph{An Introduction to Generalized Linear Models.}
-London: Chapman and Hall.
-
-Hastie, T. J. and Pregibon, D. (1992)
-\emph{Generalized linear models.}
-Chapter 6 of \emph{Statistical Models in S}
-eds J. M. Chambers and T. J. Hastie, Wadsworth & Brooks/Cole.
-McCullagh P. and Nelder, J. A. (1989)
-\emph{Generalized Linear Models.}
-London: Chapman and Hall.
-
-Nygren, K.N. and Nygren, L.M (2006)
-Likelihood Subgradient Densities. \emph{Journal of the American Statistical Association}.
-vol.101, no.475, pp 1144-1156.
-doi: \href{https://doi.org/10.1198/016214506000000357}{10.1198/016214506000000357}.
-
-Raiffa, Howard and Schlaifer, R (1961)
-\emph{Applied Statistical Decision Theory.}
-Boston: Clinton Press, Inc.
-
-Venables, W. N. and Ripley, B. D. (2002)
-\emph{Modern Applied Statistics with S.}
-New York: Springer.
+\insertAllCited{}
+\insertRef{Dobson1990}{glmbayes}
 }
 \seealso{
-\code{\link[stats]{lm}} and \code{\link[stats]{glm}} for classical modeling functions.
+\code{\link[stats]{lm}}, \code{\link[stats]{glm}}, \code{\link[stats]{family}}, \code{\link[stats]{formula}} 
+    for classical modeling functions, family objects, and formula syntax
 
-\code{\link{pfamily}} for documentation of pfamily functions used to specify priors.
+ \code{\link{pfamily}} for documentation of pfamily functions used to specify priors.
 
-\code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for functions used to initialize and to check priors,  
+ \code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for functions used to initialize and to check priors,  
 
-\code{\link{summary.glmb}}, \code{\link{predict.glmb}}, \code{\link{residuals.glmb}}, \code{\link{simulate.glmb}}, 
-\code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for \code{glmb} 
-and the methods and generic functions for classes \code{glm} and \code{lm} from which class \code{glmb} inherits.
+ \code{\link{EnvelopeBuild}} for envelope construction  methods.
+    
+  \code{\link{summary.glmb}}, \code{\link{predict.glmb}}, \code{\link{residuals.glmb}}, \code{\link{simulate.glmb}},  
+  \code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for \code{glmb}  
+  and the methods and generic functions for classes \code{glm} and \code{lm} from which class \code{glmb} inherits.
 
-Other modelfuns: 
+glmbayes Modeling Functions
 \code{\link{lmb}()},
 \code{\link{rglmb}()},
 \code{\link{rlmb}()}

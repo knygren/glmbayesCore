@@ -25,6 +25,9 @@
 #' (i.e. the output of the function \code{\link{print.summary.rglmb}}).
 #' 
 #' @seealso \code{\link{lmb}}, \code{\link{glmb}}, \code{\link{summary}}, \code{[stats]\link{summary.lm}},\code{[stats]\link{summary.glm}}. 
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_summary.rglmb.R
 #' @export
 #' @method summary rglmb

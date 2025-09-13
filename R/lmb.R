@@ -28,10 +28,10 @@
 #' function, with a function which takes the same arguments as \code{glm.fit}. If specified as a character string it is looked up from within the \pkg{stats} namespace.
 #' @param digits the number of significant digits to use when printing.
 #' @inheritParams stats::lm
-#' @return \code{glmb} returns an object of class \code{"glmb"}. The function \code{summary} (i.e., 
+#' @return \code{lmb} returns an object of class \code{"lmb"}. The function \code{summary} (i.e., 
 #' \code{\link{summary.glmb}}) can be used to obtain or print a summary of the results.  The generic accessor functions 
 #' \code{\link{coefficients}}, \code{\link{fitted.values}}, \code{\link{residuals}}, and \code{\link{extractAIC}} can be used 
-#' to extract various useful features of the value returned by \code{\link{glmb}}.
+#' to extract various useful features of the value returned by \code{\link{lmb}}.
 #' 
 #' An object of class \code{"lmb"} is a list containing at least the following components:
 
@@ -68,59 +68,66 @@
 #' \item{digits}{the number of significant digits to use when printing.}
 #' In addition, non-empty fits will have (yet to be implemented) components \code{qr}, \code{R}
 #' and \code{effects} relating to the final weighted linear fit for the posterior mode.  
-#' Objects of class \code{"glmb"} are normall of class \code{c("glmb","glm","lm")},
-#' that is inherit from classes \code{glm} and \code{lm} and well-designed
+#' Objects of class \code{"lmb"} are normally of class \code{c("lmb","glmb","glm","lm")},
+#' that is inherit from classes \code{glmb}. \code{glm} and \code{lm} and well-designed
 #' methods from those classed will be applied when appropriate.
 #' 
-#' If a \link{binomial} \code{glmb} model was specified by giving a two-column 
-#' response, the weights returned by \code{prior.weights} are the total number of
-#' cases (factored by the supplied case weights) and the component of \code{y}
-#' of the result is the proportion of successes.
-#' 
-#' @details The function \code{lmb} is a Bayesian version of the classical \code{\link{lm}} function.  Setup of
-#' the models mirrors those for the \code{\link{lm}} function but add the required argument \code{\link{pfamily}}
-#' with a prior formulation. The function generates random iid samples from the posterior density associated 
-#' with the model. 
-#'  
-#' The function returns the output from a call to the function \code{\link{lm}} as well as the simulated 
-#' Bayesian coefficients and associated outputs. In addition, the function returns model diagnostic 
-#' information related to the \code{DIC}, a Bayesian Information Criterion similar to the \code{AIC} for 
-#' classical models. 
-#' 
-#' For the gaussian family, iid samples from the posterior density are genererated using 
-#' standard simulation procedures for multivariate normal densities. For all other 
-#' families, the samples are generated using accept-reject procedures by leveraging the 
-#' likelihood subgradient approach of Nygren and Nygren (2006). This approach relies on
-#' tight enveloping functions that bound the posterior density from above. The Gridtype 
-#' parameter is used to select the method used for determining the size of a Grid used 
-#' to build the enveloping function. See \code{\link{EnvelopeBuild}} for details. 
-#' Depending on the selection, the time to build the envelope and the acceptance rate 
-#' during the simulation process may vary. The returned value \code{iters} contains the 
-#' number of candidates generated before acceptance for each draw.
+#' @details
+#' The function \code{lmb} is a Bayesian extension of the classical \code{\link[stats]{lm}} function. 
+#' It retains the familiar formula interface and model setup used in \code{lm}, while introducing 
+#' posterior simulation and prior specification via the \code{\link{pfamily}} argument. Internally, 
+#' \code{lmb} calls \code{lm} to obtain the classical least squares fit, then generates independent 
+#' draws from the posterior distribution using either multivariate normal simulation (for Gaussian priors) 
+#' or accept–reject sampling via likelihood-subgradient envelopes \insertCite{Nygren2006}{glmbayes}.
 #'
+#' The symbolic formula interface follows the conventions introduced by Wilkinson and Rogers 
+#' \insertCite{WilkinsonRogers1973}{glmbayes}, and the overall design of \code{lm} was inspired by the S system 
+#' \insertCite{Chambers1992}{glmbayes}. \code{lmb} comes with many of the same types of generic methods 
+#' that are available to \code{lm} and \code{glm}, including \code{predict}, \code{residuals}, \code{extractAIC}, 
+#' and \code{summary}. Many of these are inherited from \code{glmb}.
+#'
+#' Prior specification is handled via the \code{\link{pfamily}} argument, which defines the prior mean, 
+#' covariance, and dispersion. The design of the \code{pfamily} family of functions was created by Kjell Nygren 
+#' and is modeled on how \code{\link{glm}} uses \code{family} to specify the likelihood. A helper function, 
+#' \code{\link{Prior_Setup}}, assists users in choosing prior parameters. It ships with sensible defaults but 
+#' also allows full customization. All models support the \code{dNormal} prior; the Gaussian family also supports 
+#' \code{dNormalGamma} and \code{dIndependent_Normal_Gamma}, which allow for more flexible prior structures 
+#' including independent priors on variance components.
+#'
+#' Posterior draws are generated using the prior specification provided via \code{pfamily}. For Gaussian models 
+#' with conjugate priors, draws are obtained directly from the posterior distribution using standard simulation 
+#' procedures for multivariate normal densities \insertCite{Raiffa1961}{glmbayes}. For non-conjugate setups, the 
+#' function uses envelope-based accept–reject sampling, where the \code{Gridtype} parameter controls the granularity 
+#' of the envelope construction. The number of candidates generated before acceptance is returned in the 
+#' \code{iters} component.
+#'
+#' The output includes both the classical \code{lm} fit and Bayesian diagnostics such as the Deviance 
+#' Information Criterion (DIC), effective number of parameters (pD), and posterior summaries. 
+#' The DIC, introduced by \insertCite{Spiegelhalter2002}{glmbayes}, provides a Bayesian analog to AIC 
+#' by balancing model fit and complexity using posterior expectations. This dual structure allows users 
+#' to compare classical and Bayesian fits side-by-side, and to leverage familiar modeling workflows 
+#' while gaining access to richer inferential tools.
+#'
+#' The \code{\link{lmb}} function is a specialized version of \code{\link{glmb}} for Gaussian models, 
+#' and does not require a \code{family} argument. For conjugate models, it uses standard simulation methods for 
+#' posterior draws, avoiding the need for envelope construction or subgradient sampling. 
+#' Like \code{glmb}, it returns objects compatible with many standard methods from \code{lm} and \code{glm}, 
+#' including \code{\link{extractAIC}}, \code{\link{fitted.values}}, and \code{\link{residuals}}.
+#'
+#' For more minimalistic workflows, \code{\link{rlmb}} and \code{\link{rglmb}} offer stripped-down interfaces 
+#' for posterior sampling without the overhead of full model objects. \code{rlmb} is called from within 
+#' \code{lmb}. The functions \code{rlmb} might be useful in Gibbs sampling or simulation-heavy contexts.
+#'  
+#' 
 #' @author The \R implementation of \code{lmb} has been written by Kjell Nygren and
 #' was built to be a Bayesian version of the \code{lm} function and hence tries
 #' to mirror the features of the \code{lm} function to the greatest extent possible while also taking advantage
 #' of some of the method functions developed for the \code{glmb} function. For details
 #' on the author(s) for the \code{lm} function see the documentation for \code{\link[stats]{lm}}.
 #'     
-#' @references 
-#' Chambers, J.M.(1992) \emph{Linear models.} Chapter 4 of \emph{Statistical Models in S}
-#' eds J. M. Chambers and T. J. Hastie, Wadsworth & Brooks/Cole.
-#' 
-#' Wilkinson, G.N. and Rogers, C.E. (1973). Symbolic descriptions of factorial models for 
-#' analysis of variance. \emph{Applied Statistics}, \bold{22}, 392-399.
-#' doi: \href{https://doi.org/10.2307/2346786}{10.2307/2346786}.
-#' 
-#' Nygren, K.N. and Nygren, L.M (2006)
-#' Likelihood Subgradient Densities. \emph{Journal of the American Statistical Association}.
-#' vol.101, no.475, pp 1144-1156.
-#' doi: \href{https://doi.org/10.1198/016214506000000357}{10.1198/016214506000000357}.
-#' 
-#' Raiffa, Howard and Schlaifer, R (1961)
-#' \emph{Applied Statistical Decision Theory.}
-#' Boston: Clinton Press, Inc.
-#'
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @family modelfuns
 #' @seealso The classical modeling functions \code{\link[stats]{lm}} and \code{\link[stats]{glm}}.
 #' 

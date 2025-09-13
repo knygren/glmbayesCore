@@ -72,6 +72,9 @@ print(summary(out),digits=4)
 
 mean(out$iters)
 }
+\references{
+\insertAllCited{}
+}
 \seealso{
 \code{\link{lmb}}, \code{\link{glmb}}, \code{\link{summary}}, \code{[stats]\link{summary.lm}},\code{[stats]\link{summary.glm}}.
 }

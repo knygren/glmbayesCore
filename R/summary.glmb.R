@@ -31,6 +31,9 @@
 #' parameters and the DIC statistic. 
 #' 
 #' @seealso \code{\link{lmb}}, \code{\link{glmb}}, \code{\link{summary}}, \code{[stats]\link{summary.lm}},\code{[stats]\link{summary.glm}}. 
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_summary.glmb.R
 #' @export
 #' @method summary glmb

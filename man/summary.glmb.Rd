@@ -88,6 +88,9 @@ rate= disp_ML*shape
 lmb.D9=lmb(weight ~ group,dNormal_Gamma(mu,V/disp_ML,shape=shape,rate=rate))
 summary(lmb.D9)
 }
+\references{
+\insertAllCited{}
+}
 \seealso{
 \code{\link{lmb}}, \code{\link{glmb}}, \code{\link{summary}}, \code{[stats]\link{summary.lm}},\code{[stats]\link{summary.glm}}.
 }
