@@ -177,8 +177,8 @@ New York: Springer.
 }
 \seealso{
 glmbayes Simulation Functions
-\code{\link{rGamma_reg}()},
 \code{\link{rNormal_Gamma_reg}()},
-\code{\link{rindependent_norm_gamma_reg}()}
+\code{\link{rindependent_norm_gamma_reg}()},
+\code{\link{simfunction}()}
 }
 \concept{simfuncs}

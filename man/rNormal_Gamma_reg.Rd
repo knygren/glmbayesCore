@@ -148,8 +148,8 @@ pfamily.
 simulation functions.
 
 glmbayes Simulation Functions
-\code{\link{rGamma_reg}()},
 \code{\link{rNormal_reg}()},
-\code{\link{rindependent_norm_gamma_reg}()}
+\code{\link{rindependent_norm_gamma_reg}()},
+\code{\link{simfunction}()}
 }
 \concept{simfuncs}
