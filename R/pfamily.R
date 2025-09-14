@@ -34,8 +34,60 @@
 #' \item{plinks}{a function that assigns a set of oklinks for the combination of a family and 
 #' and pfamily.}
 #' \item{simfun}{function: the function used to generate samples from the posterior density. 
-#' All currently implemented pfamiles have simulation functions that generate iid samples
+#' All currently implemented pfamilies have simulation functions that generate iid samples
 #' for the associated posterior distribution.}
+#' 
+#' @details
+#' A `pfamily` object represents a structured prior specification for use in Bayesian generalized linear modeling. 
+#' Each constructor function (e.g., `dNormal()`, `dGamma()`, `dNormal_Gamma()`) returns an object of class `"pfamily"` 
+#' containing the prior parameters, supported likelihood families, compatible link functions, and a simulation function 
+#' for posterior sampling.
+#'
+#' These priors are designed to integrate seamlessly with modeling functions such as `glmb()` and `rlmb()` in the 
+#' \pkg{glmbayes} package, which consume the `pfamily` object to define the prior distribution over model parameters. 
+#' The `pfamily()` generic retrieves the embedded prior from a fitted model object, while `print.pfamily()` displays its structure.
+#'
+#' ## Prior Families
+#'
+#' - **`dNormal()`**: Specifies a multivariate normal prior over regression coefficients. It is conjugate for 
+#'   Gaussian likelihoods with an identity link function, and serves as the primary implemented prior for all 
+#'   other supported likelihood families in the current framework. This structure facilitates efficient posterior 
+#'   sampling and analytical tractability.
+#'
+#'   For models with log-concave likelihood functions—such as Poisson, Binomial, and Gamma families—
+#'   posterior sampling under a `dNormal` prior is performed using a \insertCite{Nygren2006}{glmbayes} 
+#'   likelihood subgradient approach. This method constructs tight enveloping functions around the posterior 
+#'   using subgradients of the log-likelihood, enabling efficient accept-reject sampling even in high dimensions.
+#'
+#'   When the posterior distribution is approximately normal (typically the case for large sample sizes), the 
+#'   area under the enveloping function is bounded above by a constant factor—approximately \eqn{2 / \sqrt{\pi} \approx 1.128} 
+#'   in the univariate case, and \eqn{(2 / \sqrt{\pi})^k} in \eqn{k}-dimensional models. These bounds ensure that 
+#'   the rejection rate remains manageable and that the sampler remains computationally efficient.
+#'
+#'   The concept of conjugate priors was first formalized by \insertCite{Raiffa1961}{glmbayes}, and further 
+#'   developed for regression models using g-prior structures by \insertCite{zellner1986gprior}{glmbayes}.
+#'
+#' - **`dGamma()`**: Defines a gamma prior over a scalar precision parameter, often used in hierarchical models 
+#'   or variance components. This prior is particularly relevant for Gamma likelihoods and dispersion modeling 
+#'   in exponential families \insertCite{Gelman2013,Dobson1990,McCullagh1989}{glmbayes}.
+#'
+#' - **`dNormal_Gamma()`**: Combines a multivariate normal prior on coefficients with a gamma prior on precision, 
+#'   forming a conjugate structure for Gaussian models with unknown variance. This formulation parallels classical 
+#'   Normal-Gamma models and is compatible with hierarchical extensions \insertCite{Gelman2013,Raiffa1961}{glmbayes}.
+#'
+#' - **`dIndependent_Normal_Gamma()`**: Similar to `dNormal_Gamma()`, but assumes independence between the 
+#'   coefficient and precision priors. This structure is useful for models where prior independence is desired 
+#'   or analytically convenient.
+#'
+#' Each `pfamily` object includes:
+#' - `prior_list`: A named list of prior parameters
+#' - `okfamilies`: A character vector of compatible likelihood families
+#' - `plinks`: A function returning valid link functions for a given family
+#' - `simfun`: A simulation function used for posterior sampling
+#' 
+#' @references
+#' \insertAllCited{}
+#'   
 #' @author The design of the \code{pfamily} set of functions was developed by Kjell Nygren and was 
 #' inspired by the family used by the \code{\link{glmb}} function to specify the likelihood 
 #' function. That design in turn was inspired by S functions of the same names described in
@@ -43,12 +95,18 @@
 #' @references
 #' \insertAllCited{}
 #' @importFrom Rdpack reprompt
-#' @seealso \code{\link{lmb}}, \code{\link{glmb}}, \code{\link{rlmb}}, \code{\link{rglmb}} for modeling 
-#' functions using pfamilies
 #' 
-#' \code{\link{rNormal_reg}}, \code{\link{rNormal_Gamma_reg}}, and \code{\link{rGamma_reg}} for lower level
-#' functions that sample from the resulting posterior distributions from the currently available \code{pfamilies}.
-#' 
+#' @seealso
+#' \code{\link{glmb}}, \code{\link{rlmb}}, \code{\link{lmb}}, \code{\link{rglmb}} for modeling functions that consume \code{pfamily} objects.
+#'
+#' \code{\link{rNormal_reg}}, \code{\link{rNormal_Gamma_reg}}, \code{\link{rGamma_reg}} for lower-level sampling functions used by \code{pfamily} constructors.
+#'
+#' \code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for initializing and validating prior specifications.
+#'
+#' \code{\link{EnvelopeBuild}} for envelope construction methods used in likelihood subgradient sampling \insertCite{Nygren2006}{glmbayes}.
+#'
+#' See also \insertCite{Hastie1992}{glmbayes} for the original S modeling framework that inspired the design of \code{pfamily}.
+#'  
 #' @example inst/examples/Ex_pfamily.R
 #' @export 
 # #' @exportClass pfamily # Temporarily disabled - No Current exportclass

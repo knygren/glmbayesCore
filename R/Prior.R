@@ -99,6 +99,7 @@
 #' regularization — especially valuable in small-sample or high-dimensional settings.
 #' especially in small-sample or high-dimensional settings.
 #'
+#'
 #' @return A list with items related to the prior.
 #' \item{mu}{A prior mean vector}
 #' \item{Sigma}{A prior variance-covariance matrix}

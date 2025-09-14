@@ -185,7 +185,7 @@ print(d.AD <- data.frame(treatment, outcome, counts))
 ps=Prior_Setup(counts ~ outcome + treatment, family=poisson())
 ps
 
-## Normal prior for glm
+## Normal prior for glmb
 glmb.D93<-glmb(counts ~ outcome + treatment, family = poisson(),pfamily=dNormal(mu=ps$mu,Sigma=ps$Sigma))
 
 
