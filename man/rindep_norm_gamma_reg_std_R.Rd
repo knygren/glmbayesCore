@@ -22,17 +22,11 @@ rindep_norm_gamma_reg_std_R(
 )
 }
 \arguments{
-\item{n}{number of draws to generate. If \code{length(n) > 1}, the length is taken to be the number required.}
+\item{n}{Number of draws to generate. If \code{length(n) > 1}, the length is taken to be the number required.}
 
-\item{x, y}{For \code{glm}:
-    logical values indicating whether the response vector and model
-    matrix used in the fitting process should be returned as components
-    of the returned value.
+\item{y}{A vector of observations of length \code{m}.}
 
-    For \code{glm.fit}: \code{x} is a design matrix of dimension
-    \code{n * p}, and \code{y} is a vector of observations of length
-    \code{n}.
-  }
+\item{x}{A design matrix of dimension \code{m × p}.}
 
 \item{mu}{Prior mean}
 
@@ -50,12 +44,7 @@ rindep_norm_gamma_reg_std_R(
 
 \item{UB_list}{list with constants used during accept-reject calculations.}
 
-\item{family}{a description of the error distribution and link
-    function to be used in the model.  For \code{glm} this can be a
-    character string naming a family function, a family function or the
-    result of a call to a family function.  For \code{glm.fit} only the
-    third option is supported.  (See \code{\link[stats]{family}} for details of
-    family functions.)}
+\item{family}{A description of the error distribution and link function (see \code{\link{family}}).}
 
 \item{link}{link function}
 
