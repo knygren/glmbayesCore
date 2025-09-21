@@ -4,8 +4,8 @@
 #'
 #' @description
 #' Simulation functions provide a unified interface for generating posterior samples from Bayesian GLMs.
-#'  These functions are typically used within model fitting routines such as \code{\link{glmb}}, \code{\link{lmb}}, and \code{\link{rglmb}}, and support block Gibbs sampling 
-#'  and other simulation-based inference techniques.
+#'  These functions are typically used within model fitting routines such as \code{\link{rglmb}} and \code{\link{rlmb}}, and 
+#'  are also suitable for use im Block Gibbs sampling and other simulation-based inference techniques.
 #'
 #'
 #' @param object A fitted model object containing a \code{pfamily} component. The generic function \code{simfunction()} accesses the simulation metadata stored within such objects.
@@ -48,16 +48,33 @@
 #'     \item{\code{Envelope}}{Currently \code{NULL}; reserved for envelope diagnostics}
 #'   }
 #'   
-#' @details
+#' @details The low-level simulation functions **\code{rNormal_reg()}**, **\code{rNormal_Gamma_reg()}**, 
+#' **\code{rindependent_norm_gamma_reg()}**, and **\code{rGamma_reg()}** generate iid samples from posterior 
+#' distributions for specific model components. These model functions are used internally by the functions
+#' **\code{rglmb()}** and **\code{rlmb()}** to generate samples.  
+#'  
 #' The \code{simfunction()} generic extracts metadata from simulation objects, including the function name, call, and arguments used. This is useful for introspection, reproducibility, and diagnostics.
 #'
-#' The lower-level simulation functions such as \code{rGamma_reg()} generate iid samples from posterior distributions for specific model components. These functions are used internally by \code{pfamily} constructors and model fitting routines.
+#' The lower-level simulation functions such as \code{rGamma_reg()} generate iid samples from posterior distributions for specific model components. 
+#' These functions are used internally by \code{pfamily} constructors and model fitting routines.
 #'
 #' ## Simulation Functions
 #'
+#'
+#' - **\code{rNormal_reg()}**: Produces iid draws for regression coefficients in models with Multivariate normal priors and Log-concave likelihood functions. For gaussian likelihood functions,
+#'  these are conjugate prior distributions and standard simulation procedures for multivariate normal distributoosn 
+#'  are utilized. For all other families/link functions, the Likelihood subgrandient approach of \insertCite{Nygren2006}{glmbayes} is used to generate iid samples.  
+#' 
+#' - **\code{rNormal_Gamma_reg()}**: Produces iid draws for regression coefficients and the dispersion parameter in models 
+#' with Normal-Gamma priors and gaussian likelihood functions where this is a conjugate prior distribution. Standard simulation procedures
+#' for gamma distributions and Multivariate normal distributions are utilized.
+#'
+#' - **\code{rindependent_norm_gamma_reg()}**: Produces iid draws for regression coefficients and the dispersion parameter in models 
+#' with independent Normal and Gamma priors for the two. This is a non-conjugate specification but can still be sampled using accept reject procedures
+#' based on an enveloping approach (see Vignette covering this topic).
+#' 
 #' - **\code{rGamma_reg()}**: Simulates dispersion parameters for Gaussian and Gamma families using either standard gamma sampling or accept-reject methods based on likelihood subgradients \insertCite{Nygren2006}{glmbayes}.
 #'
-#' - **\code{rNormal_reg()}**, **\code{rNormal_Gamma_reg()}**: Simulate regression coefficients and dispersion jointly or independently under Normal-Gamma priors.
 #'
 #' Each simulation function returns a structured object containing:
 #' - Simulated values (e.g., coefficients, dispersion)
@@ -202,7 +219,8 @@ rGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
   
   call <- match.call()
   
-  ## Renaming for consistency with earlier version
+
+  ## Argument renaming and prior
   
   wt=weights
   alpha=offset
@@ -255,17 +273,27 @@ rGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
   if(family$family=="Gamma")
   {
     
+    ## Compute mu1 using the fixed coefficients
+    
     mu1<-t(exp(alpha+x%*%b))
+    
+    ## testfunc is part of the log-likelihood (excluding a constant and the part included in the 
+    ## ) 
     
     testfunc<-function(v,wt){  
       -sum(lgamma(wt*v)+0.5*log(wt*v)+wt*v-wt*v*log(wt*v))
     }
     
+    ## Update the shape and rate using the fitted values from the likelihood
     
     shape2=shape + 0.5 *n1
     rate1=rate +sum(wt*((y/mu1)-log(y/mu1)-1))
     
+    ## Initialize vstar1 to the ratio (i.e., posterior mode)
+    
     vstar1<-shape2/rate1
+    
+    ## Use Newton method to update vstar1 and to solve for posterior mode
     
     vout<-function(v){
       vstar1-(v/rate1)*sum((wt*digamma(wt*v) -wt*log(wt*v) + 0.5/v) )  
@@ -279,10 +307,13 @@ rGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
       vstar<-vout(vstar)
     }
     
+    ## Find value of testfunc at the posterior mode
+    ## and the negative of the gradient of the testfunc at vstar
+        
     testbar<-testfunc(vstar,wt)
     cbar<--sum((wt*digamma(wt*vstar) -wt*log(wt*vstar) + 0.5/vstar))
     
-    
+    ## Set the rate to correspond to the posterior mode
     
     rate2=  rate +sum(wt*((y/mu1)-log(y/mu1)-1))-sum((wt*digamma(wt*vstar) -wt*log(wt*vstar) + 0.5/vstar) )
     
@@ -304,6 +335,7 @@ rGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
       }
     }
     
+    ## Convert "Precision" to dispersion
     out<-1/out
     
   }
@@ -441,6 +473,9 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   ## Error checking to verify that the correct elements are present
   ## Shold be implemented
   
+  
+  ## Step 1: Validate Prior Specification
+  
   if(missing(prior_list)) stop("Prior Specification Missing")
   if(!missing(prior_list)){
     if(!is.null(prior_list$mu)) mu=prior_list$mu
@@ -453,15 +488,22 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
     else rate=NULL
   }
   
+
+  ## Step 2: Fit Classical Model and Extract Estimates and RSS
+
   lm_out=lm(y ~ x-1,weights=wt,offset=offset2) # run classical regression to get maximum likelhood estimate
+  
+  ### 2) Initi1alize Residuals and dispersion
+
   RSS=sum(residuals(lm_out)^2)
   
   RSS_ML=sum(residuals(lm_out)^2)
   n_obs=length(y)
-  
-  
+
   dispersion2=dispersion
   RSS_temp<-matrix(0,nrow=1000)
+  
+  ## Step 3: Iterative Dispersion Anchoring (Finds good value for the dispersion)
   
   for(j in 1:10){
     glmb_out1=glmb(y~x-1,family=gaussian(),
@@ -485,6 +527,10 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
     
   }
   
+  
+  
+  ## Step 4: Standardized Model 
+  ## 4) Steps to standardized the model (i.e. to reorient dimensions)
   
   betastar=glmb_out1$coef.mode
   dispstar=rate2/(shape2-1)
@@ -556,11 +602,17 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   L3Inv=Standard_Mod$L3Inv
   
   
+  
+  ## Step 5: Build Model
+  
+  ## Build initial Envelope based on the optimized values
+  
   ## Note, use Gridtype =4 here temporarily (Single Likelihood subgradient)
   
   Gridtype=as.integer(3)
   
   ## Pull the initial Envelope based on optimized values above
+  
   
   Env2=EnvelopeBuild(as.vector(bstar2), as.matrix(A),y, as.matrix(x2),
                      as.matrix(mu2,ncol=1),as.matrix(P2),as.vector(alpha),
@@ -570,28 +622,91 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
                      sortgrid=TRUE)
   
   
-  #### End of Standardization - Steps below might change  
-  
-  ## Update Gamma parameters [Should this be just RSS_Post2?]
-  
-  shape2= shape + n_obs/2
-  rate2 =rate + (RSS_ML/2)
-  #rate3 =rate + (RSS2_post/2)
-  rate3 =rate + (RSS_Post2/2)
+  ###  Call new function to build shared envelope
   
   
-  #################  this Block Does evaluations at lower and upper bounds   #################
+  disp_env_out <- EnvelopeDispersionBuild(
+    Env        = Env2,
+    Shape      = shape,
+    Rate       = rate,
+    P          = P2,
+    y=y,
+    x          = x2,
+    alpha      =as.vector(alpha),
+    n_obs      = n_obs,
+    RSS_post   = RSS_Post2,
+    RSS_ML     =RSS_ML,
+    max_disp_perc = max_disp_perc
+  )
   
-  cbars=Env2$cbars
   
-  gs=nrow(Env2$cbars)
-  logP1=Env2$logP
-  New_LL=c(1:gs)
-  New_logP2=c(1:gs)
+##  Env2$PLSD       <- disp_env_out$Env_out$PLSD  # updated mixture weights
+##  UB_list         <- disp_env_out$UB_list
+  diagnostics     <- disp_env_out$diagnostics
   
-  upp=1/qgamma(c(1-max_disp_perc),shape2,rate3)
-  low=1/qgamma(c(max_disp_perc),shape2,rate3)
-  #wt_upp=wt/rep(upp,length(y))
+  # Optional: extract gamma parameters if needed
+##  shape3          <- disp_env_out$diagnostics$shape3
+##  rate3           <- disp_env_out$diagnostics$rate3
+  
+  Env3           <- disp_env_out$Env_out
+  gamma_list_new <- disp_env_out$gamma_list
+  UB_list_new    <- disp_env_out$UB_list
+  low            <- gamma_list_new$disp_lower
+  upp            <- gamma_list_new$disp_upper  
+
+  
+
+  
+  
+  sim_temp=.rindep_norm_gamma_reg_std_V4_cpp (n=n, y=y, x=x2, mu=mu2, P=P2, alpha=alpha, wt,
+                                              f2=f2, Envelope=Env3, 
+                                              gamma_list=gamma_list_new,
+                                              UB_list=UB_list_new,
+                                              family="gaussian",link="identity", progbar =progbar)
+  
+  # 
+  # ## Extract outputs
+  # beta_out  <- sim_temp$beta_out
+  # disp_out  <- sim_temp$disp_out
+  # iters_out <- sim_temp$iters_out
+  # 
+  # 
+  # 
+  #     
+  # #### End of Standardization - Steps below might change  
+  # 
+  # ## Update Gamma parameters [Should this be just RSS_Post2?]
+  # 
+  # shape2= shape + n_obs/2
+  # rate2 =rate + (RSS_ML/2)
+  # #rate3 =rate + (RSS2_post/2)
+  # rate3 =rate + (RSS_Post2/2)
+  # 
+  # 
+  # 
+  # #################  this Block Does evaluations at lower and upper bounds   #################
+  # ## Model effectively implies a restricted prior
+  # ## Extract envelope information --> gs is grid size 
+  # 
+  # 
+  # cbars=Env2$cbars
+  # 
+  # 
+  #   
+  # gs=nrow(Env2$cbars)
+  # logP1=Env2$logP
+  # 
+  #   New_LL=c(1:gs)
+  # New_logP2=c(1:gs)
+  # 
+  ## Step 6: Set dispersion bounds
+  
+  ## Set upper and lower bounds for dispersion.
+  
+  # upp=1/qgamma(c(1-max_disp_perc),shape2,rate3)
+  # low=1/qgamma(c(max_disp_perc),shape2,rate3)
+
+    #wt_upp=wt/rep(upp,length(y))
   #wt_low=wt/rep(low,length(y))
   
   #theta_upp=Inv_f3_gaussian(t(Env2$cbars), y, as.matrix(x2),as.matrix(mu2,ncol=1), as.matrix(P2), 
@@ -608,9 +723,10 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   #New_LL_Slope_test3=c(1:gs)
   #New_LL_Slope_diff=c(1:gs)
   
-  thetabars=Env2$thetabars
-  thetabar_const_base=thetabar_const(P2,cbars,Env2$thetabars)
-  #thetabar_const_upp=thetabar_const(P2,cbars,theta_upp)
+  # thetabars=Env2$thetabars
+  # thetabar_const_base=thetabar_const(P2,cbars,Env2$thetabars)
+
+    #thetabar_const_upp=thetabar_const(P2,cbars,theta_upp)
   #thetabar_const_low=thetabar_const(P2,cbars,theta_low)
   
   ###########################################################################################
@@ -632,55 +748,77 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   
   ###########################################################################################
   
-  
-  New_LL_Slope=EnvBuildLinBound(thetabars,cbars,y,x2,P2,alpha,dispstar)
-  
-  thetabar_const_upp_apprx=thetabar_const_base+(upp-dispstar)*New_LL_Slope
-  thetabar_const_low_apprx=thetabar_const_base+(low-dispstar)*New_LL_Slope
-  
-  
-  m_New_LL_Slope=mean(New_LL_Slope)  
-  min_New_LL_Slope=min(New_LL_Slope)  
-  max_New_LL_Slope=max(New_LL_Slope)  
+  ## This function EnvBuildLinBound() plays a critical role in your sampler: 
+  ## it computes how each envelope face in the coefficient space shifts with respect to 
+  ## the dispersion parameter \sigma^2. More precisely, it returns the derivative of each 
+  ## face constant K_j with respect to \sigma^2, evaluated at the anchor point dispstar.
   
   
-  prob_factor<-c(1:gs)
-  min_log_accept<-c(1:gs)
-  
-  max_low=max(thetabar_const_low_apprx)
-  max_upp=max(thetabar_const_upp_apprx)
-  
-  
-  max_low=max_low+0*(max_upp-max_low)
-  
-  max_low_mean=max_upp-m_New_LL_Slope*(upp-low)
-  
-  
-  old_slope=(max_upp-max_low)/(upp-low)
-  
-  
-  
-  max_low=max_low_mean
-  
-  for(j in 1:gs){
-    cbars_temp=as.matrix(cbars[j,1:ncol(x)],ncol=1)
-    New_logP2[j]=logP1[j]+0.5*t(cbars_temp)%*%cbars_temp
     
-    prob_factor[j]=max(thetabar_const_upp_apprx[j]-max_upp,thetabar_const_low_apprx[j]-max_low)
-    min_log_accept[j]=min(thetabar_const_upp_apprx[j]-max_upp,thetabar_const_low_apprx[j]-max_low)- prob_factor[j]  
-  }
+  # New_LL_Slope=EnvBuildLinBound(thetabars,cbars,y,x2,P2,alpha,dispstar)
+  # 
+  # 
+  # ## Linear approximation of face constants
+  # 
+  # thetabar_const_upp_apprx=thetabar_const_base+(upp-dispstar)*New_LL_Slope
+  # thetabar_const_low_apprx=thetabar_const_base+(low-dispstar)*New_LL_Slope
+  # 
+  # 
+  # ## Summary statistics of slopes
+  # 
+  # m_New_LL_Slope=mean(New_LL_Slope)  
+  # min_New_LL_Slope=min(New_LL_Slope)  
+  # max_New_LL_Slope=max(New_LL_Slope)  
+  # 
+  # 
+  # prob_factor<-c(1:gs)
+  # min_log_accept<-c(1:gs)
+  # 
+  # ## Compute max face constants at endpoints
+  # 
+  # max_low=max(thetabar_const_low_apprx)
+  # max_upp=max(thetabar_const_upp_apprx)
+  # 
+  # 
+  # max_low=max_low+0*(max_upp-max_low)
+  # 
+  # 
+  # 
+  # ### Global upper lien over dispersion
+  # 
+  # max_low_mean=max_upp-m_New_LL_Slope*(upp-low)
+  # old_slope=(max_upp-max_low)/(upp-low)
+  # max_low=max_low_mean
   
-  lg_prob_factor=prob_factor
-  prob_factor=exp(New_logP2+prob_factor)
+  ## Per face mixture weight
   
-  prob_factor=prob_factor/sum(prob_factor)
+  ## Adjust lopP2 for each face
+  # 
+  # 
+  # for(j in 1:gs){
+  #   cbars_temp=as.matrix(cbars[j,1:ncol(x)],ncol=1)
+  #   New_logP2[j]=logP1[j]+0.5*t(cbars_temp)%*%cbars_temp
+  #   
+  #   prob_factor[j]=max(thetabar_const_upp_apprx[j]-max_upp,thetabar_const_low_apprx[j]-max_low)
+  #   min_log_accept[j]=min(thetabar_const_upp_apprx[j]-max_upp,thetabar_const_low_apprx[j]-max_low)- prob_factor[j]  
+  # }
   
-  new_slope=(max_upp-max_low)/(upp-low)
   
+  ## Normalize mixture weight
   
-  new_int=max_low-new_slope*low
-  b1=(upp-low)
-  c1=-log(upp/low)
+  # lg_prob_factor=prob_factor
+  # prob_factor=exp(New_logP2+prob_factor)
+  # 
+  # prob_factor=prob_factor/sum(prob_factor)
+  # 
+  # 
+  # ## Dispersion envelope geometry
+  # new_slope=(max_upp-max_low)/(upp-low)
+  # 
+  # 
+  # new_int=max_low-new_slope*low
+  # b1=(upp-low)
+  # c1=-log(upp/low)
   
   #dispstar= (-b1+ sqrt(b1^2-4*a1*c1))/(2*a1) # Point of tangency
   ## Outputs from this block
@@ -698,26 +836,33 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   
   # Verify that this calculation is correct
   
-  dispstar=b1/(-c1)
   
-  shape_shift=New_LL_Slope*dispstar
-  
-  
-  lm_log2=new_slope*dispstar
-  lm_log1=new_int+new_slope*dispstar-new_slope*log(dispstar)
-  
-  shape3=shape2-lm_log2
-  
-  shape3_vector=shape2-shape_shift
-  max_LL_log_disp=lm_log1+lm_log2*log(upp) ## From above
-  
+  ## adjust Gamma shape for dispersion proposal
+  # 
+  # dispstar=b1/(-c1)
+  # 
+  # shape_shift=New_LL_Slope*dispstar
+  # 
+  # 
+  # lm_log2=new_slope*dispstar
+  # lm_log1=new_int+new_slope*dispstar-new_slope*log(dispstar)
+  # 
+  # shape3=shape2-lm_log2
+  # 
+  # shape3_vector=shape2-shape_shift
+  # max_LL_log_disp=lm_log1+lm_log2*log(upp) ## From above
+  # 
+  # 
+  # 
   ## No longer used - can remove later 
   #log_P_diff_new=0*log_P_diff
   
   ########################################
   
-  Env3=Env2
-  Env3$PLSD=prob_factor
+  
+  ## Store mixture weights in Envelope
+  # Env3=Env2
+  # Env3$PLSD=prob_factor
   
   #  print("Starting Candidate Sampling using sample function")
   #  cand1=sample(x=gs,size=n*413,replace=TRUE,prob=prob_factor)
@@ -727,26 +872,31 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   
   #  print("Finished Sampling using Sample function")
   
+  ### Set constants used during sampling
   
-  gamma_list_new=list(shape3=shape3,rate2=rate2,disp_upper=upp,disp_lower=low)
+  # gamma_list_new=list(shape3=shape3,rate2=rate2,disp_upper=upp,disp_lower=low)
+  # 
+  # UB_list_new=list(RSS_ML=RSS_ML,max_New_LL_UB=max_upp,
+  #                  max_LL_log_disp=max_LL_log_disp,lm_log1=lm_log1,lm_log2=lm_log2, 
+  #                  #log_P_diff=log_P_diff_new,
+  #                  lg_prob_factor=lg_prob_factor,lmc1=new_int,lmc2=new_slope)
+  # #                   ,cand=cand1)
+  # 
   
-  UB_list_new=list(RSS_ML=RSS_ML,max_New_LL_UB=max_upp,
-                   max_LL_log_disp=max_LL_log_disp,lm_log1=lm_log1,lm_log2=lm_log2, 
-                   #log_P_diff=log_P_diff_new,
-                   lg_prob_factor=lg_prob_factor,lmc1=new_int,lmc2=new_slope)
-  #                   ,cand=cand1)
   
   ## log_P_Diff should no longer be used in the same way!
   
   print(paste("Interactive status:", interactive()))
   
   ##  ptm <- proc.time()
-  
-  sim_temp=.rindep_norm_gamma_reg_std_V4_cpp (n=n, y=y, x=x2, mu=mu2, P=P2, alpha=alpha, wt,
-                                              f2=f2, Envelope=Env3, 
-                                              gamma_list=gamma_list_new,
-                                              UB_list=UB_list_new,
-                                              family="gaussian",link="identity", progbar =progbar)
+
+  ## Run simulation
+    
+  # sim_temp=.rindep_norm_gamma_reg_std_V4_cpp (n=n, y=y, x=x2, mu=mu2, P=P2, alpha=alpha, wt,
+  #                                             f2=f2, Envelope=Env3, 
+  #                                             gamma_list=gamma_list_new,
+  #                                             UB_list=UB_list_new,
+  #                                             family="gaussian",link="identity", progbar =progbar)
   
   
   #proc.time()-ptm

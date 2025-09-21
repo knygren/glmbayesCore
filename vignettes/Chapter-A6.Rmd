@@ -1,0 +1,234 @@
+Yaml
+
+---
+title: "Chapter A6: Accept–Reject Sampling for Dispersion in Gamma Regression"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Chapter A6: Accept–Reject Sampling for Dispersion in Gamma Regression}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## ---- title: "Posterior Sampling for Dispersion in Gamma GLMs", echo=FALSE ----
+## This vignette explains the derivation of the posterior for the dispersion parameter
+## in a Gamma GLM with log link, and the construction of the surrogate function `testfunc`
+## used for rejection sampling in `rGamma_reg`.
+
+## Model setup:
+## We assume observations y_i follow a Gamma distribution with fixed mean μ_i and unknown precision v:
+##   y_i | v ~ Gamma(shape = v, rate = v / μ_i)
+## where μ_i = exp(x_i^T β + α_i) is fixed from the linear predictor.
+
+## The log-likelihood for a single observation is:
+##   log f(y_i | v, μ_i) = v log(v / μ_i) − log Γ(v) + (v − 1) log y_i − v y_i / μ_i
+
+## With observation weights wt_i, the total log-likelihood becomes:
+##   ℓ_like(v) = ∑_i wt_i [v log(v / μ_i) − log Γ(v) + (v − 1) log y_i − v y_i / μ_i]
+
+## Prior on v:
+##   v ~ Gamma(shape = shape, rate = rate)
+##   ℓ_prior(v) = (shape − 1) log v − rate v
+
+## The posterior log-density is:
+##   ℓ(v) = ℓ_like(v) + ℓ_prior(v)
+##        = ∑_i wt_i [v log(v / μ_i) − log Γ(v) + (v − 1) log y_i − v y_i / μ_i]
+##          + (shape − 1) log v − rate v
+
+## To facilitate rejection sampling, we rewrite ℓ(v) as:
+##   ℓ(v) = (shape2 − 1) log v − rate1 v + testfunc(v) + const
+## where:
+##   shape2 = shape + 0.5 * n
+##   rate1  = rate + ∑_i wt_i [y_i / μ_i − log(y_i / μ_i) − 1]
+
+## (shape2 − 1) log v − rate1 v incorporates all non-constant terms from the prior as well as 
+## any non-constant part of the likelihood that is not included in testfunc(v) and are part of the 
+## Proposal distribution...
+
+## The surrogate function `testfunc(v)` captures the curvature of the log-likelihood:
+testfunc <- function(v, wt) {
+  -sum(lgamma(wt * v) + 0.5 * log(wt * v) + wt * v - wt * v * log(wt * v))
+}
+
+## This function approximates the log-normalizing constant of the Gamma likelihood,
+## plus curvature corrections. It is concave in v and used to construct a tangent envelope
+## at the mode-like point v⋆ = shape2 / rate1.
+
+## The rejection sampler draws proposals from:
+##   v ~ Gamma(shape2, rate2)
+## where:
+##   rate2 = rate1 − grad
+##   grad  = −d/dv testfunc(v⋆)
+
+## Each proposal v_prop is accepted with probability:
+##   log u < testfunc(v_prop) − [testfunc(v⋆) + grad * (v_prop − v⋆)]
+## where u ~ Uniform(0,1)
+
+## This ensures that the sampler targets the correct posterior in v while maintaining
+## numerical stability and avoiding direct evaluation of the full likelihood.
+
+## The final output is the dispersion parameter:
+##   dispersion = 1 / v
+
+
+## END OF THE FIRST DERIVATION
+
+
+## ---- title: "Tangent-envelope sampler for Gamma dispersion", echo=FALSE ----
+## This result formalizes the rejection sampler used for Gamma regression dispersion
+## with a Gamma prior on precision. It decomposes the posterior into a Gamma-kernel
+## and a concave remainder, then uses a tangent envelope for exact sampling.
+
+## Setup:
+## Let y_i > 0 be observations with fixed means μ_i > 0 and weights w_i > 0.
+## Let v > 0 be the precision parameter with prior v ~ Gamma(shape, rate).
+## Define:
+shape2 <- shape + 0.5 * n
+rate1  <- rate + sum(wt * (y / mu - log(y / mu) - 1))
+
+## Define the concave remainder:
+testfunc <- function(v, wt) {
+  -sum(lgamma(wt * v) + 0.5 * log(wt * v) + wt * v - wt * v * log(wt * v))
+}
+
+## Then the posterior density satisfies:
+##   π(v) ∝ v^(shape2 - 1) * exp(-rate1 * v) * exp(testfunc(v))
+
+## Theorem (Tangent-envelope gamma-kernel sampler):
+## Let v⋆ > 0 be a chosen anchor point and g⋆ = testfunc′(v⋆).
+## Define rate2 = rate1 − g⋆.
+## Let q(v) = Gamma(shape2, rate2).
+## Then the rejection sampler:
+##   1. Draw V ~ q(v)
+##   2. Accept V with probability:
+##        α(V) = exp(testfunc(V) − testfunc(v⋆) − g⋆ * (V − v⋆))
+## yields exact samples from π(v).
+
+## Proof sketch:
+## - testfunc is concave ⇒ testfunc(v) ≤ testfunc(v⋆) + g⋆(v − v⋆)
+## - So π(v) ≤ M * q(v), where M = exp(testfunc(v⋆) − g⋆ v⋆)
+## - Acceptance probability is π(v) / (M * q(v)), which simplifies to α(V)
+
+## Remarks:
+## - The proposal absorbs all non-constant terms from the prior and likelihood
+##   into the Gamma-kernel (shape2, rate1)
+## - testfunc captures the curvature and normalization terms
+## - The tangent envelope ensures exactness and efficient sampling
+## - Constants independent of v cancel in the acceptance ratio
+
+## END of THE SECOND DERIVATION
+
+
+## Note: Accept–Reject Sampling for Dispersion in Gamma Regression
+
+In Gamma regression models with known regression coefficients, the posterior distribution for the dispersion parameter (often denoted as \(\phi\)) is not conjugate. To sample from this posterior, we implement an **accept–reject algorithm** using a custom envelope derived from a first-order approximation to the log-posterior.
+
+### Model Setup
+
+Let  
+\[
+y_i \sim \mathrm{Gamma}(\nu, \mu_i),
+\quad
+\mu_i = \exp(x_i^\top \beta + \alpha_i),
+\quad
+\nu = 1/\phi.
+\]  
+The log-likelihood contribution from each observation is  
+\[
+\log p(y_i \mid \nu)
+\;\propto\;
+\nu \log(\nu)
+\;-\;
+\nu \log\bigl(\tfrac{y_i}{\mu_i}\bigr)
+\;-\;
+\log \Gamma(\nu).
+\]  
+
+    mu1<-t(exp(alpha+x%*%b))
+
+
+    testfunc<-function(v,wt){  
+      -sum(lgamma(wt*v)+0.5*log(wt*v)+wt*v-wt*v*log(wt*v))
+    }
+
+
+    cbar<--sum((wt*digamma(wt*vstar) -wt*log(wt*vstar) + 0.5/vstar))
+
+With a Gamma prior \(\nu \sim \mathrm{Gamma}(a_0, b_0)\), the log-posterior is  
+\[
+f(\nu)
+=
+(a_0 - 1)\log\nu
+\;-\;
+b_0\,\nu
+\;+\;
+\sum_{i=1}^n
+\Bigl[\nu \log(\nu)
+\;-\;
+\nu \log\!\bigl(\tfrac{y_i}{\mu_i}\bigr)
+\;-\;
+\log\Gamma(\nu)\Bigr]
+\;+\;\text{const}.
+\]
+
+
+
+### Envelope Construction
+
+1. Find the posterior mode \(\nu^\star\) by solving \(f'(\nu)=0\) via fixed-point iteration.  
+2. Compute  
+   \[
+   f(\nu^\star),
+   \quad
+   f'(\nu^\star).
+   \]  
+3. Define the linear envelope  
+   \[
+   g(\nu)
+   =
+   f(\nu^\star)
+   \;+\;
+   f'(\nu^\star)\,(\nu - \nu^\star).
+   \]
+
+
+
+### Sampling Algorithm
+
+1. Propose  
+   \[
+   \nu \sim \mathrm{Gamma}\bigl(a_1,\,b_1\bigr),
+   \]
+   where
+   \[
+   a_1 = a_0 + \tfrac{n}{2},
+   \quad
+   b_1 = b_0 + \sum_{i=1}^n\Bigl(\tfrac{y_i}{\mu_i}
+   \;-\;
+   \log\!\tfrac{y_i}{\mu_i}
+   \;-\;
+   1\Bigr).
+   \]
+2. Draw \(U\sim\mathrm{Uniform}(0,1)\) and **accept** \(\nu\) if  
+   \[
+   f(\nu) - g(\nu) > \log U.
+   \]
+   Otherwise, **reject** and repeat.  
+3. Return the dispersion \(\phi = 1/\nu\).
+
+### Extension to Quasi-Likelihood Models
+
+Quasi-Poisson \(\bigl(\mathrm{Var}(Y)=\phi\mu\bigr)\) and quasi-binomial \(\bigl(\mathrm{Var}(Y)=\phi\mu(1-\mu)\bigr)\) models lack a full likelihood. To apply an accept–reject sampler you must first:
+
+- Specify a **working likelihood**, e.g.\ overdispersed Poisson/binomial, or  
+- Use a **pseudo-likelihood** or **empirical-Bayes** surrogate.
+
+Without such a surrogate, the method above cannot be directly applied to quasi-models.
