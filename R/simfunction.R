@@ -112,6 +112,7 @@
 #'     \item{\code{iters}}{A vector indicating the number of iterations per sample (typically \code{rep(1, n)})}
 #'     \item{\code{Envelope}}{Currently \code{NULL}; reserved for envelope diagnostics}
 #'   }
+
 #'   
 #' @details The low-level simulation functions **\code{rNormal_reg()}**, **\code{rNormal_Gamma_reg()}**, 
 #' **\code{rindependent_norm_gamma_reg()}**, and **\code{rGamma_reg()}** generate iid samples from posterior 
