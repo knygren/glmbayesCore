@@ -724,7 +724,7 @@ Rcpp::List rnnorm_reg_cpp(int n,NumericVector y,NumericMatrix x,
 
   // Rcout << "Finished Simulation"  << std::endl;
   
-  //  Step 6: Undo standaridzation and do some post processing
+  //  Step 6: Undo standardization and do some post processing
   
   //  1) Undo-Standardization of Posterior Precision
   //  2) Undo shifting of prior mean to offset
@@ -743,7 +743,7 @@ Rcpp::List rnnorm_reg_cpp(int n,NumericVector y,NumericMatrix x,
   
   // Add mean back in and compute LL (for post processing)
   // Can add option to not compute LL
-  // Note: LL does not seem to be used by downstream functins so can likely be edited out and removed 
+  // Note: LL does not seem to be used by downstream functions so can likely be edited out and removed 
   // From output - It is recomputed by summary functions
   
   

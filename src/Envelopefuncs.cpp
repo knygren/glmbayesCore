@@ -106,20 +106,20 @@ using namespace Rcpp;
 
 List EnvelopeBuild_c(NumericVector bStar,
                      NumericMatrix A, /// Diagonal Precision Matrix for Adjusted Likelihood Function
-                    NumericVector y, 
-                    NumericMatrix x,
-                    NumericMatrix mu,
-                    NumericMatrix P, /// Part of the prior precision matrix that is shifted to the likelihood
-                    NumericVector alpha,
-                    NumericVector wt,
-                    std::string family,
-                    std::string link,
-                    int Gridtype, 
-                    int n,
-                    bool sortgrid,
-                    bool use_opencl ,        // Enables OpenCL acceleration during envelope construction
-                    bool verbose             // Enables diagnostic output
-                       
+                     NumericVector y, 
+                     NumericMatrix x,
+                     NumericMatrix mu,
+                     NumericMatrix P, /// Part of the prior precision matrix that is shifted to the likelihood
+                     NumericVector alpha,
+                     NumericVector wt,
+                     std::string family,
+                     std::string link,
+                     int Gridtype, 
+                     int n,
+                     bool sortgrid,
+                     bool use_opencl ,        // Enables OpenCL acceleration during envelope construction
+                     bool verbose             // Enables diagnostic output
+                     
 ){
   
 #ifdef USE_OPENCL
@@ -175,7 +175,7 @@ List EnvelopeBuild_c(NumericVector bStar,
   Rcpp::Function expGrid("expand.grid");
   Rcpp::Function asMat("as.matrix");
   Rcpp::Function EnvSort("EnvelopeSort");
-
+  
   int i;  
   
   a_2=arma::diagvec(A2);
@@ -183,7 +183,7 @@ List EnvelopeBuild_c(NumericVector bStar,
   G1b=xx_1b*arma::trans(bStar_2)+xx_2b*arma::trans(omega);
   Lint=yy_1b*arma::trans(bStar_2)+yy_2b*arma::trans(omega);
   
-
+  
   // 3.4.1 - EnvelopOpt
   
   /// If GridType=2, then the Size of the Grid is optimized for performance
@@ -199,7 +199,7 @@ List EnvelopeBuild_c(NumericVector bStar,
   /// 
   /// If GridType is not equal to 2 then the size of the Grid is determined 
   /// uniquely by that setting
-    
+  
   int core_CNT=get_opencl_core_count();
   
   if (verbose) {
@@ -221,22 +221,23 @@ List EnvelopeBuild_c(NumericVector bStar,
                   << " for envelope optimization.\n";
     }
     
-    gridindex = EnvelopeOpt(a_2, scaled_n);
+//    gridindex = EnvelopeOpt(a_2, scaled_n,core_CNT);
+    gridindex = EnvelopeOpt(a_2, n,core_CNT);
     
     //gridindex=EnvelopeOpt(a_2,n);
   }
   
   NumericVector Temp1=G1( _, 0);
   double Temp2;
-
+  
   
   if (verbose) {
     
-  Rcpp::Rcout << "Entering Grid Loop: "
-              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-              << "\n";
+    Rcpp::Rcout << "Entering Grid Loop: "
+                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                << "\n";
   }
-      
+  
   // Should write a small note with logic behind types 1 and 2
   
   /*
@@ -272,11 +273,11 @@ List EnvelopeBuild_c(NumericVector bStar,
    3) Gridtype 3: always three-point grid (regardless of a_i or n)
    4) Gridtype 4: always single-point grid (mode only)
    */
-
   
-    
+  
+  
   for(i=0;i<l1;i++){
-  
+    
     if(Gridtype==1){
       
       // For Gridtype==1, small 1+a[i]<=(2/sqrt(M_PI) yields grid over full line
@@ -321,10 +322,10 @@ List EnvelopeBuild_c(NumericVector bStar,
     
     
   }
-
   
-
-    
+  
+  
+  
   NumericMatrix G3=asMat(expGrid(G2));
   NumericMatrix GIndex=asMat(expGrid(GIndex1));
   NumericMatrix G4(G3.ncol(),G3.nrow());
@@ -366,15 +367,15 @@ List EnvelopeBuild_c(NumericVector bStar,
   // Note: NegLL_2 only added to allow for QC printing of results 
   
   arma::colvec NegLL_2(NegLL.begin(), NegLL.size(), false);
-
   
   
-    
+  
+  
   //    G4b.print("tangent points");
   
-//  Rcpp::Rcout << "Gridtype is :"  << Gridtype << std::endl;
-//  Rcpp::Rcout << "Number of Variables in model are :"  << l1 << std::endl;
-//  Rcpp::Rcout << "Number of points in Grid are :"  << l2 << std::endl;
+  //  Rcpp::Rcout << "Gridtype is :"  << Gridtype << std::endl;
+  //  Rcpp::Rcout << "Number of Variables in model are :"  << l1 << std::endl;
+  //  Rcpp::Rcout << "Number of points in Grid are :"  << l2 << std::endl;
   
   if( family=="binomial" && link=="logit"){
     
@@ -384,61 +385,61 @@ List EnvelopeBuild_c(NumericVector bStar,
                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                   << "\n";
     }
-  
-  if(use_opencl==0 ){
-    NegLL=f2_binomial_logit(G4,y, x, mu, P, alpha, wt,progbar);  
-
-
     
-     if (verbose) {
-       Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                   << "\n";
-            }
-    
-    cbars2=f3_binomial_logit(G4,y, x,mu,P,alpha,wt,progbar);
-
-
-  }
-
-    else{
-
-  
-  
-  if (verbose) {
-    Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                << "\n";
-  }
-  
-  
-  Rcpp::List prepGrad_v3= f2_f3_opencl(
-    family,
-    link,
-    G4,          // NumericMatrix b
-    y,           // NumericVector y
-    x,           // NumericMatrix x
-    mu,          // NumericMatrix mu 
-    P,           // NumericMatrix P
-    alpha,       // NumericVector alpha
-    wt,          // NumericVector wt
-    progbar     // int progbar
-  );
-  
-  
-  NegLL = prepGrad_v3["qf"];
-  cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-  
-  
-
+    if(use_opencl==0 ){
+      NegLL=f2_binomial_logit(G4,y, x, mu, P, alpha, wt,progbar);  
+      
+      
+      
+      if (verbose) {
+        Rcpp::Rcout << "Initiating Gradient Evaluations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      
+      cbars2=f3_binomial_logit(G4,y, x,mu,P,alpha,wt,progbar);
+      
+      
     }
-
+    
+    else{
+      
+      
+      
+      if (verbose) {
+        Rcpp::Rcout << "Initiating f2_f3_opencl: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      
+      
+      Rcpp::List prepGrad_v3= f2_f3_opencl(
+        family,
+        link,
+        G4,          // NumericMatrix b
+        y,           // NumericVector y
+        x,           // NumericMatrix x
+        mu,          // NumericMatrix mu 
+        P,           // NumericMatrix P
+        alpha,       // NumericVector alpha
+        wt,          // NumericVector wt
+        progbar     // int progbar
+      );
+      
+      
+      NegLL = prepGrad_v3["qf"];
+      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+      
+      
+      
+    }
+    
     
   }
   if(family=="binomial"  && link=="probit"){
-
+    
     if(use_opencl==0 ){
-
+      
       if (verbose) {
         
         Rcpp::Rcout << "Initiating NegLL Calculations: "
@@ -446,109 +447,109 @@ List EnvelopeBuild_c(NumericVector bStar,
                     << "\n";
       }
       
-        NegLL=f2_binomial_probit(G4,y, x, mu, P, alpha, wt,progbar);  
+      NegLL=f2_binomial_probit(G4,y, x, mu, P, alpha, wt,progbar);  
       
-
       
-    if (verbose) {
-      Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    cbars2=f3_binomial_probit(G4,y, x,mu,P,alpha,wt,progbar);
-
-        
-    }
-    
-else{
-
-  
-  if (verbose) {
-    Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                << "\n";
-  }
-  
-  
-   Rcpp::List prepGrad_v3= f2_f3_opencl(
-     family,
-     link,
-     G4,          // NumericMatrix b
-     y,           // NumericVector y
-     x,           // NumericMatrix x
-     mu,          // NumericMatrix mu 
-     P,           // NumericMatrix P
-     alpha,       // NumericVector alpha
-     wt,          // NumericVector wt
-     progbar     // int progbar
-   );
-  
-  
-   NegLL = prepGrad_v3["qf"];
-   cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-  
-
-  
-}    
-    
-    
-  }
-  if(family=="binomial"   && link=="cloglog"){
-
-    if(use_opencl==0 ){
       
-    
-        if (verbose) {
+      if (verbose) {
+        Rcpp::Rcout << "Initiating Gradient Evaluations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      cbars2=f3_binomial_probit(G4,y, x,mu,P,alpha,wt,progbar);
       
-      Rcpp::Rcout << "Initiating NegLL Calculations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    NegLL=f2_binomial_cloglog(G4,y, x, mu, P, alpha, wt,progbar);  
-        
-
-    if (verbose) {
-      Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    cbars2=f3_binomial_cloglog(G4,y, x,mu,P,alpha,wt,progbar);
-    
-
-    
+      
     }
     
     else{
       
-
       
-       if (verbose) {
-         Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                     << "\n";
-       }
-       
-       
-       Rcpp::List prepGrad_v3= f2_f3_opencl(
-         family,
-         link,
-         G4,          // NumericMatrix b
-         y,           // NumericVector y
-         x,           // NumericMatrix x
-         mu,          // NumericMatrix mu 
-         P,           // NumericMatrix P
-         alpha,       // NumericVector alpha
-         wt,          // NumericVector wt
-         progbar     // int progbar
-       );
-       
-       
-       
-       NegLL = prepGrad_v3["qf"];
-       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-
+      if (verbose) {
+        Rcpp::Rcout << "Initiating f2_f3_opencl: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
       
-            
+      
+      Rcpp::List prepGrad_v3= f2_f3_opencl(
+        family,
+        link,
+        G4,          // NumericMatrix b
+        y,           // NumericVector y
+        x,           // NumericMatrix x
+        mu,          // NumericMatrix mu 
+        P,           // NumericMatrix P
+        alpha,       // NumericVector alpha
+        wt,          // NumericVector wt
+        progbar     // int progbar
+      );
+      
+      
+      NegLL = prepGrad_v3["qf"];
+      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+      
+      
+      
+    }    
+    
+    
+  }
+  if(family=="binomial"   && link=="cloglog"){
+    
+    if(use_opencl==0 ){
+      
+      
+      if (verbose) {
+        
+        Rcpp::Rcout << "Initiating NegLL Calculations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      NegLL=f2_binomial_cloglog(G4,y, x, mu, P, alpha, wt,progbar);  
+      
+      
+      if (verbose) {
+        Rcpp::Rcout << "Initiating Gradient Evaluations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      cbars2=f3_binomial_cloglog(G4,y, x,mu,P,alpha,wt,progbar);
+      
+      
+      
+    }
+    
+    else{
+      
+      
+      
+      if (verbose) {
+        Rcpp::Rcout << "Initiating f2_f3_opencl: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      
+      
+      Rcpp::List prepGrad_v3= f2_f3_opencl(
+        family,
+        link,
+        G4,          // NumericMatrix b
+        y,           // NumericVector y
+        x,           // NumericMatrix x
+        mu,          // NumericMatrix mu 
+        P,           // NumericMatrix P
+        alpha,       // NumericVector alpha
+        wt,          // NumericVector wt
+        progbar     // int progbar
+      );
+      
+      
+      
+      NegLL = prepGrad_v3["qf"];
+      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+      
+      
+      
     }
     
   }
@@ -615,7 +616,7 @@ else{
     
   }
   if(family=="quasibinomial" && link=="probit"){
-
+    
     if(use_opencl==0 ){
       
       if (verbose) {
@@ -670,35 +671,35 @@ else{
       
     }    
     
- 
+    
   }
   
   if(family=="poisson" ){
-
+    
     if(use_opencl==0 ){
       
-        if (verbose) {
+      if (verbose) {
+        
+        Rcpp::Rcout << "Initiating NegLL Calculations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      NegLL=f2_poisson(G4,y, x, mu, P, alpha, wt,progbar);  
       
-      Rcpp::Rcout << "Initiating NegLL Calculations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    NegLL=f2_poisson(G4,y, x, mu, P, alpha, wt,progbar);  
-        
-
-    if (verbose) {
-      Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    cbars2=f3_poisson(G4,y, x,mu,P,alpha,wt,progbar);
-
-
-        
+      
+      if (verbose) {
+        Rcpp::Rcout << "Initiating Gradient Evaluations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      cbars2=f3_poisson(G4,y, x,mu,P,alpha,wt,progbar);
+      
+      
+      
     }
     
     else{
-
+      
       
       if (verbose) {
         Rcpp::Rcout << "Initiating f2_f3_opencl: "
@@ -727,17 +728,17 @@ else{
                     << "\n";
       }
       
-            
+      
       NegLL = prepGrad_v3["qf"];
       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-
+      
     }
     
     
   }
   
   if(family=="quasipoisson" ){
-
+    
     if(use_opencl==0 ){
       
       if (verbose) {
@@ -789,28 +790,28 @@ else{
       
     }
     
-      }
+  }
   
   if(family=="Gamma" ){
-
+    
     if(use_opencl==0 ){
       
-        if (verbose) {
+      if (verbose) {
+        
+        Rcpp::Rcout << "Initiating NegLL Calculations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      NegLL=f2_gamma(G4,y, x, mu, P, alpha, wt,progbar);  
+      if (verbose) {
+        Rcpp::Rcout << "Initiating Gradient Evaluations: "
+                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+                    << "\n";
+      }
+      cbars2=f3_gamma(G4,y, x,mu,P,alpha,wt,progbar);
       
-      Rcpp::Rcout << "Initiating NegLL Calculations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    NegLL=f2_gamma(G4,y, x, mu, P, alpha, wt,progbar);  
-    if (verbose) {
-      Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    cbars2=f3_gamma(G4,y, x,mu,P,alpha,wt,progbar);
-  
-  
-  
+      
+      
     } // End use_opencl
     
     
@@ -841,11 +842,11 @@ else{
       NegLL = prepGrad_v3["qf"];
       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
       
-    
+      
       
     } 
-  
-  
+    
+    
   }
   
   if(family=="gaussian" ){
@@ -864,27 +865,27 @@ else{
     cbars2=f3_gaussian(G4,y, x,mu,P,alpha,wt);
   }
   
-
-//  Rcpp::Rcout << "Finished cbars Calculations: "
-//              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-//              << "\n";
   
-    
+  //  Rcpp::Rcout << "Finished cbars Calculations: "
+  //              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+  //              << "\n";
+  
+  
   //  Rcpp::Rcout << "Finished Log-posterior evaluations:" << std::endl;
   
   // Do a temporary correction here cbars3 should point to correct memory
   // See if this sets cbars
-
+  
   cbars3=cbars2;
   
   // July 2025 - Parallelization Implementation in steps
   
   // 1) Set_Grid_C2_pointwise changes loop to enable parallel processing (suggested by Copilot)
-
-
-//  Rcpp::Rcout << "Entering Set grid C2 pointwise: "
-//              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-//              << "\n";
+  
+  
+  //  Rcpp::Rcout << "Entering Set grid C2 pointwise: "
+  //              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+  //              << "\n";
   
   if (verbose) {
     
@@ -894,16 +895,16 @@ else{
   }
   
   
-
-//  Set_Grid_C2(GIndex, cbars, Lint1,Down,Up,loglt,logrt,logct,logU,logP);
+  
+  //  Set_Grid_C2(GIndex, cbars, Lint1,Down,Up,loglt,logrt,logct,logU,logP);
   Set_Grid_C2_pointwise(GIndex, cbars, Lint1,Down,Up,loglt,logrt,logct,logU,logP);
   
-    
-
-//    Rcpp::Rcout << "Entering setlogP_C2: "
-//                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-//                << "\n";
-    
+  
+  
+  //    Rcpp::Rcout << "Entering setlogP_C2: "
+  //                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+  //                << "\n";
+  
   
   if (verbose) {
     
@@ -912,19 +913,19 @@ else{
                 << "\n";
   }
   
-        
-      setlogP_C2(logP,NegLL,cbars,G3,LLconst);
-
-      
-//      Rcpp::Rcout << "Exiting setlogP_C2: "
-//                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-//                  << "\n";
-      
-
+  
+  setlogP_C2(logP,NegLL,cbars,G3,LLconst);
+  
+  
+  //      Rcpp::Rcout << "Exiting setlogP_C2: "
+  //                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+  //                  << "\n";
+  
+  
   
   NumericMatrix::Column logP2 = logP( _, 1);
   
-
+  
   double  maxlogP=max(logP2);
   
   NumericVector PLSD=exp(logP2-maxlogP);
@@ -932,10 +933,10 @@ else{
   double sumP=sum(PLSD);
   
   PLSD=PLSD/sumP;
-
-//  Rcout << "Entering Enveloped sort: " << Rcpp::as<std::string>(Rcpp::Function("Sys.time")()) << "\n";
   
-    
+  //  Rcout << "Entering Enveloped sort: " << Rcpp::as<std::string>(Rcpp::Function("Sys.time")()) << "\n";
+  
+  
   if(sortgrid==true){
     
     if (verbose) {
@@ -975,21 +976,21 @@ else{
 // [[Rcpp::export(".EnvelopeBuild_Ind_Normal_Gamma")]]
 
 List EnvelopeBuild_Ind_Normal_Gamma(NumericVector bStar,NumericMatrix A,
-                     NumericVector y, 
-                     NumericMatrix x,
-                     NumericMatrix mu,
-                     NumericMatrix P,
-                     NumericVector alpha,
-                     NumericVector wt,
-                     std::string family="binomial",
-                     std::string link="logit",
-                     int Gridtype=2, 
-                     int n=1,
-                     bool sortgrid=false
+                                    NumericVector y, 
+                                    NumericMatrix x,
+                                    NumericMatrix mu,
+                                    NumericMatrix P,
+                                    NumericVector alpha,
+                                    NumericVector wt,
+                                    std::string family="binomial",
+                                    std::string link="logit",
+                                    int Gridtype=2, 
+                                    int n=1,
+                                    bool sortgrid=false
 ){
   
   
-//  int progbar=0;
+  //  int progbar=0;
   
   int l1 = A.nrow(), k = A.ncol();
   arma::mat A2(A.begin(), l1, k, false);
@@ -1117,20 +1118,20 @@ List EnvelopeBuild_Ind_Normal_Gamma(NumericVector bStar,NumericMatrix A,
   arma::mat cbars_slope3(cbars_slope.begin(), l2, l1, false); 
   
   
-    // Note: NegLL_2 only added to allow for QC printing of results 
+  // Note: NegLL_2 only added to allow for QC printing of results 
   
   arma::colvec NegLL_2(NegLL.begin(), NegLL.size(), false);
   
   //    G4b.print("tangent points");
   
-//  Rcpp::Rcout << "Gridtype is :"  << Gridtype << std::endl;
-//  Rcpp::Rcout << "Number of Variables in model are :"  << l1 << std::endl;
-//  Rcpp::Rcout << "Number of points in Grid are :"  << l2 << std::endl;
+  //  Rcpp::Rcout << "Gridtype is :"  << Gridtype << std::endl;
+  //  Rcpp::Rcout << "Number of Variables in model are :"  << l1 << std::endl;
+  //  Rcpp::Rcout << "Number of points in Grid are :"  << l2 << std::endl;
   
-
+  
   if(family=="gaussian" ){
     //Rcpp::Rcout << "Finding Values of Log-posteriors:" << std::endl;
-
+    
     // Adjust the slope calculations to split into several terms:
     // (i) Terms from shifted "prior" that does not depend on the dispersion
     // (ii) Constant terms from the actual LL that do not depend on dispersion or beta
@@ -1173,10 +1174,10 @@ List EnvelopeBuild_Ind_Normal_Gamma(NumericVector bStar,NumericMatrix A,
   // Add sorting step back later after modifying EnvSort function
   // Should accomodate ready List
   
-//  if(sortgrid==true){
-//    Rcpp::List outlist=EnvSort(l1,l2,GIndex,G3,cbars,logU,logrt,loglt,logP,LLconst,PLSD,a_1);
-//    return(outlist);
-//  }
+  //  if(sortgrid==true){
+  //    Rcpp::List outlist=EnvSort(l1,l2,GIndex,G3,cbars,logU,logrt,loglt,logP,LLconst,PLSD,a_1);
+  //    return(outlist);
+  //  }
   
   
   return Rcpp::List::create(Rcpp::Named("GridIndex")=GIndex,
@@ -1198,5 +1199,3 @@ List EnvelopeBuild_Ind_Normal_Gamma(NumericVector bStar,NumericMatrix A,
   
   
 }
-
-

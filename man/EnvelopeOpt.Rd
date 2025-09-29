@@ -4,12 +4,17 @@
 \alias{EnvelopeOpt}
 \title{Optimizes Envelope function for simulation}
 \usage{
-EnvelopeOpt(a1, n)
+EnvelopeOpt(a1, n, core_cnt = 1L)
 }
 \arguments{
 \item{a1}{Diagonal elements of data precision matrix for a model in standard form}
 
 \item{n}{Number of draws to generate}
+
+\item{core_cnt}{Integer; number of OpenCL cores or parallel workers available.
+Defaults to 1 for backward compatibility. When >1, the function treats
+envelope build cost as reduced by a factor of core_cnt because construction
+can be parallelized.}
 }
 \value{
 A vector containing information on how many component each 
@@ -21,7 +26,7 @@ the envelope construction and the simulation phase.
 }
 \details{
 This function attempts to find a computationally optimal 
-gridsize by using information on the strenght of the prior and the 
+gridsize by using information on the strength of the prior and the 
 number of iterations desired. Generally, more data (i.e., larger values 
 for the diagonal elements of the precision matrix) will require a larger grid.
 The same also holds when the number of desired draws is higher 

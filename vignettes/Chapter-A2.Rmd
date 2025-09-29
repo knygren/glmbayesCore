@@ -1,12 +1,12 @@
 Yaml
 
 ---
-title: "Chapter A2: Simulation_Methods - Likelihood Subgradient Densities"
+title: "Chapter A2: Simulation Methods - Likelihood Subgradient Densities"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter A2: Simulation_Methods - Likelihood Subgradient Densities}
+  %\VignetteIndexEntry{Chapter A2: Simulation Methods - Likelihood Subgradient Densities}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -373,6 +373,164 @@ When GPU acceleration is available through OpenCL, the Grid construction can be 
   }
 
 
+## 6. Building the Envelope
+
+The implementation of `EnvelopeBuild` follows the envelope construction in Nygren & Nygren (2006) for models in standard form (see Section 3–3.3). The outline below captures the process when each dimension involves three-point tangents. If some dimensions involve only one-point tangents, only the mid-point is used and the intervals become the full real-number line. 
 
 
+### 1. Compute width parameters \( \omega_i \) from the diagonal precision matrix
+
+Let \( \theta^{\ast} \) denote the unique posterior mode. For each dimension \( i \), define:
+
+\[
+\omega_{i} := \frac{\sqrt{2} - \exp\left(-1.20491 - 0.7321 \sqrt{0.5 - \frac{\partial^{2} \log f(\theta^{\ast} \mid y)}{\partial \theta_{i}^{2}}} \right)}{\sqrt{1 - \frac{\partial^{2} \log f(\theta^{\ast} \mid y)}{\partial \theta_{i}^{2}}}}
+\]
+
+The widths \( \omega_i \) are derived from the local curvature of the log-likelihood at the posterior mode. This ensures that the three-interval construction per dimension yields an envelope whose efficiency does not deteriorate with sample size.
+
+### 2. Construct intervals around the posterior mode \( \theta^\star \)
+
+Set:
+
+\[
+\ell_{i,1} = \theta^{\ast}_{i} - 0.5\,\omega_{i}, \quad
+\ell_{i,2} = \theta^{\ast}_{i} + 0.5\,\omega_{i}
+\]
+
+Then define three intervals per dimension:
+
+\[
+A_{i,1} = (-\infty,\ell_{i,1}), \quad
+A_{i,2} = [\ell_{i,1},\ell_{i,2}], \quad
+A_{i,3} = (\ell_{i,2},\infty)
+\]
+
+Let \( J_{i} = \{1,2,3\} \) and define \( J = \prod_{i=1}^{p} J_{i} \), which has \( 3^{p} \) elements. Each \( j \in J \) is a vector \( (j_{1},\ldots,j_{p}) \), and we define:
+
+\[
+A^{\ast}_{j} = \prod_{i=1}^{p} A_{i,j_{i}}
+\]
+
+The collection \( A^{\ast} = \{A^{\ast}_{j} : j \in J\} \) forms a partition of \( \Theta \).
+
+### 3. Select tangency points \( \theta^\star \pm \omega_i \)
+
+For each \( j \in J \), define index sets:
+
+\[
+C_{j1} = \{i : j_{i} = 1\}, \quad
+C_{j2} = \{i : j_{i} = 2\}, \quad
+C_{j3} = \{i : j_{i} = 3\}
+\]
+
+Tangency points \( \bar{\theta}_{j} \) are defined componentwise by:
+
+\[
+\bar{\theta}_{j,i} =
+\begin{cases}
+\theta^{\ast}_{i} - \omega_{i}, & i \in C_{j1} \\
+\theta^{\ast}_{i},              & i \in C_{j2} \\
+\theta^{\ast}_{i} + \omega_{i}, & i \in C_{j3}
+\end{cases}
+\]
+
+These tangency points ensure the envelope touches the log-likelihood at representative points in each interval, guaranteeing dominance and tightness.
+
+### 4. Build the full grid of tangency points
+
+The Cartesian product of per-dimension partitions yields the \( 3^p \) restricted densities described in the paper, ensuring coverage of the full parameter space.
+
+### 5. Evaluate negative log-likelihood and gradients at each grid point
+
+This step constructs the likelihood subgradient densities and facilitates accept–reject sampling. The subgradients \( c(\bar{\theta}) \) are part of the definitions of likelihood subgradient densities (see Definition 2). Both subgradients and negative log-likelihoods (via \( h_{\bar{\theta}}(.) \)) are used during the accept–reject procedure.
+
+- On CPU: via `f2_*` and `f3_*` routines  
+- On GPU: via `f2_f3_opencl`, which computes both together
+
+### 6. Call `Set_Grid_C2_pointwise` to evaluate restricted multivariate normal log-densities
+
+(Claim 2; Remark 5)  
+Each restricted density corresponds to a subset of the partition, normalized as in Remark 5.
+
+### 7. Call `setlogP_C2` to compute component log-probabilities and constants
+
+(Remark 6)  
+The constants \( \tilde{a} \) and mixture weights \( \tilde{p}_i \) are computed explicitly as in Remark 6, ensuring proper normalization of the mixture envelope.
+
+### 8. Normalize probabilities (`PLSD`) and optionally sort grid components
+
+(Claim 2)  
+Normalization ensures the mixture of restricted densities forms a valid dominating density for the posterior. Sorting improves sampling efficiency.
+
+
+## 7. Simulation Execution
+
+The functions `rnnorm_reg_std_cpp()` and `rnnorm_reg_std_cpp_parallel()` use the envelope to generate posterior samples via rejection sampling. Although not exported, these functions are called internally by `rnnorm_reg_cpp()`, which in turn is invoked by the user-facing function `rNormal_reg()`. Together, these routines implement envelope-based sampling for generalized linear models with log-concave likelihood functions and multivariate normal priors.
+
+The envelope provides a mixture of restricted likelihood–subgradient densities, each defined over a region \( A_i \), with associated mixture weights \( \tilde{p}_i \) stored in `PLSD`. The sampling proceeds as follows:
+
+1. **Draw a region index.**  
+   A region index \( J(i) \) is drawn from the discrete distribution defined by `PLSD`.
+
+2. **Draw a candidate from the restricted density.**  
+   A candidate \( \theta_i \) is drawn from the restricted density \( q^{\bar{\theta}_{J(i)}}_{A_{J(i)}} \), using the normal CDF bounds `loglt` and `logrt`, and subgradient vector `cbars`. Simulation for each dimension uses the internal C++ function `ctrnorm_cpp()`, which explicitly uses these inputs.
+
+3. **Compute the log-likelihood at the candidate.**  
+   The log-likelihood \( \log f(y \mid \theta_i) \) is computed and stored in `testll[0]` using the appropriate likelihood function `f2`.
+
+The acceptance test is performed using the inequality
+\[
+\log(U_2) \le \mathrm{LLconst}[J(i)] + \mathrm{cbars}[J(i), ]^{T} \theta_i + \log f(y \mid \theta_i),
+\]
+which is equivalent to
+\[
+\log(U_2) \le \log f(y \mid \theta_i) - \left( \log f(y \mid \bar{\theta}_{J(i)}) - c(\bar{\theta}_{J(i)})^{T}(\theta_i - \bar{\theta}_{J(i)}) \right).
+\]
+
+Where:
+- **`LLconst[J(i)]`:** stores the precomputed quantity
+  \[
+  -\log f(y \mid \bar{\theta}_{J(i)}) - c(\bar{\theta}_{J(i)})^{T} \bar{\theta}_{J(i)},
+  \]
+  computed during envelope construction via `setlogP_C2()`.
+- **`cbars[J(i), ]`:** the precomputed subgradient vector \( c(\bar{\theta}_{J(i)}) \), extracted via `cbars(J(i), _)`. It defines the exponential tilt direction used to evaluate the envelope.
+- **`testll[0]`:** the log-likelihood at the candidate draw \( \theta_i \), evaluated using the model specified by `family` and `link`.
+- **\(-\log(U_2)\):** the threshold from a uniform draw \( U_2 \sim \mathrm{Unif}(0,1) \).
+
+The right-hand side of this inequality is always non-positive, and equals zero when \( \theta_i = \bar{\theta}_{J(i)} \). This reflects the fact that the envelope is tangent to the log-likelihood at each \( \bar{\theta}_j \), and lies above it elsewhere.
+
+This procedure guarantees that accepted samples are drawn from the posterior \( \pi(\theta \mid y) \). The envelope ensures bounded rejection probability, and the mixture structure allows efficient sampling across regions. The output `out` contains accepted draws, and `draws` records the number of attempts per sample.
+
+The components returned by `EnvelopeBuild()` are used in specific steps of the sampling procedure as follows:
+
+- **`PLSD`**: used to randomly select a region index \( J(i) \) from the envelope mixture.  
+- **`loglt` and `logrt`**: define the truncated normal bounds for each dimension, used together with `cbars` to generate candidate values \( \theta_i \).  
+- **`cbars`**: provides the subgradient vectors \( c(\bar{\theta}_j) \) used both for candidate generation and for computing the acceptance test.  
+- **`LLconst`**: stores precomputed constants used in the acceptance inequality, avoiding recomputation of posterior terms at tangency points.  
+- **`logU`**: stores the per-dimension log-density contributions for each region, computed during envelope setup. These values are summed to produce `logP`, which determines the mixture weights `PLSD`.  
+- **`logP`**: contains the total log-probabilities for each grid component, which are normalized to form the mixture weights `PLSD`.  
+- **`thetabars`**: stores the tangency points \( \bar{\theta}_j \) used to define subgradients and region-specific densities.  
+- **`GridIndex`**: encodes the sampling type (tail, center, line) used for each dimension and region, guiding how each coordinate is simulated.  
+
+## 8. Post-Processing and Output
+
+This section documents the exact reverse transformations applied to sampled draws and the structure of the object returned by `.rnnorm_reg_cpp`.
+
+### 8.1 Reverse-transformation pipeline
+- **Undo L3 transform**: left-multiply the matrix of standardized draws by `L3Inv`.  
+- **Undo L2 transform**: left-multiply the result by `L2Inv`.  
+- **Restore prior mean**: add the original prior mean vector `mu` to every draw.  
+- **Optional diagnostics**: recompute the user-supplied log-posterior at the transformed draws when requested.
+
+### 8.2 Returned object (fields you can rely on)
+- **coefficients**: n × k matrix of posterior draws on the original parameter scale (returned as `trans(out2)` in the C++ routing function).  
+- **coef.mode**: k-vector containing the posterior mode on the original scale (optimizer output + `mu`).  
+- **dispersion**: final dispersion used (1 for Poisson/Binomial; user value otherwise).  
+- **Prior**: list with components **mean** and **Precision** (original `mu` and `P`).  
+- **offset**: offset vector passed through.  
+- **prior.weights**: original weights (before dispersion scaling).  
+- **y**, **x**: data echoed for convenience.  
+- **fit**: the full `optim()` return list used to obtain the posterior mode and Hessian.  
+- **iters**: integer vector of attempts per accepted draw (sampler output).  
+- **Envelope**: envelope artifact returned by `EnvelopeBuild_c` (mixture weights, tangency points, `LLconst`, `cbars`, `loglt`, `logrt`, `GridIndex`, etc.).
 
