@@ -11,6 +11,9 @@ static tbb::mutex f2_mutex;
 #endif
 #include <string>
 #include "rng_utils.h"  // for safe_runif()
+#include <atomic>
+#include <memory>
+
 
 using namespace Rcpp;
 using namespace RcppParallel;
@@ -43,6 +46,11 @@ struct rnnorm_reg_worker : public RcppParallel::Worker {
   RMatrix<double>       out;       // accepted draws
   RVector<double>       draws;     // trial counts
   int                   ncol;      // dimensionality
+
+  // --- Optional test controls ---
+  // shared atomic flag: set to 1 by any thread if it hits the cap
+  std::shared_ptr<std::atomic<int>> any_maxdraw_flag; // default nullptr (no reporting)
+  int                   max_draws;                   // -1 => no per-index cap
   
   // --- Constructor ---
   rnnorm_reg_worker(
@@ -62,7 +70,9 @@ struct rnnorm_reg_worker : public RcppParallel::Worker {
     const CharacterVector& link_,
     int progbar_,
     RMatrix<double>& out_,
-    RVector<double>& draws_
+    RVector<double>& draws_,
+    std::shared_ptr<std::atomic<int>> any_maxdraw_flag_ = nullptr, // optional shared flag
+    int max_draws_ = -1                                              // optional per-index cap
   )
     : n(n_),
       y_r(y_r_), x_r(x_r_), mu_r(mu_r_), P_r(P_r_),
@@ -71,6 +81,10 @@ struct rnnorm_reg_worker : public RcppParallel::Worker {
       loglt(loglt_), logrt(logrt_), cbars(cbars_),
       family(family_), link(link_), progbar(progbar_),
       out(out_), draws(draws_), ncol(out_.ncol())
+    , any_maxdraw_flag(any_maxdraw_flag_),
+      max_draws(max_draws_)
+    
+      
   {}
   
   // --- Parallel Loop ---

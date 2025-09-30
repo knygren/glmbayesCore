@@ -25,6 +25,7 @@
 #' \item{LLconst}{A vector containing constant for each component of the grid used during the accept-reject procedure}
 #' \item{logP}{A matrix containing log-probabilities related to the components of the grid}
 #' \item{PLSD}{A vector containing the probability of each component in the Grid}
+#' \item{E_draws}{A containing a computed theoretical bound on the expected number of draws}
 #' @details This function sorts the envelope in descending order based on the 
 #' probability associated with each component in the Grid. Sorting helps 
 #' speed up simulation once the envelope is constructed.
@@ -34,7 +35,7 @@
 
 
 
-EnvelopeSort<-function(l1,l2,GIndex,G3,cbars,logU,logrt,loglt,logP,LLconst,PLSD,a1){
+EnvelopeSort<-function(l1,l2,GIndex,G3,cbars,logU,logrt,loglt,logP,LLconst,PLSD,a1,E_draws){
   
   Envelope<-data.frame(GIndex=GIndex,G3=G3,cbars=cbars,logU=logU,logrt=logrt,loglt=loglt,logP=logP[,1],LLconst=LLconst,PLSD=PLSD)
   Envelope<-Envelope[order(-Envelope$PLSD),]
@@ -44,14 +45,14 @@ EnvelopeSort<-function(l1,l2,GIndex,G3,cbars,logU,logrt,loglt,logP,LLconst,PLSD,
                   cbars=matrix(Envelope[1:l2,(2*l1+1):(3*l1)],nrow=l2,ncol=l1),logU=Envelope[1:l2,(3*l1+1):(4*l1)],
                   logrt=matrix(Envelope[1:l2,(4*l1+1):(5*l1)],nrow=l2,ncol=l1),
                   loglt=matrix(Envelope[1:l2,(5*l1+1):(6*l1)],nrow=l2,ncol=l1),
-                  LLconst=Envelope$LLconst,logP=Envelope$logP,PLSD=Envelope$PLSD,a1=a1)
+                  LLconst=Envelope$LLconst,logP=Envelope$logP,PLSD=Envelope$PLSD,a1=a1,E_draws=E_draws)
   }
   
   else{
     outlist<-list(GridIndex=Envelope[1:l2,1:l1],thetabars=Envelope[1:l2,(l1+1):(2*l1)],
                   cbars=as.matrix(Envelope[1:l2,(2*l1+1):(3*l1)]),logU=Envelope[1:l2,(3*l1+1):(4*l1)],
                   logrt=as.matrix(Envelope[1:l2,(4*l1+1):(5*l1)]),
-                  loglt=as.matrix(Envelope[1:l2,(5*l1+1):(6*l1)]),LLconst=Envelope$LLconst,logP=Envelope$logP,PLSD=Envelope$PLSD,a1=a1)
+                  loglt=as.matrix(Envelope[1:l2,(5*l1+1):(6*l1)]),LLconst=Envelope$LLconst,logP=Envelope$logP,PLSD=Envelope$PLSD,a1=a1,E_draws=E_draws)
     
   }
   

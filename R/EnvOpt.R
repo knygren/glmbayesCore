@@ -58,7 +58,7 @@ EnvelopeOpt<-function(a1,n,core_cnt=1L){
   minindex<-0
   for(j in 1:(l1+1)){if(evalest[j]==min(evalest)){minindex<-j}}
   
-  message("Estimated draws per Acceptance: ", slopeest[minindex])
+##  message("Estimated draws per Acceptance: ", slopeest[minindex])
   
   dimcount[minindex,]
   

@@ -18,6 +18,9 @@
 #include "rng_utils.h"
 #include "rnnorm_reg_worker.h"
 
+#include <atomic>
+#include <memory>
+
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(RcppParallel)]]
 
@@ -437,6 +440,14 @@ List rnnorm_reg_std_cpp_parallel(
   Rcpp::NumericMatrix logrt   = Envelope["logrt"];
   Rcpp::NumericMatrix cbars   = Envelope["cbars"];
   Rcpp::NumericVector LLconst = Envelope["LLconst"];
+
+  double E_draws = NA_REAL;
+  if (Envelope.containsElementNamed("E_draws")) {
+    E_draws = Rcpp::as<double>(Envelope["E_draws"]);
+  }
+//  Rcpp::Rcout << "Estimated draws per Acceptance: " << E_draws << "\n";  
+  
+
   
   // Convert to Armadillo (deep-safe versions)
   arma::vec PLSD2    = Rcpp::as<arma::vec>(PLSD);
@@ -471,6 +482,30 @@ List rnnorm_reg_std_cpp_parallel(
   //     out, draws
   // );
   
+  // create shared atomic flag (init 0)
+  auto any_flag = std::make_shared<std::atomic<int>>(0);
+  
+  
+  double p_max_draws = 0.001;
+  double p_accept = 1.0 / E_draws;
+  
+  double max_draws = std::ceil(std::log(p_max_draws) / std::log(1.0 - p_accept));
+  
+  // construct worker for test run (pass shared flag, use default max_draws)
+  rnnorm_reg_worker test_worker(
+      n,
+      y_r, x_r, mu_r, P_r,
+      alpha_r, wt_r,
+      PLSD2, LLconst2, loglt2, logrt2, cbars2,
+      family, link,
+      progbar,
+      out_r, draws_r,
+      any_flag,    // shared atomic flag
+      max_draws           // max_draws (optional; keep -1 for no cap)
+  );
+  
+  
+  
   rnnorm_reg_worker worker(
       n,
       y_r, x_r, mu_r, P_r,
@@ -478,12 +513,71 @@ List rnnorm_reg_std_cpp_parallel(
       PLSD2, LLconst2, loglt2, logrt2, cbars2, 
       family, link,
       progbar,
-      out_r, draws_r
+      out_r, draws_r,
+      any_flag,    // shared atomic flag
+      -1
   );
   
-     /// Calling the workers (Paralle or - for testing - serially)
+  // Choose a small serial test size (set before use)
+  int m_test = 1;                         // or set to std::min(n, default_threads)
+  
+  // --- single-threaded test run with timing and diagnostic print
+  auto t0 = std::chrono::steady_clock::now();
+  test_worker(0, m_test);                      // deterministic single-threaded test
+  auto t1 = std::chrono::steady_clock::now();
+  auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+  
+  // inspect the flag after the test
+  int any_hit_after_test = any_flag->load(std::memory_order_relaxed);
+//  Rcpp::Rcout << "[TEST] any_maxdraw_flag = " << any_hit_after_test << "\n";
+  
+  /////////////////////////////////////////////////
+  
+  if (any_hit_after_test != 0) {
+    Rcpp::Rcout << "[WARN] One or more indices hit the max_draws cap during the test.\n";
     
-      RcppParallel::parallelFor(0, n, worker);  // grain size == n → serial chunk
+    // Use R's readline via Rcpp to prompt the user from C++
+    Rcpp::Function readline("readline");
+    std::string prompt = "Enter 1 to continue full run, 2 to stop and return partial results: ";
+    
+    while (true) {
+      // call R's readline which is safe in R environments
+      SEXP ans_sexp = readline(Rcpp::wrap(prompt));
+      std::string ans = Rcpp::as<std::string>(ans_sexp);
+      // trim whitespace
+      auto ltrim = [](std::string &s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch){ return !std::isspace(ch); }));
+      };
+      auto rtrim = [](std::string &s) {
+        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch){ return !std::isspace(ch); }).base(), s.end());
+      };
+      ltrim(ans); rtrim(ans);
+      if (ans == "1" || ans == "continue" || ans == "y" || ans == "yes") {
+        Rcpp::Rcout << "[INFO] User chose to continue full run.\n";
+        break; // fall through to construct/run full worker
+      } else if (ans == "2" || ans == "stop" || ans == "n" || ans == "no") {
+        Rcpp::Rcout << "[INFO] User chose to stop. Returning partial test results.\n";
+        return List::create(
+          Named("out")         = out,
+          Named("draws")       = draws,
+          Named("any_maxdraw") = any_hit_after_test,
+          Named("message")     = std::string("Stopped by user after test")
+        );
+      } else {
+        Rcpp::Rcout << "Invalid input. Please enter 1 (continue) or 2 (stop).\n";
+      }
+    } // end prompt loop
+  }
+  
+  
+  
+  ////////////////////////////////////////////////////////////////
+  
+  
+  
+  
+  
+  RcppParallel::parallelFor(0, n, worker);  // grain size == n → serial chunk
 //      worker(0, n);  // Call serially
 
     
@@ -671,7 +765,12 @@ Rcpp::List rnnorm_reg_cpp(int n,NumericVector y,NumericMatrix x,
   
   //  Rcpp::Rcout << "Finished Envelope Creation:" << std::endl;
   
-  
+  double E_draws = NA_REAL;
+  if (Envelope.containsElementNamed("E_draws")) {
+    E_draws = Rcpp::as<double>(Envelope["E_draws"]);
+  }
+
+  Rcpp::Rcout << "Estimated draws per Acceptance: " << E_draws << "\n";  
   
   
   

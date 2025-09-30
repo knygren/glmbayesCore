@@ -16,7 +16,8 @@ EnvelopeSort(
   logP,
   LLconst,
   PLSD,
-  a1
+  a1,
+  E_draws
 )
 }
 \arguments{
@@ -55,6 +56,7 @@ The function returns a list consisting of the following components (the first si
 \item{LLconst}{A vector containing constant for each component of the grid used during the accept-reject procedure}
 \item{logP}{A matrix containing log-probabilities related to the components of the grid}
 \item{PLSD}{A vector containing the probability of each component in the Grid}
+\item{E_draws}{A containing a computed theoretical bound on the expected number of draws}
 }
 \description{
 Sorts Enveloping function for simulation.

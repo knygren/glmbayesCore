@@ -16,28 +16,6 @@
 
   // operator() implements the parallel loop
   void rnnorm_reg_worker::operator()(std::size_t begin, std::size_t end) {
-    //    Rcpp::RNGScope scope;  // enable RNG in threads
-    
-    
-    // Wrap R-native inputs into thread-safe views
-    // RcppParallel::RVector<double> y_r(y);           // observed counts
-    // RcppParallel::RMatrix<double> x_r(x);           // design matrix
-    // RcppParallel::RMatrix<double> mu_r(mu);         // mode vector
-    // RcppParallel::RMatrix<double> P_r(P);           // precision matrix
-    // RcppParallel::RVector<double> alpha_r(alpha);   // predictor offset
-    // RcppParallel::RVector<double> wt_r(wt);         // observation weights
-    
-    
-    
-    // Convert NumericMatrix and NumericVector inputs to Armadillo
-    //    arma::vec y2(y.begin(), y.size(), false);
-    //    arma::vec alpha2(alpha.begin(), alpha.size(), false);
-    //    arma::vec wt2(wt.begin(), wt.size(), false);
-    
-    //    arma::mat x2(x.begin(), x.nrow(), x.ncol(), false);
-    //    arma::mat mu2(mu.begin(), mu.nrow(), mu.ncol(), false);
-    //    arma::mat P2(P.begin(), P.nrow(), P.ncol(), false);        
-    
     
     // Create Armadillo views directly from RMatrix/RVector memory
     arma::vec y2(y_r.begin(), y_r.length(), false);
@@ -64,26 +42,12 @@
     arma::rowvec        cbartemp2(cbartemp_buf.data(), l1, false);
     
     
-    
-    //NumericVector cbartemp=cbars(0,_);
-    //arma::rowvec cbartemp2(cbartemp.begin(),l1,false);
-    
-    
-    
-    //    NumericMatrix       btemp(l1,1);
-    //    arma::mat           btemp2(btemp.begin(),     l1,1,false);
-    
-    //    Rcpp::NumericMatrix btemp(l1,1);                     // stays for interface
-    //    RcppParallel::RMatrix<double> btemp_r(btemp);        // thread-safe wrapper
-    //    arma::mat btemp2(btemp_r.begin(), l1, 1, false);     // links directly to RMatrix view
-    
     std::vector<double> btemp_buf(l1);
     arma::mat btemp2(btemp_buf.data(), l1, 1, false);
     RcppParallel::RMatrix<double> btemp_r(btemp_buf.data(), l1, 1); // optional: only if still needed
     
     
     arma::mat testtemp2(1, 1);  // Allocated directly on the heap
-    //    NumericVector       testll(1);
     arma::vec testll2(1, arma::fill::none);  // Uninitialized vector of size m1
     
     /////////////////////////////////////////////////////////
@@ -93,10 +57,7 @@
     
     // Main loop over indices
     for (std::size_t i = begin; i < end; ++i) {
-      
-      
-      
-      
+
       draws[i] = 1.0;  
       
       
@@ -295,21 +256,48 @@
           
           // 5) Accept/reject logic
  
- //if (std::fmod(draws[i], 100.0) == 0.0) {
-//   if(RcppParallel::RcppParallelInterrupt()){
-//    return; 
-//   }
- //}
- 
-          
+       
+        
           if (test >= 0.0) {
             
             a1 = 1.0;            // accept
+            
           } else {
             
-            draws[i]=draws[i]+1.0;     // reject and try again
+            // keep existing behavior: increment trial count
+            draws[i] = draws[i] + 1.0;
+            
+            // effective cap: use max_draws when provided, otherwise use legacy 1000 for diagnostic
+            int cap = (max_draws >= 0) ? max_draws : 1000;
+            
+            // print exactly once when we hit the cap (use your existing mutex for thread-safety)
+            if (static_cast<int>(draws[i]) == cap) {
+              tbb::mutex::scoped_lock lock(f2_mutex);
+              Rcpp::Rcout << "[WARN] index=" << i << " reached draws=" << draws[i]
+                          << " (cap=" << cap << ") — forcing a1=1.0 to avoid infinite loop\n";
+              
+              Rcpp::Rcout << "[DEBUG] Acceptance test breakdown:\n";
+              Rcpp::Rcout << "  LLconst[" << J << "] = " << LLconst[J] << "\n";
+              Rcpp::Rcout << "  testtemp2(0,0) = " << testtemp2(0,0) << "\n";
+              Rcpp::Rcout << "  log(U2) = " << std::log(U2) << "\n";
+              Rcpp::Rcout << "  testll2[0] = " << testll2[0] << "\n";
+              Rcpp::Rcout << "  test = " << test << "\n";            
+            
+            
+            }
+            
+            
+            
+            // when cap reached or exceeded, set the atomic flag (if provided) and force exit
+            if (static_cast<int>(draws[i]) >= cap) {
+              if (any_maxdraw_flag) {
+                any_maxdraw_flag->store(1, std::memory_order_relaxed);
+              }
+              a1 = 1.0;   // force acceptance / break out of while loop
+            }
             
           }
+          
           
           
         }

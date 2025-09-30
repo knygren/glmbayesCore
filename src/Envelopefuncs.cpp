@@ -216,10 +216,10 @@ List EnvelopeBuild_c(NumericVector bStar,
     // Temporarily scale n to encourage richer envelopes when GPU parallelism is available
     int scaled_n = std::max(1, n * core_CNT);
     
-    if (verbose) {
-      Rcpp::Rcout << "[INFO] Scaling n from " << n << " to " << scaled_n
-                  << " for envelope optimization.\n";
-    }
+//    if (verbose) {
+//      Rcpp::Rcout << "[INFO] Scaling n from " << n << " to " << scaled_n
+//                  << " for envelope optimization.\n";
+//    }
     
 //    gridindex = EnvelopeOpt(a_2, scaled_n,core_CNT);
     gridindex = EnvelopeOpt(a_2, n,core_CNT);
@@ -275,7 +275,13 @@ List EnvelopeBuild_c(NumericVector bStar,
    */
   
   
+  double E_draws=1.0L;
   
+//  Rcpp::Rcout << "[DEBUG] half=" << i 
+//              << " E_draws=" << E_draws << "\n";
+  
+  
+    
   for(i=0;i<l1;i++){
     
     if(Gridtype==1){
@@ -287,11 +293,15 @@ List EnvelopeBuild_c(NumericVector bStar,
         Temp2=G1(1,i);
         G2[i]=NumericVector::create(Temp2);
         GIndex1[i]=NumericVector::create(4.0);
+        E_draws=E_draws*sqrt(1+a_2[i]);
+        
       }
       if(sqrt(1+a_2[i])>(2/sqrt(M_PI))){
         Temp1=G1(_,i);
         G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
         GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
+        E_draws=E_draws*(2/sqrt(M_PI));
+                               
       }    
     }  
     if(Gridtype==2){
@@ -299,11 +309,13 @@ List EnvelopeBuild_c(NumericVector bStar,
         Temp2=G1(1,i);
         G2[i]=NumericVector::create(Temp2);
         GIndex1[i]=NumericVector::create(4.0);
+        E_draws=E_draws*sqrt(1+a_2[i]);
       }
       if(gridindex[i]==3){
         Temp1=G1(_,i);
         G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
         GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
+        E_draws=E_draws*(2/sqrt(M_PI));
       }
     }
     
@@ -311,15 +323,22 @@ List EnvelopeBuild_c(NumericVector bStar,
       Temp1=G1(_,i);
       G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
       GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
+      E_draws=E_draws*(2/sqrt(M_PI));
     }
     
     if(Gridtype==4){
       Temp2=G1(1,i);
       G2[i]=NumericVector::create(Temp2);
       GIndex1[i]=NumericVector::create(4.0);
+      E_draws=E_draws*sqrt(1+a_2[i]);
+      
     }
-    
-    
+  
+  
+  // after updating E_draws, print it
+//  Rcpp::Rcout << "[DEBUG] i=" << i 
+//              << " E_draws=" << E_draws << "\n";
+  
     
   }
   
@@ -947,7 +966,7 @@ List EnvelopeBuild_c(NumericVector bStar,
     }
     
     
-    Rcpp::List outlist=EnvSort(l1,l2,GIndex,G3,cbars,logU,logrt,loglt,logP,LLconst,PLSD,a_1);
+    Rcpp::List outlist=EnvSort(l1,l2,GIndex,G3,cbars,logU,logrt,loglt,logP,LLconst,PLSD,a_1,E_draws);
     
     return(outlist);
     
@@ -963,8 +982,9 @@ List EnvelopeBuild_c(NumericVector bStar,
                             Rcpp::Named("LLconst")=LLconst,
                             Rcpp::Named("logP")=logP(_,0),
                             Rcpp::Named("PLSD")=PLSD,
-                            Rcpp::Named("a1")=a_1
-  );
+                            Rcpp::Named("a1")=a_1,
+                            Rcpp::Named("E_draws")=E_draws
+                              );
   
   
 }
