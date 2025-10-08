@@ -399,6 +399,99 @@ List EnvelopeBuild_c(NumericVector bStar,
   arma::colvec NegLL_2(NegLL.begin(), NegLL.size(), false);
   
   
+  //////////////////  Pilot Phase
+
+  
+  int m1_total = G4.ncol();
+  int y_obs = y.size();  // or however you extract observation count
+  
+  double obs_factor = std::min(1.0, 100.0 / (double)y_obs);  // dampens pilot size for large n
+//  double frac_A = 0.01 * obs_factor;  // base fraction scaled down
+//  double frac_B = 0.02 * obs_factor;
+  
+  double frac_A = 0.01 * obs_factor;  // base fraction scaled down
+  double frac_B = 0.02 * obs_factor;
+  
+  
+    int m1_pilot_A = std::max(100, (int)(m1_total * frac_A));
+  int m1_pilot_B = std::max(m1_pilot_A + 100, (int)(m1_total * frac_B));
+  
+
+  double est_time_sec = NA_REAL;
+  
+  if (m1_total > 50000 && use_opencl) {
+    auto slice_grid = [&](int m1_pilot) {
+      Rcpp::NumericMatrix G4_pilot(G4.nrow(), m1_pilot);
+      for (int j = 0; j < m1_pilot; ++j)
+        for (int i = 0; i < G4.nrow(); ++i)
+          G4_pilot(i, j) = G4(i, j);
+      return G4_pilot;
+    };
+    
+    // Run Pilot A (warm-up, discard timing)
+    auto G4_pilot_A = slice_grid(m1_pilot_A);
+    Rcpp::List warmup_A = f2_f3_opencl(family, link, G4_pilot_A, y, x, mu, P, alpha, wt, 0);
+
+
+    // Run Pilot A again (timed)
+    auto t0A = std::chrono::high_resolution_clock::now();
+    Rcpp::List pilot_A = f2_f3_opencl(family, link, G4_pilot_A, y, x, mu, P, alpha, wt, 0);
+    auto t1A = std::chrono::high_resolution_clock::now();
+    double time_A = std::chrono::duration<double>(t1A - t0A).count();
+    
+    // Run Pilot B (timed)
+    auto G4_pilot_B = slice_grid(m1_pilot_B);
+    
+
+    auto t0B = std::chrono::high_resolution_clock::now();
+    Rcpp::List pilot_B = f2_f3_opencl(family, link, G4_pilot_B, y, x, mu, P, alpha, wt, 0);
+    auto t1B = std::chrono::high_resolution_clock::now();
+    double time_B = std::chrono::duration<double>(t1B - t0B).count();
+    
+    // Estimate per-grid cost and fixed cost
+    double per_grid_cost = (time_B - time_A) / std::max(1.0, (double)(m1_pilot_B - m1_pilot_A));
+    double fixed_cost = time_A - m1_pilot_A * per_grid_cost;
+    
+    if (per_grid_cost <= 0.0) {
+      Rcpp::Rcout << "[WARNING] Negative per-grid cost — falling back to Pilot B average.\n";
+      per_grid_cost = time_B / m1_pilot_B;
+      fixed_cost = 0.0;
+    }
+    
+    
+    est_time_sec = fixed_cost + per_grid_cost * m1_total;
+    
+    
+    long total = static_cast<long>(std::round(est_time_sec));
+    long h = total / 3600;
+    long m = (total % 3600) / 60;
+    long s = total % 60;
+    
+    Rcpp::Rcout << "Estimated full f2_f3 evaluation time: "
+                << est_time_sec << " seconds ("
+                << h << "h " << m << "m " << s << "s)"
+                << " (fixed=" << fixed_cost
+                << ", per-grid=" << per_grid_cost << ").\n"
+                << "Note: estimate is approximate and may vary with system load.\n";
+    
+  }
+  
+  
+  
+  if (est_time_sec > 300.0) {
+    Rcpp::Rcout << "\nEstimated run time exceeds 5 minutes (" << est_time_sec << " seconds).\n";
+    Rcpp::Rcout << "Do you want to continue? [y/N]: ";
+    Rcpp::Function readline("readline");
+    std::string response = Rcpp::as<std::string>(readline("Do you want to continue? [y/N]: "));
+    
+    if (response != "y" && response != "Y") {
+      Rcpp::Rcout << "Aborting full run per user choice.\n";
+      Rcpp::stop("User aborted run due to estimated time exceeding threshold.");
+    } else {
+      Rcpp::Rcout << "Proceeding with full run...\n";
+    }
+  }
+  
   
   
   //    G4b.print("tangent points");

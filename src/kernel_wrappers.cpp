@@ -490,7 +490,7 @@ Rcpp::List f2_f3_opencl(
     "\n" +nmath_source   
   + "\n" +   ksrc;
   
-  
+
   
   f2_f3_kernel_runner(
     all_src,
