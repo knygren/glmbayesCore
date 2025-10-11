@@ -264,6 +264,89 @@ double run_opencl_pilot(const Rcpp::NumericMatrix& G4,
 
 
 
+Rcpp::List f2_f3_non_opencl(
+    std::string family,
+    std::string link,
+    Rcpp::NumericMatrix  b,
+    Rcpp::NumericVector  y,
+    Rcpp::NumericMatrix  x,
+    Rcpp::NumericMatrix  mu,
+    Rcpp::NumericMatrix  P,
+    Rcpp::NumericVector  alpha,
+    Rcpp::NumericVector  wt,
+    int                  progbar
+) {
+  int l2 = b.nrow(); // grid points
+  int l1 = b.ncol(); // parameters
+  
+  Rcpp::NumericVector NegLL(l2);
+  Rcpp::NumericMatrix cbars(l2, l1);
+  arma::mat cbars2(cbars.begin(), l2, l1, false);
+  
+  // --- binomial family ---
+  if (family == "binomial" && link == "logit") {
+    NegLL  = f2_binomial_logit(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_binomial_logit(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  else if (family == "binomial" && link == "probit") {
+    NegLL  = f2_binomial_probit(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_binomial_probit(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  else if (family == "binomial" && link == "cloglog") {
+    NegLL  = f2_binomial_cloglog(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_binomial_cloglog(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  
+  // --- quasibinomial family (reuse binomial kernels) ---
+  else if (family == "quasibinomial" && link == "logit") {
+    NegLL  = f2_binomial_logit(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_binomial_logit(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  else if (family == "quasibinomial" && link == "probit") {
+    NegLL  = f2_binomial_probit(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_binomial_probit(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  else if (family == "quasibinomial" && link == "cloglog") {
+    NegLL  = f2_binomial_cloglog(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_binomial_cloglog(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  
+  // --- poisson family ---
+  else if (family == "poisson") {
+    NegLL  = f2_poisson(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_poisson(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  
+  // --- quasipoisson family (reuse poisson kernels) ---
+  else if (family == "quasipoisson") {
+    NegLL  = f2_poisson(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_poisson(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  
+  // --- gamma family ---
+  else if (family == "Gamma") {
+    NegLL  = f2_gamma(b, y, x, mu, P, alpha, wt, progbar);
+    cbars2 = f3_gamma(b, y, x, mu, P, alpha, wt, progbar);
+  }
+  
+  // --- gaussian family ---
+  else if (family == "gaussian") {
+    NegLL  = f2_gaussian(b, y, x, mu, P, alpha, wt);
+    cbars2 = f3_gaussian(b, y, x, mu, P, alpha, wt);
+  }
+  
+  else {
+    Rcpp::stop("Unsupported family/link combination in f2_f3_non_opencl: " +
+      family + "/" + link);
+  }
+  
+  return Rcpp::List::create(
+    Rcpp::Named("qf")   = NegLL,
+    Rcpp::Named("grad") = cbars2
+  );
+}
+
+
 
 
 // [[Rcpp::export(".EnvelopeBuild_cpp")]]
@@ -567,501 +650,550 @@ List EnvelopeBuild_c(NumericVector bStar,
                                      family, link, use_opencl, verbose);
  }
   
-
-  //    G4b.print("tangent points");
+  ///// New simpler paths ///////////////////////////
   
-  //  Rcpp::Rcout << "Gridtype is :"  << Gridtype << std::endl;
-  //  Rcpp::Rcout << "Number of Variables in model are :"  << l1 << std::endl;
-  //  Rcpp::Rcout << "Number of points in Grid are :"  << l2 << std::endl;
   
-  if( family=="binomial" && link=="logit"){
-    
-    if (verbose) {
-      
-      Rcpp::Rcout << "Initiating NegLL Calculations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    
-    if(use_opencl==0 ){
-      NegLL=f2_binomial_logit(G4,y, x, mu, P, alpha, wt,progbar);  
-      
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      cbars2=f3_binomial_logit(G4,y, x,mu,P,alpha,wt,progbar);
-      
-      
-    }
-    
-    else{
-      
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      Rcpp::List prepGrad_v3= f2_f3_opencl(
-        family,
-        link,
-        G4,          // NumericMatrix b
-        y,           // NumericVector y
-        x,           // NumericMatrix x
-        mu,          // NumericMatrix mu 
-        P,           // NumericMatrix P
-        alpha,       // NumericVector alpha
-        wt,          // NumericVector wt
-        progbar     // int progbar
-      );
-      
-      
-      NegLL = prepGrad_v3["qf"];
-      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-      
-      
-      
-    }
-    
-    
-  }
-  if(family=="binomial"  && link=="probit"){
-    
-    if(use_opencl==0 ){
-      
-      if (verbose) {
-        
-        Rcpp::Rcout << "Initiating NegLL Calculations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      NegLL=f2_binomial_probit(G4,y, x, mu, P, alpha, wt,progbar);  
-      
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      cbars2=f3_binomial_probit(G4,y, x,mu,P,alpha,wt,progbar);
-      
-      
-    }
-    
-    else{
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      Rcpp::List prepGrad_v3= f2_f3_opencl(
-        family,
-        link,
-        G4,          // NumericMatrix b
-        y,           // NumericVector y
-        x,           // NumericMatrix x
-        mu,          // NumericMatrix mu 
-        P,           // NumericMatrix P
-        alpha,       // NumericVector alpha
-        wt,          // NumericVector wt
-        progbar     // int progbar
-      );
-      
-      
-      NegLL = prepGrad_v3["qf"];
-      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-      
-      
-      
-    }    
-    
-    
-  }
-  if(family=="binomial"   && link=="cloglog"){
-    
-    if(use_opencl==0 ){
-      
-      
-      if (verbose) {
-        
-        Rcpp::Rcout << "Initiating NegLL Calculations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      NegLL=f2_binomial_cloglog(G4,y, x, mu, P, alpha, wt,progbar);  
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      cbars2=f3_binomial_cloglog(G4,y, x,mu,P,alpha,wt,progbar);
-      
-      
-      
-    }
-    
-    else{
-      
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      Rcpp::List prepGrad_v3= f2_f3_opencl(
-        family,
-        link,
-        G4,          // NumericMatrix b
-        y,           // NumericVector y
-        x,           // NumericMatrix x
-        mu,          // NumericMatrix mu 
-        P,           // NumericMatrix P
-        alpha,       // NumericVector alpha
-        wt,          // NumericVector wt
-        progbar     // int progbar
-      );
-      
-      
-      
-      NegLL = prepGrad_v3["qf"];
-      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-      
-      
-      
-    }
-    
-  }
+  Rcpp::List prepGrad;
+ 
+ if (use_opencl == 1 && family != "gaussian") {
+   // OpenCL path for supported families
+   if (verbose) {
+     Rcpp::Rcout << "Initiating f2_f3_opencl: "
+                 << Rcpp::as<std::string>(
+     Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
+     << "\n";
+   }
+   
+   prepGrad = f2_f3_opencl(
+     family, link,
+     G4, y, x, mu, P, alpha, wt, progbar
+   );
+ } else {
+   // CPU fallback (either use_opencl==0, or family==gaussian)
+   if (verbose) {
+     Rcpp::Rcout << "Initiating f2_f3_non_opencl: "
+                 << Rcpp::as<std::string>(
+     Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
+     << "\n";
+   }
+   
+   prepGrad = f2_f3_non_opencl(
+     family, link,
+     G4, y, x, mu, P, alpha, wt, progbar
+   );
+ }
+ 
+ // Unpack results (same structure regardless of path)
+ NegLL  = prepGrad["qf"];
+ cbars2 = Rcpp::as<arma::mat>(prepGrad["grad"]);
   
-  if(family=="quasibinomial"  && link=="logit"){
-    
-    
-    if (verbose) {
-      
-      Rcpp::Rcout << "Initiating NegLL Calculations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    
-    if(use_opencl==0 ){
-      NegLL=f2_binomial_logit(G4,y, x, mu, P, alpha, wt,progbar);  
-      
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      cbars2=f3_binomial_logit(G4,y, x,mu,P,alpha,wt,progbar);
-      
-      
-    }
-    
-    else{
-      
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      Rcpp::List prepGrad_v3= f2_f3_opencl(
-        family,
-        link,
-        G4,          // NumericMatrix b
-        y,           // NumericVector y
-        x,           // NumericMatrix x
-        mu,          // NumericMatrix mu 
-        P,           // NumericMatrix P
-        alpha,       // NumericVector alpha
-        wt,          // NumericVector wt
-        progbar     // int progbar
-      );
-      
-      
-      NegLL = prepGrad_v3["qf"];
-      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-      
-      
-      
-    }
-    
-    
-    
-  }
-  if(family=="quasibinomial" && link=="probit"){
-    
-    if(use_opencl==0 ){
-      
-      if (verbose) {
-        
-        Rcpp::Rcout << "Initiating NegLL Calculations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      NegLL=f2_binomial_probit(G4,y, x, mu, P, alpha, wt,progbar);  
-      
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      cbars2=f3_binomial_probit(G4,y, x,mu,P,alpha,wt,progbar);
-      
-      
-    }
-    
-    else{
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      Rcpp::List prepGrad_v3= f2_f3_opencl(
-        family,
-        link,
-        G4,          // NumericMatrix b
-        y,           // NumericVector y
-        x,           // NumericMatrix x
-        mu,          // NumericMatrix mu 
-        P,           // NumericMatrix P
-        alpha,       // NumericVector alpha
-        wt,          // NumericVector wt
-        progbar     // int progbar
-      );
-      
-      
-      NegLL = prepGrad_v3["qf"];
-      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-      
-      
-      
-    }    
-    
-    
-  }
   
-  if(family=="poisson" ){
-    
-    if(use_opencl==0 ){
-      
-      if (verbose) {
-        
-        Rcpp::Rcout << "Initiating NegLL Calculations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      NegLL=f2_poisson(G4,y, x, mu, P, alpha, wt,progbar);  
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      cbars2=f3_poisson(G4,y, x,mu,P,alpha,wt,progbar);
-      
-      
-      
-    }
-    
-    else{
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      Rcpp::List prepGrad_v3= f2_f3_opencl(
-        family,
-        link,
-        G4,          // NumericMatrix b
-        y,           // NumericVector y
-        x,           // NumericMatrix x
-        mu,          // NumericMatrix mu 
-        P,           // NumericMatrix P
-        alpha,       // NumericVector alpha
-        wt,          // NumericVector wt
-        progbar     // int progbar
-      );
-      
-      if (verbose) {
-        
-        Rcpp::Rcout << "Exiting f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      NegLL = prepGrad_v3["qf"];
-      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-      
-    }
-    
-    
-  }
   
-  if(family=="quasipoisson" ){
-    
-    if(use_opencl==0 ){
-      
-      if (verbose) {
-        
-        Rcpp::Rcout << "Initiating NegLL Calculations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      NegLL=f2_poisson(G4,y, x, mu, P, alpha, wt,progbar);  
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      cbars2=f3_poisson(G4,y, x,mu,P,alpha,wt,progbar);
-      
-      
-      
-    }
-    
-    else{
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      Rcpp::List prepGrad_v3= f2_f3_opencl(
-        family,
-        link,
-        G4,          // NumericMatrix b
-        y,           // NumericVector y
-        x,           // NumericMatrix x
-        mu,          // NumericMatrix mu 
-        P,           // NumericMatrix P
-        alpha,       // NumericVector alpha
-        wt,          // NumericVector wt
-        progbar     // int progbar
-      );
-      
-      
-      NegLL = prepGrad_v3["qf"];
-      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-      
-    }
-    
-  }
-  
-  if(family=="Gamma" ){
-    
-    if(use_opencl==0 ){
-      
-      if (verbose) {
-        
-        Rcpp::Rcout << "Initiating NegLL Calculations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      NegLL=f2_gamma(G4,y, x, mu, P, alpha, wt,progbar);  
-      if (verbose) {
-        Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      cbars2=f3_gamma(G4,y, x,mu,P,alpha,wt,progbar);
-      
-      
-      
-    } // End use_opencl
-    
-    
-    else{
-      
-      
-      
-      if (verbose) {
-        Rcpp::Rcout << "Initiating f2_f3_opencl: "
-                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                    << "\n";
-      }
-      
-      
-      Rcpp::List prepGrad_v3= f2_f3_opencl(
-        family,
-        link,
-        G4,          // NumericMatrix b
-        y,           // NumericVector y
-        x,           // NumericMatrix x
-        mu,          // NumericMatrix mu 
-        P,           // NumericMatrix P
-        alpha,       // NumericVector alpha
-        wt,          // NumericVector wt
-        progbar     // int progbar
-      );
-      
-      NegLL = prepGrad_v3["qf"];
-      cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
-      
-      
-      
-    } 
-    
-    
-  }
-  
-  if(family=="gaussian" ){
-    if (verbose) {
-      
-      Rcpp::Rcout << "Initiating NegLL Calculations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    NegLL=f2_gaussian(G4,y, x, mu, P, alpha, wt);  
-    if (verbose) {
-      Rcpp::Rcout << "Initiating Gradient Evaluations: "
-                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << "\n";
-    }
-    cbars2=f3_gaussian(G4,y, x,mu,P,alpha,wt);
-  }
-  
+///////////////// Old Paths
+//   if( family=="binomial" && link=="logit"){
+//     
+//     if (verbose) {
+//       
+//       Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                   << "\n";
+//     }
+//     
+//     if(use_opencl==0 ){
+// 
+//       // --- trial call to new combined helper (results not used downstream yet) ---
+//       Rcpp::List prepGrad = f2_f3_non_opencl(
+//         family,
+//         link,
+//         G4,      // NumericMatrix b
+//         y,       // NumericVector y
+//         x,       // NumericMatrix x
+//         mu,      // NumericMatrix mu
+//         P,       // NumericMatrix P
+//         alpha,   // NumericVector alpha
+//         wt,      // NumericVector wt
+//         progbar  // int progbar
+//       );
+//       
+//       NegLL = prepGrad["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad["grad"]);
+//       
+//       
+//      //       NegLL=f2_binomial_logit(G4,y, x, mu, P, alpha, wt,progbar);  
+// //      if (verbose) {
+// //        Rcpp::Rcout << "Initiating Gradient Evaluations: "
+// //                    << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+// //                    << "\n";
+// //      }
+//       
+//       //cbars2=f3_binomial_logit(G4,y, x,mu,P,alpha,wt,progbar);
+//       
+//       
+//     }
+//     
+//     else{
+//       
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       Rcpp::List prepGrad_v3= f2_f3_opencl(
+//         family,
+//         link,
+//         G4,          // NumericMatrix b
+//         y,           // NumericVector y
+//         x,           // NumericMatrix x
+//         mu,          // NumericMatrix mu 
+//         P,           // NumericMatrix P
+//         alpha,       // NumericVector alpha
+//         wt,          // NumericVector wt
+//         progbar     // int progbar
+//       );
+//       
+//       
+//       NegLL = prepGrad_v3["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+//       
+//       
+//       
+//     }
+//     
+//     
+//   }
+//   if(family=="binomial"  && link=="probit"){
+//     
+//     if(use_opencl==0 ){
+//       
+//       if (verbose) {
+//         
+//         Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       NegLL=f2_binomial_probit(G4,y, x, mu, P, alpha, wt,progbar);  
+//       
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating Gradient Evaluations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       cbars2=f3_binomial_probit(G4,y, x,mu,P,alpha,wt,progbar);
+//       
+//       
+//     }
+//     
+//     else{
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       Rcpp::List prepGrad_v3= f2_f3_opencl(
+//         family,
+//         link,
+//         G4,          // NumericMatrix b
+//         y,           // NumericVector y
+//         x,           // NumericMatrix x
+//         mu,          // NumericMatrix mu 
+//         P,           // NumericMatrix P
+//         alpha,       // NumericVector alpha
+//         wt,          // NumericVector wt
+//         progbar     // int progbar
+//       );
+//       
+//       
+//       NegLL = prepGrad_v3["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+//       
+//       
+//       
+//     }    
+//     
+//     
+//   }
+//   if(family=="binomial"   && link=="cloglog"){
+//     
+//     if(use_opencl==0 ){
+//       
+//       
+//       if (verbose) {
+//         
+//         Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       NegLL=f2_binomial_cloglog(G4,y, x, mu, P, alpha, wt,progbar);  
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating Gradient Evaluations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       cbars2=f3_binomial_cloglog(G4,y, x,mu,P,alpha,wt,progbar);
+//       
+//       
+//       
+//     }
+//     
+//     else{
+//       
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       Rcpp::List prepGrad_v3= f2_f3_opencl(
+//         family,
+//         link,
+//         G4,          // NumericMatrix b
+//         y,           // NumericVector y
+//         x,           // NumericMatrix x
+//         mu,          // NumericMatrix mu 
+//         P,           // NumericMatrix P
+//         alpha,       // NumericVector alpha
+//         wt,          // NumericVector wt
+//         progbar     // int progbar
+//       );
+//       
+//       
+//       
+//       NegLL = prepGrad_v3["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+//       
+//       
+//       
+//     }
+//     
+//   }
+//   
+//   if(family=="quasibinomial"  && link=="logit"){
+//     
+//     
+//     if (verbose) {
+//       
+//       Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                   << "\n";
+//     }
+//     
+//     if(use_opencl==0 ){
+//       NegLL=f2_binomial_logit(G4,y, x, mu, P, alpha, wt,progbar);  
+//       
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating Gradient Evaluations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       cbars2=f3_binomial_logit(G4,y, x,mu,P,alpha,wt,progbar);
+//       
+//       
+//     }
+//     
+//     else{
+//       
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       Rcpp::List prepGrad_v3= f2_f3_opencl(
+//         family,
+//         link,
+//         G4,          // NumericMatrix b
+//         y,           // NumericVector y
+//         x,           // NumericMatrix x
+//         mu,          // NumericMatrix mu 
+//         P,           // NumericMatrix P
+//         alpha,       // NumericVector alpha
+//         wt,          // NumericVector wt
+//         progbar     // int progbar
+//       );
+//       
+//       
+//       NegLL = prepGrad_v3["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+//       
+//       
+//       
+//     }
+//     
+//     
+//     
+//   }
+//   if(family=="quasibinomial" && link=="probit"){
+//     
+//     if(use_opencl==0 ){
+//       
+//       if (verbose) {
+//         
+//         Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       NegLL=f2_binomial_probit(G4,y, x, mu, P, alpha, wt,progbar);  
+//       
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating Gradient Evaluations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       cbars2=f3_binomial_probit(G4,y, x,mu,P,alpha,wt,progbar);
+//       
+//       
+//     }
+//     
+//     else{
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       Rcpp::List prepGrad_v3= f2_f3_opencl(
+//         family,
+//         link,
+//         G4,          // NumericMatrix b
+//         y,           // NumericVector y
+//         x,           // NumericMatrix x
+//         mu,          // NumericMatrix mu 
+//         P,           // NumericMatrix P
+//         alpha,       // NumericVector alpha
+//         wt,          // NumericVector wt
+//         progbar     // int progbar
+//       );
+//       
+//       
+//       NegLL = prepGrad_v3["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+//       
+//       
+//       
+//     }    
+//     
+//     
+//   }
+//   
+//   if(family=="poisson" ){
+//     
+//     if(use_opencl==0 ){
+//       
+//       if (verbose) {
+//         
+//         Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       NegLL=f2_poisson(G4,y, x, mu, P, alpha, wt,progbar);  
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating Gradient Evaluations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       cbars2=f3_poisson(G4,y, x,mu,P,alpha,wt,progbar);
+//       
+//       
+//       
+//     }
+//     
+//     else{
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       Rcpp::List prepGrad_v3= f2_f3_opencl(
+//         family,
+//         link,
+//         G4,          // NumericMatrix b
+//         y,           // NumericVector y
+//         x,           // NumericMatrix x
+//         mu,          // NumericMatrix mu 
+//         P,           // NumericMatrix P
+//         alpha,       // NumericVector alpha
+//         wt,          // NumericVector wt
+//         progbar     // int progbar
+//       );
+//       
+//       if (verbose) {
+//         
+//         Rcpp::Rcout << "Exiting f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       NegLL = prepGrad_v3["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+//       
+//     }
+//     
+//     
+//   }
+//   
+//   if(family=="quasipoisson" ){
+//     
+//     if(use_opencl==0 ){
+//       
+//       if (verbose) {
+//         
+//         Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       NegLL=f2_poisson(G4,y, x, mu, P, alpha, wt,progbar);  
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating Gradient Evaluations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       cbars2=f3_poisson(G4,y, x,mu,P,alpha,wt,progbar);
+//       
+//       
+//       
+//     }
+//     
+//     else{
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       Rcpp::List prepGrad_v3= f2_f3_opencl(
+//         family,
+//         link,
+//         G4,          // NumericMatrix b
+//         y,           // NumericVector y
+//         x,           // NumericMatrix x
+//         mu,          // NumericMatrix mu 
+//         P,           // NumericMatrix P
+//         alpha,       // NumericVector alpha
+//         wt,          // NumericVector wt
+//         progbar     // int progbar
+//       );
+//       
+//       
+//       NegLL = prepGrad_v3["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+//       
+//     }
+//     
+//   }
+//   
+//   if(family=="Gamma" ){
+//     
+//     if(use_opencl==0 ){
+//       
+//       if (verbose) {
+//         
+//         Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       NegLL=f2_gamma(G4,y, x, mu, P, alpha, wt,progbar);  
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating Gradient Evaluations: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       cbars2=f3_gamma(G4,y, x,mu,P,alpha,wt,progbar);
+//       
+//       
+//       
+//     } // End use_opencl
+//     
+//     
+//     else{
+//       
+//       
+//       
+//       if (verbose) {
+//         Rcpp::Rcout << "Initiating f2_f3_opencl: "
+//                     << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                     << "\n";
+//       }
+//       
+//       
+//       Rcpp::List prepGrad_v3= f2_f3_opencl(
+//         family,
+//         link,
+//         G4,          // NumericMatrix b
+//         y,           // NumericVector y
+//         x,           // NumericMatrix x
+//         mu,          // NumericMatrix mu 
+//         P,           // NumericMatrix P
+//         alpha,       // NumericVector alpha
+//         wt,          // NumericVector wt
+//         progbar     // int progbar
+//       );
+//       
+//       NegLL = prepGrad_v3["qf"];
+//       cbars2 = Rcpp::as<arma::mat>(prepGrad_v3["grad"]);
+//       
+//       
+//       
+//     } 
+//     
+//     
+//   }
+//   
+//   if(family=="gaussian" ){
+//     if (verbose) {
+//       
+//       Rcpp::Rcout << "Initiating NegLL Calculations: "
+//                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                   << "\n";
+//     }
+//     NegLL=f2_gaussian(G4,y, x, mu, P, alpha, wt);  
+//     if (verbose) {
+//       Rcpp::Rcout << "Initiating Gradient Evaluations: "
+//                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                   << "\n";
+//     }
+//     cbars2=f3_gaussian(G4,y, x,mu,P,alpha,wt);
+//   }
+//   
   
   
   
