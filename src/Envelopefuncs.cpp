@@ -348,6 +348,106 @@ Rcpp::List f2_f3_non_opencl(
 
 
 
+// [[Rcpp::export]]
+Rcpp::List EnvelopeSize(const arma::vec& a,
+                        const Rcpp::NumericMatrix& G1,
+                        int Gridtype   = 2,
+                        int n          = 1000,
+                        int n_envopt   = -1,
+                        bool use_opencl = false,
+                        bool verbose    = false) 
+  {
+  int l1 = a.size();
+  Rcpp::List G2(l1);
+  Rcpp::List GIndex1(l1);
+  double E_draws = 1.0;
+  
+  // core count for scaling
+  int core_CNT = get_opencl_core_count();
+  if (verbose) {
+    Rcpp::Rcout << "[INFO] OpenCL core count = " << core_CNT << "\n";
+  }
+
+  
+  // 3.4.1 - EnvelopOpt
+  
+  /// If GridType=2, then the Size of the Grid is optimized for performance
+  /// while factoring in the tradeoff between a large grid 
+  /// (more time consuming /expensive) to build and the acceptance rate 
+  /// (which gets better with a larger grid). The number of desired draws
+  /// are also factored in as the importance of a high acceptance rate
+  /// is more important when the number of draws is greater.
+  /// In addition, the call also fators in the number of cores 
+  /// since EnvelopeConstruction can occur in parallel. This is treated
+  /// as the equivalent of a greater number of draws
+  /// so a larger grid is generally constructed when OpenCL is enabled
+  /// 
+  /// If GridType is not equal to 2 then the size of the Grid is determined 
+  /// uniquely by that setting
+  
+  
+    
+  // EnvelopeOpt is an R function
+  Rcpp::Function EnvelopeOpt("EnvelopeOpt");
+  Rcpp::NumericVector gridindex(l1);
+  
+  if (Gridtype == 2) {
+    if (use_opencl) {
+      gridindex = EnvelopeOpt(a, n_envopt, core_CNT);
+    } else {
+      gridindex = EnvelopeOpt(a, n_envopt, 1);
+    }
+  }
+  
+  // Loop over dimensions
+  for (int i = 0; i < l1; i++) {
+    Rcpp::NumericVector Temp1 = G1(_, i);
+    double Temp2 = G1(1, i);
+    
+    if (Gridtype == 1) {
+      if (std::sqrt(1 + a[i]) <= (2 / std::sqrt(M_PI))) {
+        G2[i] = Rcpp::NumericVector::create(Temp2);
+        GIndex1[i] = Rcpp::NumericVector::create(4.0);
+        E_draws *= std::sqrt(1 + a[i]);
+      } else {
+        G2[i] = Rcpp::NumericVector::create(Temp1(0), Temp1(1), Temp1(2));
+        GIndex1[i] = Rcpp::NumericVector::create(1.0, 2.0, 3.0);
+        E_draws *= (2 / std::sqrt(M_PI));
+      }
+    }
+    else if (Gridtype == 2) {
+      if (gridindex[i] == 1) {
+        G2[i] = Rcpp::NumericVector::create(Temp2);
+        GIndex1[i] = Rcpp::NumericVector::create(4.0);
+        E_draws *= std::sqrt(1 + a[i]);
+      } else {
+        G2[i] = Rcpp::NumericVector::create(Temp1(0), Temp1(1), Temp1(2));
+        GIndex1[i] = Rcpp::NumericVector::create(1.0, 2.0, 3.0);
+        E_draws *= (2 / std::sqrt(M_PI));
+      }
+    }
+    else if (Gridtype == 3) {
+      G2[i] = Rcpp::NumericVector::create(Temp1(0), Temp1(1), Temp1(2));
+      GIndex1[i] = Rcpp::NumericVector::create(1.0, 2.0, 3.0);
+      E_draws *= (2 / std::sqrt(M_PI));
+    }
+    else if (Gridtype == 4) {
+      G2[i] = Rcpp::NumericVector::create(Temp2);
+      GIndex1[i] = Rcpp::NumericVector::create(4.0);
+      E_draws *= std::sqrt(1 + a[i]);
+    }
+  }
+  
+  return Rcpp::List::create(
+    Rcpp::Named("G2")       = G2,
+    Rcpp::Named("GIndex1")  = GIndex1,
+    Rcpp::Named("E_draws")  = E_draws,
+    Rcpp::Named("gridindex")= gridindex
+  );
+}
+
+
+
 
 // [[Rcpp::export(".EnvelopeBuild_cpp")]]
 
@@ -421,8 +521,8 @@ List EnvelopeBuild_c(NumericVector bStar,
   arma::colvec xx_2b(xx_2.begin(), xx_2.size(), false);
   arma::colvec yy_1b(yy_1.begin(), yy_1.size(), false);
   arma::colvec yy_2b(yy_2.begin(), yy_2.size(), false);
-  List G2(a_1.size());
-  List GIndex1(a_1.size());
+  // List G2(a_1.size());
+  // List GIndex1(a_1.size());
   Rcpp::Function EnvelopeOpt("EnvelopeOpt");
   Rcpp::Function expGrid("expand.grid");
   Rcpp::Function asMat("as.matrix");
@@ -437,174 +537,178 @@ List EnvelopeBuild_c(NumericVector bStar,
   
   
   
+  // Call EnvelopeSize to handle grid construction and expected draws
+  Rcpp::List size_info = EnvelopeSize(a_2, G1,
+                                      Gridtype,
+                                      n,
+                                      n_envopt,
+                                      use_opencl,
+                                      verbose);
   
-  // 3.4.1 - EnvelopOpt
   
-  /// If GridType=2, then the Size of the Grid is optimized for performance
-  /// while factoring in the tradeoff between a large grid 
-  /// (more time consuming /expensive) to build and the acceptance rate 
-  /// (which gets better with a larger grid). The number of desired draws
-  /// are also factored in as the importance of a high acceptance rate
-  /// is more important when the number of draws is greater.
-  /// In addition, the call also fators in the number of cores 
-  /// since EnvelopeConstruction can occur in parallel. This is treated
-  /// as the equivalent of a greater number of draws
-  /// so a larger grid is generally constructed when OpenCL is enabled
-  /// 
-  /// If GridType is not equal to 2 then the size of the Grid is determined 
-  /// uniquely by that setting
-  
-  int core_CNT=get_opencl_core_count();
-  
-  if (verbose) {
-    Rcpp::Rcout << "[INFO] OpenCL core count = " << core_CNT << "\n";
-  }
-  
-  // Second row in G1b here is the posterior mode
+  // Unpack results
+  Rcpp::List G2        = size_info["G2"];
+  Rcpp::List GIndex1   = size_info["GIndex1"];
+  double E_draws       = Rcpp::as<double>(size_info["E_draws"]);
+  Rcpp::NumericVector gridindex = size_info["gridindex"];
   
   
   
-  NumericVector gridindex(l1);
   
-  if(Gridtype==2){
-    // Temporarily scale n to encourage richer envelopes when GPU parallelism is available
-    int scaled_n = std::max(1, n * core_CNT);
-    
-//    if (verbose) {
-//      Rcpp::Rcout << "[INFO] Scaling n from " << n << " to " << scaled_n
-//                  << " for envelope optimization.\n";
-//    }
-    
-//    gridindex = EnvelopeOpt(a_2, scaled_n,core_CNT);
-
-  if(use_opencl==0 ){
-     gridindex=EnvelopeOpt(a_2,n_envopt,1);}
-    else{
-    gridindex = EnvelopeOpt(a_2, n_envopt,core_CNT);
-    }
-    
-  }
-  
-  NumericVector Temp1=G1( _, 0);
-  double Temp2;
-  
-  
-  if (verbose) {
-    
-    Rcpp::Rcout << "Entering Grid Loop: "
-                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                << "\n";
-  }
-  
-  // Should write a small note with logic behind types 1 and 2
-  
-  /*
-   GRIDTYPE LOGIC (Nygren & Nygren 2006)
+//   int core_CNT=get_opencl_core_count();
+//   
+//   if (verbose) {
+//     Rcpp::Rcout << "[INFO] OpenCL core count = " << core_CNT << "\n";
+//   }
+//   
+//   // Second row in G1b here is the posterior mode
+//   
+//   
+//   
+//   NumericVector gridindex(l1);
+//   
+//   if(Gridtype==2){
+//     // Temporarily scale n to encourage richer envelopes when GPU parallelism is available
+//     int scaled_n = std::max(1, n * core_CNT);
+//     
+// //    if (verbose) {
+// //      Rcpp::Rcout << "[INFO] Scaling n from " << n << " to " << scaled_n
+// //                  << " for envelope optimization.\n";
+// //    }
+//     
+// //    gridindex = EnvelopeOpt(a_2, scaled_n,core_CNT);
+// 
+//   if(use_opencl==0 ){
+//      gridindex=EnvelopeOpt(a_2,n_envopt,1);}
+//     else{
+//     gridindex = EnvelopeOpt(a_2, n_envopt,core_CNT);
+//     }
+//     
+//   }
+//   
+//   NumericVector Temp1=G1( _, 0);
+//   double Temp2;
+//   
+//   
+//   if (verbose) {
+//     
+//     Rcpp::Rcout << "Entering Grid Loop: "
+//                 << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                 << "\n";
+//   }
+//   
+//   // Should write a small note with logic behind types 1 and 2
+//   
+//   /*
+//    GRIDTYPE LOGIC (Nygren & Nygren 2006)
+//    
+//    Let a_i = posterior precision diagonal for dimension i (i.e. A2(i,i)).
+//    Let ω_i = width parameter computed below.
+//    
+//    1) Gridtype 1: static threshold test
+//    • If sqrt(1 + a_i) ≤ 2/√π  ≈ 1.128379 ⇒
+//    the theoretical upper bound on expected candidates per draw
+//    for a full normal envelope is ≤ 1, so building more points
+//    doesn’t reduce rejections.
+//    ⇒ use a single-point envelope at the mode:
+//    G2[i] = {θ⋆_i},  GIndex1[i] = {4}
+//    
+//    • Else
+//    ⇒ build a three-point envelope at
+//    {θ⋆_i − ω_i, θ⋆_i, θ⋆_i + ω_i}, GIndex1[i] = {1,2,3}
+//    
+//    2) Gridtype 2: dynamic envelope via `EnvelopeOpt(a, n)`
+//    • Rather than a fixed-bound test, we solve (per dimension) the
+//    cost-tradeoff between:
+//    – T_build(g_i) ∝ g_i  (linear grid-construction cost)
+//    – T_sample(n, acc_i(g_i)) ∝ n / acc_i(g_i)
+//    where acc_i(g_i) ≈ acceptance rate given g_i grid points
+//    • `EnvelopeOpt` returns gridindex[i] ∈ {1, 3} by minimizing
+//    T_build + T_sample under approximations from subgradient theory.
+//    • This lets us invest in more envelope points up-front when
+//    n is large, because reduced rejections during sampling
+//    more than pay for the extra build cost.
+//    
+//    3) Gridtype 3: always three-point grid (regardless of a_i or n)
+//    4) Gridtype 4: always single-point grid (mode only)
+//    */
+//   
+//   
+//   double E_draws=1.0L;
+//   
+// //  Rcpp::Rcout << "[DEBUG] half=" << i 
+// //              << " E_draws=" << E_draws << "\n";
+//   
+//   
+//     
+//   for(i=0;i<l1;i++){
+//     
+//     if(Gridtype==1){
+//       
+//       // For Gridtype==1, small 1+a[i]<=(2/sqrt(M_PI) yields grid over full line
+//       // Can check speed for simulation when Gridtype=1 vs. Gridtyp=2 or 3     
+//       
+//       if(sqrt(1+a_2[i])<=(2/sqrt(M_PI))){ 
+//         Temp2=G1(1,i);
+//         G2[i]=NumericVector::create(Temp2);
+//         GIndex1[i]=NumericVector::create(4.0);
+//         E_draws=E_draws*sqrt(1+a_2[i]);
+//         
+//       }
+//       if(sqrt(1+a_2[i])>(2/sqrt(M_PI))){
+//         Temp1=G1(_,i);
+//         G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
+//         GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
+//         E_draws=E_draws*(2/sqrt(M_PI));
+//                                
+//       }    
+//     }  
+//     if(Gridtype==2){
+//       if(gridindex[i]==1){
+//         Temp2=G1(1,i);
+//         G2[i]=NumericVector::create(Temp2);
+//         GIndex1[i]=NumericVector::create(4.0);
+//         E_draws=E_draws*sqrt(1+a_2[i]);
+//       }
+//       if(gridindex[i]==3){
+//         Temp1=G1(_,i);
+//         G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
+//         GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
+//         E_draws=E_draws*(2/sqrt(M_PI));
+//       }
+//     }
+//     
+//     if(Gridtype==3){
+//       Temp1=G1(_,i);
+//       G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
+//       GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
+//       E_draws=E_draws*(2/sqrt(M_PI));
+//     }
+//     
+//     if(Gridtype==4){
+//       Temp2=G1(1,i);
+//       G2[i]=NumericVector::create(Temp2);
+//       GIndex1[i]=NumericVector::create(4.0);
+//       E_draws=E_draws*sqrt(1+a_2[i]);
+//       
+//     }
+//   
+//   
+//   // after updating E_draws, print it
+// //  Rcpp::Rcout << "[DEBUG] i=" << i 
+// //              << " E_draws=" << E_draws << "\n";
+//   
+//     
+//   }
+//   
+// 
+//   ///////////////////////////////////// 
+//   
+   NumericMatrix GIndex=asMat(expGrid(GIndex1));
+   int l2=GIndex.nrow();
+   NumericMatrix G3=asMat(expGrid(G2));
+   NumericMatrix G4(G3.ncol(),G3.nrow());
    
-   Let a_i = posterior precision diagonal for dimension i (i.e. A2(i,i)).
-   Let ω_i = width parameter computed below.
-   
-   1) Gridtype 1: static threshold test
-   • If sqrt(1 + a_i) ≤ 2/√π  ≈ 1.128379 ⇒
-   the theoretical upper bound on expected candidates per draw
-   for a full normal envelope is ≤ 1, so building more points
-   doesn’t reduce rejections.
-   ⇒ use a single-point envelope at the mode:
-   G2[i] = {θ⋆_i},  GIndex1[i] = {4}
-   
-   • Else
-   ⇒ build a three-point envelope at
-   {θ⋆_i − ω_i, θ⋆_i, θ⋆_i + ω_i}, GIndex1[i] = {1,2,3}
-   
-   2) Gridtype 2: dynamic envelope via `EnvelopeOpt(a, n)`
-   • Rather than a fixed-bound test, we solve (per dimension) the
-   cost-tradeoff between:
-   – T_build(g_i) ∝ g_i  (linear grid-construction cost)
-   – T_sample(n, acc_i(g_i)) ∝ n / acc_i(g_i)
-   where acc_i(g_i) ≈ acceptance rate given g_i grid points
-   • `EnvelopeOpt` returns gridindex[i] ∈ {1, 3} by minimizing
-   T_build + T_sample under approximations from subgradient theory.
-   • This lets us invest in more envelope points up-front when
-   n is large, because reduced rejections during sampling
-   more than pay for the extra build cost.
-   
-   3) Gridtype 3: always three-point grid (regardless of a_i or n)
-   4) Gridtype 4: always single-point grid (mode only)
-   */
-  
-  
-  double E_draws=1.0L;
-  
-//  Rcpp::Rcout << "[DEBUG] half=" << i 
-//              << " E_draws=" << E_draws << "\n";
-  
-  
-    
-  for(i=0;i<l1;i++){
-    
-    if(Gridtype==1){
-      
-      // For Gridtype==1, small 1+a[i]<=(2/sqrt(M_PI) yields grid over full line
-      // Can check speed for simulation when Gridtype=1 vs. Gridtyp=2 or 3     
-      
-      if(sqrt(1+a_2[i])<=(2/sqrt(M_PI))){ 
-        Temp2=G1(1,i);
-        G2[i]=NumericVector::create(Temp2);
-        GIndex1[i]=NumericVector::create(4.0);
-        E_draws=E_draws*sqrt(1+a_2[i]);
-        
-      }
-      if(sqrt(1+a_2[i])>(2/sqrt(M_PI))){
-        Temp1=G1(_,i);
-        G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
-        GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
-        E_draws=E_draws*(2/sqrt(M_PI));
-                               
-      }    
-    }  
-    if(Gridtype==2){
-      if(gridindex[i]==1){
-        Temp2=G1(1,i);
-        G2[i]=NumericVector::create(Temp2);
-        GIndex1[i]=NumericVector::create(4.0);
-        E_draws=E_draws*sqrt(1+a_2[i]);
-      }
-      if(gridindex[i]==3){
-        Temp1=G1(_,i);
-        G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
-        GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
-        E_draws=E_draws*(2/sqrt(M_PI));
-      }
-    }
-    
-    if(Gridtype==3){
-      Temp1=G1(_,i);
-      G2[i]=NumericVector::create(Temp1(0),Temp1(1),Temp1(2));
-      GIndex1[i]=NumericVector::create(1.0,2.0,3.0);
-      E_draws=E_draws*(2/sqrt(M_PI));
-    }
-    
-    if(Gridtype==4){
-      Temp2=G1(1,i);
-      G2[i]=NumericVector::create(Temp2);
-      GIndex1[i]=NumericVector::create(4.0);
-      E_draws=E_draws*sqrt(1+a_2[i]);
-      
-    }
-  
-  
-  // after updating E_draws, print it
-//  Rcpp::Rcout << "[DEBUG] i=" << i 
-//              << " E_draws=" << E_draws << "\n";
-  
-    
-  }
-  
-
-  NumericMatrix G3=asMat(expGrid(G2));
-  NumericMatrix GIndex=asMat(expGrid(GIndex1));
-  NumericMatrix G4(G3.ncol(),G3.nrow());
-  int l2=GIndex.nrow();
   
   // print grid size if requested
   if (verbose) {

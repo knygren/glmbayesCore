@@ -2,12 +2,16 @@
 % Please edit documentation in R/EnvBuild.R
 \name{EnvelopeBuild}
 \alias{EnvelopeBuild}
+\alias{EnvelopeSize}
 \alias{Set_Grid}
 \alias{setlogP}
 \title{GPU-Accelerated Envelope Construction for Posterior Simulation}
 \usage{
 EnvelopeBuild(bStar,A,y,x,mu,P,alpha,wt,family = "binomial",link = "logit", 
 Gridtype = 2L,n = 1L,n_envopt=NULL,sortgrid = FALSE,use_opencl = FALSE,verbose = FALSE)
+
+EnvelopeSize(a, G1, Gridtype = 2L, n = 1000L, n_envopt = -1,
+                    use_opencl = FALSE, verbose = FALSE)
 
 Set_Grid(GridIndex, cbars, Lint)
 
@@ -46,6 +50,10 @@ Defaults to match `n`. Larger values encourage tighter envelopes.}
 \item{use_opencl}{Logical; if \code{TRUE}, use OpenCL for gradient evaluations.}
 
 \item{verbose}{Logical; if \code{TRUE}, print progress messages.}
+
+\item{a}{Numeric vector of diagonal precisions for the log-likelihood of a model in standard form}
+
+\item{G1}{Numeric matrix of candidate grid points (3 × l1).}
 
 \item{GridIndex}{A matrix indicating, for each grid component, whether the component
 lies in the left tail, center, or right tail of the density. Rows correspond to
