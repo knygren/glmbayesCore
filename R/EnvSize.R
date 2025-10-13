@@ -7,8 +7,8 @@
 #' These functions implement the grid sizing logic used in envelope construction
 #' for rejection sampling. They make use of the theory described in
 #' \insertCite{Nygren2006}{glmbayes} and the general implementation outlined in
-#' \insertCite{glmbayesEnvelopeVignette}{glmbayes}.
-#'
+#' \insertCite{glmbayesSimmethods}{glmbayes}. 
+#' 
 #' @param a Numeric vector of diagonal precisions for the log‑likelihood
 #'   (posterior precision is \eqn{1 + a_i}).
 #' @param G1 Numeric matrix of candidate grid points (3 × l1).

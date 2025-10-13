@@ -57,7 +57,7 @@ performs the adaptive optimization used when \code{Gridtype = 2}.
 These functions implement the grid sizing logic used in envelope construction
 for rejection sampling. They make use of the theory described in
 \insertCite{Nygren2006}{glmbayes} and the general implementation outlined in
-\insertCite{glmbayesEnvelopeVignette}{glmbayes}.
+\insertCite{glmbayesSimmethods}{glmbayes}.
 
 
 \code{EnvelopeSize()} returns the constructed grid (\code{G2}),

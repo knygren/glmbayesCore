@@ -11,6 +11,48 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// run_opencl_pilot
+double run_opencl_pilot(const Rcpp::NumericMatrix& G4, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, const Rcpp::NumericMatrix& mu, const Rcpp::NumericMatrix& P, const Rcpp::NumericVector& alpha, const Rcpp::NumericVector& wt, const std::string& family, const std::string& link, bool use_opencl, bool verbose, double threshold_sec);
+RcppExport SEXP _glmbayes_run_opencl_pilot(SEXP G4SEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP use_openclSEXP, SEXP verboseSEXP, SEXP threshold_secSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type G4(G4SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type P(PSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type family(familySEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type link(linkSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_opencl(use_openclSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_sec(threshold_secSEXP);
+    rcpp_result_gen = Rcpp::wrap(run_opencl_pilot(G4, y, x, mu, P, alpha, wt, family, link, use_opencl, verbose, threshold_sec));
+    return rcpp_result_gen;
+END_RCPP
+}
+// f2_f3_non_opencl
+Rcpp::List f2_f3_non_opencl(std::string family, std::string link, Rcpp::NumericMatrix b, Rcpp::NumericVector y, Rcpp::NumericMatrix x, Rcpp::NumericMatrix mu, Rcpp::NumericMatrix P, Rcpp::NumericVector alpha, Rcpp::NumericVector wt, int progbar);
+RcppExport SEXP _glmbayes_f2_f3_non_opencl(SEXP familySEXP, SEXP linkSEXP, SEXP bSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP progbarSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type family(familySEXP);
+    Rcpp::traits::input_parameter< std::string >::type link(linkSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type b(bSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type P(PSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< int >::type progbar(progbarSEXP);
+    rcpp_result_gen = Rcpp::wrap(f2_f3_non_opencl(family, link, b, y, x, mu, P, alpha, wt, progbar));
+    return rcpp_result_gen;
+END_RCPP
+}
 // EnvelopeSize
 Rcpp::List EnvelopeSize(const arma::vec& a, const Rcpp::NumericMatrix& G1, int Gridtype, int n, int n_envopt, bool use_opencl, bool verbose);
 RcppExport SEXP _glmbayes_EnvelopeSize(SEXP aSEXP, SEXP G1SEXP, SEXP GridtypeSEXP, SEXP nSEXP, SEXP n_envoptSEXP, SEXP use_openclSEXP, SEXP verboseSEXP) {
@@ -584,6 +626,8 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_glmbayes_run_opencl_pilot", (DL_FUNC) &_glmbayes_run_opencl_pilot, 12},
+    {"_glmbayes_f2_f3_non_opencl", (DL_FUNC) &_glmbayes_f2_f3_non_opencl, 10},
     {"_glmbayes_EnvelopeSize", (DL_FUNC) &_glmbayes_EnvelopeSize, 7},
     {"_glmbayes_EnvelopeEval", (DL_FUNC) &_glmbayes_EnvelopeEval, 11},
     {"_glmbayes_EnvelopeBuild_c", (DL_FUNC) &_glmbayes_EnvelopeBuild_c, 16},

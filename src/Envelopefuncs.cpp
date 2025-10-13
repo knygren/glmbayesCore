@@ -19,6 +19,8 @@ using namespace Rcpp;
 
 // Internal helper: run OpenCL pilot timing, print diagnostics, and prompt user.
 // Not exported to R.
+// [[Rcpp::export]]
+
 double run_opencl_pilot(const Rcpp::NumericMatrix& G4,
                         const Rcpp::NumericVector& y,
                         const Rcpp::NumericMatrix& x,
@@ -263,6 +265,7 @@ double run_opencl_pilot(const Rcpp::NumericMatrix& G4,
  */
 
 
+// [[Rcpp::export]]
 
 Rcpp::List f2_f3_non_opencl(
     std::string family,
@@ -519,6 +522,10 @@ List EnvelopeBuild_c(NumericVector bStar,
   if (n_envopt < 0) {
     n_envopt = n;
   }  
+
+  // Handle OpenCL availability at compile/runtime
+  // (fall back to CPU if requested but not supported)
+  
   
 #ifdef USE_OPENCL
   // OpenCL support detected at compile time — proceed as requested
@@ -534,7 +541,8 @@ List EnvelopeBuild_c(NumericVector bStar,
   }
 #endif
   
-  
+  // Print call parameters if verbose
+
   if (verbose) {
     Rcpp::Rcout << ">>> EnvelopeBuild_c called with:\n"
                 << "    Gridtype   = " << Gridtype << "\n"
@@ -542,6 +550,10 @@ List EnvelopeBuild_c(NumericVector bStar,
                 << "    use_opencl = " << use_opencl << "\n"
                 << "    sortgrid   = " << sortgrid << "\n";
   }
+  
+  
+  // Basic setup: dimensions, Armadillo views, and working vectors
+  // l1 = number of parameters, k = number of predictors
   
   
   int progbar=0;
@@ -576,6 +588,10 @@ List EnvelopeBuild_c(NumericVector bStar,
   
   int i;  
   
+  
+  // Construct per-dimension tangent points (G1) and linear intercepts (Lint)
+  // using diagonal precisions and offsets (omega)
+  
   a_2=arma::diagvec(A2);
   arma::vec omega=(sqrt(2)-arma::exp(-1.20491-0.7321*sqrt(0.5+a_2)))/arma::sqrt(1+a_2);
   G1b=xx_1b*arma::trans(bStar_2)+xx_2b*arma::trans(omega);
@@ -583,8 +599,9 @@ List EnvelopeBuild_c(NumericVector bStar,
   
   
   
-  // Call EnvelopeSize to handle grid construction and expected draws
-  Rcpp::List size_info = EnvelopeSize(a_2, G1,
+  // Call EnvelopeSize to determine grid structure and expected draws
+
+    Rcpp::List size_info = EnvelopeSize(a_2, G1,
                                       Gridtype,
                                       n,
                                       n_envopt,
@@ -599,8 +616,9 @@ List EnvelopeBuild_c(NumericVector bStar,
   Rcpp::NumericVector gridindex = size_info["gridindex"];
 
 // 
-//   ///////////////////////////////////// 
-//   
+// Expand grid indices and candidate points (GIndex, G3, G4)
+// l2 = total number of grid combinations
+
    NumericMatrix GIndex=asMat(expGrid(GIndex1));
    int l2=GIndex.nrow();
    NumericMatrix G3=asMat(expGrid(G2));
@@ -620,6 +638,8 @@ List EnvelopeBuild_c(NumericVector bStar,
   arma::mat G4b(G4.begin(), G4.nrow(), G4.ncol(), false);
   
   G4b=trans(G3b);
+  
+  // Allocate containers for evaluation results (cbars, NegLL, logP, etc.)
   
   NumericMatrix cbars(l2,l1);
   NumericMatrix Up(l2,l1);
@@ -643,59 +663,18 @@ List EnvelopeBuild_c(NumericVector bStar,
   
   arma::colvec NegLL_2(NegLL.begin(), NegLL.size(), false);
   
+  // Call EnvelopeEval to compute negative log-likelihood and gradients
+  // at each grid point
 
   Rcpp::List eval_info = EnvelopeEval(G4, y, x, mu, P, alpha, wt,
                                       family, link, use_opencl, verbose);
   
 
+  // Copy results into cbars/NegLL structures used downstream
+  
   NegLL = eval_info["NegLL"];
   cbars2 = Rcpp::as<arma::mat>(eval_info["cbars"]);
   
-
-  
-  
- // if(l1>=14){
- //  double est_time = run_opencl_pilot(G4, y, x, mu, P, alpha, wt,
- //                                     family, link, use_opencl, verbose);
- // }
- //  
- //  ///// New simpler paths ///////////////////////////
- //  
- //  
- //  Rcpp::List prepGrad;
- // 
- // if (use_opencl == 1 && family != "gaussian") {
- //   // OpenCL path for supported families
- //   if (verbose) {
- //     Rcpp::Rcout << "Initiating f2_f3_opencl: "
- //                 << Rcpp::as<std::string>(
- //     Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
- //     << "\n";
- //   }
- //   
- //   prepGrad = f2_f3_opencl(
- //     family, link,
- //     G4, y, x, mu, P, alpha, wt, progbar
- //   );
- // } else {
- //   // CPU fallback (either use_opencl==0, or family==gaussian)
- //   if (verbose) {
- //     Rcpp::Rcout << "Initiating f2_f3_non_opencl: "
- //                 << Rcpp::as<std::string>(
- //     Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
- //     << "\n";
- //   }
- //   
- //   prepGrad = f2_f3_non_opencl(
- //     family, link,
- //     G4, y, x, mu, P, alpha, wt, progbar
- //   );
- // }
- // 
- // // Unpack results (same structure regardless of path)
- // NegLL  = prepGrad["qf"];
- // cbars2 = Rcpp::as<arma::mat>(prepGrad["grad"]);
-
   // Do a temporary correction here cbars3 should point to correct memory
   // See if this sets cbars
   
@@ -717,7 +696,7 @@ List EnvelopeBuild_c(NumericVector bStar,
                 << "\n";
   }
   
-  
+  // Set Grid
   
   //  Set_Grid_C2(GIndex, cbars, Lint1,Down,Up,loglt,logrt,logct,logU,logP);
   Set_Grid_C2_pointwise(GIndex, cbars, Lint1,Down,Up,loglt,logrt,logct,logU,logP);
@@ -729,6 +708,8 @@ List EnvelopeBuild_c(NumericVector bStar,
   //                << "\n";
   
   
+// Set LOG P
+
   if (verbose) {
     
     Rcpp::Rcout << "Setting logP: "
@@ -739,26 +720,18 @@ List EnvelopeBuild_c(NumericVector bStar,
   
   setlogP_C2(logP,NegLL,cbars,G3,LLconst);
   
-  
-  //      Rcpp::Rcout << "Exiting setlogP_C2: "
-  //                  << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-  //                  << "\n";
-  
-  
+  // Normalize probabilities (PLSD) for likelihood subgradient densities
   
   NumericMatrix::Column logP2 = logP( _, 1);
-  
-  
   double  maxlogP=max(logP2);
-  
+
   NumericVector PLSD=exp(logP2-maxlogP);
   
   double sumP=sum(PLSD);
   
   PLSD=PLSD/sumP;
   
-  //  Rcout << "Entering Enveloped sort: " << Rcpp::as<std::string>(Rcpp::Function("Sys.time")()) << "\n";
-  
+  // Optionally sort grid for efficiency if sortgrid = TRUE
   
   if(sortgrid==true){
     
@@ -775,6 +748,8 @@ List EnvelopeBuild_c(NumericVector bStar,
     return(outlist);
     
   }
+  
+  // Return assembled envelope components as a list
   
   
   return Rcpp::List::create(Rcpp::Named("GridIndex")=GIndex,

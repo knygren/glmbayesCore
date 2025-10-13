@@ -968,8 +968,6 @@
 #'   the restricted normal density.
 #' @param NegLL     A vector of negative log-likelihood evaluations at each grid component.
 #' @param G3        A matrix of tangency points used in the grid.
-#' @param a Numeric vector of diagonal precisions for the log-likelihood of a model in standard form
-#' @param G1 Numeric matrix of candidate grid points (3 × l1).
 #'    
 #' @return
 #' \describe{
