@@ -718,19 +718,124 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
     max_disp_perc = max_disp_perc
   )
   
-  cat("[DEBUG] Existing EnvelopeDispersionBuild \n")
+  cat("[DEBUG] Exiting EnvelopeDispersionBuild \n")
+  
+
+  Env3_raw       <- disp_env_out$Env_out
+  gamma_list_new <- disp_env_out$gamma_list
+  UB_list_new    <- disp_env_out$UB_list
+  low            <- gamma_list_new$disp_lower
+  upp            <- gamma_list_new$disp_upper
+  diagnostics    <- disp_env_out$diagnostics
+  
+  # Decide how many rows to keep
+  l1 <- ncol(x2)
+  l2 <- nrow(Env3_raw$cbars)
+  
+  logP_mat <- if (is.null(dim(Env3_raw$logP))) {
+    # Gaussian path: coerce vector to one-column matrix
+    as.matrix(Env3_raw$logP)
+  } else {
+    Env3_raw$logP
+  }
+  
+  Env3 <- EnvelopeSort(
+    l1      = ncol(Env3_raw$cbars),
+    l2      = nrow(Env3_raw$cbars),
+    GIndex  = Env3_raw$GridIndex,
+    G3      = Env3_raw$thetabars,
+    cbars   = Env3_raw$cbars,
+    logU    = Env3_raw$logU,
+    logrt   = Env3_raw$logrt,
+    loglt   = Env3_raw$loglt,
+    logP    = logP_mat,
+    LLconst = Env3_raw$LLconst,
+    PLSD    = Env3_raw$PLSD,
+    a1      = Env3_raw$a1,
+    E_draws = Env3_raw$E_draws,
+    lg_prob_factor = disp_env_out$UB_list$lg_prob_factor
+  )
+
+  
+  
+  
+  # cat("[DEBUG] disp_lower =", low,
+  #     " disp_upper =", upp, "\n")
+  # 
+  # cat("[DEBUG] Calling .rindep_norm_gamma_reg_std_V4_cpp \n")
+  
+  # sim_temp <- .rindep_norm_gamma_reg_std_V4_cpp(
+  #   n=n, y=y, x=x2, mu=mu2, P=P2, alpha=alpha, wt,
+  #   f2=f2, Envelope=Env3, 
+  #   gamma_list=gamma_list_new,
+  #   UB_list=UB_list_new,
+  #   family="gaussian", link="identity", progbar=progbar
+  # )
+  
+  
   
   
 
-  Env3           <- disp_env_out$Env_out
+  # Env3_temp           <- disp_env_out$Env_out
   gamma_list_new <- disp_env_out$gamma_list
   UB_list_new    <- disp_env_out$UB_list
   low            <- gamma_list_new$disp_lower
   upp            <- gamma_list_new$disp_upper  
   diagnostics     <- disp_env_out$diagnostics
   
+  ## USE reordered lg_prob factor
+  UB_list_new$lg_prob_factor=Env3$lg_prob_factor
+  
+  
+  #     cat("\n[DEBUG] gamma_list_new contents:\n")
+  # print(str(gamma_list_new))
+  # print(gamma_list_new)
+  # 
+  # cat("\n[DEBUG] UB_list_new contents:\n")
+  # print(str(UB_list_new))
+  # print(UB_list_new)
+  # 
+  # cat("\n[DEBUG] Dispersion bounds:\n")
+  # cat("disp_lower =", low, "\n")
+  # cat("disp_upper =", upp, "\n")
+  # 
+  # cat("\n[DEBUG] Structure of Env3$PLSD:\n")
+  # print(str(Env3$PLSD))
+  # cat("[DEBUG] First few values of Env3$PLSD:\n")
+  # print(head(Env3$PLSD, 10))
+  # 
+  # cat("\n[DEBUG] Structure of Env3_temp$PLSD:\n")
+  # print(str(Env3_temp$PLSD))
+  # cat("[DEBUG] First few values of Env3_temp$PLSD:\n")
+  # print(head(Env3_temp$PLSD, 10))
+  # 
+  # cat("\n[DEBUG] UB_list_new$lg_prob_factor BEFORE sorting:\n")
+  # print(UB_list_new$lg_prob_factor)
+  
 
-  cat("[DEBUG] disp_lower =", low,
+    
+  
+  
+  # cat("\n[DEBUG] UB_list_new$lg_prob_factor AFTER sorting:\n")
+  # print(UB_list_new$lg_prob_factor)
+  
+  
+  
+  # cat("\n[DEBUG] Structure of Env3$logP:\n")
+  # print(str(Env3$logP))
+  # cat("[DEBUG] First few values of Env3$logP:\n")
+  # print(head(Env3$logP, 10))
+  # 
+  # cat("\n[DEBUG] Structure of Env3_temp$logP:\n")
+  # print(str(Env3_temp$logP))
+  # cat("[DEBUG] First few values of Env3_temp$logP:\n")
+  # print(head(Env3_temp$logP, 10))
+  # 
+
+  
+  
+    
+    cat("[DEBUG] disp_lower =", low,
       " disp_upper =", upp, "\n")
   
   cat("[DEBUG] Calling .rindep_norm_gamma_reg_std_V4_cpp \n")

@@ -15,6 +15,8 @@
 #' @param LLconst A vector containing constant for each component of the grid used during the accept-reject procedure
 #' @param PLSD A vector containing the probability of each component in the Grid
 #' @param a1 A vector containing the diagonal of the standardized precision matrix
+#' @param E_draws Bound on Expected number of candidates per accepted draw
+#' @param lg_prob_factor vector of lg_prob_factors used for the Envelope connected to the independent normal gamma prior
 #' @return The function returns a list consisting of the following components (the first six of which are matrics with number of rows equal to the number of components in the Grid and columns equal to the number of parameters):
 #' \item{GridIndex}{A matrix containing information on how each dimension should be sampled (1 means left tail of a restricted normal, 2 center, 3 right tail, and 4 the entire line)}
 #' \item{thetabars}{A matrix containing the points of tangencies associated with each component of the grid}
@@ -35,7 +37,8 @@
 
 EnvelopeSort <- function(l1, l2,
                          GIndex, G3, cbars, logU, logrt, loglt,
-                         logP, LLconst, PLSD, a1, E_draws) {
+                         logP, LLconst, PLSD, a1, E_draws,
+                         lg_prob_factor = NULL) {   # <-- new optional arg
   # Order indices by decreasing PLSD
   ord <- order(PLSD, decreasing = TRUE)
   sel <- ord[seq_len(l2)]  # top l2 rows
@@ -51,40 +54,31 @@ EnvelopeSort <- function(l1, l2,
   LLconst<- LLconst[sel]
   PLSD   <- PLSD[sel]
   
+  if (!is.null(lg_prob_factor)) {
+    stopifnot(length(lg_prob_factor) == l2)
+    lg_prob_factor <- lg_prob_factor[sel]
+  }
+  
   # Build output list
-  if (l1 == 1) {
-    outlist <- list(
-      GridIndex = GIndex,
-      thetabars = G3,
-      cbars     = matrix(cbars, nrow = l2, ncol = l1),
-      logU      = logU,
-      logrt     = matrix(logrt, nrow = l2, ncol = l1),
-      loglt     = matrix(loglt, nrow = l2, ncol = l1),
-      LLconst   = LLconst,
-      logP      = logP,
-      PLSD      = PLSD,
-      a1        = a1,
-      E_draws   = E_draws
-    )
-  } else {
-    outlist <- list(
-      GridIndex = GIndex,
-      thetabars = G3,
-      cbars     = cbars,
-      logU      = logU,
-      logrt     = logrt,
-      loglt     = loglt,
-      LLconst   = LLconst,
-      logP      = logP,
-      PLSD      = PLSD,
-      a1        = a1,
-      E_draws   = E_draws
-    )
+  outlist <- list(
+    GridIndex = GIndex,
+    thetabars = G3,
+    cbars     = if (l1 == 1) matrix(cbars, nrow = l2, ncol = l1) else cbars,
+    logU      = logU,
+    logrt     = if (l1 == 1) matrix(logrt, nrow = l2, ncol = l1) else logrt,
+    loglt     = if (l1 == 1) matrix(loglt, nrow = l2, ncol = l1) else loglt,
+    LLconst   = LLconst,
+    logP      = logP,
+    PLSD      = PLSD,
+    a1        = a1,
+    E_draws   = E_draws
+  )
+  if (!is.null(lg_prob_factor)) {
+    outlist$lg_prob_factor <- lg_prob_factor
   }
   
   outlist
 }
-
 
 EnvelopeSort_Old<-function(l1,l2,GIndex,G3,cbars,logU,logrt,loglt,logP,LLconst,PLSD,a1,E_draws){
   
