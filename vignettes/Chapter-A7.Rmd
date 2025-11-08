@@ -177,12 +177,7 @@ $$
      \]
      This expression mirrors the mixture weights \(\tilde{p}_j\) in Claim 1 of Nygren and Nygren
      
-   - Compute and store a set of constants (e.g., `lg_prob_factor`, `lmc1`, `lmc2`) that are used in the accept/reject test and in adjusting the probabilities with which grid components are selected. Specifically, these constansts are built so that
-     - lg_prob_factor_j +lmc1+lmc2 d - []>=0  \)
-     - \(  \)
-     -`lmc2` is used as part of the bounding approach in the UB3A formula below,  
-     - `lmc2 \cdot \text{dispstar2}` is used as part of the bounding approach in the UB3B formula.  
-     - Both are expanded on more below.
+   - Compute and store a set of constants (e.g., `lg_prob_factor`, `lmc1`, `lmc2`) that are used in the accept/reject test and in adjusting the probabilities with which grid components are selected. Specifically, these constants are built so that UB3A(.) and UB3B(.) in the proposition below are always non-negative bounding functions.
 
 
 ## 4. Main Proposition and Supporting claims
@@ -1115,16 +1110,19 @@ Likewise, when \(d=\text{low} \), we have
 
 
 \begin{align}
-\text{UB3B}(low) & =  f1(low)-f2(low) \\
-& = (\text{max_upp} - \big(\text{lm_log2} \cdot (\log (\text{upp})- \log (\text{low}) )\big))\\
-&  - (\text{max_low_mean}+ \text{lmc2} \cdot (\text{low}-\text{low})) \\
-& = (\text{max_upp} - \big(\text{lmc2} \cdot d^{*}_{2} \cdot (\log (\text{upp})- \log (\text{low}) )\big))\\
-&  - \text{max_low_mean} \\
-& = (\text{max_upp} - \big(\frac{(\text{max_upp}-\text{max_low_mean})}{(\text{upp}-\text{low})} \cdot \frac{(\text{upp}-\text{low})}{\log (\text{upp/low})} \cdot \log (\text{upp/low})\big) )\\
-&  - \text{max_low_mean} \\
-& = (\text{max_upp} - \big(\text{max_upp}-\text{max_low_mean}\big)) \\
-&  - \text{max_low_mean} \\
-& =0
+\text{UB3B}(\text{low}) 
+&= f1(\text{low}) - f2(\text{low}) \\[6pt]
+&= \big(\mathrm{max\_upp} - \big(\mathrm{lm\_log2} \cdot (\log(\text{upp}) - \log(\text{low}))\big)\big) \\[6pt]
+&\quad - \big(\mathrm{max\_low\_mean} + \text{lmc}_2 \cdot (\text{low} - \text{low})\big) \\[6pt]
+&= \big(\mathrm{max\_upp} - \big(\text{lmc}_2 \cdot d^{*}_{2} \cdot (\log(\text{upp}) - \log(\text{low}))\big)\big) \\[6pt]
+&\quad - \mathrm{max\_low\_mean} \\[6pt]
+&= \big(\mathrm{max\_upp} - \tfrac{(\mathrm{max\_upp} - \mathrm{max\_low\_mean})}{(\text{upp} - \text{low})} 
+   \cdot \tfrac{(\text{upp} - \text{low})}{\log(\tfrac{\text{upp}}{\text{low}})} 
+   \cdot \log(\tfrac{\text{upp}}{\text{low}})\big) \\[6pt]
+&\quad - \mathrm{max\_low\_mean} \\[6pt]
+&= \big(\mathrm{max\_upp} - (\mathrm{max\_upp} - \mathrm{max\_low\_mean})\big) \\[6pt]
+&\quad - \mathrm{max\_low\_mean} \\[6pt]
+&= 0
 \end{align}
 
 
