@@ -471,7 +471,6 @@ arma::mat  f3_gaussian(NumericMatrix b,NumericVector y, NumericMatrix x,NumericM
   return trans(out2);      
 }
 
-// [[Rcpp::export(".Inv_f3_gaussian")]]
 
 
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -483,6 +482,9 @@ using namespace Rcpp;
 // mu: p x 1
 // P:  p x p
 // y, alpha, wt: length n
+
+// [[Rcpp::export]]
+
 arma::mat Inv_f3_gaussian(NumericMatrix cbars,
                           NumericVector y,
                           NumericMatrix x,

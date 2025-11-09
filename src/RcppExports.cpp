@@ -248,6 +248,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Inv_f3_gaussian
+arma::mat Inv_f3_gaussian(NumericMatrix cbars, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt);
+RcppExport SEXP _glmbayes_Inv_f3_gaussian(SEXP cbarsSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type cbars(cbarsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type P(PSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type wt(wtSEXP);
+    rcpp_result_gen = Rcpp::wrap(Inv_f3_gaussian(cbars, y, x, mu, P, alpha, wt));
+    return rcpp_result_gen;
+END_RCPP
+}
 // f2_binomial_logit_prep_opencl
 Rcpp::List f2_binomial_logit_prep_opencl(Rcpp::NumericMatrix b, Rcpp::NumericVector y, Rcpp::NumericMatrix x, Rcpp::NumericMatrix mu, Rcpp::NumericMatrix P, Rcpp::NumericVector alpha, Rcpp::NumericVector wt, int progbar);
 RcppExport SEXP _glmbayes_f2_binomial_logit_prep_opencl(SEXP bSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP progbarSEXP) {
@@ -361,76 +378,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rindep_norm_gamma_reg_std_cpp
-Rcpp::List rindep_norm_gamma_reg_std_cpp(int n, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt, Function f2, Rcpp::List Envelope, Rcpp::CharacterVector family, Rcpp::CharacterVector link, int progbar);
-RcppExport SEXP _glmbayes_rindep_norm_gamma_reg_std_cpp(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP f2SEXP, SEXP EnvelopeSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP progbarSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type P(PSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type wt(wtSEXP);
-    Rcpp::traits::input_parameter< Function >::type f2(f2SEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type Envelope(EnvelopeSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type family(familySEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type link(linkSEXP);
-    Rcpp::traits::input_parameter< int >::type progbar(progbarSEXP);
-    rcpp_result_gen = Rcpp::wrap(rindep_norm_gamma_reg_std_cpp(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rindep_norm_gamma_reg_std_v2_cpp
-Rcpp::List rindep_norm_gamma_reg_std_v2_cpp(int n, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt, Function f2, Rcpp::List Envelope, Rcpp::List gamma_list, Rcpp::List UB_list, Rcpp::CharacterVector family, Rcpp::CharacterVector link, int progbar);
-RcppExport SEXP _glmbayes_rindep_norm_gamma_reg_std_v2_cpp(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP f2SEXP, SEXP EnvelopeSEXP, SEXP gamma_listSEXP, SEXP UB_listSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP progbarSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type P(PSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type wt(wtSEXP);
-    Rcpp::traits::input_parameter< Function >::type f2(f2SEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type Envelope(EnvelopeSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type gamma_list(gamma_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type UB_list(UB_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type family(familySEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type link(linkSEXP);
-    Rcpp::traits::input_parameter< int >::type progbar(progbarSEXP);
-    rcpp_result_gen = Rcpp::wrap(rindep_norm_gamma_reg_std_v2_cpp(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rindep_norm_gamma_reg_std_v3_cpp
-Rcpp::List rindep_norm_gamma_reg_std_v3_cpp(int n, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt, Function f2, Rcpp::List Envelope, Rcpp::List gamma_list, Rcpp::List UB_list, Rcpp::CharacterVector family, Rcpp::CharacterVector link, int progbar);
-RcppExport SEXP _glmbayes_rindep_norm_gamma_reg_std_v3_cpp(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP f2SEXP, SEXP EnvelopeSEXP, SEXP gamma_listSEXP, SEXP UB_listSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP progbarSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type P(PSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type wt(wtSEXP);
-    Rcpp::traits::input_parameter< Function >::type f2(f2SEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type Envelope(EnvelopeSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type gamma_list(gamma_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type UB_list(UB_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type family(familySEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type link(linkSEXP);
-    Rcpp::traits::input_parameter< int >::type progbar(progbarSEXP);
-    rcpp_result_gen = Rcpp::wrap(rindep_norm_gamma_reg_std_v3_cpp(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar));
-    return rcpp_result_gen;
-END_RCPP
-}
 // Inv_f3_precompute_disp
 Rcpp::List Inv_f3_precompute_disp(NumericMatrix cbars, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt);
 RcppExport SEXP _glmbayes_Inv_f3_precompute_disp(SEXP cbarsSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP) {
@@ -482,30 +429,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type link(linkSEXP);
     Rcpp::traits::input_parameter< bool >::type progbar(progbarSEXP);
     rcpp_result_gen = Rcpp::wrap(rindep_norm_gamma_reg_std_v4_cpp(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rindep_norm_gamma_reg_std_v5_cpp
-Rcpp::List rindep_norm_gamma_reg_std_v5_cpp(int n, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt, Function f2, Rcpp::List Envelope, Rcpp::List gamma_list, Rcpp::List UB_list, Rcpp::CharacterVector family, Rcpp::CharacterVector link, int progbar);
-RcppExport SEXP _glmbayes_rindep_norm_gamma_reg_std_v5_cpp(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP f2SEXP, SEXP EnvelopeSEXP, SEXP gamma_listSEXP, SEXP UB_listSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP progbarSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type P(PSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type wt(wtSEXP);
-    Rcpp::traits::input_parameter< Function >::type f2(f2SEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type Envelope(EnvelopeSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type gamma_list(gamma_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type UB_list(UB_listSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type family(familySEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type link(linkSEXP);
-    Rcpp::traits::input_parameter< int >::type progbar(progbarSEXP);
-    rcpp_result_gen = Rcpp::wrap(rindep_norm_gamma_reg_std_v5_cpp(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -655,6 +578,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayes_f2_binomial_logit_prep_v3", (DL_FUNC) &_glmbayes_f2_binomial_logit_prep_v3, 8},
     {"_glmbayes_RSS", (DL_FUNC) &_glmbayes_RSS, 5},
     {"_glmbayes_f2_gaussian", (DL_FUNC) &_glmbayes_f2_gaussian, 7},
+    {"_glmbayes_Inv_f3_gaussian", (DL_FUNC) &_glmbayes_Inv_f3_gaussian, 7},
     {"_glmbayes_f2_binomial_logit_prep_opencl", (DL_FUNC) &_glmbayes_f2_binomial_logit_prep_opencl, 8},
     {"_glmbayes_f2_binomial_logit_prep_grad_opencl", (DL_FUNC) &_glmbayes_f2_binomial_logit_prep_grad_opencl, 8},
     {"_glmbayes_f2_prep_grad_opencl", (DL_FUNC) &_glmbayes_f2_prep_grad_opencl, 10},
@@ -662,13 +586,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayes_f2_accum", (DL_FUNC) &_glmbayes_f2_accum, 7},
     {"_glmbayes_get_opencl_core_count", (DL_FUNC) &_glmbayes_get_opencl_core_count, 0},
     {"_glmbayes_nmath_test_wrapper", (DL_FUNC) &_glmbayes_nmath_test_wrapper, 0},
-    {"_glmbayes_rindep_norm_gamma_reg_std_cpp", (DL_FUNC) &_glmbayes_rindep_norm_gamma_reg_std_cpp, 12},
-    {"_glmbayes_rindep_norm_gamma_reg_std_v2_cpp", (DL_FUNC) &_glmbayes_rindep_norm_gamma_reg_std_v2_cpp, 14},
-    {"_glmbayes_rindep_norm_gamma_reg_std_v3_cpp", (DL_FUNC) &_glmbayes_rindep_norm_gamma_reg_std_v3_cpp, 14},
     {"_glmbayes_Inv_f3_precompute_disp", (DL_FUNC) &_glmbayes_Inv_f3_precompute_disp, 7},
     {"_glmbayes_Inv_f3_with_disp", (DL_FUNC) &_glmbayes_Inv_f3_with_disp, 3},
     {"_glmbayes_rindep_norm_gamma_reg_std_v4_cpp", (DL_FUNC) &_glmbayes_rindep_norm_gamma_reg_std_v4_cpp, 14},
-    {"_glmbayes_rindep_norm_gamma_reg_std_v5_cpp", (DL_FUNC) &_glmbayes_rindep_norm_gamma_reg_std_v5_cpp, 14},
     {"_glmbayes_rmath_test_wrapper", (DL_FUNC) &_glmbayes_rmath_test_wrapper, 0},
     {"_glmbayes_glmb_Standardize_Model", (DL_FUNC) &_glmbayes_glmb_Standardize_Model, 5},
     {"_glmbayes_rnnorm_reg_std_cpp", (DL_FUNC) &_glmbayes_rnnorm_reg_std_cpp, 12},

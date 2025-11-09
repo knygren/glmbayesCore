@@ -1,7 +1,7 @@
 #' Envelope Sizing and Optimization
 #'
-#' \code{EnvelopeSize()} is the high‑level entry point that constructs
-#' per‑dimension grids and expected draw counts, while \code{EnvelopeOpt()}
+#' \code{EnvelopeSize()} is the high-level entry point that constructs
+#' per-dimension grids and expected draw counts, while \code{EnvelopeOpt()}
 #' performs the adaptive optimization used when \code{Gridtype = 2}.
 #'
 #' These functions implement the grid sizing logic used in envelope construction
@@ -9,15 +9,15 @@
 #' \insertCite{Nygren2006}{glmbayes} and the general implementation outlined in
 #' \insertCite{glmbayesSimmethods}{glmbayes}. 
 #' 
-#' @param a Numeric vector of diagonal precisions for the log‑likelihood
+#' @param a Numeric vector of diagonal precisions for the log-likelihood
 #'   (posterior precision is \eqn{1 + a_i}).
 #' @param G1 Numeric matrix of candidate grid points (3 × l1).
 #' @param Gridtype Integer code controlling grid sizing logic:
 #'   \itemize{
 #'     \item 1 = static threshold test
 #'     \item 2 = adaptive optimization via \code{EnvelopeOpt()}
-#'     \item 3 = always three‑point grid
-#'     \item 4 = always single‑point grid
+#'     \item 3 = always three-point grid
+#'     \item 4 = always single-point grid
 #'   }
 #' @param n Integer; number of posterior draws to generate (used for grid sizing).
 #' @param n_envopt Integer; effective sample size passed to \code{EnvelopeOpt}.
@@ -44,14 +44,14 @@
 #'     Expected candidates per draw in that dimension:
 #'     \eqn{\sqrt{1 + a_i}}.  
 #'
-#'     Otherwise, a symmetric three‑point envelope is used at
+#'     Otherwise, a symmetric three-point envelope is used at
 #'     \eqn{\{\theta^\star_i - \omega_i, \theta^\star_i, \theta^\star_i + \omega_i\}},
 #'     with expected candidates per draw bounded above by
 #'     \eqn{2/\sqrt{\pi}}.
 #'   }
 #'
 #'   \item{Gridtype 2: Adaptive Optimization}{
-#'     Each dimension is assigned either a single‑point or three‑point envelope
+#'     Each dimension is assigned either a single-point or three-point envelope
 #'     by minimizing
 #'     \deqn{T_\mathrm{total}(g_i) = T_\mathrm{build}(g_i) + T_\mathrm{sample}(n, acc_i(g_i)).}
 #'
@@ -60,19 +60,19 @@
 #'
 #'     Expected candidates per draw:
 #'     \eqn{\prod_j \text{scaleest}[i,j]}, where each factor is either
-#'     \eqn{\sqrt{1+a_j}} (single‑point) or \eqn{2/\sqrt{\pi}} (three‑point),
+#'     \eqn{\sqrt{1+a_j}} (single-point) or \eqn{2/\sqrt{\pi}} (three-point),
 #'     depending on the optimization outcome.
 #'   }
 #'
-#'   \item{Gridtype 3: Always Three‑Point}{
-#'     Every dimension uses a symmetric three‑point envelope.  
+#'   \item{Gridtype 3: Always Three-Point}{
+#'     Every dimension uses a symmetric three-point envelope.  
 #'     Expected candidates per draw:
 #'     \deqn{\left(\tfrac{2}{\sqrt{\pi}}\right)^k}
 #'     for \eqn{k} dimensions, as shown in Theorem 3 of
 #'     \insertCite{Nygren2006}{glmbayes}.
 #'   }
 #'
-#'   \item{Gridtype 4: Always Single‑Point}{
+#'   \item{Gridtype 4: Always Single-Point}{
 #'     Every dimension uses a single tangent at the posterior mode.  
 #'     Expected candidates per draw:
 #'     \deqn{\prod_{i=1}^k \sqrt{1 + a_i}}
@@ -84,18 +84,18 @@
 #' @details
 #' \code{EnvelopeSize()} returns the constructed grid (\code{G2}),
 #' index vectors (\code{GIndex1}), expected draw count (\code{E_draws}),
-#' and the per‑dimension grid index.  
+#' and the per-dimension grid index.  
 #'
 #' \code{EnvelopeOpt()} implements the adaptive optimization used in
 #' \code{Gridtype = 2}, ranking dimensions by posterior variance and
-#' promoting them to three‑point tangents when the tradeoff is favorable.
+#' promoting them to three-point tangents when the tradeoff is favorable.
 #'
 #' @return
 #' \describe{
 #'   \item{\code{EnvelopeSize()}}{A list with components \code{G2}, \code{GIndex1},
 #'   \code{E_draws}, and \code{gridindex}.}
 #'   \item{\code{EnvelopeOpt()}}{An integer vector of length \eqn{l1} with entries
-#'   1 (single‑point) or 3 (three‑point).}
+#'   1 (single-point) or 3 (three-point).}
 #' }
 #'
 #' @seealso \code{\link{EnvelopeBuild}}, \code{\link{EnvelopeSort}}

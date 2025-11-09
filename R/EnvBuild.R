@@ -4,7 +4,7 @@
 #'
 #' @details
 #' Constructs an enveloping function for posterior simulation using a grid of
-#' tangency points. The envelope is used in accept–reject sampling to guarantee
+#' tangency points. The envelope is used in accept-reject sampling to guarantee
 #' iid draws from the posterior distribution. The implementation follows
 #' \insertCite{Nygren2006}{glmbayes}, with extensions for GPU acceleration
 #' (via OpenCL), dynamic grid optimization, and parallelized evaluation.
@@ -69,7 +69,7 @@
 #' densities, and the separability across dimensions makes the grid-based
 #' construction computationally tractable.
 #'
-#' Models with Zellner’s \eqn{g}-priors are essentially in standard form,
+#' Models with Zellner's \eqn{g}-priors are essentially in standard form,
 #' since in the whitened design space both the prior and likelihood precisions
 #' are diagonal. Each dimension still needs to be scaled so that the prior
 #' precision is exactly the identity matrix. For other models, standard form
@@ -381,7 +381,7 @@
 #' @section Algorithmic steps (linked to theory):
 #'
 #' The implementation of \code{EnvelopeBuild} follows the envelope construction
-#' in Nygren & Nygren (2006) for models in standard form (See Section 3–3.3). 
+#' in Nygren & Nygren (2006) for models in standard form (See Section 3-3.3). 
 #' Each computational step corresponds to a theoretical guarantee:
 #'
 #' 1. **Compute width parameters \eqn{\omega_i} from the diagonal precision matrix.**  In particular,
@@ -651,12 +651,12 @@
 #' @section Example 2 (standard normal prior, restricted set):
 #' Suppose that the prior \eqn{\pi(\cdot)} in Definition 2 is a
 #' \eqn{p}-dimensional multivariate normal density with mean vector 0
-#' and variance–covariance matrix \eqn{I}, the identity matrix.
+#' and variance-covariance matrix \eqn{I}, the identity matrix.
 #' Let \eqn{q_{\bar{\theta}}(\cdot)} be a generalized likelihood-subgradient
 #' density at \eqn{\bar{\theta}}.
 #'
 #' It is straightforward to verify that \eqn{q_{\bar{\theta}}(\cdot)} has
-#' mean vector \eqn{-c(\bar{\theta})} and variance–covariance matrix \eqn{I}.
+#' mean vector \eqn{-c(\bar{\theta})} and variance-covariance matrix \eqn{I}.
 #'
 #' Define a restricted set
 #' \deqn{
@@ -679,7 +679,7 @@
 #'     - \lambda\!\big(\ell^{L} + c(\bar{\theta}),\,\ell^{U} + c(\bar{\theta})\big),
 #' }
 #' where \eqn{\lambda(\cdot)} is a vector-valued function with
-#' \eqn{r}th component given by Mills’ ratio:
+#' \eqn{r}th component given by Mills' ratio:
 #' \deqn{
 #'   \lambda_{r}
 #'   = \frac{\varphi(\ell^{L}_{r} + c_{r}(\bar{\theta}))
@@ -772,7 +772,7 @@
 #' \strong{Definition 3.} A probability model with a multivariate normal prior
 #' and log-concave likelihood function is in \emph{standard form} if:
 #' \itemize{
-#'   \item (a) the prior variance–covariance matrix is the identity matrix, and
+#'   \item (a) the prior variance-covariance matrix is the identity matrix, and
 #'   \item (b) the Hessian of the log-posterior density evaluated at the posterior mode
 #'         is a diagonal matrix.
 #' }
@@ -797,7 +797,7 @@
 #'                 }
 #'         }
 #'   \item \strong{Remark 14.} If a model has a multivariate normal prior with a diagonal
-#'         variance–covariance matrix and the posterior precision at the posterior mode is
+#'         variance-covariance matrix and the posterior precision at the posterior mode is
 #'         also diagonal, then the model can be reparameterized into standard form.
 #'   \item \strong{Remark 15.} If a probability model with a multivariate normal prior and
 #'         log-concave likelihood function has a twice continuously differentiable log-likelihood,
@@ -972,7 +972,7 @@
 #' @return
 #' \describe{
 #'
-#'   \item{\code{EnvelopeBuild()}}{A list of envelope components used for accept–reject sampling:
+#'   \item{\code{EnvelopeBuild()}}{A list of envelope components used for accept-reject sampling:
 #'     \describe{
 #'       \item{\code{GridIndex}}{Integer matrix encoding sampling type (tail, center, line) per dimension and region.}
 #'       \item{\code{thetabars}}{Matrix of tangency points \eqn{\bar{\theta}_j} for each grid region.}
@@ -1001,7 +1001,7 @@
 #'   \item{\code{setlogP()}}{A list with updated mixture-weight and acceptance constants:
 #'     \describe{
 #'       \item{\code{logP}}{Input \code{logP} with its second column populated by the log of unnormalized visit probabilities per region (mixture denominators).}
-#'       \item{\code{LLconst}}{Vector of acceptance constants \eqn{-\log f(y \mid \bar{\theta}_j) - c(\bar{\theta}_j)^{T}\bar{\theta}_j} used in the accept–reject test.}
+#'       \item{\code{LLconst}}{Vector of acceptance constants \eqn{-\log f(y \mid \bar{\theta}_j) - c(\bar{\theta}_j)^{T}\bar{\theta}_j} used in the accept-reject test.}
 #'     }
 #'   }
 #' }

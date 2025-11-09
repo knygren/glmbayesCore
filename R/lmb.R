@@ -78,7 +78,7 @@
 #' posterior simulation and prior specification via the \code{\link{pfamily}} argument. Internally, 
 #' \code{lmb} calls \code{lm} to obtain the classical least squares fit, then generates independent 
 #' draws from the posterior distribution using either multivariate normal simulation (for Gaussian priors) 
-#' or accept–reject sampling via likelihood-subgradient envelopes \insertCite{Nygren2006}{glmbayes}.
+#' or accept-reject sampling via likelihood-subgradient envelopes \insertCite{Nygren2006}{glmbayes}.
 #'
 #' The symbolic formula interface follows the conventions introduced by Wilkinson and Rogers 
 #' \insertCite{WilkinsonRogers1973}{glmbayes}, and the overall design of \code{lm} was inspired by the S system 
@@ -97,7 +97,7 @@
 #' Posterior draws are generated using the prior specification provided via \code{pfamily}. For Gaussian models 
 #' with conjugate priors, draws are obtained directly from the posterior distribution using standard simulation 
 #' procedures for multivariate normal densities \insertCite{Raiffa1961}{glmbayes}. For non-conjugate setups, the 
-#' function uses envelope-based accept–reject sampling, where the \code{Gridtype} parameter controls the granularity 
+#' function uses envelope-based accept-reject sampling, where the \code{Gridtype} parameter controls the granularity 
 #' of the envelope construction. The number of candidates generated before acceptance is returned in the 
 #' \code{iters} component.
 #'

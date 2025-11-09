@@ -97,7 +97,7 @@ envelopes.}
       \item{\code{x}}{Design matrix.}
       \item{\code{fit}}{Fitted/diagnostic object. Gaussian: result of \code{lm.fit} (class \code{"lm"}). Non-Gaussian: result of \code{glmb.wfit(...)}.}
       \item{\code{iters}}{Vector of iteration counts per sample. Gaussian: vector of ones; non-Gaussian: counts from the sampler.}
-      \item{\code{Envelope}}{Envelope list used for accept–reject sampling (non-Gaussian); \code{NULL} for Gaussian.}
+      \item{\code{Envelope}}{Envelope list used for accept-reject sampling (non-Gaussian); \code{NULL} for Gaussian.}
       \item{\code{family}}{Family object describing distribution and link.}
       \item{\code{famfunc}}{Processed family functions used internally (e.g., \code{f2}, \code{f3}).}
       \item{\code{call}}{Matched call to \code{rNormal_reg()}.}
@@ -184,19 +184,19 @@ These functions are used internally by \code{pfamily} constructors and model fit
   \insertCite{Nygren2006}{glmbayes} is used to generate iid samples.
 
 - **\code{rNormal_Gamma_reg()}**: Produces iid draws for regression coefficients and the
-  dispersion parameter in models with Normal–Gamma priors and Gaussian likelihoods, where
+  dispersion parameter in models with Normal-Gamma priors and Gaussian likelihoods, where
   this is a conjugate prior distribution. Standard simulation procedures for gamma and
   multivariate normal distributions are utilized
   \insertCite{Raiffa1961,LindleySmith1972}{glmbayes}.
 
 - **\code{rindependent_norm_gamma_reg()}**: Produces iid draws for regression coefficients
   and the dispersion parameter in models with independent Normal and truncated Gamma priors.
-  This is a non-conjugate specification but can still be sampled using accept–reject procedures
+  This is a non-conjugate specification but can still be sampled using accept-reject procedures
   based on an enveloping approach (see vignette
   \insertCite{glmbayesIndNormGammaVignette}{glmbayes}).
 
 - **\code{rGamma_reg()}**: Simulates dispersion parameters for Gaussian and Gamma families
-  using either standard gamma sampling or accept–reject methods based on likelihood
+  using either standard gamma sampling or accept-reject methods based on likelihood
   subgradients \insertCite{Chen1979,glmbayesGammaVignette}{glmbayes}.
 }
 \examples{

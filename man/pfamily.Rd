@@ -53,7 +53,7 @@ specification is typically only used as part of Gibbs sampling where the beta an
 dispersion parameters are updated separately.}
 
 \item{max_disp_perc}{Specifies the percentile used to truncate the posterior dispersion 
-distribution when constructing the envelope for accept–reject sampling. This determines 
+distribution when constructing the envelope for accept-reject sampling. This determines 
 the lower and upper bounds for the dispersion (σ²) used in the simulation. A value of 0.99 
 corresponds to using the central 98 percent of the posterior dispersion mass (i.e., excluding 
 the outer 1 percent in each tail). Smaller values yield tighter bounds and may improve acceptance 
@@ -108,13 +108,13 @@ The `pfamily()` generic retrieves the embedded prior from a fitted model object,
   other supported likelihood families in the current framework. This structure facilitates efficient posterior 
   sampling and analytical tractability.
 
-  For models with log-concave likelihood functions—such as Poisson, Binomial, and Gamma families—
+  For models with log-concave likelihood functions-such as Poisson, Binomial, and Gamma families-
   posterior sampling under a `dNormal` prior is performed using a \insertCite{Nygren2006}{glmbayes} 
   likelihood subgradient approach. This method constructs tight enveloping functions around the posterior 
   using subgradients of the log-likelihood, enabling efficient accept-reject sampling even in high dimensions.
 
   When the posterior distribution is approximately normal (typically the case for large sample sizes), the 
-  area under the enveloping function is bounded above by a constant factor—approximately \eqn{2 / \sqrt{\pi} \approx 1.128} 
+  area under the enveloping function is bounded above by a constant factor-approximately \eqn{2 / \sqrt{\pi} \approx 1.128} 
   in the univariate case, and \eqn{(2 / \sqrt{\pi})^k} in \eqn{k}-dimensional models. These bounds ensure that 
   the rejection rate remains manageable and that the sampler remains computationally efficient.
 

@@ -1,21 +1,21 @@
-#' Parallel Truncated‐Normal Regression (Standard Worker)
+#' Parallel Truncated-Normal Regression (Standard Worker)
 #'
 #' Wraps the C++ function `rnnorm_reg_std_cpp_parallel` for fast, threaded sampling.
 #'
 #' @param n integer; number of observations.
 #' @param y numeric vector of length n; response values.
 #' @param x numeric matrix with n rows; predictors.
-#' @param mu numeric matrix (p × …); prior means for each coefficient.
-#' @param P numeric matrix or block‐matrix; prior precision/covariance.
+#' @param mu numeric matrix (p x ...); prior means for each coefficient.
+#' @param P numeric matrix or block-matrix; prior precision/covariance.
 #' @param alpha numeric vector of length p; regression coefficients.
 #' @param wt numeric vector of length n; observation weights.
 #' @param f2 R function; auxiliary update callback used internally.
 #' @param Envelope list with the following elements:
-#'   - PLSD: numeric vector of slice‐sampling probabilities.  
-#'   - loglt: numeric matrix of lower‐tail log‐densities.  
-#'   - logrt: numeric matrix of upper‐tail log‐densities.  
+#'   - PLSD: numeric vector of slice-sampling probabilities.  
+#'   - loglt: numeric matrix of lower-tail log-densities.  
+#'   - logrt: numeric matrix of upper-tail log-densities.  
 #'   - cbars: numeric matrix of truncation bounds.  
-#'   - LLconst: numeric vector of log‐likelihood offsets.  
+#'   - LLconst: numeric vector of log-likelihood offsets.  
 #' @param family character string; distribution family (e.g. "gaussian").
 #' @param link character string; link function (e.g. "identity").
 #' @param progbar integer (0 or 1); whether to display a progress bar.

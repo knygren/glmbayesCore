@@ -50,11 +50,11 @@
 #'
 #' The design of the \code{pfamily} family of functions was created by Kjell Nygren and is modeled on how 
 #' \code{glm} uses \code{family} to specify the likelihood. For any implemented combination of family, link, and 
-#' \code{pfamily}, \code{rglmb} generates independent draws from the posterior density—no MCMC chains are required.
+#' \code{pfamily}, \code{rglmb} generates independent draws from the posterior density-no MCMC chains are required.
 #'
 #' A helper, \code{\link{Prior_Setup}}, assists users in choosing prior parameters. It ships with sensible defaults 
 #' but also allows full customization. In particular, the default for \code{dNormal} is a reparameterization of 
-#' Zellner’s g-prior \insertCite{zellner1986gprior}{glmbayes}.
+#' Zellner's g-prior \insertCite{zellner1986gprior}{glmbayes}.
 #'
 #' Currently supported response families are \code{gaussian} (identity link), \code{poisson} and \code{quasipoisson} 
 #' (log link), \code{gamma} (log link), and \code{binomial} and \code{quasibinomial} (logit, probit, cloglog). 
@@ -63,12 +63,12 @@
 #'
 #' For the Gaussian family, draws under \code{dNormal} and \code{dNormalGamma} come from posterior distributions 
 #' resulting from conjugate prior distributions \insertCite{Raiffa1961}{glmbayes}. For all other priors or response families, 
-#' we use an accept–reject sampler built on the likelihood-subgradient envelope method 
+#' we use an accept-reject sampler built on the likelihood-subgradient envelope method 
 #' \insertCite{Nygren2006}{glmbayes}. The \code{Gridtype} argument controls how many tangent points are used 
-#' in the envelope—trading off envelope tightness against construction cost—and \code{iters} reports candidate 
+#' in the envelope-trading off envelope tightness against construction cost-and \code{iters} reports candidate 
 #' counts before acceptance.
 #'
-#' By default, \code{rglmb} draws \code{n = 1} sample, uses parallel CPU simulation, and—if \code{use_opencl = TRUE}—
+#' By default, \code{rglmb} draws \code{n = 1} sample, uses parallel CPU simulation, and-if \code{use_opencl = TRUE}-
 #' GPU-accelerated envelope building. The function returns a list containing posterior samples, prior specifications, 
 #' dispersion estimates, and the envelope used during sampling. It does not return a full model object, and does not 
 #' support formula-based modeling or method dispatch. Instead, it is called internally by \code{\link{glmb}} and 

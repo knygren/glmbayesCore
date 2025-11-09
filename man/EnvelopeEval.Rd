@@ -114,7 +114,7 @@ The evaluation workflow has several layers:
 * It flattens the input matrices/vectors and allocates output buffers.
 * It then constructs a full OpenCL program by concatenating:
   - a generic OpenCL support header (`OPENCL.CL`),
-  - OpenCL ports of R’s `rmath`, `nmath`, and `dpq` libraries,
+  - OpenCL ports of R's `rmath`, `nmath`, and `dpq` libraries,
   - and the family/link-specific kernel source (e.g.
     `f2_f3_binomial_logit.cl`).
 * The resulting program is compiled and passed to a kernel runner
@@ -137,8 +137,8 @@ The evaluation workflow has several layers:
   - `cbars`: numeric matrix of gradients (parameters × grid points).
 **6. Role of likelihood and gradients in sampling**
 
-* The outputs of `EnvelopeEval()` — the negative log-likelihood values
-  (`NegLL`) and the gradient matrix (`cbars`) — are not endpoints in
+* The outputs of `EnvelopeEval()` - the negative log-likelihood values
+  (`NegLL`) and the gradient matrix (`cbars`) - are not endpoints in
   themselves. They form the *envelope* used in the rejection sampler
   implemented by internal functions such as
   `rnnorm_reg_std_cpp()` and `rnnorm_reg_std_cpp_parallel()`.
@@ -171,12 +171,12 @@ The acceptance test is performed using
 * Both `NegLL` and `cbars` are computed once during envelope construction,
   prior to the simulation stage.
 * This means the sampler does not need to recompute likelihoods or
-  gradients at every candidate draw — it simply reuses the stored values
+  gradients at every candidate draw - it simply reuses the stored values
   (`NegLL`, `cbars`, and `LLconst`) in the acceptance inequality.
 
 This design ensures that the envelope is tangent to the log-likelihood at
 each \eqn{\bar{\theta}_j}, lies above it elsewhere, and that the
-accept–reject procedure can run efficiently while still producing samples
+accept-reject procedure can run efficiently while still producing samples
 from the true posterior \eqn{\pi(\theta \mid y)}.#'
 }
 \references{

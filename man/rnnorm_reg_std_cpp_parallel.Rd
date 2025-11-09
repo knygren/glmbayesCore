@@ -2,7 +2,7 @@
 % Please edit documentation in R/rnnorm_reg_std_cpp_parallel.R
 \name{rnnorm_reg_std_cpp_parallel}
 \alias{rnnorm_reg_std_cpp_parallel}
-\title{Parallel Truncated‐Normal Regression (Standard Worker)}
+\title{Parallel Truncated-Normal Regression (Standard Worker)}
 \usage{
 rnnorm_reg_std_cpp_parallel(
   n,
@@ -26,9 +26,9 @@ rnnorm_reg_std_cpp_parallel(
 
 \item{x}{numeric matrix with n rows; predictors.}
 
-\item{mu}{numeric matrix (p × …); prior means for each coefficient.}
+\item{mu}{numeric matrix (p x ...); prior means for each coefficient.}
 
-\item{P}{numeric matrix or block‐matrix; prior precision/covariance.}
+\item{P}{numeric matrix or block-matrix; prior precision/covariance.}
 
 \item{alpha}{numeric vector of length p; regression coefficients.}
 
@@ -37,11 +37,11 @@ rnnorm_reg_std_cpp_parallel(
 \item{f2}{R function; auxiliary update callback used internally.}
 
 \item{Envelope}{list with the following elements:
-- PLSD: numeric vector of slice‐sampling probabilities.  
-- loglt: numeric matrix of lower‐tail log‐densities.  
-- logrt: numeric matrix of upper‐tail log‐densities.  
+- PLSD: numeric vector of slice-sampling probabilities.  
+- loglt: numeric matrix of lower-tail log-densities.  
+- logrt: numeric matrix of upper-tail log-densities.  
 - cbars: numeric matrix of truncation bounds.  
-- LLconst: numeric vector of log‐likelihood offsets.}
+- LLconst: numeric vector of log-likelihood offsets.}
 
 \item{family}{character string; distribution family (e.g. "gaussian").}
 

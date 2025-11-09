@@ -144,7 +144,7 @@ that its sign is controlled, ensuring the validity of the accept/reject step.
   }
 
   \item{UB1 (if applicable)}{
-    Placeholder: describe UB1’s role and why it is non-negative.
+    Placeholder: describe UB1's role and why it is non-negative.
   }
 
   \item{UB2 (residual sum of squares bound)}{

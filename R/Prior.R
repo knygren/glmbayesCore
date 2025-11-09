@@ -67,7 +67,7 @@
 #'
 #' When `pwt` is a scalar, the prior covariance is scaled from the likelihood covariance using a Zellner g-prior:
 #' \deqn{\Sigma_{Prior} = \frac{1 - pwt}{pwt} \cdot V_{MLE}}
-#' where \eqn{V_{MLE}} is the variance–covariance matrix of the maximum likelihood estimator.
+#' where \eqn{V_{MLE}} is the variance-covariance matrix of the maximum likelihood estimator.
 #'
 #' If the likelihood covariance is not full rank, the function aborts with an error, as a g-prior cannot be constructed.
 #'  While Bayesian models can still be estimated in such cases, users should proceed with caution.
@@ -106,7 +106,7 @@
 #' \deqn{\text{rate}_{\mathrm{post}} = \text{rate} + \frac{1}{2} \cdot \text{RSS} =  \frac{n_{\mathrm{prior}}+n_{\mathrm{likelihood}} - k}{2}  \cdot dispersion}
 #' 
 #' This structure allows the prior to contribute pseudo-observations to the residual precision estimate, enabling adaptive shrinkage and hierarchical 
-#' regularization — especially valuable in small-sample or high-dimensional settings.
+#' regularization - especially valuable in small-sample or high-dimensional settings.
 #' especially in small-sample or high-dimensional settings.
 #'
 #'

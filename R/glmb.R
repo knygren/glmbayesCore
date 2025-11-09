@@ -89,7 +89,7 @@
 #' uses \code{family} to specify the likelihood.
 #'
 #' For any implemented combination of family, link, and \code{pfamily}, 
-#' \code{glmb} generates independent draws from the posterior density—
+#' \code{glmb} generates independent draws from the posterior density-
 #' no MCMC chains are required. Results can be printed or summarized
 #' with methods that mirror those for \code{\link{glm}} (e.g.\ \code{\link{print.glmb}},
 #' \code{\link{summary.glmb}}), as well as all the usual \code{glm}/\code{lm}
@@ -98,7 +98,7 @@
 #' A helper, \code{\link{Prior_Setup}}, assists users in choosing prior
 #' parameters. It ships with sensible defaults but also allows full
 #' customization. In particular, the default for \code{dNormal} is a
-#' reparameterization of Zellner’s g-prior \insertCite{zellner1986gprior}{glmbayes}.
+#' reparameterization of Zellner's g-prior \insertCite{zellner1986gprior}{glmbayes}.
 #'
 #' Currently supported response families are
 #' \code{gaussian} (identity link), \code{poisson} and \code{quasipoisson}
@@ -110,14 +110,14 @@
 #' For the Gaussian family, draws under \code{dNormal} and
 #' \code{dNormalGamma} come from posterior distributions resulting from conjugate 
 #' prior distributions \insertCite{Raiffa1961}{glmbayes}. For all other priors or response families, 
-#' we use an accept–reject sampler built on the likelihood-subgradient envelope
+#' we use an accept-reject sampler built on the likelihood-subgradient envelope
 #' method \insertCite{Nygren2006}{glmbayes}. The
 #' \code{Gridtype} argument controls how many tangent points are used
-#' in the envelope—trading off envelope tightness against construction
-#' cost—and \code{iters} reports candidate counts before acceptance.
+#' in the envelope-trading off envelope tightness against construction
+#' cost-and \code{iters} reports candidate counts before acceptance.
 #'
 #' By default, \code{glmb} draws \code{n = 1000} samples, uses parallel
-#' CPU simulation, and—if \code{use_opencl = TRUE}—GPU-accelerated
+#' CPU simulation, and-if \code{use_opencl = TRUE}-GPU-accelerated
 #' envelope building. \code{"glmb"} comes with many of the same kinds of method functions
 #' that come with \code{"glm"} and \code{"lm"}, so you can still call \code{\link{extractAIC}},
 #' \code{\link{fitted.values}}, or any other standard method.

@@ -49,7 +49,7 @@
 #'
 #' The modeling framework follows the conventions introduced by Wilkinson and Rogers 
 #' \insertCite{WilkinsonRogers1973}{glmbayes}, and the prior structure builds on the S system 
-#' \insertCite{Chambers1992}{glmbayes}, Zellner’s g-prior \insertCite{zellner1986gprior}{glmbayes}, and 
+#' \insertCite{Chambers1992}{glmbayes}, Zellner's g-prior \insertCite{zellner1986gprior}{glmbayes}, and 
 #' the conjugate prior formulation of Raiffa and Schlaifer \insertCite{Raiffa1961}{glmbayes}.
 #'
 #' Prior specification is handled via the \code{\link{pfamily}} argument, which defines the prior mean, 
@@ -61,9 +61,9 @@
 #' including independent priors on variance components.
 #'
 #' Posterior draws are generated using standard simulation procedures for conjugate priors \insertCite{Raiffa1961}{glmbayes}. 
-#' For non-conjugate setups, the function uses envelope-based accept–reject sampling via the 
+#' For non-conjugate setups, the function uses envelope-based accept-reject sampling via the 
 #' likelihood-subgradient method \insertCite{Nygren2006}{glmbayes}. The \code{Gridtype} parameter controls 
-#' how many tangent points are used to construct the envelope—trading off tightness against computational cost—
+#' how many tangent points are used to construct the envelope-trading off tightness against computational cost-
 #' and the \code{iters} component reports the number of candidate samples generated before acceptance.
 #'
 #' The output includes posterior samples, prior specifications, dispersion estimates, and envelope diagnostics. 

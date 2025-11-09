@@ -53,6 +53,10 @@ f2_binomial_logit_prep_v3 <- function(b, y, x, mu, P, alpha, wt, progbar = 0L) {
     .Call(`_glmbayes_f2_gaussian`, b, y, x, mu, P, alpha, wt)
 }
 
+Inv_f3_gaussian <- function(cbars, y, x, mu, P, alpha, wt) {
+    .Call(`_glmbayes_Inv_f3_gaussian`, cbars, y, x, mu, P, alpha, wt)
+}
+
 f2_binomial_logit_prep_opencl <- function(b, y, x, mu, P, alpha, wt, progbar) {
     .Call(`_glmbayes_f2_binomial_logit_prep_opencl`, b, y, x, mu, P, alpha, wt, progbar)
 }
@@ -81,18 +85,6 @@ nmath_test_wrapper <- function() {
     .Call(`_glmbayes_nmath_test_wrapper`)
 }
 
-.rindep_norm_gamma_reg_std_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar = 1L) {
-    .Call(`_glmbayes_rindep_norm_gamma_reg_std_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar)
-}
-
-.rindep_norm_gamma_reg_std_V2_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = 1L) {
-    .Call(`_glmbayes_rindep_norm_gamma_reg_std_v2_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar)
-}
-
-.rindep_norm_gamma_reg_std_V3_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = 1L) {
-    .Call(`_glmbayes_rindep_norm_gamma_reg_std_v3_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar)
-}
-
 Inv_f3_precompute_disp <- function(cbars, y, x, mu, P, alpha, wt) {
     .Call(`_glmbayes_Inv_f3_precompute_disp`, cbars, y, x, mu, P, alpha, wt)
 }
@@ -103,10 +95,6 @@ Inv_f3_with_disp <- function(cache, dispersion, cbars_small) {
 
 .rindep_norm_gamma_reg_std_V4_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = TRUE) {
     .Call(`_glmbayes_rindep_norm_gamma_reg_std_v4_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar)
-}
-
-.rindep_norm_gamma_reg_std_V5_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = 1L) {
-    .Call(`_glmbayes_rindep_norm_gamma_reg_std_v5_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar)
 }
 
 rmath_test_wrapper <- function() {
