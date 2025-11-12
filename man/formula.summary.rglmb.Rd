@@ -15,7 +15,7 @@
 The function returns a vector, \code{logLikout} with the estimated log-likelihood for each draw.
 }
 \description{
-This function is a method function for the \code{"glmb"} class used to 
+This function is a method function for the \code{"glmb"} class used to
 Extract the log-Likelihood from a Bayesian Generalized Linear Model.
 }
 \examples{

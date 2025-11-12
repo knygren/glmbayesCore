@@ -44,8 +44,8 @@ Prior_Setup(
 \item{subset}{an optional vector specifying a subset of observations
     to be used in the fitting process.}
 
-\item{na.action}{how \code{NAs} are treated. The default is first, any \code{\link{na.action}} attribute of 
-data, second a \code{na.action} setting of \link{options}, and third \code{na.fail} if that is unset. 
+\item{na.action}{how \code{NAs} are treated. The default is first, any \code{\link{na.action}} attribute of
+data, second a \code{na.action} setting of \link{options}, and third \code{na.fail} if that is unset.
 The \code{factory-fresh} default is \code{na.omit}. Another possible value is \code{NULL}.}
 
 \item{offset}{this can be used to specify an \emph{a priori} known
@@ -58,18 +58,18 @@ The \code{factory-fresh} default is \code{na.omit}. Another possible value is \c
 \item{contrasts}{an optional list. See the \code{contrasts.arg}
     of \code{model.matrix.default}.}
 
-\item{pwt}{Weight on the prior relative to the likelihood function at the maximum likelihood 
-estimate. If supplied, this value is used directly. If \code{n_prior} is provided, it is 
-calculated as \code{pwt = n_prior / (n_prior + n_likelihood)}, where \code{n_likelihood} is the 
-effective number of likelihood observations. If \code{sd} is provided, \code{pwt} is computed 
-from the prior standard deviations. If none of these are supplied, \code{pwt} defaults to 
-\code{pwt_default_low} for models with fewer than 14 coefficients, and 
+\item{pwt}{Weight on the prior relative to the likelihood function at the maximum likelihood
+estimate. If supplied, this value is used directly. If \code{n_prior} is provided, it is
+calculated as \code{pwt = n_prior / (n_prior + n_likelihood)}, where \code{n_likelihood} is the
+effective number of likelihood observations. If \code{sd} is provided, \code{pwt} is computed
+from the prior standard deviations. If none of these are supplied, \code{pwt} defaults to
+\code{pwt_default_low} for models with fewer than 14 coefficients, and
 \code{pwt_default_high} otherwise.}
 
-\item{pwt_default_low}{Default prior weight used when \code{pwt} is not supplied and the model 
+\item{pwt_default_low}{Default prior weight used when \code{pwt} is not supplied and the model
 dimension is below 14. Defaults to 0.01.}
 
-\item{pwt_default_high}{Default prior weight used when \code{pwt} is not supplied and the model 
+\item{pwt_default_high}{Default prior weight used when \code{pwt} is not supplied and the model
 dimension is 14 or greater. Defaults to 0.05.}
 
 \item{n_prior}{Optional argument with number of prior observations (either a scalar or a vector). When provided, this is used together with the number of likelihood observations to compute pwt. If not provided but pwt is a scalar, it is computed as n_prior=n_likelihood*(pwt/(1-pwt)).}
@@ -104,54 +104,64 @@ A list with items related to the prior.
 Helper function to facilitate the Setup of Prior Distributions for glm models.
 }
 \details{
-`Prior_Setup()` initializes a structured set of prior parameters for generalized linear models (GLMs), supporting both Gaussian and non-Gaussian families.
- It is designed to provide the full set of inputs required for multiple prior specifications (referred to as "pfamilies"), including conjugate normal priors, 
- Normal-Gamma priors, and independent normal-gamma priors.
+\code{Prior_Setup()} initializes a structured set of prior parameters for generalized linear models (GLMs), supporting both Gaussian and non-Gaussian families.
+It is designed to provide the full set of inputs required for multiple prior specifications (referred to as "pfamilies"), including conjugate normal priors,
+Normal-Gamma priors, and independent normal-gamma priors.
 
 The function returns a list containing:
-* `mu`: the prior mean vector
-* `Sigma`: the prior variance-covariance matrix
-* `dispersion`: the estimated dispersion (for Gaussian models)
-* `shape`: the shape parameter for Normal-Gamma priors (if applicable)
-* `rate`: the rate parameter for Normal-Gamma priors (if applicable)
-* `model`: the model frame used to construct the design matrix
-* `x`: the design matrix
-* `call`: the matched call to `Prior_Setup()`
-* `PriorSettings`: a list of metadata including:
-  - `pwt`: prior weight (scalar or vector)
-  - `n_prior`: effective prior sample size
-  - `n_likelihood`: effective likelihood sample size
-  - `intercept_source`: method used to set the prior mean for the intercept
-  - `effects_source`: method used to set the prior mean for the effects
+\itemize{
+\item \code{mu}: the prior mean vector
+\item \code{Sigma}: the prior variance-covariance matrix
+\item \code{dispersion}: the estimated dispersion (for Gaussian models)
+\item \code{shape}: the shape parameter for Normal-Gamma priors (if applicable)
+\item \code{rate}: the rate parameter for Normal-Gamma priors (if applicable)
+\item \code{model}: the model frame used to construct the design matrix
+\item \code{x}: the design matrix
+\item \code{call}: the matched call to \code{Prior_Setup()}
+\item \code{PriorSettings}: a list of metadata including:
+\itemize{
+\item \code{pwt}: prior weight (scalar or vector)
+\item \code{n_prior}: effective prior sample size
+\item \code{n_likelihood}: effective likelihood sample size
+\item \code{intercept_source}: method used to set the prior mean for the intercept
+\item \code{effects_source}: method used to set the prior mean for the effects
+}
+}
+\subsection{Inputs to the function}{
 
-### Inputs to the function
+The inputs to \code{Prior_Setup()} fall into three conceptual categories:
 
-The inputs to `Prior_Setup()` fall into three conceptual categories:
+\strong{1. Model specification}
+\itemize{
+\item \code{formula}: defines the structure of the GLM, including response and predictors.
+\item \code{family}: specifies the error distribution and link function (e.g., \code{gaussian()}, \code{binomial()}).
+\item \code{data}: optional data frame used to evaluate the formula and extract variables.
+}
 
-**1. Model specification**
-* `formula`: defines the structure of the GLM, including response and predictors.
-* `family`: specifies the error distribution and link function (e.g., `gaussian()`, `binomial()`).
-* `data`: optional data frame used to evaluate the formula and extract variables.
+\strong{2. Prior variance-covariance specification}
+\itemize{
+\item \code{pwt}: prior weight relative to the likelihood. If scalar, used to compute Zellner's g-prior.
+\item \code{n_prior}: optional effective prior sample size. If provided, overrides \code{pwt}.
+\item \code{sd}: optional vector of prior standard deviations. If provided, used to compute \code{pwt}.
+}
 
-**2. Prior variance-covariance specification**
-* `pwt`: prior weight relative to the likelihood. If scalar, used to compute Zellner's g-prior.
-* `n_prior`: optional effective prior sample size. If provided, overrides `pwt`.
-* `sd`: optional vector of prior standard deviations. If provided, used to compute `pwt`.
+\strong{3. Prior mean specification}
+\itemize{
+\item \code{intercept_source}: method for setting the prior mean of the intercept (\code{"null_model"} or \code{"full_model"}).
+\item \code{effects_source}: method for setting the prior mean of the effects (\code{"null_effects"} or \code{"full_model"}).
+\item \code{mu}: optional user-specified prior mean vector. Overrides other centering logic if provided.
+}
+}
 
-**3. Prior mean specification**
-* `intercept_source`: method for setting the prior mean of the intercept (`"null_model"` or `"full_model"`).
-* `effects_source`: method for setting the prior mean of the effects (`"null_effects"` or `"full_model"`).
-* `mu`: optional user-specified prior mean vector. Overrides other centering logic if provided.
+\subsection{Mathematical structure and interpretation}{
 
-### Mathematical structure and interpretation
-
-When `pwt` is a scalar, the prior covariance is scaled from the likelihood covariance using a Zellner g-prior:
+When \code{pwt} is a scalar, the prior covariance is scaled from the likelihood covariance using a Zellner g-prior:
 \deqn{\Sigma_{Prior} = \frac{1 - pwt}{pwt} \cdot V_{MLE}}
 where \eqn{V_{MLE}} is the variance-covariance matrix of the maximum likelihood estimator.
 
 If the likelihood covariance is not full rank, the function aborts with an error, as a g-prior cannot be constructed.
- While Bayesian models can still be estimated in such cases, users should proceed with caution.
- 
+While Bayesian models can still be estimated in such cases, users should proceed with caution.
+
 The corresponding prior precision is:
 \deqn{P_{Prior} = \frac{pwt}{1 - pwt} \cdot P_{MLE}}
 and the posterior mean (in the Gaussian case) simplifies to:
@@ -159,35 +169,36 @@ and the posterior mean (in the Gaussian case) simplifies to:
 
 Default prior centering reflects classical reference structures:
 \itemize{
-  \item The intercept prior is centered at the null model estimate (`intercept_source = "null_model"`), consistent with how R\eqn{^2}, F-tests, and t-statistics are defined.
-  \item The effect priors are centered at zero (`effects_source = "null_effects"`), supporting intuitive posterior summaries and direct interpretation of tail probabilities.
+\item The intercept prior is centered at the null model estimate (\code{intercept_source = "null_model"}), consistent with how R\eqn{^2}, F-tests, and t-statistics are defined.
+\item The effect priors are centered at zero (\code{effects_source = "null_effects"}), supporting intuitive posterior summaries and direct interpretation of tail probabilities.
 }
 
-These defaults ensure that posterior means remain close to classical estimates when `pwt` is small, 
-while allowing additional flexible prior specifications through `mu`, `sd`, and `n_prior`. 
+These defaults ensure that posterior means remain close to classical estimates when \code{pwt} is small,
+while allowing additional flexible prior specifications through \code{mu}, \code{sd}, and \code{n_prior}.
 
-If `n_prior` is not provided, it is derived from `pwt` and the effective likelihood sample size `n_likelihood` using:
+If \code{n_prior} is not provided, it is derived from \code{pwt} and the effective likelihood sample size \code{n_likelihood} using:
 \deqn{n_{\mathrm{prior}} = \frac{pwt}{1 - pwt} \cdot n_{\mathrm{likelihood}}}
-where `n_likelihood` is the number of observations in the model.
+where \code{n_likelihood} is the number of observations in the model.
 
-Likewise, if `n_prior` is provided, `pwt` is computed as:
+Likewise, if \code{n_prior} is provided, \code{pwt} is computed as:
 \deqn{pwt = \frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}}
 
-#' When applicable, `Prior_Setup()` computes the shape and rate parameters for a Gamma prior on the residual precision (inverse variance), used in 
-compound prior families such as `dNormal_Gamma()` , `dIndependent_Normal_Gamma()`, and `dGamma()`. These are derived from the effective prior sample size and the estimated dispersion:
+#' When applicable, \code{Prior_Setup()} computes the shape and rate parameters for a Gamma prior on the residual precision (inverse variance), used in
+compound prior families such as \code{dNormal_Gamma()} , \code{dIndependent_Normal_Gamma()}, and \code{dGamma()}. These are derived from the effective prior sample size and the estimated dispersion:
 
 \deqn{\text{shape} = \frac{n_{\mathrm{prior}}}{2}}
 \deqn{\text{rate} = \text{shape} \cdot \text{dispersion} = \frac{n_{\mathrm{prior}}}{2} \cdot \text{dispersion}}
-   
+
 where RSS is the residual sum of squares from the likelihood model.
 
 The posterior shape and rate parameters under a Normal-Gamma model are then:
 \deqn{\text{shape}_{\mathrm{post}} = \text{shape} + \frac{n_{\mathrm{likelihood}}}{2} = \frac{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}{2}}
 \deqn{\text{rate}_{\mathrm{post}} = \text{rate} + \frac{1}{2} \cdot \text{RSS} =  \frac{n_{\mathrm{prior}}+n_{\mathrm{likelihood}} - k}{2}  \cdot dispersion}
 
-This structure allows the prior to contribute pseudo-observations to the residual precision estimate, enabling adaptive shrinkage and hierarchical 
+This structure allows the prior to contribute pseudo-observations to the residual precision estimate, enabling adaptive shrinkage and hierarchical
 regularization - especially valuable in small-sample or high-dimensional settings.
 especially in small-sample or high-dimensional settings.
+}
 }
 \examples{
 ## Dobson (1990) Page 93: Randomized Controlled Trial :

@@ -69,8 +69,8 @@ how frequently each component of the resulting grid should be sampled
 during simulation.
 }
 \details{
-This function sorts the envelope in descending order based on the 
-probability associated with each component in the Grid. Sorting helps 
+This function sorts the envelope in descending order based on the
+probability associated with each component in the Grid. Sorting helps
 speed up simulation once the envelope is constructed.
 }
 \examples{

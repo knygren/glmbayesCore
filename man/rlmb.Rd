@@ -15,17 +15,17 @@ rlmb(n = 1, y, x, pfamily, offset = rep(0, nobs), weights = NULL)
 
 \item{y}{a vector of observations of length \code{m}.}
 
-\item{x}{for \code{rlmb} a design matrix of dimension \code{m * p} and for 
+\item{x}{for \code{rlmb} a design matrix of dimension \code{m * p} and for
 \code{print.rlmb} the object to be printed.}
 
 \item{pfamily}{a description of the prior distribution and associated constants to be used in the model. This
 should be a pfamily function (see \code{\link{pfamily}} for details of pfamily functions.)}
 
-\item{offset}{this can be used to specify an a priori known component to be 
-included in the linear predictor during fitting. This should be \code{NULL} or a numeric 
+\item{offset}{this can be used to specify an a priori known component to be
+included in the linear predictor during fitting. This should be \code{NULL} or a numeric
 vector or matrix of extents
 matching those of the response.  One or more \code{offset} terms can be
-included in the formula instead or as well, and if more than one are specified their 
+included in the formula instead or as well, and if more than one are specified their
 sum is used.  See \code{model.offset}.}
 
 \item{weights}{an optional vector of weights to be used in the fitting
@@ -40,7 +40,7 @@ sum is used.  See \code{model.offset}.}
     regression fitting functions (see below).}
 }
 \value{
-\code{rlmb} returns a object of class \code{"rlmb"}.  The function \code{summary} 
+\code{rlmb} returns a object of class \code{"rlmb"}.  The function \code{summary}
 (i.e., \code{\link{summary.rglmb}}) can be used to obtain or print a summary of the results.
 The generic accessor functions \code{\link{coefficients}}, \code{\link{fitted.values}},
 \code{\link{residuals}}, and \code{\link{extractAIC}} can be used to extract
@@ -51,9 +51,9 @@ An object of class \code{"rlmb"} is a list containing at least the following com
 \item{dispersion}{Either a constant provided as part of the call, or a vector of length \code{n} with one sample in each row.}
 \item{Prior}{A list with the priors specified for the model in question. Items in the
 list may vary based on the type of prior}
-\item{prior.weights}{a vector of weights specified or implied by the model} 
-\item{y}{a vector with the dependent variable} 
-\item{x}{a matrix with the implied design matrix for the model} 
+\item{prior.weights}{a vector of weights specified or implied by the model}
+\item{y}{a vector with the dependent variable}
+\item{x}{a matrix with the implied design matrix for the model}
 \item{famfunc}{Family functions used during estimation process}
 \item{iters}{an \code{n} by \code{1} matrix giving the number of candidates generated before acceptance for each sample.}
 \item{Envelope}{the envelope that was used during sampling}
@@ -65,43 +65,43 @@ benefit from existing infrastructure while supporting specialized behavior for r
 model priors.
 }
 \description{
-\code{rlmb} is used to generate iid samples from Bayesian Linear Models with multivariate normal priors. 
-The model is specified by providing a data vector, a design matrix, and a pfamily (determining the 
+\code{rlmb} is used to generate iid samples from Bayesian Linear Models with multivariate normal priors.
+The model is specified by providing a data vector, a design matrix, and a pfamily (determining the
 prior distribution).
 }
 \details{
-The function \code{rlmb} is a minimalistic Bayesian simulation engine for Gaussian linear models. 
-It bypasses classical model fitting and formula parsing, operating directly on numeric inputs such as 
-the design matrix, response vector, and prior specification via the \code{\link{pfamily}} argument. 
-Internally, \code{rlmb} generates independent draws from the posterior distribution using multivariate 
+The function \code{rlmb} is a minimalistic Bayesian simulation engine for Gaussian linear models.
+It bypasses classical model fitting and formula parsing, operating directly on numeric inputs such as
+the design matrix, response vector, and prior specification via the \code{\link{pfamily}} argument.
+Internally, \code{rlmb} generates independent draws from the posterior distribution using multivariate
 normal simulation when conjugate priors are specified.
 
-The modeling framework follows the conventions introduced by Wilkinson and Rogers 
-\insertCite{WilkinsonRogers1973}{glmbayes}, and the prior structure builds on the S system 
-\insertCite{Chambers1992}{glmbayes}, Zellner's g-prior \insertCite{zellner1986gprior}{glmbayes}, and 
+The modeling framework follows the conventions introduced by Wilkinson and Rogers
+\insertCite{WilkinsonRogers1973}{glmbayes}, and the prior structure builds on the S system
+\insertCite{Chambers1992}{glmbayes}, Zellner's g-prior \insertCite{zellner1986gprior}{glmbayes}, and
 the conjugate prior formulation of Raiffa and Schlaifer \insertCite{Raiffa1961}{glmbayes}.
 
-Prior specification is handled via the \code{\link{pfamily}} argument, which defines the prior mean, 
-covariance, and dispersion. The design of the \code{pfamily} family of functions was created by Kjell Nygren 
-and is modeled on how \code{\link{glm}} uses \code{family} to specify the likelihood. A helper function, 
-\code{\link{Prior_Setup}}, assists users in choosing prior parameters. It ships with sensible defaults but 
-also allows full customization. Available priors include the  \code{dNormal}, \code{dNormalGamma} and 
-\code{dIndependent_Normal_Gamma} priors. The last of these allows for more flexible prior structures 
+Prior specification is handled via the \code{\link{pfamily}} argument, which defines the prior mean,
+covariance, and dispersion. The design of the \code{pfamily} family of functions was created by Kjell Nygren
+and is modeled on how \code{\link{glm}} uses \code{family} to specify the likelihood. A helper function,
+\code{\link{Prior_Setup}}, assists users in choosing prior parameters. It ships with sensible defaults but
+also allows full customization. Available priors include the  \code{dNormal}, \code{dNormalGamma} and
+\code{dIndependent_Normal_Gamma} priors. The last of these allows for more flexible prior structures
 including independent priors on variance components.
 
-Posterior draws are generated using standard simulation procedures for conjugate priors \insertCite{Raiffa1961}{glmbayes}. 
-For non-conjugate setups, the function uses envelope-based accept-reject sampling via the 
-likelihood-subgradient method \insertCite{Nygren2006}{glmbayes}. The \code{Gridtype} parameter controls 
+Posterior draws are generated using standard simulation procedures for conjugate priors \insertCite{Raiffa1961}{glmbayes}.
+For non-conjugate setups, the function uses envelope-based accept-reject sampling via the
+likelihood-subgradient method \insertCite{Nygren2006}{glmbayes}. The \code{Gridtype} parameter controls
 how many tangent points are used to construct the envelope-trading off tightness against computational cost-
 and the \code{iters} component reports the number of candidate samples generated before acceptance.
 
-The output includes posterior samples, prior specifications, dispersion estimates, and envelope diagnostics. 
-While \code{rlmb} does not return a full model object or support generic methods like \code{predict} or 
-\code{summary}, it is designed for efficient posterior simulation in Gaussian models where full model 
+The output includes posterior samples, prior specifications, dispersion estimates, and envelope diagnostics.
+While \code{rlmb} does not return a full model object or support generic methods like \code{predict} or
+\code{summary}, it is designed for efficient posterior simulation in Gaussian models where full model
 reconstruction is unnecessary.
 
-The \code{\link{rlmb}} function called from within \code{\link{lmb}}. 
-It is intended for simulation-heavy workflows such as Gibbs sampling or posterior 
+The \code{\link{rlmb}} function called from within \code{\link{lmb}}.
+It is intended for simulation-heavy workflows such as Gibbs sampling or posterior
 predictive checks where minimal overhead is preferred.
 }
 \examples{
@@ -168,11 +168,11 @@ The classical modeling functions \code{\link[stats]{lm}} and \code{\link[stats]{
 
 \code{\link{pfamily}} for documentation of pfamily functions used to specify priors.
 
-\code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for functions used to initialize and to check priors,  
+\code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for functions used to initialize and to check priors,
 
-\code{\link{summary.glmb}}, \code{\link{predict.glmb}}, \code{\link{simulate.glmb}}, 
-\code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for methods 
-inherited from class \code{glmb} and the methods and generic functions for classes \code{glm} and 
+\code{\link{summary.glmb}}, \code{\link{predict.glmb}}, \code{\link{simulate.glmb}},
+\code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for methods
+inherited from class \code{glmb} and the methods and generic functions for classes \code{glm} and
 \code{lm} from which class \code{lmb} also inherits.
 
 glmbayes Modeling Functions

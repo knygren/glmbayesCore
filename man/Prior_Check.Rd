@@ -55,10 +55,10 @@ should be a pfamily function (see \code{\link{pfamily}} for details of pfamily f
 
 \item{subset}{an optional vector specifying a subset of observations to be used in the fitting process.}
 
-\item{na.action}{a function which indicates what should happen when the data contain \code{NA}s.  The default is set by 
-the \code{na.action} setting of \code{\link{options}}, and is \code{\link[stats]{na.fail}} 
-if that is unset.  The \sQuote{factory-fresh} default is \code{stats{na.omit}}.  
-Another possible value is \code{NULL}, no action.  Value \code{stats{na.exclude}} 
+\item{na.action}{a function which indicates what should happen when the data contain \code{NA}s.  The default is set by
+the \code{na.action} setting of \code{\link{options}}, and is \code{\link[stats]{na.fail}}
+if that is unset.  The \sQuote{factory-fresh} default is \code{stats{na.omit}}.
+Another possible value is \code{NULL}, no action.  Value \code{stats{na.exclude}}
 can be useful.}
 
 \item{start}{starting values for the parameters in the linear predictor.}
@@ -67,10 +67,10 @@ can be useful.}
 
 \item{mustart}{starting values for the vector of means.}
 
-\item{offset}{this can be used to specify an \emph{a priori} known component to be included in the linear 
-predictor during fitting. This should be \code{NULL} or a numeric vector of length equal to the number of 
-cases.  One or more \code{\link[stats]{offset}} terms can be included in the formula instead or as well, and 
-if more than one is specified their sum is used.  See documentation for \code{model.offset} at 
+\item{offset}{this can be used to specify an \emph{a priori} known component to be included in the linear
+predictor during fitting. This should be \code{NULL} or a numeric vector of length equal to the number of
+cases.  One or more \code{\link[stats]{offset}} terms can be included in the formula instead or as well, and
+if more than one is specified their sum is used.  See documentation for \code{model.offset} at
 \code{\link[stats]{model.extract}}.}
 
 \item{control}{a list of parameters for controlling the fitting
@@ -112,12 +112,12 @@ if more than one is specified their sum is used.  See documentation for \code{mo
   }
 }
 \value{
-A vector where each item provided the ratio of the absolue value for the difference between the 
-prior and maximum likelihood estimate divided by the length of the sum of half of the two intervals 
+A vector where each item provided the ratio of the absolue value for the difference between the
+prior and maximum likelihood estimate divided by the length of the sum of half of the two intervals
 (where normality is assumed)
 }
 \description{
-Checks if the credible intervals for the prior overlaps with the implied confidence intervals from 
+Checks if the credible intervals for the prior overlaps with the implied confidence intervals from
 the classical model that comes from a call to the glm function
 }
 \examples{

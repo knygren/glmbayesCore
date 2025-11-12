@@ -91,6 +91,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Inv_f3_with_disp
+arma::mat Inv_f3_with_disp(Rcpp::List cache, double dispersion, Rcpp::NumericMatrix cbars_small);
+RcppExport SEXP _glmbayes_Inv_f3_with_disp(SEXP cacheSEXP, SEXP dispersionSEXP, SEXP cbars_smallSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type cache(cacheSEXP);
+    Rcpp::traits::input_parameter< double >::type dispersion(dispersionSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type cbars_small(cbars_smallSEXP);
+    rcpp_result_gen = Rcpp::wrap(Inv_f3_with_disp(cache, dispersion, cbars_small));
+    return rcpp_result_gen;
+END_RCPP
+}
 // EnvelopeBuild_c
 List EnvelopeBuild_c(NumericVector bStar, NumericMatrix A, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt, std::string family, std::string link, int Gridtype, int n, int n_envopt, bool sortgrid, bool use_opencl, bool verbose);
 RcppExport SEXP _glmbayes_EnvelopeBuild_c(SEXP bStarSEXP, SEXP ASEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP GridtypeSEXP, SEXP nSEXP, SEXP n_envoptSEXP, SEXP sortgridSEXP, SEXP use_openclSEXP, SEXP verboseSEXP) {
@@ -140,6 +153,97 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type use_opencl(use_openclSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     rcpp_result_gen = Rcpp::wrap(EnvelopeBuild_Ind_Normal_Gamma(bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Inv_f3_precompute_disp
+Rcpp::List Inv_f3_precompute_disp(NumericMatrix cbars, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt);
+RcppExport SEXP _glmbayes_Inv_f3_precompute_disp(SEXP cbarsSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type cbars(cbarsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type P(PSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type wt(wtSEXP);
+    rcpp_result_gen = Rcpp::wrap(Inv_f3_precompute_disp(cbars, y, x, mu, P, alpha, wt));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rss_face_at_disp
+double rss_face_at_disp(const Rcpp::List cache, double dispersion, const Rcpp::NumericVector cbars_j);
+RcppExport SEXP _glmbayes_rss_face_at_disp(SEXP cacheSEXP, SEXP dispersionSEXP, SEXP cbars_jSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::List >::type cache(cacheSEXP);
+    Rcpp::traits::input_parameter< double >::type dispersion(dispersionSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type cbars_j(cbars_jSEXP);
+    rcpp_result_gen = Rcpp::wrap(rss_face_at_disp(cache, dispersion, cbars_j));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rss_face_at_disp_export
+double rss_face_at_disp_export(double dispersion, Rcpp::List cache, Rcpp::NumericVector cbars_j, Rcpp::NumericVector y, Rcpp::NumericMatrix x, Rcpp::NumericVector alpha, Rcpp::NumericVector wt);
+RcppExport SEXP _glmbayes_rss_face_at_disp_export(SEXP dispersionSEXP, SEXP cacheSEXP, SEXP cbars_jSEXP, SEXP ySEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP wtSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type dispersion(dispersionSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type cache(cacheSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type cbars_j(cbars_jSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type wt(wtSEXP);
+    rcpp_result_gen = Rcpp::wrap(rss_face_at_disp_export(dispersion, cache, cbars_j, y, x, alpha, wt));
+    return rcpp_result_gen;
+END_RCPP
+}
+// UB2
+double UB2(double dispersion, Rcpp::List cache, Rcpp::NumericVector cbars_j, Rcpp::NumericVector y, Rcpp::NumericMatrix x, Rcpp::NumericVector alpha, Rcpp::NumericVector wt, double rss_min_global);
+RcppExport SEXP _glmbayes_UB2(SEXP dispersionSEXP, SEXP cacheSEXP, SEXP cbars_jSEXP, SEXP ySEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP rss_min_globalSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type dispersion(dispersionSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type cache(cacheSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type cbars_j(cbars_jSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< double >::type rss_min_global(rss_min_globalSEXP);
+    rcpp_result_gen = Rcpp::wrap(UB2(dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global));
+    return rcpp_result_gen;
+END_RCPP
+}
+// EnvelopeDispersionBuild_cpp
+List EnvelopeDispersionBuild_cpp(List Env, double Shape, double Rate, NumericMatrix P, NumericVector y, NumericMatrix x, NumericVector alpha, int n_obs, double RSS_post, double RSS_ML, NumericMatrix mu, NumericVector wt, double max_disp_perc, Nullable<double> disp_lower, Nullable<double> disp_upper, bool verbose);
+RcppExport SEXP _glmbayes_EnvelopeDispersionBuild_cpp(SEXP EnvSEXP, SEXP ShapeSEXP, SEXP RateSEXP, SEXP PSEXP, SEXP ySEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP n_obsSEXP, SEXP RSS_postSEXP, SEXP RSS_MLSEXP, SEXP muSEXP, SEXP wtSEXP, SEXP max_disp_percSEXP, SEXP disp_lowerSEXP, SEXP disp_upperSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type Env(EnvSEXP);
+    Rcpp::traits::input_parameter< double >::type Shape(ShapeSEXP);
+    Rcpp::traits::input_parameter< double >::type Rate(RateSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type P(PSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< int >::type n_obs(n_obsSEXP);
+    Rcpp::traits::input_parameter< double >::type RSS_post(RSS_postSEXP);
+    Rcpp::traits::input_parameter< double >::type RSS_ML(RSS_MLSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< double >::type max_disp_perc(max_disp_percSEXP);
+    Rcpp::traits::input_parameter< Nullable<double> >::type disp_lower(disp_lowerSEXP);
+    Rcpp::traits::input_parameter< Nullable<double> >::type disp_upper(disp_upperSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(EnvelopeDispersionBuild_cpp(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc, disp_lower, disp_upper, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -378,36 +482,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// Inv_f3_precompute_disp
-Rcpp::List Inv_f3_precompute_disp(NumericMatrix cbars, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt);
-RcppExport SEXP _glmbayes_Inv_f3_precompute_disp(SEXP cbarsSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericMatrix >::type cbars(cbarsSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type P(PSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type wt(wtSEXP);
-    rcpp_result_gen = Rcpp::wrap(Inv_f3_precompute_disp(cbars, y, x, mu, P, alpha, wt));
-    return rcpp_result_gen;
-END_RCPP
-}
-// Inv_f3_with_disp
-arma::mat Inv_f3_with_disp(Rcpp::List cache, double dispersion, Rcpp::NumericMatrix cbars_small);
-RcppExport SEXP _glmbayes_Inv_f3_with_disp(SEXP cacheSEXP, SEXP dispersionSEXP, SEXP cbars_smallSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::List >::type cache(cacheSEXP);
-    Rcpp::traits::input_parameter< double >::type dispersion(dispersionSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type cbars_small(cbars_smallSEXP);
-    rcpp_result_gen = Rcpp::wrap(Inv_f3_with_disp(cache, dispersion, cbars_small));
-    return rcpp_result_gen;
-END_RCPP
-}
 // rindep_norm_gamma_reg_std_cpp
 Rcpp::List rindep_norm_gamma_reg_std_cpp(int n, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, NumericVector alpha, NumericVector wt, Function f2, Rcpp::List Envelope, Rcpp::List gamma_list, Rcpp::List UB_list, Rcpp::CharacterVector family, Rcpp::CharacterVector link, bool progbar);
 RcppExport SEXP _glmbayes_rindep_norm_gamma_reg_std_cpp(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP, SEXP f2SEXP, SEXP EnvelopeSEXP, SEXP gamma_listSEXP, SEXP UB_listSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP progbarSEXP) {
@@ -569,8 +643,14 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayes_f2_f3_non_opencl", (DL_FUNC) &_glmbayes_f2_f3_non_opencl, 10},
     {"_glmbayes_EnvelopeSize", (DL_FUNC) &_glmbayes_EnvelopeSize, 7},
     {"_glmbayes_EnvelopeEval", (DL_FUNC) &_glmbayes_EnvelopeEval, 11},
+    {"_glmbayes_Inv_f3_with_disp", (DL_FUNC) &_glmbayes_Inv_f3_with_disp, 3},
     {"_glmbayes_EnvelopeBuild_c", (DL_FUNC) &_glmbayes_EnvelopeBuild_c, 16},
     {"_glmbayes_EnvelopeBuild_Ind_Normal_Gamma", (DL_FUNC) &_glmbayes_EnvelopeBuild_Ind_Normal_Gamma, 16},
+    {"_glmbayes_Inv_f3_precompute_disp", (DL_FUNC) &_glmbayes_Inv_f3_precompute_disp, 7},
+    {"_glmbayes_rss_face_at_disp", (DL_FUNC) &_glmbayes_rss_face_at_disp, 3},
+    {"_glmbayes_rss_face_at_disp_export", (DL_FUNC) &_glmbayes_rss_face_at_disp_export, 7},
+    {"_glmbayes_UB2", (DL_FUNC) &_glmbayes_UB2, 8},
+    {"_glmbayes_EnvelopeDispersionBuild_cpp", (DL_FUNC) &_glmbayes_EnvelopeDispersionBuild_cpp, 16},
     {"_glmbayes_Set_Grid", (DL_FUNC) &_glmbayes_Set_Grid, 3},
     {"_glmbayes_setlogP", (DL_FUNC) &_glmbayes_setlogP, 4},
     {"_glmbayes_arithmetic_test_wrapper", (DL_FUNC) &_glmbayes_arithmetic_test_wrapper, 0},
@@ -586,8 +666,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayes_f2_accum", (DL_FUNC) &_glmbayes_f2_accum, 7},
     {"_glmbayes_get_opencl_core_count", (DL_FUNC) &_glmbayes_get_opencl_core_count, 0},
     {"_glmbayes_nmath_test_wrapper", (DL_FUNC) &_glmbayes_nmath_test_wrapper, 0},
-    {"_glmbayes_Inv_f3_precompute_disp", (DL_FUNC) &_glmbayes_Inv_f3_precompute_disp, 7},
-    {"_glmbayes_Inv_f3_with_disp", (DL_FUNC) &_glmbayes_Inv_f3_with_disp, 3},
     {"_glmbayes_rindep_norm_gamma_reg_std_cpp", (DL_FUNC) &_glmbayes_rindep_norm_gamma_reg_std_cpp, 14},
     {"_glmbayes_rmath_test_wrapper", (DL_FUNC) &_glmbayes_rmath_test_wrapper, 0},
     {"_glmbayes_glmb_Standardize_Model", (DL_FUNC) &_glmbayes_glmb_Standardize_Model, 5},

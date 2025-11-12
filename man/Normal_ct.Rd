@@ -23,18 +23,18 @@ rnorm_ct(n, lgrt, lglt, mu = 0, sigma = 1)
 
 \item{Diff}{Logical argument. If \code{TRUE} the second parameter is the difference between the lower and upper bound}
 
-\item{n}{number of draws to generate. If \code{length(n) > 1}, 
+\item{n}{number of draws to generate. If \code{length(n) > 1},
 the length is taken to be the number required}
 
-\item{lgrt}{log of the distribution function between the 
+\item{lgrt}{log of the distribution function between the
 lower bound and infinity}
 
-\item{lglt}{log of the distribution function between negative 
+\item{lglt}{log of the distribution function between negative
 infinity and the upper bound}
 }
 \value{
 For \code{pnorm_ct}, vector of length equal to length of \code{a} and for
-\code{rnorm_ct}, a vector with length determined by \code{n} containing draws from 
+\code{rnorm_ct}, a vector with length determined by \code{n} containing draws from
 the center of the normal distribution.
 }
 \description{
@@ -42,18 +42,18 @@ Distribution function and random generation for the center (between a lower and 
 of the normal distribution with mean equal to mu and standard deviation equal to sigma.
 }
 \details{
-The distribution function pnorm_ct finds the probability of the 
-center of a normal density (the probability of the area between a lower 
-bound a and an upper bound b) while the random number generator rnorm_ct 
-samples from a restricted normal density where lgrt is the log of the 
-distribution between the lower bound and infinity and lglt is the log of 
-the distribution function between negative infinity and the upper bound. 
-The sum of the exponentiated values for the two (exp(lgrt)+exp(lglt)) must 
+The distribution function pnorm_ct finds the probability of the
+center of a normal density (the probability of the area between a lower
+bound a and an upper bound b) while the random number generator rnorm_ct
+samples from a restricted normal density where lgrt is the log of the
+distribution between the lower bound and infinity and lglt is the log of
+the distribution function between negative infinity and the upper bound.
+The sum of the exponentiated values for the two (exp(lgrt)+exp(lglt)) must
 sum to more than 1.
 
-These functions are mainly used to handle cases where the differences 
+These functions are mainly used to handle cases where the differences
 between the upper and lower bounds \code{b-a} are small. In such cases,
-using \code{pnorm(b)-pnorm(a)} may result in 0 being returned even when the 
+using \code{pnorm(b)-pnorm(a)} may result in 0 being returned even when the
 difference is supposed to be positive.
 }
 \examples{

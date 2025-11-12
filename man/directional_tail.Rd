@@ -13,11 +13,11 @@ directional_tail(fit, mu0 = NULL)
 }
 \value{
 An object of class 'directional_tail' containing:
-  \item{mahalanobis_shift}{Measures the standardized Mahalanobis distance between the posterior and prior means, 
+\item{mahalanobis_shift}{Measures the standardized Mahalanobis distance between the posterior and prior means,
 using posterior precision for scaling. In the Gaussian case, this directly determines the directional tail probability via Phi(-||w||).}
-  \item{p_directional}{Directional tail probability (proportion of draws in the direction of disagreement)}
-  \item{delta}{Mean shift in whitened space}
-  \item{draws}{List containing whitened draws, raw draws, and tail flags}
+\item{p_directional}{Directional tail probability (proportion of draws in the direction of disagreement)}
+\item{delta}{Mean shift in whitened space}
+\item{draws}{List containing whitened draws, raw draws, and tail flags}
 }
 \description{
 Computes the directional tail probability based on posterior draws and prior mean,

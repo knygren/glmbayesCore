@@ -25,8 +25,8 @@ A list with the following components
 \item{f7}{Another function}
 }
 \description{
-This function takes as input a \code{\link{family}} object and returns a 
-set of functions that are used during simulation and summarization of models 
+This function takes as input a \code{\link{family}} object and returns a
+set of functions that are used during simulation and summarization of models
 using the \code{\link{glmb}}, and \code{\link{rglmb}} functions.
 }
 \details{

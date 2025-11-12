@@ -10,7 +10,7 @@
 \method{print}{summary.rglmb}(x, digits = max(3, getOption("digits") - 3), ...)
 }
 \arguments{
-\item{object}{an object of class \code{"rglmb"} for which a 
+\item{object}{an object of class \code{"rglmb"} for which a
 summary is desired.}
 
 \item{x}{an object of class \code{"summary.rglmb"} for which a printed output is desired.}
@@ -20,12 +20,12 @@ summary is desired.}
 \item{\ldots}{Additional optional arguments}
 }
 \value{
-\code{summary.rglmb} returns a object of class \code{"summary.rglmb"}, a 
-list with components: 
+\code{summary.rglmb} returns a object of class \code{"summary.rglmb"}, a
+list with components:
 \item{n}{number of draws generated}
 \item{coefficients1}{Matrix with the prior mean and approximate weight for the prior relative to the data}
 \item{coefficients}{Matrix with columns for the posterior mode, posterior mean, posterior standard
-deviation, monte carlo error, and tail probabilities (posterior probability of observing a 
+deviation, monte carlo error, and tail probabilities (posterior probability of observing a
 value for the coefficient as extreme as the prior mean)}
 \item{Percentiles}{Matrix with estimated percentiles associated with the posterior density}
 }
@@ -33,10 +33,10 @@ value for the coefficient as extreme as the prior mean)}
 These functions are all \code{\link{methods}} for class \code{rglmb} or \code{summary.rglmb} objects.
 }
 \details{
-The \code{summary.rglmb} function summarizes the output from the 
-\code{\link{rglmb}} function. It takes an object of class \code{rglmb} as an input. 
-The output to a large extent mirrors the output from the \code{\link{summary.glm}} 
-function. This is particularly true for the print output from the function 
+The \code{summary.rglmb} function summarizes the output from the
+\code{\link{rglmb}} function. It takes an object of class \code{rglmb} as an input.
+The output to a large extent mirrors the output from the \code{\link{summary.glm}}
+function. This is particularly true for the print output from the function
 (i.e. the output of the function \code{\link{print.summary.rglmb}}).
 }
 \examples{

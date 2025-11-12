@@ -19,7 +19,7 @@ Compute an analysis of deviance table for one (current implementation) or more (
 Bayesian generalized linear model fits,
 }
 \details{
-Specifying a single object (currently only implementation) gives a sequential 
+Specifying a single object (currently only implementation) gives a sequential
 analysis of deviance table for that fit. That is the reductions in residual deviance as each
 term of the formula is addded in turn are given as the rows of a table, plus the residual deviances
 themselves.

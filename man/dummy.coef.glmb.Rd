@@ -12,7 +12,7 @@
 \arguments{
 \item{object}{a \code{glmb} model fit}
 
-\item{use.na}{logical flag for coefficients in a singular model. If use.na is true, 
+\item{use.na}{logical flag for coefficients in a singular model. If use.na is true,
 undetermined coefficients will be missing; if false they will get one possible value.}
 
 \item{x}{object to be printed}
@@ -27,11 +27,11 @@ This extracts coefficients in terms of the original levels of the coefficients
 rather than the coded variable
 }
 \details{
-A fitted linear model has coefficients for the contrasts of the factor terms, 
-usually one less in number than the number of levels. This function re-expresses the 
-coefficients in the original coding; as the coefficients will have been fitted in the 
-reduced basis, any implied constraints (e.g., zero sum for contr.helmert or contr.sum) 
-will be respected. There will be little point in using dummy.coef for contr.treatment 
+A fitted linear model has coefficients for the contrasts of the factor terms,
+usually one less in number than the number of levels. This function re-expresses the
+coefficients in the original coding; as the coefficients will have been fitted in the
+reduced basis, any implied constraints (e.g., zero sum for contr.helmert or contr.sum)
+will be respected. There will be little point in using dummy.coef for contr.treatment
 contrasts, as the missing coefficients are by definition zero.
 }
 \examples{

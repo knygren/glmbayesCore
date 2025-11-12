@@ -42,21 +42,21 @@ when the Normal prior is for the \code{gaussian()}, \code{Gamma()}, \code{quasib
 or \code{quasipoisson} families. The \code{binomial()} and \code{poisson()} families
 do not have dispersion coefficients.}
 
-\item{shape}{the prior shape parameter used by the gamma component of the prior. 
+\item{shape}{the prior shape parameter used by the gamma component of the prior.
 The gamma distribution is used as a prior for the inverse dispersion coefficients.}
 
 \item{rate}{the rate parameter used by the gamma component of the prior.}
 
-\item{beta}{the regression coefficients to be assumed when it is not given a prior. 
+\item{beta}{the regression coefficients to be assumed when it is not given a prior.
 Needs to be provided when the Gamma prior is used for the dispersion. This
-specification is typically only used as part of Gibbs sampling where the beta and 
+specification is typically only used as part of Gibbs sampling where the beta and
 dispersion parameters are updated separately.}
 
-\item{max_disp_perc}{Specifies the percentile used to truncate the posterior dispersion 
-distribution when constructing the envelope for accept-reject sampling. This determines 
-the lower and upper bounds for the dispersion (σ²) used in the simulation. A value of 0.99 
-corresponds to using the central 98 percent of the posterior dispersion mass (i.e., excluding 
-the outer 1 percent in each tail). Smaller values yield tighter bounds and may improve acceptance 
+\item{max_disp_perc}{Specifies the percentile used to truncate the posterior dispersion
+distribution when constructing the envelope for accept-reject sampling. This determines
+the lower and upper bounds for the dispersion (σ²) used in the simulation. A value of 0.99
+corresponds to using the central 98 percent of the posterior dispersion mass (i.e., excluding
+the outer 1 percent in each tail). Smaller values yield tighter bounds and may improve acceptance
 rates, while larger values allow broader dispersion support but may increase envelope complexity.}
 
 \item{disp_lower}{lower bound truncation for dispersion}
@@ -73,72 +73,71 @@ list with elements.
 \item{pfamily}{character: the pfamily name}
 \item{prior_list}{a list with the prior parameters associated with the prior specification}
 \item{okfamilies}{currently implemented families for which the prior family can be used.}
-\item{plinks}{a function that assigns a set of oklinks for the combination of a family and 
+\item{plinks}{a function that assigns a set of oklinks for the combination of a family and
 and pfamily.}
-\item{simfun}{function: the function used to generate samples from the posterior density. 
+\item{simfun}{function: the function used to generate samples from the posterior density.
 All currently implemented pfamilies have simulation functions that generate iid samples
 for the associated posterior distribution.}
 }
 \description{
-Prior family objects provide a convenient way to specify the details of the priors 
+Prior family objects provide a convenient way to specify the details of the priors
 used by functions such as \code{\link{glmb}}. See the documentations for \code{\link{lmb}},
-\code{\link{glmb}}, \code{\link{glmb}}, and \code{\link{rglmb}} for the details of how such model fitting 
+\code{\link{glmb}}, \code{\link{glmb}}, and \code{\link{rglmb}} for the details of how such model fitting
 takes place.
 }
 \details{
-\code{pfamily} is a generic function with methods for classe \code{glmb} and 
-\code{lmb}. Many \code{glmb} models currently only have implementations for the \code{dNormal()} 
-prior family. The \code{Gamma()} family also works with the \code{dGamma()} prior 
-family while the \code{gaussian()} family works with the \code{dGamma()} and 
+\code{pfamily} is a generic function with methods for classe \code{glmb} and
+\code{lmb}. Many \code{glmb} models currently only have implementations for the \code{dNormal()}
+prior family. The \code{Gamma()} family also works with the \code{dGamma()} prior
+family while the \code{gaussian()} family works with the \code{dGamma()} and
 \code{dNormal_Gamma()} pfamilies.
 
-A `pfamily` object represents a structured prior specification for use in Bayesian generalized linear modeling. 
-Each constructor function (e.g., `dNormal()`, `dGamma()`, `dNormal_Gamma()`) returns an object of class `"pfamily"` 
-containing the prior parameters, supported likelihood families, compatible link functions, and a simulation function 
+A \code{pfamily} object represents a structured prior specification for use in Bayesian generalized linear modeling.
+Each constructor function (e.g., \code{dNormal()}, \code{dGamma()}, \code{dNormal_Gamma()}) returns an object of class \code{"pfamily"}
+containing the prior parameters, supported likelihood families, compatible link functions, and a simulation function
 for posterior sampling.
 
-These priors are designed to integrate seamlessly with modeling functions such as `glmb()` and `rlmb()` in the 
-\pkg{glmbayes} package, which consume the `pfamily` object to define the prior distribution over model parameters. 
-The `pfamily()` generic retrieves the embedded prior from a fitted model object, while `print.pfamily()` displays its structure.
+These priors are designed to integrate seamlessly with modeling functions such as \code{glmb()} and \code{rlmb()} in the
+\pkg{glmbayes} package, which consume the \code{pfamily} object to define the prior distribution over model parameters.
+The \code{pfamily()} generic retrieves the embedded prior from a fitted model object, while \code{print.pfamily()} displays its structure.
+\subsection{Prior Families}{
+\itemize{
+\item \strong{\code{dNormal()}}: Specifies a multivariate normal prior over regression coefficients. It is conjugate for
+Gaussian likelihoods with an identity link function, and serves as the primary implemented prior for all
+other supported likelihood families in the current framework. This structure facilitates efficient posterior
+sampling and analytical tractability.
 
-## Prior Families
+For models with log-concave likelihood functions-such as Poisson, Binomial, and Gamma families-
+posterior sampling under a \code{dNormal} prior is performed using a \insertCite{Nygren2006}{glmbayes}
+likelihood subgradient approach. This method constructs tight enveloping functions around the posterior
+using subgradients of the log-likelihood, enabling efficient accept-reject sampling even in high dimensions.
 
-- **`dNormal()`**: Specifies a multivariate normal prior over regression coefficients. It is conjugate for 
-  Gaussian likelihoods with an identity link function, and serves as the primary implemented prior for all 
-  other supported likelihood families in the current framework. This structure facilitates efficient posterior 
-  sampling and analytical tractability.
+When the posterior distribution is approximately normal (typically the case for large sample sizes), the
+area under the enveloping function is bounded above by a constant factor-approximately \eqn{2 / \sqrt{\pi} \approx 1.128}
+in the univariate case, and \eqn{(2 / \sqrt{\pi})^k} in \eqn{k}-dimensional models. These bounds ensure that
+the rejection rate remains manageable and that the sampler remains computationally efficient.
 
-  For models with log-concave likelihood functions-such as Poisson, Binomial, and Gamma families-
-  posterior sampling under a `dNormal` prior is performed using a \insertCite{Nygren2006}{glmbayes} 
-  likelihood subgradient approach. This method constructs tight enveloping functions around the posterior 
-  using subgradients of the log-likelihood, enabling efficient accept-reject sampling even in high dimensions.
+The concept of conjugate priors was first formalized by \insertCite{Raiffa1961}{glmbayes}, and further
+developed for regression models using g-prior structures by \insertCite{zellner1986gprior}{glmbayes}.
+\item \strong{\code{dGamma()}}: Defines a gamma prior over a scalar precision parameter, often used in hierarchical models
+or variance components. This prior is particularly relevant for Gamma likelihoods and dispersion modeling
+in exponential families \insertCite{Gelman2013,Dobson1990,McCullagh1989}{glmbayes}.
+\item \strong{\code{dNormal_Gamma()}}: Combines a multivariate normal prior on coefficients with a gamma prior on precision,
+forming a conjugate structure for Gaussian models with unknown variance. This formulation parallels classical
+Normal-Gamma models and is compatible with hierarchical extensions \insertCite{Gelman2013,Raiffa1961}{glmbayes}.
+\item \strong{\code{dIndependent_Normal_Gamma()}}: Similar to \code{dNormal_Gamma()}, but assumes independence between the
+coefficient and precision priors. This structure is useful for models where prior independence is desired
+or analytically convenient.
+}
 
-  When the posterior distribution is approximately normal (typically the case for large sample sizes), the 
-  area under the enveloping function is bounded above by a constant factor-approximately \eqn{2 / \sqrt{\pi} \approx 1.128} 
-  in the univariate case, and \eqn{(2 / \sqrt{\pi})^k} in \eqn{k}-dimensional models. These bounds ensure that 
-  the rejection rate remains manageable and that the sampler remains computationally efficient.
-
-  The concept of conjugate priors was first formalized by \insertCite{Raiffa1961}{glmbayes}, and further 
-  developed for regression models using g-prior structures by \insertCite{zellner1986gprior}{glmbayes}.
-
-- **`dGamma()`**: Defines a gamma prior over a scalar precision parameter, often used in hierarchical models 
-  or variance components. This prior is particularly relevant for Gamma likelihoods and dispersion modeling 
-  in exponential families \insertCite{Gelman2013,Dobson1990,McCullagh1989}{glmbayes}.
-
-- **`dNormal_Gamma()`**: Combines a multivariate normal prior on coefficients with a gamma prior on precision, 
-  forming a conjugate structure for Gaussian models with unknown variance. This formulation parallels classical 
-  Normal-Gamma models and is compatible with hierarchical extensions \insertCite{Gelman2013,Raiffa1961}{glmbayes}.
-  
-
-- **`dIndependent_Normal_Gamma()`**: Similar to `dNormal_Gamma()`, but assumes independence between the 
-  coefficient and precision priors. This structure is useful for models where prior independence is desired 
-  or analytically convenient.
-
-Each `pfamily` object includes:
-- `prior_list`: A named list of prior parameters
-- `okfamilies`: A character vector of compatible likelihood families
-- `plinks`: A function returning valid link functions for a given family
-- `simfun`: A simulation function used for posterior sampling
+Each \code{pfamily} object includes:
+\itemize{
+\item \code{prior_list}: A named list of prior parameters
+\item \code{okfamilies}: A character vector of compatible likelihood families
+\item \code{plinks}: A function returning valid link functions for a given family
+\item \code{simfun}: A simulation function used for posterior sampling
+}
+}
 }
 \examples{
 ## Dobson (1990) Page 93: Randomized Controlled Trial :
@@ -201,8 +200,8 @@ pfamily(lmb.D9_v3)
 See also \insertCite{Hastie1992}{glmbayes} for the original S modeling framework that inspired the design of \code{pfamily}.
 }
 \author{
-The design of the \code{pfamily} set of functions was developed by Kjell Nygren and was 
-inspired by the family used by the \code{\link{glmb}} function to specify the likelihood 
+The design of the \code{pfamily} set of functions was developed by Kjell Nygren and was
+inspired by the family used by the \code{\link{glmb}} function to specify the likelihood
 function. That design in turn was inspired by S functions of the same names described in
 Hastie and Pregibon (1992).
 }

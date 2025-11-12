@@ -31,21 +31,21 @@ rnnorm_reg_std(
 \item{P}{a positive-definite symmetric matrix of dimension \code{p * p} specifying the prior precision
 matrix of the variable.}
 
-\item{alpha}{this can be used to specify an \emph{a priori} known component 
-to be included in the linear predictor during fitting. This should be 
-\code{NULL} or a numeric vector of length equal to the number of cases. 
+\item{alpha}{this can be used to specify an \emph{a priori} known component
+to be included in the linear predictor during fitting. This should be
+\code{NULL} or a numeric vector of length equal to the number of cases.
 One or more offset terms can be included in the formula instead or as well,
-and if more than one is specified their sum is used. See 
+and if more than one is specified their sum is used. See
 \code{\link{model.offset}}.}
 
-\item{wt}{an optional vector of \sQuote{prior weights} to be used in the fitting process. 
+\item{wt}{an optional vector of \sQuote{prior weights} to be used in the fitting process.
 Should be NULL or a numeric vector.}
 
 \item{f2}{function used to calculate the negative of the log-posterior function}
 
 \item{Envelope}{an object of type \code{glmbenvelope}.}
 
-\item{family}{family used for simulation. Used that this is different from the 
+\item{family}{family used for simulation. Used that this is different from the
 family used in other functions.}
 
 \item{link}{link function used for simulation.}
@@ -54,36 +54,33 @@ family used in other functions.}
 }
 \value{
 A list consisting of the following:
-\item{out}{A matrix with simulated draws from a model in standard form. Each row represents 
+\item{out}{A matrix with simulated draws from a model in standard form. Each row represents
 one draw from the density}
-\item{draws}{A vector with the number of candidates required before 
+\item{draws}{A vector with the number of candidates required before
 acceptance for each draw}
 }
 \description{
 \code{rnnorm_reg_std} is used to generate iid samplers from Non-Gaussian Generalized
-Linear Models in standard form. The function should onlybe called after standardization 
+Linear Models in standard form. The function should onlybe called after standardization
 of a Generalized Linear Model.
 }
 \details{
-This function uses the information contained in the constructed envelope list in order to sample 
+This function uses the information contained in the constructed envelope list in order to sample
 from a model in standard form. The simulation proceeds as follows in order to generate each draw in the required
 number of samples.
-
-1)  A random number between 0 and 1 is generated and is used together with the information in the PLSD vector 
+\enumerate{
+\item A random number between 0 and 1 is generated and is used together with the information in the PLSD vector
 (from the envelope) in order to identify the part of the grid from which a candidate is to be generated.
-
-2) For the part of the grid selected, the dimensions are looped through and a candidate component for each dimension
-is generated from a restricted normal using information from the Envelope (in particular, the values for logrt, loglt, 
+\item For the part of the grid selected, the dimensions are looped through and a candidate component for each dimension
+is generated from a restricted normal using information from the Envelope (in particular, the values for logrt, loglt,
 and cbars corresponding to that the part of the grid selected and the dimension sampled)
-
-3) The log-likelihood for the standardized model is evaluated for the generated candidate (note that the 
+\item The log-likelihood for the standardized model is evaluated for the generated candidate (note that the
 log-likelihood here includes the portion of the prior that was shifted to the log-likelihood)
-
- 4) An additional random number is generated and the log of this random number is compared to a 
- log-acceptance rate that is calculated based on the candidate and the LLconst component from the Envelope 
- component selected in order to determine if the candidate should be accepted or rejected 
-
-5) If the candidate was not accepted, the process above is repeated from step 1 until a candidate is accepted
+\item An additional random number is generated and the log of this random number is compared to a
+log-acceptance rate that is calculated based on the candidate and the LLconst component from the Envelope
+component selected in order to determine if the candidate should be accepted or rejected
+\item If the candidate was not accepted, the process above is repeated from step 1 until a candidate is accepted
+}
 }
 \examples{
 data(menarche2)

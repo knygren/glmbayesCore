@@ -1143,3 +1143,33 @@ Thus, for all \(d \in [\text{low}, \text{upp}]\),
 \]
 which completes the proof.
 
+
+## 6.0 - Modified UB2 approach
+
+
+| Term | Definition | Description |
+|------|------------|-------------|
+| $\text{test1}(\beta,d)$ | $\begin{aligned}  & LL(\beta,d) - \Big( LL(\bar c^{-1}(\bar c_j,d),d) - \bar c_j^{\top}(\beta - \bar c^{-1}(\bar c_j,d)) \Big) \\[6pt] &= \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \beta)^2 - \tfrac{1}{2}\beta^\top P \beta \Bigg] \\[6pt] &\quad - \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \tfrac{1}{2}\big(\bar c^{-1}(\bar c_j,d)\big)^\top P\,\bar c^{-1}(\bar c_j,d) - \bar c_j^{\top}\big(\beta - \bar c^{-1}(\bar c_j,d)\big) \Bigg] \end{aligned}$ | Difference between the log‑likelihood and its linearization at the tangency point. By concavity, this term is always $\leq 0$. |
+| $\text{UB2}(d)$ | $\tfrac{1}{2d}\Big(\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \mathrm{RSS}_{ML}\Big)$ | Bound relative to the ML residual sum of squares. Always $\geq 0$ because the ML fit minimizes residuals. |
+| $\text{UB3A}_j(d)$ | $\begin{aligned} &\mathrm{lg\_prob\_factor\_j} + \text{lmc}_1 + \text{lmc}_2\, d \\ &\quad - \Big(-\tfrac{1}{2}(\bar c^{-1}(\bar c_j,d))^\top P\,\bar c^{-1}(\bar c_j,d) + \bar c_j^\top \bar c^{-1}(\bar c_j,d)\Big) \end{aligned}$ | Bound from the quadratic–linear face energy. Constructed so that the global line $(\text{lmc}_1 + \text{lmc}_2\,d)$ dominates the exact quadratic–linear term. |
+| $\text{UB3B}(d)$ | $\begin{aligned} &(\mathrm{max\_upp} - \mathrm{max\_LL\_log\_disp}) \\ &\quad + (\mathrm{lm\_log1} + \mathrm{lm\_log2} \cdot \log d) - (\text{lmc}_1 + \text{lmc}_2 \cdot d) \end{aligned}$ | Bound from the dispersion log–tilt construction. Ensures that the global log–linear approximation dominates the true log‑dispersion curve. |
+
+
+New Construction for UB2:
+
+\[ RSS_{j,\mathrm{min}}= \min_{d \in \mathrm{[disp\_lower,disp\_upper]} } \sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 \]
+
+\[ RSS_{\mathrm{min}}= RSS_{j,\mathrm{min}} \]
+
+Note: The central tangency point is typically at the posterior mode.  If the prior is weak, the posterior mode is close to the Maximum likelihood estimate, so this will likely be similar to $RSS_ML$. However, if the prior is strong, this should me meaningfully different (and a better bound).
+
+
+\[\text{UB2}_{j}(d)=\tfrac{1}{2d}\Big(\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \mathrm{RSS}_{min}\Big)\]
+
+
+\[\mathrm{UB2}^{*}_{j}=\min_{d \in \mathrm{[disp\_lower,disp\_upper]} } \text{UB2}_{j} \]
+
+\[\text{UB2A}_{j}(d)=\text{UB2}_{j}(d) -\mathrm{UB2}^{*}_{j} \]
+
+
+Note: UB2A is likely to be much smaller than UB2 for most faces. $\mathrm{UB2}^{*}_{j}$ can be shifed to the mixture weight (PLSD).

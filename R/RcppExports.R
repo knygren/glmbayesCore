@@ -17,12 +17,36 @@ EnvelopeEval <- function(G4, y, x, mu, P, alpha, wt, family, link, use_opencl = 
     .Call(`_glmbayes_EnvelopeEval`, G4, y, x, mu, P, alpha, wt, family, link, use_opencl, verbose)
 }
 
+Inv_f3_with_disp <- function(cache, dispersion, cbars_small) {
+    .Call(`_glmbayes_Inv_f3_with_disp`, cache, dispersion, cbars_small)
+}
+
 .EnvelopeBuild_cpp <- function(bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose) {
     .Call(`_glmbayes_EnvelopeBuild_c`, bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose)
 }
 
 .EnvelopeBuild_Ind_Normal_Gamma <- function(bStar, A, y, x, mu, P, alpha, wt, family = "binomial", link = "logit", Gridtype = 2L, n = 1L, n_envopt = -1L, sortgrid = FALSE, use_opencl = FALSE, verbose = FALSE) {
     .Call(`_glmbayes_EnvelopeBuild_Ind_Normal_Gamma`, bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose)
+}
+
+Inv_f3_precompute_disp <- function(cbars, y, x, mu, P, alpha, wt) {
+    .Call(`_glmbayes_Inv_f3_precompute_disp`, cbars, y, x, mu, P, alpha, wt)
+}
+
+rss_face_at_disp <- function(cache, dispersion, cbars_j) {
+    .Call(`_glmbayes_rss_face_at_disp`, cache, dispersion, cbars_j)
+}
+
+rss_face_at_disp_export <- function(dispersion, cache, cbars_j, y, x, alpha, wt) {
+    .Call(`_glmbayes_rss_face_at_disp_export`, dispersion, cache, cbars_j, y, x, alpha, wt)
+}
+
+UB2 <- function(dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global) {
+    .Call(`_glmbayes_UB2`, dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global)
+}
+
+EnvelopeDispersionBuild_cpp <- function(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc = 0.99, disp_lower = NULL, disp_upper = NULL, verbose = FALSE) {
+    .Call(`_glmbayes_EnvelopeDispersionBuild_cpp`, Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc, disp_lower, disp_upper, verbose)
 }
 
 .Set_Grid_cpp <- function(GIndex, cbars, Lint) {
@@ -83,14 +107,6 @@ get_opencl_core_count <- function() {
 
 nmath_test_wrapper <- function() {
     .Call(`_glmbayes_nmath_test_wrapper`)
-}
-
-Inv_f3_precompute_disp <- function(cbars, y, x, mu, P, alpha, wt) {
-    .Call(`_glmbayes_Inv_f3_precompute_disp`, cbars, y, x, mu, P, alpha, wt)
-}
-
-Inv_f3_with_disp <- function(cache, dispersion, cbars_small) {
-    .Call(`_glmbayes_Inv_f3_with_disp`, cache, dispersion, cbars_small)
 }
 
 .rindep_norm_gamma_reg_std_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = TRUE) {

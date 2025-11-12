@@ -68,81 +68,6 @@ double r_invgamma(double shape,double rate,double disp_upper,double disp_lower){
 }
 
 
-// [[Rcpp::export]]
-Rcpp::List Inv_f3_precompute_disp(NumericMatrix cbars,
-                                  NumericVector y,
-                                  NumericMatrix x,
-                                  NumericMatrix mu,
-                                  NumericMatrix P,
-                                  NumericVector alpha,
-                                  NumericVector wt) {
-  int n = x.nrow();
-  int p = x.ncol();
-  int m = cbars.ncol();
-  
-  arma::mat X(x.begin(), n, p, false);
-  arma::mat Xt = X.t();
-  arma::vec yv(y.begin(), n, false);
-  arma::vec alphav(alpha.begin(), n, false);
-  arma::vec xb = alphav - yv;
-  
-  arma::mat Pmat(P.begin(), p, p, false);
-  Pmat = 0.5 * (Pmat + Pmat.t());
-  
-  arma::mat Mu(mu.begin(), p, 1, false);
-  arma::mat Pmu = Pmat * Mu;
-  
-  arma::vec wv(wt.begin(), n, false);
-  
-  arma::vec base_B0 = Xt * (wv % xb);
-  arma::mat base_A  = Xt * (X.each_col() % wv);
-  
-  arma::mat C(cbars.begin(), p, m, false);
-  
-  return Rcpp::List::create(
-    Rcpp::Named("Pmat")    = Pmat,
-    Rcpp::Named("Pmu")     = Pmu,
-    Rcpp::Named("base_B0") = base_B0,
-    Rcpp::Named("base_A")  = base_A,
-    Rcpp::Named("C")       = C
-  );
-}
-
-// [[Rcpp::export]]
-arma::mat Inv_f3_with_disp(Rcpp::List cache,
-                           double dispersion,
-                           Rcpp::NumericMatrix cbars_small) {
-  arma::mat Pmat    = cache["Pmat"];
-  arma::mat Pmu     = cache["Pmu"];
-  arma::vec base_B0 = cache["base_B0"];
-  arma::mat base_A  = cache["base_A"];
-  
-  // Scale the base terms
-  arma::vec B0 = base_B0 / dispersion + Pmu;
-  arma::mat A  = Pmat + base_A / dispersion;
-  A = 0.5 * (A + A.t());
-  
-  arma::mat R = arma::chol(A);
-  
-  // Wrap cbars_small into an Armadillo view
-  arma::mat Csmall(cbars_small.begin(), Pmat.n_rows, cbars_small.ncol(), false);
-  
-  // Use Armadillo's n_cols
-  arma::mat Out(Pmat.n_rows, Csmall.n_cols);
-  
-  for (arma::uword i = 0; i < Csmall.n_cols; i++) {
-    arma::vec cbars_i(Csmall.colptr(i), Pmat.n_rows, false);
-    arma::vec b = -cbars_i + B0;
-    
-    arma::vec ytmp = arma::solve(arma::trimatl(R.t()), b);
-    arma::vec sol  = arma::solve(arma::trimatu(R), ytmp);
-    
-    Out.col(i) = -sol;
-  }
-  
-  return Out.t(); // m × p
-}
-
 
 
 
@@ -202,6 +127,7 @@ Rcpp::List  rindep_norm_gamma_reg_std_cpp(int n,NumericVector y,NumericMatrix x,
   NumericMatrix thetabars_new(1,cbars.ncol());
   
   NumericVector New_LL(cbars.nrow());
+  
   
   
   
@@ -339,6 +265,7 @@ Rcpp::List  rindep_norm_gamma_reg_std_cpp(int n,NumericVector y,NumericMatrix x,
       
       
       arma::colvec yxbeta=(y2-alpha2-x2*thetabars_temp2)%sqrt(wt1b); 
+      
       UB2=0.5*(1/dispersion)*(arma::as_scalar(trans(yxbeta)*yxbeta)-RSS_ML);
       
       

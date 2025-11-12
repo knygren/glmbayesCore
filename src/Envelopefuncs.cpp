@@ -522,6 +522,44 @@ if (use_opencl) {
   );
 }
 
+// [[Rcpp::export("Inv_f3_with_disp")]]
+arma::mat Inv_f3_with_disp(Rcpp::List cache,
+                           double dispersion,
+                           Rcpp::NumericMatrix cbars_small) {
+  arma::mat Pmat    = cache["Pmat"];
+  arma::mat Pmu     = cache["Pmu"];
+  arma::vec base_B0 = cache["base_B0"];
+  arma::mat base_A  = cache["base_A"];
+  
+  // Scale the base terms
+  arma::vec B0 = base_B0 / dispersion + Pmu;
+  arma::mat A  = Pmat + base_A / dispersion;
+  A = 0.5 * (A + A.t());
+  
+  arma::mat R = arma::chol(A);
+  
+  // Wrap cbars_small into an Armadillo view
+  arma::mat Csmall(cbars_small.begin(), Pmat.n_rows, cbars_small.ncol(), false);
+  
+  // Use Armadillo's n_cols
+  arma::mat Out(Pmat.n_rows, Csmall.n_cols);
+  
+  for (arma::uword i = 0; i < Csmall.n_cols; i++) {
+    arma::vec cbars_i(Csmall.colptr(i), Pmat.n_rows, false);
+    arma::vec b = -cbars_i + B0;
+    
+    arma::vec ytmp = arma::solve(arma::trimatl(R.t()), b);
+    arma::vec sol  = arma::solve(arma::trimatu(R), ytmp);
+    
+    Out.col(i) = -sol;
+  }
+  
+  return Out.t(); // m × p
+}
+
+
+
+
 
 // [[Rcpp::export(".EnvelopeBuild_cpp")]]
 
@@ -1065,3 +1103,546 @@ Rcpp::Rcout << "[DEBUG] Finished assigning NegLL_slope and cbars_slope2" << std:
   
   
 }
+
+
+
+
+
+// [[Rcpp::export]]
+Rcpp::List Inv_f3_precompute_disp(NumericMatrix cbars,
+                                  NumericVector y,
+                                  NumericMatrix x,
+                                  NumericMatrix mu,
+                                  NumericMatrix P,
+                                  NumericVector alpha,
+                                  NumericVector wt) {
+  int n = x.nrow();
+  int p = x.ncol();
+  int m = cbars.ncol();
+  
+  arma::mat X(x.begin(), n, p, false);
+  arma::mat Xt = X.t();
+  arma::vec yv(y.begin(), n, false);
+  arma::vec alphav(alpha.begin(), n, false);
+  arma::vec xb = alphav - yv;
+  
+  arma::mat Pmat(P.begin(), p, p, false);
+  Pmat = 0.5 * (Pmat + Pmat.t());
+  
+  arma::mat Mu(mu.begin(), p, 1, false);
+  arma::mat Pmu = Pmat * Mu;
+  
+  arma::vec wv(wt.begin(), n, false);
+  
+  arma::vec base_B0 = Xt * (wv % xb);
+  arma::mat base_A  = Xt * (X.each_col() % wv);
+  
+  arma::mat C(cbars.begin(), p, m, false);
+  
+  return Rcpp::List::create(
+    Rcpp::Named("Pmat")    = Pmat,
+    Rcpp::Named("Pmu")     = Pmu,
+    Rcpp::Named("base_B0") = base_B0,
+    Rcpp::Named("base_A")  = base_A,
+    Rcpp::Named("C")       = C
+  );
+}
+
+
+
+// [[Rcpp::export]]
+
+double rss_face_at_disp(const Rcpp::List cache,
+                                      double dispersion,
+                                      const Rcpp::NumericVector cbars_j) {
+  // Extract cached matrices
+  arma::mat Pmat    = cache["Pmat"];
+  arma::mat Pmu     = cache["Pmu"];
+  arma::vec base_B0 = cache["base_B0"];
+  arma::mat base_A  = cache["base_A"];
+  
+  // Scale terms by dispersion
+  arma::vec B0 = base_B0 / dispersion + Pmu;
+  arma::mat A  = Pmat + base_A / dispersion;
+  A = 0.5 * (A + A.t());                // ensure symmetry
+  
+  arma::mat R = arma::chol(A);          // Cholesky
+  
+  // Wrap cbars_j as Armadillo vector
+//  arma::vec c_j(cbars_j.begin(), cbars_j.size(), false);
+  arma::vec c_j = Rcpp::as<arma::vec>(cbars_j);
+  
+  
+  // Solve A^{-1}(-c_j + B0)
+  arma::vec b    = -c_j + B0;
+  arma::vec ytmp = arma::solve(arma::trimatl(R.t()), b);
+  arma::vec sol  = arma::solve(arma::trimatu(R), ytmp);
+  
+  // RSS is squared norm of the solution
+  return arma::dot(sol, sol);
+}
+
+// [[Rcpp::export("rss_face_at_disp_export")]]
+
+double rss_face_at_disp_export(double dispersion,
+                               Rcpp::List cache,
+                               Rcpp::NumericVector cbars_j,
+                               Rcpp::NumericVector y,
+                               Rcpp::NumericMatrix x,
+                               Rcpp::NumericVector alpha,
+                               Rcpp::NumericVector wt) {
+  // Build 1×l1 matrix, then transpose to l1×1 for Inv_f3_with_disp
+  int l1 = cbars_j.size();
+  Rcpp::NumericMatrix cbars_small(1, l1);
+  for (int k = 0; k < l1; ++k) cbars_small(0, k) = cbars_j[k];
+  
+  arma::mat theta_row = Inv_f3_with_disp(cache, dispersion, Rcpp::transpose(cbars_small));
+  arma::vec beta = theta_row.t(); // 1×l1 -> l1×1
+  
+  arma::vec y2(y.begin(), y.size(), false);
+  arma::vec a2(alpha.begin(), alpha.size(), false);
+  arma::mat X(x.begin(), x.nrow(), x.ncol(), false);
+  arma::vec w(wt.begin(), wt.size(), false);
+  
+  arma::vec resid = (y2 - a2 - X * beta) % arma::sqrt(w);
+  return arma::as_scalar(resid.t() * resid);
+}
+
+
+// [[Rcpp::export]]
+double UB2(double dispersion,
+           Rcpp::List cache,
+           Rcpp::NumericVector cbars_j,
+           Rcpp::NumericVector y,
+           Rcpp::NumericMatrix x,
+           Rcpp::NumericVector alpha,
+           Rcpp::NumericVector wt,
+           double rss_min_global) {
+  
+  // Call the existing RSS function
+  double rss_val = rss_face_at_disp_export(dispersion, cache, cbars_j, y, x, alpha, wt);
+  
+  // Compute UB2
+  double UB2_val = (1.0 / dispersion) * (rss_val - rss_min_global);
+  
+  return UB2_val;
+}
+
+
+
+// Utility: safe max for NumericVector
+static inline double max_vec(const NumericVector& v) {
+  double m = R_NegInf;
+  for (int i = 0; i < v.size(); ++i) if (v[i] > m) m = v[i];
+  return m;
+}
+
+
+NumericVector EnvBuildLinBound_cpp(NumericMatrix thetabars,
+                                   NumericMatrix cbars,
+                                   NumericVector y,
+                                   NumericMatrix x,
+                                   NumericMatrix P,
+                                   NumericVector alpha,
+                                   double dispstar) {
+  // Convert to Armadillo
+  arma::mat thetabarsA = as<arma::mat>(thetabars);
+  arma::mat cbarsA     = as<arma::mat>(cbars);
+  arma::vec yA         = as<arma::vec>(y);
+  arma::mat xA         = as<arma::mat>(x);
+  arma::mat PA         = as<arma::mat>(P);
+  arma::vec alphaA     = as<arma::vec>(alpha);
+  
+  int gs = cbarsA.n_rows;
+  
+  arma::mat XtX   = xA.t() * xA;
+  arma::vec rhs   = xA.t() * (yA - alphaA);
+  arma::mat M     = XtX + dispstar * PA;
+  arma::mat Minv  = arma::inv(M);           // match R's solve(M)
+  arma::mat H1    = -Minv * PA * Minv;
+  
+  arma::mat V = -thetabarsA * PA + cbarsA;                 // gs x p
+  arma::mat Minv_cbars = cbarsA * Minv.t();                // gs x p
+  arma::vec term1 = arma::sum(V % Minv_cbars, 1);
+  
+  arma::mat rhs_mat = arma::repmat(rhs, 1, gs);            // p x gs
+  arma::mat H1_rhs  = (H1 * (rhs_mat + dispstar * cbarsA.t())).t(); // gs x p
+  arma::vec term2 = arma::sum(V % H1_rhs, 1);
+  
+  arma::vec result = term1 + term2;
+  
+  // Return explicitly as NumericVector
+  NumericVector out(gs);
+  std::copy(result.begin(), result.end(), out.begin());
+  return out;
+}
+
+
+NumericVector thetabar_const_cpp(NumericMatrix P,
+                                 NumericMatrix cbars,
+                                 NumericMatrix thetabars) {
+  arma::mat PA         = as<arma::mat>(P);
+  arma::mat cbarsA     = as<arma::mat>(cbars);
+  arma::mat thetabarsA = as<arma::mat>(thetabars);
+  
+  int gs = cbarsA.n_rows;
+  arma::vec thetaconst(gs);
+  
+  for (int j = 0; j < gs; ++j) {
+    arma::vec theta_temp = thetabarsA.row(j).t();
+    arma::vec cbars_temp = cbarsA.row(j).t();
+    thetaconst[j] = -0.5 * arma::as_scalar(theta_temp.t() * PA * theta_temp)
+      + arma::as_scalar(cbars_temp.t() * theta_temp);
+  }
+  
+  NumericVector out(gs);
+  std::copy(thetaconst.begin(), thetaconst.end(), out.begin());
+  return out;
+}
+
+
+
+// [[Rcpp::export]]
+List EnvelopeDispersionBuild_cpp(
+    List Env,
+    double Shape,
+    double Rate,
+    NumericMatrix P,
+    NumericVector y,
+    NumericMatrix x,
+    NumericVector alpha,
+    int n_obs,
+    double RSS_post,
+    double RSS_ML,
+    NumericMatrix mu,         // ← new
+    NumericVector wt,         // ← new
+    double max_disp_perc = 0.99,
+    Nullable<double> disp_lower = R_NilValue,
+    Nullable<double> disp_upper = R_NilValue,
+    bool verbose = false
+)
+  {
+  // Step 1: Posterior Gamma parameters (precision prior)
+  double shape2 = Shape + static_cast<double>(n_obs) / 2.0;
+  double rate3  = Rate  + RSS_post / 2.0;
+  
+  // Step 2: Dispersion bounds (on sigma^2)
+  double low, upp;
+  if (disp_lower.isNull() || disp_upper.isNull()) {
+    // Call R's qgamma for tail quantiles, then invert to get sigma^2 bounds
+    Function qgamma("qgamma");
+    NumericVector q_low = qgamma(
+      Named("p")     = max_disp_perc,
+      Named("shape") = shape2,
+      Named("rate")  = rate3
+    );
+    NumericVector q_upp = qgamma(
+      Named("p")     = 1.0 - max_disp_perc,
+      Named("shape") = shape2,
+      Named("rate")  = rate3
+    );
+    low = 1.0 / q_low[0];
+    upp = 1.0 / q_upp[0];
+  } else {
+    low = as<double>(disp_lower);
+    upp = as<double>(disp_upper);
+    if (!R_finite(low) || !R_finite(upp))
+      stop("disp_lower/disp_upper must be finite.");
+    if (low <= 0.0 || upp <= 0.0)
+      stop("disp_lower/disp_upper must be positive.");
+    if (upp <= low)
+      stop("disp_upper must be strictly greater than disp_lower.");
+  }
+  
+  // Step 3: Extract envelope faces
+  NumericMatrix cbars     = Env["cbars"];      // gs x l1
+  NumericMatrix thetabars = Env["thetabars"];  // gs x l1 (grid of tangencies)
+  NumericVector logP1     = Env["logP"];       // length gs
+  int gs = cbars.nrow();
+  int l1 = cbars.ncol();
+  
+  /// Step 3B: Precompute elements for finding inverse function for cbars
+  
+  Rcpp::List cache = Inv_f3_precompute_disp(cbars, y, x, mu, P, alpha, wt);
+  
+  // Step 3C: Minimize RSS over dispersion for each face (optional diagnostics / UB2 prep)
+  // Strategy A (pure C++): call a Brent/golden-section minimizer using rss_face_at_disp()
+  // Strategy B (R-side): call optim("Brent") on [low, upp] — easier to prototype
+  
+  // Step 3C: Minimize RSS over dispersion for each face
+  Rcpp::Function optim("optim");
+  Rcpp::Function rss_fn("rss_face_at_disp_export");
+  
+  // Print reference RSS_ML before looping
+  if (gs <= 81) {
+    Rcout << "[Reference] RSS_ML = " << RSS_ML << "\n";
+  }
+  
+  NumericVector rss_min(gs), disp_min(gs);
+  for (int j = 0; j < gs; ++j) {
+    // Extract row j of cbars into a NumericVector
+    NumericVector cbars_j(l1);
+    for (int k = 0; k < l1; ++k) cbars_j[k] = cbars(j, k);
+    
+    double par0 = 0.5 * (low + upp);
+    
+    // Call R's optim, passing the exported C++ function object
+    Rcpp::List res = optim(
+      Rcpp::Named("par")     = par0,
+      Rcpp::Named("fn")      = rss_fn,
+      Rcpp::Named("method")  = "Brent",
+      Rcpp::Named("lower")   = low,
+      Rcpp::Named("upper")   = upp,
+      Rcpp::Named("cache")   = cache,
+      Rcpp::Named("cbars_j") = cbars_j,
+      Rcpp::Named("y")       = y,
+      Rcpp::Named("x")       = x,
+      Rcpp::Named("alpha")   = alpha,
+      Rcpp::Named("wt")      = wt
+    );    
+    disp_min[j] = res["par"];
+    rss_min[j]  = res["value"];
+    
+    if (gs <= 81) {
+      Rcout << "[Face " << j << "] disp_min = " << disp_min[j]
+            << ", rss_min = " << rss_min[j] << "\n";
+    }
+  }
+  
+  
+  // Optionally: keep the best across faces
+  double rss_min_global = R_PosInf;
+  double disp_min_global = NA_REAL;
+  int j_best = -1;
+  for (int j = 0; j < gs; ++j) {
+    if (rss_min[j] < rss_min_global) {
+      rss_min_global = rss_min[j];
+      disp_min_global = disp_min[j];
+      j_best = j;
+    }
+  }  
+  
+  if (gs <= 81) {
+    Rcout << "[Reference] RSS_min_global = " << rss_min_global << "\n";
+  }
+  
+  //////////////////////////////////////
+  
+  // Assume UB2 has been exported as shown earlier
+  Rcpp::Function ub2_fn("UB2");
+  
+  // Print reference RSS_ML before looping
+  if (gs <= 81) {
+    Rcout << "[Reference] RSS_ML = " << RSS_ML << "\n";
+    Rcout << "[Reference] RSS_min_global = " << rss_min_global << "\n";
+  }
+  
+  // --- UB2 minimization loop ---
+  NumericVector ub2_min(gs), disp_min_ub2(gs);
+  
+  for (int j = 0; j < gs; ++j) {
+    // Extract row j of cbars into a NumericVector
+    NumericVector cbars_j(l1);
+    for (int k = 0; k < l1; ++k) cbars_j[k] = cbars(j, k);
+    
+    double par0 = 0.5 * (low + upp);
+    
+    // Call R's optim, passing the UB2 function object
+    Rcpp::List res = optim(
+      Rcpp::Named("par")     = par0,
+      Rcpp::Named("fn")      = ub2_fn,
+      Rcpp::Named("method")  = "Brent",
+      Rcpp::Named("lower")   = low,
+      Rcpp::Named("upper")   = upp,
+      Rcpp::Named("cache")   = cache,
+      Rcpp::Named("cbars_j") = cbars_j,
+      Rcpp::Named("y")       = y,
+      Rcpp::Named("x")       = x,
+      Rcpp::Named("alpha")   = alpha,
+      Rcpp::Named("wt")      = wt,
+      Rcpp::Named("rss_min_global") = rss_min_global
+    );
+    
+    disp_min_ub2[j] = res["par"];
+    ub2_min[j]      = res["value"];
+    
+    if (gs <= 81) {
+      Rcout << "[Face " << j << "] disp_min (UB2) = " << disp_min_ub2[j]
+            << ", UB2_min = " << ub2_min[j] << "\n";
+    }
+  }
+  
+  // Find global UB2 minimum
+  double ub2_min_global = R_PosInf;
+  double disp_min_global_ub2 = NA_REAL;
+  int j_best_ub2 = -1;
+  for (int j = 0; j < gs; ++j) {
+    if (ub2_min[j] < ub2_min_global) {
+      ub2_min_global = ub2_min[j];
+      disp_min_global_ub2 = disp_min_ub2[j];
+      j_best_ub2 = j;
+    }
+  }
+  
+  if (gs <= 81) {
+    Rcout << "[Reference] UB2_min_global = " << ub2_min_global << "\n";
+  }  
+  
+  
+  
+  
+  
+  // Step 4: Base face constants via R helper (keep R version for now)
+//  Function thetabar_const_R("thetabar_const");
+//  NumericVector thetabar_const_base =
+//    thetabar_const_R(P, cbars, thetabars);   // length gs
+  
+  NumericVector thetabar_const_base =
+    thetabar_const_cpp(P, cbars, thetabars);
+  
+    
+  // Step 5: initial anchor (posterior mean; optional)
+  // Note: consistency with external rate2: here rate3=Rate+RSS_post/2 as in R function
+  double dispstar = rate3 / (shape2 - 1.0);
+  
+  if (verbose) Rcout << "[DEBUG] Entering EnvBuildLinBound\n";
+  
+  // Step 6: Face slopes at dispstar via R helper
+//  Function EnvBuildLinBound_R("EnvBuildLinBound");
+//  NumericVector New_LL_Slope =
+//    EnvBuildLinBound_R(thetabars, cbars, y, x, P, alpha, dispstar); // length gs
+  
+
+  NumericVector New_LL_Slope =
+    EnvBuildLinBound_cpp(thetabars, cbars, y, x, P, alpha, dispstar);
+  
+    if (verbose) Rcout << "[DEBUG] Exiting EnvBuildLinBound\n";
+  
+  // Step 7: Linear extrapolation of face constants to bounds
+  NumericVector thetabar_const_upp_apprx(gs), thetabar_const_low_apprx(gs);
+  for (int j = 0; j < gs; ++j) {
+    thetabar_const_upp_apprx[j] = thetabar_const_base[j] + (upp - dispstar) * New_LL_Slope[j];
+    thetabar_const_low_apprx[j] = thetabar_const_base[j] + (low - dispstar) * New_LL_Slope[j];
+  }
+  
+  // Step 8: Global upper line geometry (match original mean-slope correction)
+  double max_low = max_vec(thetabar_const_low_apprx);
+  double max_upp = max_vec(thetabar_const_upp_apprx);
+  
+  // No-op in original; keep for parity via mean slope correction
+  double m_New_LL_Slope = Rcpp::mean(New_LL_Slope);
+  double max_low_mean   = max_upp - m_New_LL_Slope * (upp - low);
+  max_low = max_low_mean;
+  
+  double new_slope = (max_upp - max_low) / (upp - low);
+  double new_int   = max_low - new_slope * low;
+  
+  // Step 9a: Dispersion anchor (exactly as in original: b1/(-c1))
+  double b1 = (upp - low);
+  double c1 = -std::log(upp / low);
+  dispstar  = b1 / (-c1);  // equivalently (upp - low)/log(upp/low)
+  
+  if (verbose) Rcout << "[DEBUG] Entering mixture weight loop\n";
+  
+  // Step 9: Mixture weights per face (match original)
+  NumericVector New_logP2(gs);
+  NumericVector prob_factor(gs);
+  for (int j = 0; j < gs; ++j) {
+    // cbars_temp is row j (length l1)
+    double norm2 = 0.0;
+    for (int k = 0; k < l1; ++k) {
+      double cjk = cbars(j, k);
+      norm2 += cjk * cjk;
+    }
+    New_logP2[j] = logP1[j] + 0.5 * norm2;
+    
+    double pf_upp = thetabar_const_upp_apprx[j] - max_upp;
+    double pf_low = thetabar_const_low_apprx[j] - max_low;
+    prob_factor[j] = (pf_upp > pf_low ? pf_upp : pf_low);
+    
+    // Temporary debug print
+    if (gs <= 81) {
+      Rcout << "[Face " << j << "] prob_factor = " << prob_factor[j] << "\n";
+    }
+    
+    
+  }
+  
+  if (verbose) Rcout << "[DEBUG] Exited mixture weight loop\n";
+  
+  // Log-space prob factors (kept separate for UB_list, as in R)
+  NumericVector lg_prob_factor = clone(prob_factor);
+  
+  
+  
+  
+  
+  // Normalize weights (PLSD)
+  NumericVector prob_factor_exp(gs);
+  for (int j = 0; j < gs; ++j) prob_factor_exp[j] = std::exp(New_logP2[j] + prob_factor[j]);
+  double sumP = std::accumulate(prob_factor_exp.begin(), prob_factor_exp.end(), 0.0);
+  for (int j = 0; j < gs; ++j) prob_factor_exp[j] /= sumP;
+  
+  // Step 10: Envelope constants for dispersion and gamma tilt
+  double lm_log2 = new_slope * dispstar;
+  double lm_log1 = new_int + new_slope * dispstar - new_slope * std::log(dispstar);
+  double shape3  = shape2 - lm_log2;
+  
+  // Step 11: Package outputs
+  Env["PLSD"] = prob_factor_exp;
+  
+  List gamma_list = List::create(
+    Named("shape3")     = shape3,
+    Named("rate2")      = Rate + RSS_ML / 2.0,  // matches original definition
+    Named("disp_upper") = upp,
+    Named("disp_lower") = low
+  );
+  
+  List UB_list = List::create(
+    Named("RSS_ML")         = RSS_ML,               // not RSS_post
+    Named("max_New_LL_UB")  = max_upp,
+    Named("max_LL_log_disp")= lm_log1 + lm_log2 * std::log(upp),
+    Named("lm_log1")        = lm_log1,
+    Named("lm_log2")        = lm_log2,
+    Named("lg_prob_factor") = lg_prob_factor,
+    Named("lmc1")           = new_int,
+    Named("lmc2")           = new_slope
+  );
+  
+  List diagnostics = List::create(
+    Named("dispstar")     = dispstar,
+    Named("New_LL_Slope") = New_LL_Slope,
+    Named("shape2")       = shape2,
+    Named("rate3")        = rate3,
+    Named("shape3")       = shape3,
+    Named("max_low")      = max_low,
+    Named("max_upp")      = max_upp,
+    Named("new_slope")    = new_slope,
+    Named("new_int")      = new_int,
+    Named("prob_factor")  = prob_factor_exp
+  );
+  
+  if (verbose) {
+    Rcout << "EnvelopeDispersionBuild diagnostics:\n";
+    Rcout << "  dispstar      = " << dispstar << "\n";
+    Rcout << "  new_slope     = " << new_slope << "\n";
+    Rcout << "  new_int       = " << new_int << "\n";
+    Rcout << "  lm_log1       = " << lm_log1 << "\n";
+    Rcout << "  lm_log2       = " << lm_log2 << "\n";
+    Rcout << "  shape3        = " << shape3 << "\n";
+    Rcout << "  max_low       = " << max_low << "\n";
+    Rcout << "  max_upp       = " << max_upp << "\n";
+  }
+  
+  return List::create(
+    Named("Env_out")    = Env,
+    Named("gamma_list") = gamma_list,
+    Named("UB_list")    = UB_list,
+    Named("diagnostics")= diagnostics
+  );
+}
+
+
+
+
+

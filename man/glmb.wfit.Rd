@@ -25,7 +25,7 @@ glmb.wfit(
 \item{y}{vector of observations of length \code{n}, or a matrix with
     \code{n} rows.}
 
-\item{weights}{an optional vector of \emph{prior weights} to be used in the fitting process. 
+\item{weights}{an optional vector of \emph{prior weights} to be used in the fitting process.
 Should be \code{NULL} or a numeric vector.}
 
 \item{offset}{(numeric of length \code{n}).  This can be used to

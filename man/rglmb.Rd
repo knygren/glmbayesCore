@@ -39,10 +39,10 @@ rglmb(
 \item{pfamily}{a description of the prior distribution and associated constants to be used in the model. This
 should be a pfamily function (see \code{\link{pfamily}} for details of pfamily functions).}
 
-\item{offset}{this can be used to specify an \emph{a priori} known component to be included in the linear 
-predictor during fitting. This should be \code{NULL} or a numeric vector of length equal to the number of 
-cases.  One or more \code{\link[stats]{offset}} terms can be included in the formula instead or as well, and 
-if more than one is specified their sum is used.  See documentation for \code{model.offset} at 
+\item{offset}{this can be used to specify an \emph{a priori} known component to be included in the linear
+predictor during fitting. This should be \code{NULL} or a numeric vector of length equal to the number of
+cases.  One or more \code{\link[stats]{offset}} terms can be included in the formula instead or as well, and
+if more than one is specified their sum is used.  See documentation for \code{model.offset} at
 \code{\link[stats]{model.extract}}.}
 
 \item{weights}{an optional vector of \sQuote{prior weights} to be used
@@ -51,7 +51,7 @@ if more than one is specified their sum is used.  See documentation for \code{mo
 \item{Gridtype}{an optional argument specifying the method used to determine the number of tangent points used to construct the enveloping function.}
 
 \item{n_envopt}{Effective sample size passed to EnvelopeOpt for grid
-construction. Defaults to match `n`. Larger values encourage tighter
+construction. Defaults to match \code{n}. Larger values encourage tighter
 envelopes.}
 
 \item{use_parallel}{Logical. Whether to use parallel processing during simulation.}
@@ -70,7 +70,7 @@ envelopes.}
   }
 }
 \value{
-\code{rglmb} returns a object of class \code{"rglmb"}.  The function \code{summary} 
+\code{rglmb} returns a object of class \code{"rglmb"}.  The function \code{summary}
 (i.e., \code{\link{summary.rglmb}}) can be used to obtain or print a summary of the results.
 The generic accessor functions \code{\link{coefficients}}, \code{\link{fitted.values}},
 \code{\link{residuals}}, and \code{\link{extractAIC}} can be used to extract
@@ -81,9 +81,9 @@ An object of class \code{"rglmb"} is a list containing at least the following co
 \item{dispersion}{Either a constant provided as part of the call, or a vector of length \code{n} with one sample in each row.}
 \item{Prior}{A list with the priors specified for the model in question. Items in the
 list may vary based on the type of prior}
-\item{prior.weights}{a vector of weights specified or implied by the model} 
-\item{y}{a vector with the dependent variable} 
-\item{x}{a matrix with the implied design matrix for the model} 
+\item{prior.weights}{a vector of weights specified or implied by the model}
+\item{y}{a vector with the dependent variable}
+\item{x}{a matrix with the implied design matrix for the model}
 \item{famfunc}{Family functions used during estimation process}
 \item{iters}{an \code{n} by \code{1} matrix giving the number of candidates generated before acceptance for each sample.}
 \item{Envelope}{the envelope that was used during sampling}
@@ -95,47 +95,47 @@ supporting extensions for regularized Bayesian GLMs with structured priors.
 }
 \description{
 \code{rglmb} is used to generate iid samples for Bayesian Generalized Linear Models.
-The model is specified by providing a data vector, a design matrix, 
-the family (determining the likelihood function) and the pfamily (determining the 
+The model is specified by providing a data vector, a design matrix,
+the family (determining the likelihood function) and the pfamily (determining the
 prior distribution).
 }
 \details{
-The function \code{rglmb} is a minimalistic engine for Bayesian generalized linear model simulation. 
-It is designed to generate independent draws from the posterior distribution of a GLM, given a design matrix, 
-response vector, likelihood family, and prior specification. Unlike \code{\link{glmb}}, which wraps formula parsing, 
-model setup, and method dispatch, \code{rglmb} operates directly on numeric inputs and is optimized for speed, 
+The function \code{rglmb} is a minimalistic engine for Bayesian generalized linear model simulation.
+It is designed to generate independent draws from the posterior distribution of a GLM, given a design matrix,
+response vector, likelihood family, and prior specification. Unlike \code{\link{glmb}}, which wraps formula parsing,
+model setup, and method dispatch, \code{rglmb} operates directly on numeric inputs and is optimized for speed,
 transparency, and integration into simulation workflows.
 
-The original R implementation of \code{glm} was written by Simon Davies (under Ross Ihaka at the University of Auckland) 
-and has since been extensively rewritten by members of the R Core Team; its design was inspired by the S function 
-described in \insertCite{Hastie1992}{glmbayes}, which in turn relies on the formula framework described in 
+The original R implementation of \code{glm} was written by Simon Davies (under Ross Ihaka at the University of Auckland)
+and has since been extensively rewritten by members of the R Core Team; its design was inspired by the S function
+described in \insertCite{Hastie1992}{glmbayes}, which in turn relies on the formula framework described in
 \insertCite{WilkinsonRogers1973}{glmbayes}.
 
-The design of the \code{pfamily} family of functions was created by Kjell Nygren and is modeled on how 
-\code{glm} uses \code{family} to specify the likelihood. For any implemented combination of family, link, and 
+The design of the \code{pfamily} family of functions was created by Kjell Nygren and is modeled on how
+\code{glm} uses \code{family} to specify the likelihood. For any implemented combination of family, link, and
 \code{pfamily}, \code{rglmb} generates independent draws from the posterior density-no MCMC chains are required.
 
-A helper, \code{\link{Prior_Setup}}, assists users in choosing prior parameters. It ships with sensible defaults 
-but also allows full customization. In particular, the default for \code{dNormal} is a reparameterization of 
+A helper, \code{\link{Prior_Setup}}, assists users in choosing prior parameters. It ships with sensible defaults
+but also allows full customization. In particular, the default for \code{dNormal} is a reparameterization of
 Zellner's g-prior \insertCite{zellner1986gprior}{glmbayes}.
 
-Currently supported response families are \code{gaussian} (identity link), \code{poisson} and \code{quasipoisson} 
-(log link), \code{gamma} (log link), and \code{binomial} and \code{quasibinomial} (logit, probit, cloglog). 
-All families support a \code{dNormal} prior; the Gaussian family also offers \code{dNormalGamma} and 
+Currently supported response families are \code{gaussian} (identity link), \code{poisson} and \code{quasipoisson}
+(log link), \code{gamma} (log link), and \code{binomial} and \code{quasibinomial} (logit, probit, cloglog).
+All families support a \code{dNormal} prior; the Gaussian family also offers \code{dNormalGamma} and
 \code{dIndependent_Normal_Gamma}.
 
-For the Gaussian family, draws under \code{dNormal} and \code{dNormalGamma} come from posterior distributions 
-resulting from conjugate prior distributions \insertCite{Raiffa1961}{glmbayes}. For all other priors or response families, 
-we use an accept-reject sampler built on the likelihood-subgradient envelope method 
-\insertCite{Nygren2006}{glmbayes}. The \code{Gridtype} argument controls how many tangent points are used 
-in the envelope-trading off envelope tightness against construction cost-and \code{iters} reports candidate 
+For the Gaussian family, draws under \code{dNormal} and \code{dNormalGamma} come from posterior distributions
+resulting from conjugate prior distributions \insertCite{Raiffa1961}{glmbayes}. For all other priors or response families,
+we use an accept-reject sampler built on the likelihood-subgradient envelope method
+\insertCite{Nygren2006}{glmbayes}. The \code{Gridtype} argument controls how many tangent points are used
+in the envelope-trading off envelope tightness against construction cost-and \code{iters} reports candidate
 counts before acceptance.
 
 By default, \code{rglmb} draws \code{n = 1} sample, uses parallel CPU simulation, and-if \code{use_opencl = TRUE}-
-GPU-accelerated envelope building. The function returns a list containing posterior samples, prior specifications, 
-dispersion estimates, and the envelope used during sampling. It does not return a full model object, and does not 
-support formula-based modeling or method dispatch. Instead, it is called internally by \code{\link{glmb}} and 
-and may be useful for Gibbs sampling implementations or other workflows where full model 
+GPU-accelerated envelope building. The function returns a list containing posterior samples, prior specifications,
+dispersion estimates, and the envelope used during sampling. It does not return a full model object, and does not
+support formula-based modeling or method dispatch. Instead, it is called internally by \code{\link{glmb}} and
+and may be useful for Gibbs sampling implementations or other workflows where full model
 reconstruction is unnecessary.
 }
 \examples{
@@ -185,10 +185,10 @@ summary(out)
 \code{\link{family}} for documentation of family functions used to specify priors.
 \code{\link{pfamily}} for documentation of pfamily functions used to specify priors.
 
-\code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for functions used to initialize and to check priors,  
+\code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for functions used to initialize and to check priors,
 
-\code{\link{summary.glmb}}, \code{\link{predict.glmb}}, \code{\link{residuals.glmb}}, \code{\link{simulate.glmb}}, 
-\code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for \code{glmb} 
+\code{\link{summary.glmb}}, \code{\link{predict.glmb}}, \code{\link{residuals.glmb}}, \code{\link{simulate.glmb}},
+\code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for \code{glmb}
 and the methods and generic functions for classes \code{glm} and \code{lm} from which class \code{glmb} inherits.
 
 glmbayes Modeling Functions
@@ -198,8 +198,8 @@ glmbayes Modeling Functions
 }
 \author{
 The \R implementation of \code{rglmb} has been written by Kjell Nygren and
-was built to be a Bayesian version of the \code{glm} function but with a more minimalistic interface 
-than the \code{glmb} function. It also borrows some of its structure from other random generating function 
+was built to be a Bayesian version of the \code{glm} function but with a more minimalistic interface
+than the \code{glmb} function. It also borrows some of its structure from other random generating function
 like \code{\link{rnorm}} and hence the \code{r} prefix.
 }
 \concept{modelfuns}

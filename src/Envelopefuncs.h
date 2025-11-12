@@ -24,3 +24,22 @@ List EnvelopeBuild_c(NumericVector bStar,
                      bool use_opencl    = false, // Enables OpenCL acceleration during envelope construction
                      bool verbose       = false  // Enables diagnostic output
 );
+
+
+
+
+// Dispersion-aware envelope solver
+arma::mat Inv_f3_with_disp(Rcpp::List cache,
+                           double dispersion,
+                           Rcpp::NumericMatrix cbars_small);
+
+
+Rcpp::List Inv_f3_precompute_disp(NumericMatrix cbars,
+                       NumericVector y,
+                       NumericMatrix x,
+                       NumericMatrix mu,
+                       NumericMatrix P,
+                       NumericVector alpha,
+                       NumericVector wt);
+
+

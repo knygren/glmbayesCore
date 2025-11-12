@@ -22,7 +22,7 @@
 \item{newdata}{optionally, a data frame in which to look for variables
 with which to predict. If omitted, the fitted linear predictors are used.}
 
-\item{type}{the type of prediction required.  The default is on the scale of the linear predictors; 
+\item{type}{the type of prediction required.  The default is on the scale of the linear predictors;
 the alternative \code{"response"} is on the scale of the response variable.  Thus for a default
 binomial model the default predictions are of log-odds (probabilities
 on logit scale) and \code{type = "response"} gives the predicted
@@ -32,8 +32,8 @@ scale (not implemented).}
 
 \item{se.fit}{logical switch indicating if standard errors are required (not implemented).}
 
-\item{dispersion}{the dispersion of the Bayesian GLM fit to be assumed in 
-computing the standard errors. If omitted, that returned by the \code{summary} applied 
+\item{dispersion}{the dispersion of the Bayesian GLM fit to be assumed in
+computing the standard errors. If omitted, that returned by the \code{summary} applied
 to the object is used.}
 
 \item{terms}{with \code{type="terms"} by default all terms are returned.
@@ -42,11 +42,11 @@ A character vector specifies which terms are to be returned.}
 \item{na.action}{function determining what should be done with missing values in
 \code{newdata}. The default is to predict \code{NA}.}
 
-\item{olddata}{a data frame that should contain all the variables used in the 
-original model specification. Must currently be provided whenever newdata is 
+\item{olddata}{a data frame that should contain all the variables used in the
+original model specification. Must currently be provided whenever newdata is
 provided. Both olddata and newdata are subsetted to the model variables extracte
-from the object model formula and rbind(olddata,newdata) must be valid after this step. 
-A check is also run to verify if the resulting x matrix from olddata is consistent with that 
+from the object model formula and rbind(olddata,newdata) must be valid after this step.
+A check is also run to verify if the resulting x matrix from olddata is consistent with that
 from the original model object.}
 
 \item{...}{further arguments passed to or from other methods.}
@@ -63,15 +63,15 @@ predictions from a fitted Bayesian generalized linear model object.
 If \code{newdata} is omitted the predictions are based on the data
 used for the fit.  In that case how cases with missing values in the
 original fit is determined by the \code{na.action} argument of that
-fit.  If \code{na.action = na.omit} omitted cases will not appear in 
-the residuals, whereas if \code{na.action = na.exclude} they will 
+fit.  If \code{na.action = na.omit} omitted cases will not appear in
+the residuals, whereas if \code{na.action = na.exclude} they will
 appear (in predictions and standard errors), with residual value
 \code{NA}.  See also \code{\link{napredict}}.
 }
 \note{
 Variables are first looked for in \code{newdata} and then searched for
-in the usual way (which will include the environment of the formula 
-used in the fit).  A warning will be given if the 
+in the usual way (which will include the environment of the formula
+used in the fit).  A warning will be given if the
 variables found are not of the same length as those in \code{newdata}
 if it was supplied.
 }

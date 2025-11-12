@@ -723,20 +723,40 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   cat("[DEBUG] Entering EnvelopeDispersionBuild \n")
   
   
-  disp_env_out <- EnvelopeDispersionBuild(
+  # disp_env_out_old <- EnvelopeDispersionBuild(
+  #   Env        = Env2,
+  #   Shape      = shape,
+  #   Rate       = rate,
+  #   P          = P2,
+  #   y=y,
+  #   x          = x2,
+  #   alpha      =as.vector(alpha),
+  #   n_obs      = n_obs,
+  #   RSS_post   = RSS_Post2,
+  #   RSS_ML     =RSS_ML,
+  #   max_disp_perc = max_disp_perc,
+  #   disp_lower=disp_lower,
+  #   disp_upper=disp_upper
+  # )
+  
+  disp_env_out <- EnvelopeDispersionBuild_cpp(
     Env        = Env2,
     Shape      = shape,
     Rate       = rate,
     P          = P2,
-    y=y,
+    y          = y,
     x          = x2,
-    alpha      =as.vector(alpha),
+    alpha      = as.vector(alpha),
     n_obs      = n_obs,
     RSS_post   = RSS_Post2,
-    RSS_ML     =RSS_ML,
+    RSS_ML     = RSS_ML,
+    mu=as.matrix(mu2,ncol=1),
+#    wt=as.vector(wt2),
+    wt=as.vector(wt),
     max_disp_perc = max_disp_perc,
-    disp_lower=disp_lower,
-    disp_upper=disp_upper
+    disp_lower = disp_lower,
+    disp_upper = disp_upper,
+    verbose    = TRUE   # optional, matches the C++ signature
   )
   
   cat("[DEBUG] Exiting EnvelopeDispersionBuild \n")
@@ -808,53 +828,7 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   UB_list_new$lg_prob_factor=Env3$lg_prob_factor
   
   
-  #     cat("\n[DEBUG] gamma_list_new contents:\n")
-  # print(str(gamma_list_new))
-  # print(gamma_list_new)
-  # 
-  # cat("\n[DEBUG] UB_list_new contents:\n")
-  # print(str(UB_list_new))
-  # print(UB_list_new)
-  # 
-  # cat("\n[DEBUG] Dispersion bounds:\n")
-  # cat("disp_lower =", low, "\n")
-  # cat("disp_upper =", upp, "\n")
-  # 
-  # cat("\n[DEBUG] Structure of Env3$PLSD:\n")
-  # print(str(Env3$PLSD))
-  # cat("[DEBUG] First few values of Env3$PLSD:\n")
-  # print(head(Env3$PLSD, 10))
-  # 
-  # cat("\n[DEBUG] Structure of Env3_temp$PLSD:\n")
-  # print(str(Env3_temp$PLSD))
-  # cat("[DEBUG] First few values of Env3_temp$PLSD:\n")
-  # print(head(Env3_temp$PLSD, 10))
-  # 
-  # cat("\n[DEBUG] UB_list_new$lg_prob_factor BEFORE sorting:\n")
-  # print(UB_list_new$lg_prob_factor)
-  
 
-    
-  
-  
-  # cat("\n[DEBUG] UB_list_new$lg_prob_factor AFTER sorting:\n")
-  # print(UB_list_new$lg_prob_factor)
-  
-  
-  
-  # cat("\n[DEBUG] Structure of Env3$logP:\n")
-  # print(str(Env3$logP))
-  # cat("[DEBUG] First few values of Env3$logP:\n")
-  # print(head(Env3$logP, 10))
-  # 
-  # cat("\n[DEBUG] Structure of Env3_temp$logP:\n")
-  # print(str(Env3_temp$logP))
-  # cat("[DEBUG] First few values of Env3_temp$logP:\n")
-  # print(head(Env3_temp$logP, 10))
-  # 
-
-  
-  
     
     cat("[DEBUG] disp_lower =", low,
       " disp_upper =", upp, "\n")
@@ -927,67 +901,6 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
   
 }
 
-
-
-
-EnvBuildLinBound<-function(thetabars,cbars,y,x2,P2,alpha,dispstar){
-  
-  # gs=nrow(cbars)
-  # n_vars=ncol(cbars)
-  # 
-  # New_LL_Slope_test2=c(1:gs)
-  # New_LL_Slope_test3=c(1:gs)
-  
-  XtX   <- crossprod(x2)
-  rhs   <- crossprod(x2, y - alpha)
-  M     <- XtX + dispstar * P2
-  Minv  <- solve(M)
-  H1    <- -Minv %*% P2 %*% Minv
-  
-  V <- -(thetabars %*% P2) + cbars          # gs x p
-  Minv_cbars <- t(Minv %*% t(cbars))        # gs x p
-  term1 <- rowSums(V * Minv_cbars)
-  
-  # replicate rhs across gs columns
-  rhs_mat <- matrix(rhs, nrow = length(rhs), ncol = nrow(cbars))
-  H1_rhs  <- t(H1 %*% (rhs_mat + dispstar * t(cbars)))  # gs × p
-  
-  term2 <- rowSums(V * H1_rhs)
-  
-  New_LL_Slope <- term1 + term2
-  
-  return(New_LL_Slope)
-  # for(j in 1:gs){
-  #   
-  #   cbars_temp=as.matrix(cbars[j,1:n_vars],ncol=1)
-  #   thetabars_temp=as.matrix(thetabars[j,1:n_vars],ncol=1)
-  #   New_LL_Slope_test2[j]=(-t(thetabars_temp)%*%P2+t(cbars_temp))%*%solve(t(x2)%*%x2+dispstar*P2)%*%cbars_temp
-  #   
-  #   H1=-solve(t(x2)%*%x2+dispstar*P2)%*%P2%*%solve(t(x2)%*%x2+dispstar*P2)
-  #   New_LL_Slope_test3[j]=New_LL_Slope_test2[j]+(-t(thetabars_temp)%*%P2+t(cbars_temp))%*%H1%*%(t(x2)%*%(y-alpha)+dispstar*cbars_temp)
-  #   
-  # }
-  # 
-  # return(New_LL_Slope_test3)
-  
-}
-
-
-thetabar_const<-function(P,cbars,thetabar){
-  
-  gs=nrow(cbars)
-  thetaconst=c(1:gs)
-  n_var=nrow(P)
-  
-  for(j in 1:gs){
-    theta_temp=as.matrix(thetabar[j,1:n_var],ncol=1)
-    cbars_temp=as.matrix(cbars[j,1:n_var],ncol=1)
-    thetaconst[j]=-0.5*t(theta_temp)%*%P%*%theta_temp+t(cbars_temp)%*% theta_temp
-    
-  }
-  
-  return(thetaconst)
-}
 
 
 

@@ -19,14 +19,14 @@
 \item{\ldots}{Additional optional arguments}
 }
 \value{
-\code{summary.glmb} returns a object of class \code{"summary.glmb"}, a 
-list with components: 
+\code{summary.glmb} returns a object of class \code{"summary.glmb"}, a
+list with components:
 \item{call}{the component from \code{object}}
 \item{n}{number of draws generated}
 \item{residuals}{vector of mean deviance residuals}
 \item{coefficients1}{Matrix with the prior mean and maximum likelihood coefficients with associated standard deviations}
 \item{coefficients}{Matrix with columns for the posterior mode, posterior mean, posterior standard
-deviation, monte carlo error, and tail probabilities (posterior probability of observing a 
+deviation, monte carlo error, and tail probabilities (posterior probability of observing a
 value for the coefficient as extreme as the prior mean)}
 \item{dir_tail}{List containing information related to the directional tail relative to the Prior}
 \item{dir_tail_null}{List containing information related to the directional tail relative to the Null Model}
@@ -41,7 +41,7 @@ These functions are all \code{\link{methods}} for class \code{glmb} or \code{sum
 }
 \details{
 The \code{summary.glmb} function summarizes the output from the \code{glmb} function.
-Key output includes mean residuals, information related to the prior, mean coefficients 
+Key output includes mean residuals, information related to the prior, mean coefficients
 with associated stats, percentiles for the coefficients, as well as the effective number of
 parameters and the DIC statistic.
 }

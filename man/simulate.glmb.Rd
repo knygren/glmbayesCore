@@ -7,21 +7,21 @@
 \method{simulate}{glmb}(object, nsim = 1, seed = NULL, ...)
 }
 \arguments{
-\item{object}{An object of class \code{glmb}, typically the result of a call to the 
+\item{object}{An object of class \code{glmb}, typically the result of a call to the
 function \code{glmb}.}
 
 \item{nsim}{Defunct (see below).}
 
-\item{seed}{an object specifying if and how the random number generator should be 
+\item{seed}{an object specifying if and how the random number generator should be
 initialized (seeded).}
 
-\item{\ldots}{Additional arguments passed to the function. Will 
+\item{\ldots}{Additional arguments passed to the function. Will
 frequently include a matrix pred of simulated predictions from
 the predict function, the family (e.g., binomial) and an optional
 vector of weights specifying prior.weights for the simulated values (default is 1)}
 }
 \value{
-Simulated values for data corresponding to simulated model predictions that correspond either 
+Simulated values for data corresponding to simulated model predictions that correspond either
 to the original data or to a \code{newdata} data frame provided to the predict function.
 }
 \description{

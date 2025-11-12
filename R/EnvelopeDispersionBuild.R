@@ -1,5 +1,8 @@
+#' @name dispenvelopes 
+#' @title 
 #' Builds Dispersion-Aware Envelope for Simulation
 #'
+#' @description
 #' Constructs a dispersion-aware envelope for simulation in Gaussian models with uncertain variance.
 #' This function extrapolates the coefficient envelope across a high-probability interval for the
 #' dispersion parameter \code{sigma^2}, and builds a global upper bound for the log-posterior remainder.
@@ -77,6 +80,19 @@
 #' @param disp_lower lower bound truncation for dispersion 
 #' @param disp_upper upper bound truncation for dispersion
 #' @param verbose Option to have verbose output
+#' @param thetabars   var1
+#' @param cbars       var2
+#' @param thetabars   var3
+#' @param x2          var4
+#' @param P2          var5
+#' @param dispstar    var6
+#' @param thetabar    var7
+#' @param cache       var8
+#' @param cbars_small var9  
+#' @param cbars_j     var10
+#' @param wt          var11
+#' @param rss_min_global var12
+#' @param dispersion  var13
 #'
 #' @return A list with elements:
 #'   \item{Env_out}{Updated envelope object with dispersion-aware mixture weights}
@@ -127,6 +143,8 @@
 #' procedure is valid and unbiased.
 #' @seealso \code{\link{EnvelopeBuild}}, \code{\link{glmb}}, \code{\link{glmbfamfunc}}
 #' @export
+#' @rdname dispenvelopes
+#' @order 1
 
 
 
@@ -315,4 +333,102 @@ EnvelopeDispersionBuild <- function(
     UB_list     = UB_list,
     diagnostics = diagnostics
   )
+}
+
+
+
+#' @export 
+#' @rdname dispenvelopes
+#' @order 2
+
+EnvBuildLinBound<-function(thetabars,cbars,y,x2,P2,alpha,dispstar){
+  
+  # gs=nrow(cbars)
+  # n_vars=ncol(cbars)
+  # 
+  # New_LL_Slope_test2=c(1:gs)
+  # New_LL_Slope_test3=c(1:gs)
+  
+  XtX   <- crossprod(x2)
+  rhs   <- crossprod(x2, y - alpha)
+  M     <- XtX + dispstar * P2
+  Minv  <- solve(M)
+  H1    <- -Minv %*% P2 %*% Minv
+  
+  V <- -(thetabars %*% P2) + cbars          # gs x p
+  Minv_cbars <- t(Minv %*% t(cbars))        # gs x p
+  term1 <- rowSums(V * Minv_cbars)
+  
+  # replicate rhs across gs columns
+  rhs_mat <- matrix(rhs, nrow = length(rhs), ncol = nrow(cbars))
+  H1_rhs  <- t(H1 %*% (rhs_mat + dispstar * t(cbars)))  # gs × p
+  
+  term2 <- rowSums(V * H1_rhs)
+  
+  New_LL_Slope <- term1 + term2
+  
+  return(New_LL_Slope)
+  # for(j in 1:gs){
+  #   
+  #   cbars_temp=as.matrix(cbars[j,1:n_vars],ncol=1)
+  #   thetabars_temp=as.matrix(thetabars[j,1:n_vars],ncol=1)
+  #   New_LL_Slope_test2[j]=(-t(thetabars_temp)%*%P2+t(cbars_temp))%*%solve(t(x2)%*%x2+dispstar*P2)%*%cbars_temp
+  #   
+  #   H1=-solve(t(x2)%*%x2+dispstar*P2)%*%P2%*%solve(t(x2)%*%x2+dispstar*P2)
+  #   New_LL_Slope_test3[j]=New_LL_Slope_test2[j]+(-t(thetabars_temp)%*%P2+t(cbars_temp))%*%H1%*%(t(x2)%*%(y-alpha)+dispstar*cbars_temp)
+  #   
+  # }
+  # 
+  # return(New_LL_Slope_test3)
+  
+}
+
+#' @export 
+#' @rdname dispenvelopes
+#' @order 3
+
+
+
+
+thetabar_const<-function(P,cbars,thetabar){
+  
+  gs=nrow(cbars)
+  thetaconst=c(1:gs)
+  n_var=nrow(P)
+  
+  for(j in 1:gs){
+    theta_temp=as.matrix(thetabar[j,1:n_var],ncol=1)
+    cbars_temp=as.matrix(cbars[j,1:n_var],ncol=1)
+    thetaconst[j]=-0.5*t(theta_temp)%*%P%*%theta_temp+t(cbars_temp)%*% theta_temp
+    
+  }
+  
+  return(thetaconst)
+}
+
+
+
+#' @export
+#' @rdname dispenvelopes
+#' @order 4
+
+Inv_f3_with_disp <- function(cache, dispersion, cbars_small) {
+  .Call(`_glmbayes_Inv_f3_with_disp`, cache, dispersion, cbars_small)
+}
+
+#' @export
+#' @rdname dispenvelopes
+#' @order 5
+
+
+UB2 <- function(dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global) {
+  .Call(`_glmbayes_UB2`, dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global)
+}
+
+#' @export
+#' @rdname dispenvelopes
+#' @order 6
+
+rss_face_at_disp_export <- function(dispersion, cache, cbars_j, y, x, alpha, wt) {
+  .Call(`_glmbayes_rss_face_at_disp_export`, dispersion, cache, cbars_j, y, x, alpha, wt)
 }

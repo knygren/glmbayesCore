@@ -39,7 +39,7 @@ setlogP(logP, NegLL, cbars, G3)
 \item{n}{Number of draws from the posterior (used for grid sizing).}
 
 \item{n_envopt}{Effective sample size passed to EnvelopeOpt for grid construction.
-Defaults to match `n`. Larger values encourage tighter envelopes.}
+Defaults to match \code{n}. Larger values encourage tighter envelopes.}
 
 \item{sortgrid}{Logical; if \code{TRUE}, sort the envelope descending by component probability.}
 
@@ -68,41 +68,41 @@ the restricted normal density.}
 \value{
 \describe{
 
-  \item{\code{EnvelopeBuild()}}{A list of envelope components used for accept-reject sampling:
-    \describe{
-      \item{\code{GridIndex}}{Integer matrix encoding sampling type (tail, center, line) per dimension and region.}
-      \item{\code{thetabars}}{Matrix of tangency points \eqn{\bar{\theta}_j} for each grid region.}
-      \item{\code{cbars}}{Matrix of subgradients \eqn{c(\bar{\theta}_j)} of the negative log-likelihood at tangency.}
-      \item{\code{loglt}}{Matrix of log left-tail probabilities per dimension and region.}
-      \item{\code{logrt}}{Matrix of log right-tail probabilities per dimension and region.}
-      \item{\code{logU}}{Matrix of selected per-dimension log-density contributions (tail/center) for each region.}
-      \item{\code{logP}}{Matrix of total log-probabilities per region (first column); used to derive mixture weights.}
-      \item{\code{PLSD}}{Vector of normalized mixture weights over grid regions used to draw region indices.}
-      \item{\code{LLconst}}{Vector of acceptance-test constants per region used in the inequality for rejection sampling.}
-    }
-  }
-
-  \item{\code{Set_Grid()}}{A list of matrices computed for grid-based log-density evaluation:
-    \describe{
-      \item{\code{Down}}{Lower bounds for truncated-normal evaluation per dimension and region.}
-      \item{\code{Up}}{Upper bounds for truncated-normal evaluation per dimension and region.}
-      \item{\code{lglt}}{Log left-tail probabilities (from \eqn{(-\infty, \mathrm{Up}]}) per dimension and region.}
-      \item{\code{lgrt}}{Log right-tail probabilities (from \eqn{[\mathrm{Down}, \infty)}) per dimension and region.}
-      \item{\code{lgct}}{Log central-interval probabilities (from \eqn{[\mathrm{Down}, \mathrm{Up}]}) per dimension and region.}
-      \item{\code{logU}}{Selected log-probability per grid cell based on \code{GridIndex} (tail or center).}
-      \item{\code{logP}}{Matrix with row-wise sums of \code{logU} (first column) used to form mixture weights.}
-    }
-  }
-
-  \item{\code{setlogP()}}{A list with updated mixture-weight and acceptance constants:
-    \describe{
-      \item{\code{logP}}{Input \code{logP} with its second column populated by the log of unnormalized visit probabilities per region (mixture denominators).}
-      \item{\code{LLconst}}{Vector of acceptance constants \eqn{-\log f(y \mid \bar{\theta}_j) - c(\bar{\theta}_j)^{T}\bar{\theta}_j} used in the accept-reject test.}
-    }
-  }
+\item{\code{EnvelopeBuild()}}{A list of envelope components used for accept-reject sampling:
+\describe{
+\item{\code{GridIndex}}{Integer matrix encoding sampling type (tail, center, line) per dimension and region.}
+\item{\code{thetabars}}{Matrix of tangency points \eqn{\bar{\theta}_j} for each grid region.}
+\item{\code{cbars}}{Matrix of subgradients \eqn{c(\bar{\theta}_j)} of the negative log-likelihood at tangency.}
+\item{\code{loglt}}{Matrix of log left-tail probabilities per dimension and region.}
+\item{\code{logrt}}{Matrix of log right-tail probabilities per dimension and region.}
+\item{\code{logU}}{Matrix of selected per-dimension log-density contributions (tail/center) for each region.}
+\item{\code{logP}}{Matrix of total log-probabilities per region (first column); used to derive mixture weights.}
+\item{\code{PLSD}}{Vector of normalized mixture weights over grid regions used to draw region indices.}
+\item{\code{LLconst}}{Vector of acceptance-test constants per region used in the inequality for rejection sampling.}
+}
 }
 
- @references
+\item{\code{Set_Grid()}}{A list of matrices computed for grid-based log-density evaluation:
+\describe{
+\item{\code{Down}}{Lower bounds for truncated-normal evaluation per dimension and region.}
+\item{\code{Up}}{Upper bounds for truncated-normal evaluation per dimension and region.}
+\item{\code{lglt}}{Log left-tail probabilities (from \eqn{(-\infty, \mathrm{Up}]}) per dimension and region.}
+\item{\code{lgrt}}{Log right-tail probabilities (from \eqn{[\mathrm{Down}, \infty)}) per dimension and region.}
+\item{\code{lgct}}{Log central-interval probabilities (from \eqn{[\mathrm{Down}, \mathrm{Up}]}) per dimension and region.}
+\item{\code{logU}}{Selected log-probability per grid cell based on \code{GridIndex} (tail or center).}
+\item{\code{logP}}{Matrix with row-wise sums of \code{logU} (first column) used to form mixture weights.}
+}
+}
+
+\item{\code{setlogP()}}{A list with updated mixture-weight and acceptance constants:
+\describe{
+\item{\code{logP}}{Input \code{logP} with its second column populated by the log of unnormalized visit probabilities per region (mixture denominators).}
+\item{\code{LLconst}}{Vector of acceptance constants \eqn{-\log f(y \mid \bar{\theta}_j) - c(\bar{\theta}_j)^{T}\bar{\theta}_j} used in the accept-reject test.}
+}
+}
+}
+
+@references
 \insertAllCited{}
 }
 \description{
@@ -115,9 +115,9 @@ iid draws from the posterior distribution. The implementation follows
 \insertCite{Nygren2006}{glmbayes}, with extensions for GPU acceleration
 (via OpenCL), dynamic grid optimization, and parallelized evaluation.
 
-The envelope is typically built around the posterior mode \eqn{\theta^\star} for a model in standard 
+The envelope is typically built around the posterior mode \eqn{\theta^\star} for a model in standard
 form (which in this context means a model with a diagonal posterior precision matrix
-and prior identity precision matrix - \code{glmb_Standardize_Model}). It uses dimension-specific width parameters 
+and prior identity precision matrix - \code{glmb_Standardize_Model}). It uses dimension-specific width parameters
 \eqn{\omega_i} derived from the precision
 matrix. Tangency points are selected per dimension, and the full grid is
 formed via Cartesian expansion. Negative log-likelihood and gradient values
@@ -129,22 +129,22 @@ envelope function that dominates the posterior density.
 
 
 Following Nygren & Nygren (2006, Section 3.3), the envelope construction
-assumes the model has been reparameterized into *standard form*. In this form:
+assumes the model has been reparameterized into \emph{standard form}. In this form:
 \itemize{
-  \item The prior precision matrix is the identity.
-  \item The posterior precision matrix, evaluated at the posterior mode
-        \eqn{\theta^\star}, is diagonal.
+\item The prior precision matrix is the identity.
+\item The posterior precision matrix, evaluated at the posterior mode
+\eqn{\theta^\star}, is diagonal.
 }
 
 Example 2 in the paper illustrates the special case of a zero-mean normal
 prior with identity covariance. In this setting:
 \itemize{
-  \item The generalized likelihood-subgradient density at a tangency point
-        \eqn{\bar\theta} has mean vector \eqn{-c(\bar\theta)} and covariance \eqn{I}.
-  \item The normalizing integrals over restricted sets factorize across
-        dimensions. Specifically, for a rectangular set
-        \eqn{A = \{\theta : l_L \leq \theta \leq l_U\}}, we have
-        \deqn{
+\item The generalized likelihood-subgradient density at a tangency point
+\eqn{\bar\theta} has mean vector \eqn{-c(\bar\theta)} and covariance \eqn{I}.
+\item The normalizing integrals over restricted sets factorize across
+dimensions. Specifically, for a rectangular set
+\eqn{A = \{\theta : l_L \leq \theta \leq l_U\}}, we have
+\deqn{
           \int_{\theta \in A} q^{\bar{\theta}}(\theta)\, d\theta
           \;=\;
           \prod_{r=1}^{p}
@@ -153,8 +153,8 @@ prior with identity covariance. In this setting:
             - \Phi\!\big(l_{L,r} + c_{r}(\bar{\theta})\big)
           \Big],
         }
-        and the truncated expectation in coordinate \eqn{r} is
-        \deqn{
+and the truncated expectation in coordinate \eqn{r} is
+\deqn{
           \mathbb{E}_{\tilde{q}^{\bar{\theta}}}[\theta_r \mid \theta \in A]
           =
           -\,c_{r}(\bar{\theta})
@@ -274,11 +274,11 @@ The constants \eqn{\tilde{a}(\bar{\theta})} are then obtained by scaling
 the global constant with these integrals, and the mixture weights
 (\code{PLSD}) are normalized accordingly. In practice:
 \itemize{
-  \item \code{Set_Grid_C2_pointwise} evaluates restricted densities
-        at each grid point.
-  \item \code{LLconst} stores the log of the restricted integrals.
-  \item \code{setlogP_C2} computes \eqn{\tilde{a}(\bar{\theta})} and
-        normalizes mixture weights.
+\item \code{Set_Grid_C2_pointwise} evaluates restricted densities
+at each grid point.
+\item \code{LLconst} stores the log of the restricted integrals.
+\item \code{setlogP_C2} computes \eqn{\tilde{a}(\bar{\theta})} and
+normalizes mixture weights.
 }
 }
 
@@ -296,8 +296,6 @@ of the parameter space \eqn{\Theta}, and define
   \qquad
   \tilde{p}_i=  \frac{ \tilde{a}_i }{ \sum_{j=1}^{k} \tilde{a}_j } 
   }
-
-
 
 In Remark 6 of Nygren & Nygren (2006), the mixture weights
 \eqn{\tilde{p}_i} for each restricted likelihood-subgradient density
@@ -343,10 +341,10 @@ region \eqn{A_i}.
 This tractability is central to the envelope construction. It allows
 \code{EnvelopeBuild} to compute:
 \itemize{
-  \item \code{LLconst}, which stores the log of each restricted integral
-        \eqn{\log \int_{A_i} q^{\bar{\theta}}(\theta)\, d\theta}.
-  \item \code{PLSD}, which stores the normalized mixture weights
-        \eqn{\tilde{p}_i}.
+\item \code{LLconst}, which stores the log of each restricted integral
+\eqn{\log \int_{A_i} q^{\bar{\theta}}(\theta)\, d\theta}.
+\item \code{PLSD}, which stores the normalized mixture weights
+\eqn{\tilde{p}_i}.
 }
 These quantities are used to construct the combined density
 \eqn{\tilde{q}_{\bar{\theta}}(\theta)} and to evaluate the envelope
@@ -428,16 +426,16 @@ each defined over a region \eqn{A_i}, with associated mixture weights
 \eqn{\tilde{p}_i} stored in \code{PLSD}. The sampling proceeds as follows:
 
 \enumerate{
-  \item A region index \eqn{J(i)} is drawn from the discrete distribution
-        defined by \code{PLSD}.
-  \item A candidate \eqn{\theta_i} is drawn from the restricted density
-        \eqn{q^{\bar{\theta}_{J(i)}}_{A_{J(i)}}}, using the normal CDF bounds
-        \code{loglt} and \code{logrt}, and subgradient vector \code{cbars}.
-        Simulation for each dimension uses the internal C++ function
-        \code{ctrnorm_cpp()}, which explicitly uses these inputs.
-  \item The log-likelihood \eqn{\log f(y \mid \theta_i)} is computed and
-        stored in \code{testll[0]} using the appropriate likelihood function
-        \code{f2}.
+\item A region index \eqn{J(i)} is drawn from the discrete distribution
+defined by \code{PLSD}.
+\item A candidate \eqn{\theta_i} is drawn from the restricted density
+\eqn{q^{\bar{\theta}_{J(i)}}_{A_{J(i)}}}, using the normal CDF bounds
+\code{loglt} and \code{logrt}, and subgradient vector \code{cbars}.
+Simulation for each dimension uses the internal C++ function
+\code{ctrnorm_cpp()}, which explicitly uses these inputs.
+\item The log-likelihood \eqn{\log f(y \mid \theta_i)} is computed and
+stored in \code{testll[0]} using the appropriate likelihood function
+\code{f2}.
 }
 
 The acceptance test is performed using the inequality
@@ -452,17 +450,17 @@ which is equivalent to
 
 where:
 \itemize{
-  \item \code{LLconst[J(i)]} stores the precomputed quantity
-        \eqn{-\log f(y \mid \bar{\theta}_{J(i)}) - c(\bar{\theta}_{J(i)})^{T} \bar{\theta}_{J(i)}},
-        computed during envelope construction via \code{setlogP_C2()}.
-  \item \code{cbars[J(i), ]} is the precomputed subgradient vector
-        \eqn{c(\bar{\theta}_{J(i)})}, extracted via \code{cbars(J(i), _)}.
-        It defines the exponential tilt direction used to evaluate the envelope.
-  \item \code{testll[0]} is the log-likelihood at the candidate draw
-        \eqn{\theta_i}, evaluated using the model specified by
-        \code{family} and \code{link}.
-  \item \eqn{-\log(U_2)} is the threshold from a uniform draw
-        \eqn{U_2 \sim \mathrm{Unif}(0,1)}.
+\item \code{LLconst[J(i)]} stores the precomputed quantity
+\eqn{-\log f(y \mid \bar{\theta}_{J(i)}) - c(\bar{\theta}_{J(i)})^{T} \bar{\theta}_{J(i)}},
+computed during envelope construction via \code{setlogP_C2()}.
+\item \code{cbars[J(i), ]} is the precomputed subgradient vector
+\eqn{c(\bar{\theta}_{J(i)})}, extracted via \code{cbars(J(i), _)}.
+It defines the exponential tilt direction used to evaluate the envelope.
+\item \code{testll[0]} is the log-likelihood at the candidate draw
+\eqn{\theta_i}, evaluated using the model specified by
+\code{family} and \code{link}.
+\item \eqn{-\log(U_2)} is the threshold from a uniform draw
+\eqn{U_2 \sim \mathrm{Unif}(0,1)}.
 }
 
 The right-hand side of this inequality is always non-positive, and equals zero
@@ -478,22 +476,22 @@ attempts per sample.
 The components returned by \code{EnvelopeBuild()} are used in specific steps of the
 sampling procedure as follows:
 \itemize{
-  \item \code{PLSD} is used to randomly select a region index \eqn{J(i)} from the envelope mixture.
-  \item \code{loglt} and \code{logrt} define the truncated normal bounds for each dimension,
-        used together with \code{cbars} to generate candidate values \eqn{\theta_i}.
-  \item \code{cbars} provides the subgradient vectors \eqn{c(\bar{\theta}_j)} used both for
-        candidate generation and for computing the acceptance test.
-  \item \code{LLconst} stores precomputed constants used in the acceptance inequality,
-        avoiding recomputation of posterior terms at tangency points.
-  \item \code{logU} stores the per-dimension log-density contributions for each region,
-        computed during envelope setup. These values are summed to produce \code{logP},
-        which determines the mixture weights \code{PLSD}.
-  \item \code{logP} contains the total log-probabilities for each grid component,
-        which are normalized to form the mixture weights \code{PLSD}.
-  \item \code{thetabars} stores the tangency points \eqn{\bar{\theta}_j} used to define
-        subgradients and region-specific densities.
-  \item \code{GridIndex} encodes the sampling type (tail, center, line) used for each
-        dimension and region, guiding how each coordinate is simulated.
+\item \code{PLSD} is used to randomly select a region index \eqn{J(i)} from the envelope mixture.
+\item \code{loglt} and \code{logrt} define the truncated normal bounds for each dimension,
+used together with \code{cbars} to generate candidate values \eqn{\theta_i}.
+\item \code{cbars} provides the subgradient vectors \eqn{c(\bar{\theta}_j)} used both for
+candidate generation and for computing the acceptance test.
+\item \code{LLconst} stores precomputed constants used in the acceptance inequality,
+avoiding recomputation of posterior terms at tangency points.
+\item \code{logU} stores the per-dimension log-density contributions for each region,
+computed during envelope setup. These values are summed to produce \code{logP},
+which determines the mixture weights \code{PLSD}.
+\item \code{logP} contains the total log-probabilities for each grid component,
+which are normalized to form the mixture weights \code{PLSD}.
+\item \code{thetabars} stores the tangency points \eqn{\bar{\theta}_j} used to define
+subgradients and region-specific densities.
+\item \code{GridIndex} encodes the sampling type (tail, center, line) used for each
+dimension and region, guiding how each coordinate is simulated.
 }
 }
 
@@ -501,23 +499,22 @@ sampling procedure as follows:
 
 
 The implementation of \code{EnvelopeBuild} follows the envelope construction
-in Nygren & Nygren (2006) for models in standard form (See Section 3-3.3). 
+in Nygren & Nygren (2006) for models in standard form (See Section 3-3.3).
 Each computational step corresponds to a theoretical guarantee:
-
-1. **Compute width parameters \eqn{\omega_i} from the diagonal precision matrix.**  In particular,
+\enumerate{
+\item \strong{Compute width parameters \eqn{\omega_i} from the diagonal precision matrix.}  In particular,
 let \eqn{\theta^{\ast}} denote the unique posterior mode. For each dimension \eqn{i},
- define
+define
 \deqn{
   \omega_{i} :=
   \frac{\sqrt{2} - \exp\!\big(-1.20491 - 0.7321\,\sqrt{0.5 - \partial^{2}\log f(\theta^{\ast}\mid y)/\partial\theta_{i}^{2}}\big)}
        {\sqrt{1 - \partial^{2}\log f(\theta^{\ast}\mid y)/\partial\theta_{i}^{2}}}.
 }
 
-   As seen from the above, the widths \eqn{\omega_i} are derived from the local curvature of the 
-   log-likelihood at the posterior mode. This ensures that the three-interval construction per
-   dimension below yields an envelope whose efficiency does not deteriorate with sample size.
-
-2. **Use the width parameters to construct intervals around the posterior mode \eqn{\theta^\star}.**  Specifically,
+As seen from the above, the widths \eqn{\omega_i} are derived from the local curvature of the
+log-likelihood at the posterior mode. This ensures that the three-interval construction per
+dimension below yields an envelope whose efficiency does not deteriorate with sample size.
+\item \strong{Use the width parameters to construct intervals around the posterior mode \eqn{\theta^\star}.}  Specifically,
 we set
 \deqn{
   \ell_{i,1} = \theta^{\ast}_{i} - 0.5\,\omega_{i}, \quad
@@ -529,6 +526,7 @@ and construct three intervals per dimension:
   A_{i,2} = [\ell_{i,1},\ell_{i,2}], \quad
   A_{i,3} = (\ell_{i,2},\infty).
 }
+}
 
 For each dimension \eqn{i}, let \eqn{J_{i} = \{1,2,3\}} and define
 \eqn{J = \prod_{i=1}^{p} J_{i}}, which has \eqn{3^{p}} elements. Each
@@ -537,11 +535,11 @@ For each dimension \eqn{i}, let \eqn{J_{i} = \{1,2,3\}} and define
   A^{\ast}_{j} = \prod_{i=1}^{p} A_{i,j_{i}}.
 }
 The collection \eqn{A^{\ast} = \{A^{\ast}_{j} : j \in J\}} forms a partition of \eqn{\Theta}.
+\enumerate{
+\item \strong{For each member of the partition, select tangency points \eqn{\theta^\star \pm \omega_i}.}
+}
 
-   
-3. **For each member of the partition, select tangency points \eqn{\theta^\star \pm \omega_i}.**
-
- For each \eqn{j \in J}, define index sets
+For each \eqn{j \in J}, define index sets
 \deqn{
   C_{j1} = \{i : j_{i} = 1\}, \quad
   C_{j2} = \{i : j_{i} = 2\}, \quad
@@ -557,40 +555,39 @@ The tangency points \eqn{\bar{\theta}_{j}} are then defined componentwise by
     \theta^{\ast}_{i} + \omega_{i}, & i \in C_{j3}.
   \end{cases}
 }
-  
-   The tangency points are hence chosen so that the envelope touches the log-likelihood at
-   representative points in each interval, guaranteeing dominance and tightness.
 
-4. **Build the full grid of tangency points (Cartesian product across dimensions).**  
-   
-   The Cartesian product of per-dimension partitions yields the \eqn{3^p} restricted
-   densities described in the paper, ensuring coverage of the full parameter space.
+The tangency points are hence chosen so that the envelope touches the log-likelihood at
+representative points in each interval, guaranteeing dominance and tightness.
+\enumerate{
+\item \strong{Build the full grid of tangency points (Cartesian product across dimensions).}
 
-5. **Evaluate negative log-likelihood and gradients at each grid point to construct the 
-   likelihood subgradient densities and to facilitate accept rejection sampling**  
-     
-   The subgradients \eqn{c(\bar{\theta})} are part of the definitions of Likelihood subgradient densities 
-   (see definition 2 below) while both the subgradients and the negative log-likelihoods (through the function 
-   \eqn{h_{\bar{\theta}}(.)}) are used during the accept-reject procedure. 
-   CPU and GPU routines compute these values efficiently.
-   - On CPU: via \code{f2_*} and \code{f3_*} routines.
-   - On GPU: via \code{f2_f3_opencl}, which computes both together
-   
-6. **Call \code{Set_Grid_C2_pointwise} to evaluate restricted multivariate normal log-densities.**  
-   (Claim 2; Remark 5).  
-   Each restricted density corresponds to a subset of the partition, normalized
-   as in Remark 5.
+The Cartesian product of per-dimension partitions yields the \eqn{3^p} restricted
+densities described in the paper, ensuring coverage of the full parameter space.
+\item \strong{Evaluate negative log-likelihood and gradients at each grid point to construct the
+likelihood subgradient densities and to facilitate accept rejection sampling}
 
-7. **Call \code{setlogP_C2} to compute component log-probabilities and constants.**  
-   (Remark 6).  
-   The constants \eqn{\tilde{a}} and mixture weights \eqn{\tilde{p}_i} are computed
-   explicitly as in Remark 6, ensuring that the mixture envelope is properly normalized.
-
-8. **Normalize probabilities (\code{PLSD}) and optionally sort grid components.**  
-   (Claim 2).  
-   Normalization ensures that the mixture of restricted densities forms a valid
-   dominating density for the posterior. Sorting is an implementation detail to
-   improve sampling efficiency.
+The subgradients \eqn{c(\bar{\theta})} are part of the definitions of Likelihood subgradient densities
+(see definition 2 below) while both the subgradients and the negative log-likelihoods (through the function
+\eqn{h_{\bar{\theta}}(.)}) are used during the accept-reject procedure.
+CPU and GPU routines compute these values efficiently.
+\itemize{
+\item On CPU: via \code{f2_*} and \code{f3_*} routines.
+\item On GPU: via \code{f2_f3_opencl}, which computes both together
+}
+\item \strong{Call \code{Set_Grid_C2_pointwise} to evaluate restricted multivariate normal log-densities.}
+(Claim 2; Remark 5).
+Each restricted density corresponds to a subset of the partition, normalized
+as in Remark 5.
+\item \strong{Call \code{setlogP_C2} to compute component log-probabilities and constants.}
+(Remark 6).
+The constants \eqn{\tilde{a}} and mixture weights \eqn{\tilde{p}_i} are computed
+explicitly as in Remark 6, ensuring that the mixture envelope is properly normalized.
+\item \strong{Normalize probabilities (\code{PLSD}) and optionally sort grid components.}
+(Claim 2).
+Normalization ensures that the mixture of restricted densities forms a valid
+dominating density for the posterior. Sorting is an implementation detail to
+improve sampling efficiency.
+}
 }
 
 \section{Formal definition and key claim}{
@@ -602,19 +599,19 @@ function \eqn{f(y\mid\cdot)} at a point \eqn{\bar{\theta} \in \Theta} if there
 exists a subgradient \eqn{c(\bar{\theta})} for the negative of the log of a
 function \eqn{g} at \eqn{\bar{\theta}} such that:
 \itemize{
-  \item (a) \eqn{g(\cdot)} bounds \eqn{f(y\mid\cdot)} from above,
-  \item (b) \eqn{\mathrm{MGF}(-c(\bar{\theta})) = \int_{\Theta} \exp\!\big(-c(\bar{\theta})^{T}\theta\big)\,\pi(\theta)\,d\theta} is finite,
-  \item (c) \eqn{\forall\,\theta \in \Theta:~ q(\theta) = \exp\!\big(-c(\bar{\theta})^{T}\theta\big)\,\pi(\theta)\,/\,\mathrm{MGF}\!\big(-c(\bar{\theta})\big)}.
+\item (a) \eqn{g(\cdot)} bounds \eqn{f(y\mid\cdot)} from above,
+\item (b) \eqn{\mathrm{MGF}(-c(\bar{\theta})) = \int_{\Theta} \exp\!\big(-c(\bar{\theta})^{T}\theta\big)\,\pi(\theta)\,d\theta} is finite,
+\item (c) \eqn{\forall\,\theta \in \Theta:~ q(\theta) = \exp\!\big(-c(\bar{\theta})^{T}\theta\big)\,\pi(\theta)\,/\,\mathrm{MGF}\!\big(-c(\bar{\theta})\big)}.
 }
 
 \emph{Special cases:}
 \itemize{
-  \item If \eqn{g(\theta)} is the likelihood function, then we call \eqn{q(\theta)} a
-        likelihood-subgradient density. Log-concave likelihood functions are ubiquitous
-        in statistical modeling. Models with log-concave likelihood functions include
-        the Poisson and logit regression models, as well as some survival models.
-  \item If \eqn{g(\theta) = \bar{f} \ge f(y\mid\theta)} for all \eqn{\theta}, then we are in the
-        Bayesian context discussed earlier and the prior is a generalized likelihood-subgradient density.
+\item If \eqn{g(\theta)} is the likelihood function, then we call \eqn{q(\theta)} a
+likelihood-subgradient density. Log-concave likelihood functions are ubiquitous
+in statistical modeling. Models with log-concave likelihood functions include
+the Poisson and logit regression models, as well as some survival models.
+\item If \eqn{g(\theta) = \bar{f} \ge f(y\mid\theta)} for all \eqn{\theta}, then we are in the
+Bayesian context discussed earlier and the prior is a generalized likelihood-subgradient density.
 }
 
 The Appendix provides a more detailed discussion on the existence of likelihood-subgradient densities.
@@ -688,8 +685,8 @@ let \eqn{\tilde{q}_{1}(\cdot),\tilde{q}_{2}(\cdot),\ldots,\tilde{q}_{k}(\cdot)} 
 such that there exist associated constants \eqn{\tilde{a}_{1},\tilde{a}_{2},\ldots,\tilde{a}_{k}} and functions
 \eqn{\tilde{h}_{1}(\cdot),\tilde{h}_{2}(\cdot),\ldots,\tilde{h}_{k}(\cdot)} satisfying the following:
 \itemize{
-  \item (a) \eqn{\theta \in A_{i} \Rightarrow \tilde{a}_{i}\,\tilde{h}_{i}(\theta)\,\tilde{q}_{i}(\theta) = \pi(\theta \mid y)}, \eqn{i=1,2,\ldots,k}.
-  \item (b) \eqn{\theta \in A_{i} \Rightarrow 0 \le \tilde{h}_{i}(\theta) \le 1}, \eqn{i=1,2,\ldots,k}.
+\item (a) \eqn{\theta \in A_{i} \Rightarrow \tilde{a}_{i}\,\tilde{h}_{i}(\theta)\,\tilde{q}_{i}(\theta) = \pi(\theta \mid y)}, \eqn{i=1,2,\ldots,k}.
+\item (b) \eqn{\theta \in A_{i} \Rightarrow 0 \le \tilde{h}_{i}(\theta) \le 1}, \eqn{i=1,2,\ldots,k}.
 }
 Define a new density by
 \deqn{
@@ -845,11 +842,11 @@ corresponding restricted likelihood-subgradient densities.
 
 Empirical investigation shows:
 \itemize{
-  \item A single optimally positioned likelihood-subgradient density deteriorates
-        in performance as the number of data points increases.
-  \item The same deterioration occurs for optimally positioned two-interval partitions.
-  \item Remarkably, the optimal three-interval partition does not suffer this deterioration:
-        the enveloping function remains a close approximation even as the sample size grows.
+\item A single optimally positioned likelihood-subgradient density deteriorates
+in performance as the number of data points increases.
+\item The same deterioration occurs for optimally positioned two-interval partitions.
+\item Remarkably, the optimal three-interval partition does not suffer this deterioration:
+the enveloping function remains a close approximation even as the sample size grows.
 }
 
 Define the posterior mode \eqn{\theta^{\ast}} and set
@@ -905,36 +902,36 @@ multivariate case, models are first reparameterized into a standard form.
 \strong{Definition 3.} A probability model with a multivariate normal prior
 and log-concave likelihood function is in \emph{standard form} if:
 \itemize{
-  \item (a) the prior variance-covariance matrix is the identity matrix, and
-  \item (b) the Hessian of the log-posterior density evaluated at the posterior mode
-        is a diagonal matrix.
+\item (a) the prior variance-covariance matrix is the identity matrix, and
+\item (b) the Hessian of the log-posterior density evaluated at the posterior mode
+is a diagonal matrix.
 }
 
 \emph{Remarks on reparameterization:}
 \itemize{
-  \item \strong{Remark 11.} If the log-likelihood function is concave and twice
-        continuously differentiable, then a Cholesky decomposition of the posterior
-        precision at the unique posterior mode can be used to reparameterize the model
-        so that the posterior precision at the mode is diagonal.
-  \item \strong{Remark 12.} For any positive definite matrix \eqn{P}, there exists a
-        positive definite diagonal matrix \eqn{D} such that \eqn{P - D} is also positive definite.
-  \item \strong{Remark 13.} Let \eqn{P} and \eqn{D} be as above. Then the following two
-        models have the same posterior density:
-        \enumerate{
-          \item A model with prior mean vector \eqn{\mu}, prior precision matrix \eqn{P},
-                and log-likelihood function \eqn{LL(\theta)}.
-          \item A model with prior mean vector \eqn{\mu}, prior precision matrix \eqn{D},
-                and log-likelihood function
-                \deqn{
+\item \strong{Remark 11.} If the log-likelihood function is concave and twice
+continuously differentiable, then a Cholesky decomposition of the posterior
+precision at the unique posterior mode can be used to reparameterize the model
+so that the posterior precision at the mode is diagonal.
+\item \strong{Remark 12.} For any positive definite matrix \eqn{P}, there exists a
+positive definite diagonal matrix \eqn{D} such that \eqn{P - D} is also positive definite.
+\item \strong{Remark 13.} Let \eqn{P} and \eqn{D} be as above. Then the following two
+models have the same posterior density:
+\enumerate{
+\item A model with prior mean vector \eqn{\mu}, prior precision matrix \eqn{P},
+and log-likelihood function \eqn{LL(\theta)}.
+\item A model with prior mean vector \eqn{\mu}, prior precision matrix \eqn{D},
+and log-likelihood function
+\deqn{
                   LL^{\ast}(\theta) = -\tfrac{1}{2}(\theta - \mu)^{T}(P - D)(\theta - \mu) + LL(\theta).
                 }
-        }
-  \item \strong{Remark 14.} If a model has a multivariate normal prior with a diagonal
-        variance-covariance matrix and the posterior precision at the posterior mode is
-        also diagonal, then the model can be reparameterized into standard form.
-  \item \strong{Remark 15.} If a probability model with a multivariate normal prior and
-        log-concave likelihood function has a twice continuously differentiable log-likelihood,
-        then it can be reparameterized into standard form.
+}
+\item \strong{Remark 14.} If a model has a multivariate normal prior with a diagonal
+variance-covariance matrix and the posterior precision at the posterior mode is
+also diagonal, then the model can be reparameterized into standard form.
+\item \strong{Remark 15.} If a probability model with a multivariate normal prior and
+log-concave likelihood function has a twice continuously differentiable log-likelihood,
+then it can be reparameterized into standard form.
 }
 
 \emph{Multivariate partition construction:}
@@ -998,12 +995,14 @@ case, centered at the posterior mode \eqn{\theta^\star}, the density is:
 f(\theta) = \frac{1}{(2\pi)^{p/2} |A|^{-1/2} \cdot \text{MGF}_A(c)} \exp\left( -\frac{1}{2} (\theta - \mu)^T A (\theta - \mu) + c^T (\theta - \theta^\star) \right)
 }
 where:
-- \eqn{A} is the precision matrix,
-- \eqn{\mu} is the prior mean vector,
-- \eqn{c} is the gradient of the log-likelihood at \eqn{\theta^\star},
-- \eqn{\text{MGF}_A(c)} is the moment-generating function:
+\itemize{
+\item \eqn{A} is the precision matrix,
+\item \eqn{\mu} is the prior mean vector,
+\item \eqn{c} is the gradient of the log-likelihood at \eqn{\theta^\star},
+\item \eqn{\text{MGF}_A(c)} is the moment-generating function:
 \deqn{
 \text{MGF}_A(c) = \exp\left( \frac{1}{2} c^T A^{-1} c \right)
+}
 }
 
 This closed-form density dominates the posterior locally and is used when
@@ -1021,41 +1020,49 @@ where the weights \eqn{p_j} are computed using log-CDF differences and constants
 
 \section{Algorithmic steps}{
 
-1. Compute width parameters \eqn{\omega_i} from the diagonal of the precision matrix.
-2. Construct intervals around the posterior mode \eqn{\theta^\star}.
-3. Select tangency points at the mode and at \eqn{\theta^\star \pm \omega_i}.
-4. Build the full grid of tangency points (Cartesian product across dimensions).
-5. Evaluate negative log-likelihood and gradients at each grid point:
-   - On CPU: via \code{f2_*} and \code{f3_*} routines.
-   - On GPU: via \code{f2_f3_opencl}, which computes both in parallel.
-6. Call \code{Set_Grid_C2_pointwise} to evaluate restricted multivariate normal
-   log-densities in parallel.
-7. Call \code{setlogP_C2} to compute component log-probabilities and constants.
-8. Normalize probabilities (\code{PLSD}) and optionally sort grid components
-   by probability if \code{sortgrid = TRUE}.
+\enumerate{
+\item Compute width parameters \eqn{\omega_i} from the diagonal of the precision matrix.
+\item Construct intervals around the posterior mode \eqn{\theta^\star}.
+\item Select tangency points at the mode and at \eqn{\theta^\star \pm \omega_i}.
+\item Build the full grid of tangency points (Cartesian product across dimensions).
+\item Evaluate negative log-likelihood and gradients at each grid point:
+\itemize{
+\item On CPU: via \code{f2_*} and \code{f3_*} routines.
+\item On GPU: via \code{f2_f3_opencl}, which computes both in parallel.
+}
+\item Call \code{Set_Grid_C2_pointwise} to evaluate restricted multivariate normal
+log-densities in parallel.
+\item Call \code{setlogP_C2} to compute component log-probabilities and constants.
+\item Normalize probabilities (\code{PLSD}) and optionally sort grid components
+by probability if \code{sortgrid = TRUE}.
+}
 }
 
 \section{Gridtype logic}{
 
 The \code{Gridtype} argument controls how many tangency points are used per dimension:
-- 1: Threshold rule. If \eqn{1 + a_i \le 2/\sqrt{\pi}}, use a single-point envelope at the mode;
-     otherwise use three points.
-- 2: Dynamic optimization via \code{EnvelopeOpt}, which balances grid build cost and
-     expected acceptance rate. Grid size is scaled by \code{n} and the number of
-     OpenCL cores when GPU is enabled.
-- 3: Always use three points per dimension.
-- 4: Always use a single point (mode only).
+\itemize{
+\item 1: Threshold rule. If \eqn{1 + a_i \le 2/\sqrt{\pi}}, use a single-point envelope at the mode;
+otherwise use three points.
+\item 2: Dynamic optimization via \code{EnvelopeOpt}, which balances grid build cost and
+expected acceptance rate. Grid size is scaled by \code{n} and the number of
+OpenCL cores when GPU is enabled.
+\item 3: Always use three points per dimension.
+\item 4: Always use a single point (mode only).
+}
 }
 
 \section{Supported families and links}{
 
 The following families and link functions are supported:
-- Binomial: logit, probit, cloglog
-- Quasibinomial: logit, probit
-- Poisson: log
-- Quasipoisson: log
-- Gamma: log
-- Gaussian: identity
+\itemize{
+\item Binomial: logit, probit, cloglog
+\item Quasibinomial: logit, probit
+\item Poisson: log
+\item Quasipoisson: log
+\item Gamma: log
+\item Gaussian: identity
+}
 
 GPU acceleration (\code{use_opencl = TRUE}) is available for all of the above
 except Gaussian, which is always evaluated on CPU.
@@ -1078,11 +1085,13 @@ the CPU implementation is used. Diagnostic messages are printed when
 \section{Verbose output}{
 
 When \code{verbose = TRUE}, the function prints:
-- Grid type, number of draws, OpenCL usage, and detected core count.
-- Grid size after expansion.
-- Time-stamped messages when entering the grid loop, starting likelihood
-  evaluations, starting gradient evaluations, and invoking GPU kernels.
-- Messages when setting grid values, computing log-probabilities, and sorting.
+\itemize{
+\item Grid type, number of draws, OpenCL usage, and detected core count.
+\item Grid size after expansion.
+\item Time-stamped messages when entering the grid loop, starting likelihood
+evaluations, starting gradient evaluations, and invoking GPU kernels.
+\item Messages when setting grid values, computing log-probabilities, and sorting.
+}
 
 Any constants needed by the sampling are added to a list and returned.
 }

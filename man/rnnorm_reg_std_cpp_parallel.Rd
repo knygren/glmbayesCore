@@ -37,11 +37,13 @@ rnnorm_reg_std_cpp_parallel(
 \item{f2}{R function; auxiliary update callback used internally.}
 
 \item{Envelope}{list with the following elements:
-- PLSD: numeric vector of slice-sampling probabilities.  
-- loglt: numeric matrix of lower-tail log-densities.  
-- logrt: numeric matrix of upper-tail log-densities.  
-- cbars: numeric matrix of truncation bounds.  
-- LLconst: numeric vector of log-likelihood offsets.}
+\itemize{
+\item PLSD: numeric vector of slice-sampling probabilities.
+\item loglt: numeric matrix of lower-tail log-densities.
+\item logrt: numeric matrix of upper-tail log-densities.
+\item cbars: numeric matrix of truncation bounds.
+\item LLconst: numeric vector of log-likelihood offsets.
+}}
 
 \item{family}{character string; distribution family (e.g. "gaussian").}
 
@@ -51,9 +53,11 @@ rnnorm_reg_std_cpp_parallel(
 }
 \value{
 A list with components:
-  - out: numeric matrix (n × p) of sampled latent values.  
-  - draws: numeric vector of length n of final draws.
+\itemize{
+\item out: numeric matrix (n × p) of sampled latent values.
+\item draws: numeric vector of length n of final draws.
+}
 }
 \description{
-Wraps the C++ function `rnnorm_reg_std_cpp_parallel` for fast, threaded sampling.
+Wraps the C++ function \code{rnnorm_reg_std_cpp_parallel} for fast, threaded sampling.
 }

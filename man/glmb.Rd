@@ -69,22 +69,22 @@ should be a pfamily function (see \code{\link{pfamily}} for details of pfamily f
 
 \item{subset}{an optional vector specifying a subset of observations to be used in the fitting process.}
 
-\item{offset}{this can be used to specify an \emph{a priori} known component to be included in the linear 
-predictor during fitting. This should be \code{NULL} or a numeric vector of length equal to the number of 
-cases.  One or more \code{\link[stats]{offset}} terms can be included in the formula instead or as well, and 
-if more than one is specified their sum is used.  See documentation for \code{model.offset} at 
+\item{offset}{this can be used to specify an \emph{a priori} known component to be included in the linear
+predictor during fitting. This should be \code{NULL} or a numeric vector of length equal to the number of
+cases.  One or more \code{\link[stats]{offset}} terms can be included in the formula instead or as well, and
+if more than one is specified their sum is used.  See documentation for \code{model.offset} at
 \code{\link[stats]{model.extract}}.}
 
-\item{na.action}{a function which indicates what should happen when the data contain \code{NA}s.  The default is set by 
-the \code{na.action} setting of \code{\link{options}}, and is \code{\link[stats]{na.fail}} 
-if that is unset.  The \sQuote{factory-fresh} default is \code{stats{na.omit}}.  
-Another possible value is \code{NULL}, no action.  Value \code{stats{na.exclude}} 
+\item{na.action}{a function which indicates what should happen when the data contain \code{NA}s.  The default is set by
+the \code{na.action} setting of \code{\link{options}}, and is \code{\link[stats]{na.fail}}
+if that is unset.  The \sQuote{factory-fresh} default is \code{stats{na.omit}}.
+Another possible value is \code{NULL}, no action.  Value \code{stats{na.exclude}}
 can be useful.}
 
 \item{Gridtype}{an optional argument specifying the method used to determine the number of tangent points used to construct the enveloping function.}
 
 \item{n_envopt}{Effective sample size passed to EnvelopeOpt for grid
-construction. Defaults to match `n`. Larger values encourage tighter
+construction. Defaults to match \code{n}. Larger values encourage tighter
 envelopes.}
 
 \item{start}{starting values for the parameters in the linear predictor.}
@@ -134,9 +134,9 @@ envelopes.}
 \item{digits}{the number of significant digits to use when printing.}
 }
 \value{
-\code{glmb} returns an object of class \code{"glmb"}. The function \code{summary} (i.e., 
-\code{\link{summary.glmb}}) can be used to obtain or print a summary of the results.  The generic accessor functions 
-\code{\link{coefficients}}, \code{\link{fitted.values}}, \code{\link{residuals}}, and \code{\link{extractAIC}} can be used 
+\code{glmb} returns an object of class \code{"glmb"}. The function \code{summary} (i.e.,
+\code{\link{summary.glmb}}) can be used to obtain or print a summary of the results.  The generic accessor functions
+\code{\link{coefficients}}, \code{\link{fitted.values}}, \code{\link{residuals}}, and \code{\link{extractAIC}} can be used
 to extract various useful features of the value returned by \code{\link{glmb}}.
 
 An object of class \code{"glmb"} is a list containing at least the following components:
@@ -153,34 +153,34 @@ list may vary based on the type of prior}
 \item{deviance}{an \code{n} by \code{1} matrix with one sample for the deviance in each row}
 \item{pD}{An Estimate for the effective number of parameters}
 \item{Dbar}{Expected value for minus twice the log-likelihood function}
-\item{Dthetabar}{Value of minus twice the log-likelihood function evaluated at the mean value for the coefficients}   
-\item{DIC}{Estimated Deviance Information criterion} 
-\item{prior.weights}{a vector of weights specified or implied by the model} 
-\item{y}{a vector with the dependent variable} 
-\item{x}{a matrix with the implied design matrix for the model} 
-\item{model}{if requested (the default),the model frame} 
-\item{call}{the matched call} 
-\item{formula}{the formula supplie} 
-\item{terms}{the \code{\link{terms}} object used} 
-\item{data}{the \code{data argument}} 
+\item{Dthetabar}{Value of minus twice the log-likelihood function evaluated at the mean value for the coefficients}
+\item{DIC}{Estimated Deviance Information criterion}
+\item{prior.weights}{a vector of weights specified or implied by the model}
+\item{y}{a vector with the dependent variable}
+\item{x}{a matrix with the implied design matrix for the model}
+\item{model}{if requested (the default),the model frame}
+\item{call}{the matched call}
+\item{formula}{the formula supplie}
+\item{terms}{the \code{\link{terms}} object used}
+\item{data}{the \code{data argument}}
 \item{famfunc}{Family functions used during estimation process}
 \item{iters}{an \code{n} by \code{1} matrix giving the number of candidates generated before acceptance for each sample.}
 \item{contrasts}{(where relevant) the contrasts used.}
 \item{xlevels}{(where relevant) a record of the levels of the factors used in fitting}
 \item{digits}{the number of significant digits to use when printing.}
 In addition, non-empty fits will have (yet to be implemented) components \code{qr}, \code{R}
-and \code{effects} relating to the final weighted linear fit for the posterior mode.  
+and \code{effects} relating to the final weighted linear fit for the posterior mode.
 Objects of class \code{"glmb"} are normall of class \code{c("glmb","glm","lm")},
 that is inherit from classes \code{glm} and \code{lm} and well-designed
 methods from those classed will be applied when appropriate.
 
-If a \link{binomial} \code{glmb} model was specified by giving a two-column 
+If a \link{binomial} \code{glmb} model was specified by giving a two-column
 response, the weights returned by \code{prior.weights} are the total number of
 cases (factored by the supplied case weights) and the component of \code{y}
 of the result is the proportion of successes.
 }
 \description{
-\code{glmb} is used to fit Bayesian generalized linear models, specified by giving a symbolic descriptions of 
+\code{glmb} is used to fit Bayesian generalized linear models, specified by giving a symbolic descriptions of
 the linear predictor,  the error distribution, and the prior distribution.
 }
 \details{
@@ -189,15 +189,15 @@ The function \code{glmb} is a Bayesian version of the classical
 \code{glm} was written by Simon Davies (under Ross Ihaka at the
 University of Auckland) and has since been extensively rewritten by
 members of the R Core Team; its design was inspired by the S
-function described in \insertCite{Hastie1992}{glmbayes}, which in turn relies on the 
+function described in \insertCite{Hastie1992}{glmbayes}, which in turn relies on the
 formula framework described in \insertCite{WilkinsonRogers1973}{glmbayes}.
 
-Setup (including the use of formulas and families) mirrors that of \code{\link{glm}} but adds a 
-required \code{pfamily} argument to specify the prior distribution. The design of the \code{pfamily} family of 
-functions was created by Kjell Nygren and is modeled on how \code{glm} 
+Setup (including the use of formulas and families) mirrors that of \code{\link{glm}} but adds a
+required \code{pfamily} argument to specify the prior distribution. The design of the \code{pfamily} family of
+functions was created by Kjell Nygren and is modeled on how \code{glm}
 uses \code{family} to specify the likelihood.
 
-For any implemented combination of family, link, and \code{pfamily}, 
+For any implemented combination of family, link, and \code{pfamily},
 \code{glmb} generates independent draws from the posterior density-
 no MCMC chains are required. Results can be printed or summarized
 with methods that mirror those for \code{\link{glm}} (e.g.\ \code{\link{print.glmb}},
@@ -217,8 +217,8 @@ Currently supported response families are
 \code{dNormalGamma} and \code{dIndependent_Normal_Gamma}.
 
 For the Gaussian family, draws under \code{dNormal} and
-\code{dNormalGamma} come from posterior distributions resulting from conjugate 
-prior distributions \insertCite{Raiffa1961}{glmbayes}. For all other priors or response families, 
+\code{dNormalGamma} come from posterior distributions resulting from conjugate
+prior distributions \insertCite{Raiffa1961}{glmbayes}. For all other priors or response families,
 we use an accept-reject sampler built on the likelihood-subgradient envelope
 method \insertCite{Nygren2006}{glmbayes}. The
 \code{Gridtype} argument controls how many tangent points are used
@@ -231,11 +231,11 @@ envelope building. \code{"glmb"} comes with many of the same kinds of method fun
 that come with \code{"glm"} and \code{"lm"}, so you can still call \code{\link{extractAIC}},
 \code{\link{fitted.values}}, or any other standard method.
 
-The \code{\link{lmb}} function is a Bayesian version of the \code{\link[stats]{lm}} function that can 
+The \code{\link{lmb}} function is a Bayesian version of the \code{\link[stats]{lm}} function that can
 be used to estimate models from the Gaussian family without the need for a \code{family} argument.
 
-\code{\link{rglmb}} and \code{\link{rlmb}} are functions with more minimalistic interfaces for estimating the same 
-models without most of the internal overhead (these functions are called internally by \code{glmb} and \code{lmb}). 
+\code{\link{rglmb}} and \code{\link{rlmb}} are functions with more minimalistic interfaces for estimating the same
+models without most of the internal overhead (these functions are called internally by \code{glmb} and \code{lmb}).
 The reduced overhead may be beneficial for Gibbs sampling implementations.
 }
 \examples{
@@ -300,18 +300,18 @@ DIC_Out
 \insertRef{Dobson1990}{glmbayes}
 }
 \seealso{
-\code{\link[stats]{lm}}, \code{\link[stats]{glm}}, \code{\link[stats]{family}}, \code{\link[stats]{formula}} 
-    for classical modeling functions, family objects, and formula syntax
+\code{\link[stats]{lm}}, \code{\link[stats]{glm}}, \code{\link[stats]{family}}, \code{\link[stats]{formula}}
+for classical modeling functions, family objects, and formula syntax
 
- \code{\link{pfamily}} for documentation of pfamily functions used to specify priors.
+\code{\link{pfamily}} for documentation of pfamily functions used to specify priors.
 
- \code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for functions used to initialize and to check priors,  
+\code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for functions used to initialize and to check priors,
 
- \code{\link{EnvelopeBuild}} for envelope construction  methods.
-    
-  \code{\link{summary.glmb}}, \code{\link{predict.glmb}}, \code{\link{residuals.glmb}}, \code{\link{simulate.glmb}},  
-  \code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for \code{glmb}  
-  and the methods and generic functions for classes \code{glm} and \code{lm} from which class \code{glmb} inherits.
+\code{\link{EnvelopeBuild}} for envelope construction  methods.
+
+\code{\link{summary.glmb}}, \code{\link{predict.glmb}}, \code{\link{residuals.glmb}}, \code{\link{simulate.glmb}},
+\code{\link{extractAIC.glmb}}, \code{\link{dummy.coef.glmb}} and methods(class="glmb") for \code{glmb}
+and the methods and generic functions for classes \code{glm} and \code{lm} from which class \code{glmb} inherits.
 
 glmbayes Modeling Functions
 \code{\link{lmb}()},

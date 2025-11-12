@@ -60,22 +60,21 @@ independent normal-gamma regression
 }
 \details{
 The \code{rindependent_norm_gamma_reg} function produces iid samples for the Bayesian the Standardized Bayesian
-Independent Normal-Gamma Regression Distribution associated with the gaussian() family. 
+Independent Normal-Gamma Regression Distribution associated with the gaussian() family.
 
 This generates candidates independently from a gamma distribution and a likelihood subgradient density
 and then uses an accept-reject procedure in order to get samples from the desired posterior density.
 
 A series of bounding functions are used during the simulation process in order to bound the likelihood function
-associated with the posterior density 
-  
-1) Similar to the procedure in the fixed dispersion case, the (modified) log-likelihood function is 
-for a specific component of the grid is bounded 
-
-2) A portion of the bounding function above is in turn bounded by using a term that has been shifted to the 
-rate parameter of the modified gamma candidate generating distribution. This term consist of the *RSS* associated 
+associated with the posterior density
+\enumerate{
+\item Similar to the procedure in the fixed dispersion case, the (modified) log-likelihood function is
+for a specific component of the grid is bounded
+\item A portion of the bounding function above is in turn bounded by using a term that has been shifted to the
+rate parameter of the modified gamma candidate generating distribution. This term consist of the \emph{RSS} associated
 with the maximum likelihood estimate.
-
-3) Because the relative proportions of the
+\item Because the relative proportions of the
+}
 }
 \examples{
 

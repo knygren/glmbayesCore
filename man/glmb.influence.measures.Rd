@@ -28,7 +28,7 @@ glmb.covratio(model, infl = influence(model))
 \item{model}{an \R object, typically returned by \code{\link[stats]{lm}} or
     \code{\link[stats]{glm}}.}
 
-\item{infl}{influence structure as returned by \code{influence.glmb} 
+\item{infl}{influence structure as returned by \code{influence.glmb}
 (the latter only for the glm method of \code{rstudent} and \code{cooks.distance}).}
 
 \item{...}{further arguments passed to or from other methods.}

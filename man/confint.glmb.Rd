@@ -19,7 +19,7 @@ either a vector of numbers or a vector of names. If missing, all parameters are 
 \value{
 A matrix (or vector) with columns giving lower and
 upper credible limits for each parameter. These will be labeled
-(1-level)/2 and 1-(1-level)/2 in \% (by default 2.5\% and 97.5\%).
+(1-level)/2 and 1-(1-level)/2 in \\% (by default 2.5\\% and 97.5\\%).
 }
 \description{
 Computes credible intervals for Model Parameters
