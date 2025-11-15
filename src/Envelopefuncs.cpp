@@ -1164,41 +1164,41 @@ Rcpp::List Inv_f3_precompute_disp(NumericMatrix cbars,
 
 
 
-// [[Rcpp::export]]
+// // [[Rcpp::export]]
+// 
+// double rss_face_at_disp(const Rcpp::List cache,
+//                                       double dispersion,
+//                                       const Rcpp::NumericVector cbars_j) {
+//   // Extract cached matrices
+//   arma::mat Pmat    = cache["Pmat"];
+//   arma::mat Pmu     = cache["Pmu"];
+//   arma::vec base_B0 = cache["base_B0"];
+//   arma::mat base_A  = cache["base_A"];
+//   
+//   // Scale terms by dispersion
+//   arma::vec B0 = base_B0 / dispersion + Pmu;
+//   arma::mat A  = Pmat + base_A / dispersion;
+//   A = 0.5 * (A + A.t());                // ensure symmetry
+//   
+//   arma::mat R = arma::chol(A);          // Cholesky
+//   
+//   // Wrap cbars_j as Armadillo vector
+// //  arma::vec c_j(cbars_j.begin(), cbars_j.size(), false);
+//   arma::vec c_j = Rcpp::as<arma::vec>(cbars_j);
+//   
+//   
+//   // Solve A^{-1}(-c_j + B0)
+//   arma::vec b    = -c_j + B0;
+//   arma::vec ytmp = arma::solve(arma::trimatl(R.t()), b);
+//   arma::vec sol  = arma::solve(arma::trimatu(R), ytmp);
+//   
+//   // RSS is squared norm of the solution
+//   return arma::dot(sol, sol);
+// }
 
-double rss_face_at_disp(const Rcpp::List cache,
-                                      double dispersion,
-                                      const Rcpp::NumericVector cbars_j) {
-  // Extract cached matrices
-  arma::mat Pmat    = cache["Pmat"];
-  arma::mat Pmu     = cache["Pmu"];
-  arma::vec base_B0 = cache["base_B0"];
-  arma::mat base_A  = cache["base_A"];
-  
-  // Scale terms by dispersion
-  arma::vec B0 = base_B0 / dispersion + Pmu;
-  arma::mat A  = Pmat + base_A / dispersion;
-  A = 0.5 * (A + A.t());                // ensure symmetry
-  
-  arma::mat R = arma::chol(A);          // Cholesky
-  
-  // Wrap cbars_j as Armadillo vector
-//  arma::vec c_j(cbars_j.begin(), cbars_j.size(), false);
-  arma::vec c_j = Rcpp::as<arma::vec>(cbars_j);
-  
-  
-  // Solve A^{-1}(-c_j + B0)
-  arma::vec b    = -c_j + B0;
-  arma::vec ytmp = arma::solve(arma::trimatl(R.t()), b);
-  arma::vec sol  = arma::solve(arma::trimatu(R), ytmp);
-  
-  // RSS is squared norm of the solution
-  return arma::dot(sol, sol);
-}
+// [[Rcpp::export("rss_face_at_disp")]]
 
-// [[Rcpp::export("rss_face_at_disp_export")]]
-
-double rss_face_at_disp_export(double dispersion,
+double rss_face_at_disp(double dispersion,
                                Rcpp::List cache,
                                Rcpp::NumericVector cbars_j,
                                Rcpp::NumericVector y,
@@ -1234,7 +1234,7 @@ double UB2(double dispersion,
            double rss_min_global) {
   
   // Call the existing RSS function
-  double rss_val = rss_face_at_disp_export(dispersion, cache, cbars_j, y, x, alpha, wt);
+  double rss_val = rss_face_at_disp(dispersion, cache, cbars_j, y, x, alpha, wt);
   
   // Compute UB2
   double UB2_val = (1.0 / dispersion) * (rss_val - rss_min_global);
@@ -1385,7 +1385,7 @@ List EnvelopeDispersionBuild_cpp(
   
   // Step 3C: Minimize RSS over dispersion for each face
   Rcpp::Function optim("optim");
-  Rcpp::Function rss_fn("rss_face_at_disp_export");
+  Rcpp::Function rss_fn("rss_face_at_disp");
   
 
   NumericVector rss_min(gs), disp_min(gs);

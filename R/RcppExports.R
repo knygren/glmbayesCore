@@ -33,12 +33,8 @@ Inv_f3_precompute_disp <- function(cbars, y, x, mu, P, alpha, wt) {
     .Call(`_glmbayes_Inv_f3_precompute_disp`, cbars, y, x, mu, P, alpha, wt)
 }
 
-rss_face_at_disp <- function(cache, dispersion, cbars_j) {
-    .Call(`_glmbayes_rss_face_at_disp`, cache, dispersion, cbars_j)
-}
-
-rss_face_at_disp_export <- function(dispersion, cache, cbars_j, y, x, alpha, wt) {
-    .Call(`_glmbayes_rss_face_at_disp_export`, dispersion, cache, cbars_j, y, x, alpha, wt)
+rss_face_at_disp <- function(dispersion, cache, cbars_j, y, x, alpha, wt) {
+    .Call(`_glmbayes_rss_face_at_disp`, dispersion, cache, cbars_j, y, x, alpha, wt)
 }
 
 UB2 <- function(dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global) {

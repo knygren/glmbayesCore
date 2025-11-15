@@ -7,35 +7,21 @@
 \alias{thetabar_const}
 \alias{Inv_f3_with_disp}
 \alias{UB2}
-\alias{rss_face_at_disp_export}
+\alias{rss_face_at_disp}
 \title{Builds Dispersion-Aware Envelope for Simulation}
 \usage{
-EnvelopeDispersionBuild(
-  Env,
-  Shape,
-  Rate,
-  P,
-  y,
-  x,
-  alpha,
-  n_obs,
-  RSS_post,
-  RSS_ML,
-  max_disp_perc = 0.99,
-  disp_lower = NULL,
-  disp_upper = NULL,
-  verbose = FALSE
-)
+EnvelopeDispersionBuild(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML,
+    max_disp_perc = 0.99,disp_lower = NULL, disp_upper = NULL,verbose = FALSE)
 
-EnvBuildLinBound(thetabars, cbars, y, x2, P2, alpha, dispstar)
+EnvBuildLinBound(thetabars,cbars,y,x2,P2,alpha,dispstar)
 
-thetabar_const(P, cbars, thetabar)
+thetabar_const(P,cbars,thetabar)
 
 Inv_f3_with_disp(cache, dispersion, cbars_small)
 
 UB2(dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global)
 
-rss_face_at_disp_export(dispersion, cache, cbars_j, y, x, alpha, wt)
+rss_face_at_disp(dispersion, cache, cbars_j, y, x, alpha, wt)
 }
 \arguments{
 \item{Env}{Envelope object from \code{\link{EnvelopeBuild}}, containing tangency points and gradients}
@@ -66,36 +52,76 @@ rss_face_at_disp_export(dispersion, cache, cbars_j, y, x, alpha, wt)
 
 \item{verbose}{Option to have verbose output}
 
-\item{thetabars}{var3}
+\item{thetabars}{tangency points for envelope}
 
-\item{cbars}{var2}
+\item{cbars}{gradient vectors for standarized negative log-likelihood function}
 
-\item{x2}{var4}
+\item{x2}{Design matrix}
 
-\item{P2}{var5}
+\item{P2}{Precision matrix for coefficients}
 
-\item{dispstar}{var6}
+\item{dispstar}{Baseline Dispersion used for main envelope construction}
 
-\item{thetabar}{var7}
+\item{thetabar}{tangency points for envelope}
 
-\item{cache}{var8}
+\item{cache}{Precomputed set of outputs passed downstream}
 
-\item{dispersion}{var13}
+\item{dispersion}{Dispersion parameter}
 
-\item{cbars_small}{var9}
+\item{cbars_small}{gradient vectors for standarized negative log-likelihood function}
 
-\item{cbars_j}{var10}
+\item{cbars_j}{gradient vector for standarized negative log-likelihood function}
 
-\item{wt}{var11}
+\item{wt}{weight vector}
 
-\item{rss_min_global}{var12}
+\item{rss_min_global}{Minimum RSS across the face tangencies over the range defined by disp_lower and disp_upper}
 }
 \value{
-A list with elements:
-\item{Env_out}{Updated envelope object with dispersion-aware mixture weights}
-\item{gamma_list}{List of parameters for truncated Gamma proposal}
-\item{UB_list}{Constants for evaluating the dispersion envelope}
-\item{diagnostics}{Optional diagnostics including slopes and bounds}
+\describe{
+\item{\code{EnvelopeDispersionBuild()}}{A list containing:
+\describe{
+\item{\code{Env_out}}{Envelope object with updated mixture weights (\code{PLSD})}
+\item{\code{gamma_list}}{Posterior Gamma tilt parameters
+\describe{
+\item{\code{shape3}}{Adjusted shape parameter after slope correction}
+\item{\code{rate2}}{Posterior rate parameter, defined as \code{Rate + rss_min_global/2}}
+\item{\code{disp_upper}}{Upper bound of the dispersion interval \eqn{\sigma^2}}
+\item{\code{disp_lower}}{Lower bound of the dispersion interval \eqn{\sigma^2}}
+}}
+\item{\code{UB_list}}{Upper-bound diagnostics
+\describe{
+\item{\code{RSS_ML}}{Residual sum of squares at the maximum-likelihood estimate}
+\item{\code{RSS_Min}}{Minimum residual sum of squares across envelope faces}
+\item{\code{max_New_LL_UB}}{Maximum extrapolated face constant at the upper dispersion bound}
+\item{\code{max_LL_log_disp}}{Log-posterior upper bound evaluated at \code{disp_upper}}
+\item{\code{lm_log1}}{Intercept term of the global upper line approximation}
+\item{\code{lm_log2}}{Slope term of the global upper line approximation}
+\item{\code{lg_prob_factor}}{Per-face slack factors used in mixture weighting}
+\item{\code{lmc1}}{Linear extrapolation constant (intercept)}
+\item{\code{lmc2}}{Linear extrapolation constant (slope)}
+\item{\code{UB2min}}{Minimum UB2 value across faces, used for diagnostics}
+}}
+\item{\code{diagnostics}}{Internal diagnostic values
+\describe{
+\item{\code{dispstar}}{Anchor dispersion value (posterior mean or geometric mean)}
+\item{\code{New_LL_Slope}}{Vector of slopes of face constants at \code{dispstar}}
+\item{\code{shape2}}{Posterior shape parameter before tilt correction}
+\item{\code{rate3}}{Posterior rate parameter before tilt correction}
+\item{\code{shape3}}{Adjusted shape parameter (same as in \code{gamma_list})}
+\item{\code{max_low}}{Maximum extrapolated face constant at the lower dispersion bound}
+\item{\code{max_upp}}{Maximum extrapolated face constant at the upper dispersion bound}
+\item{\code{new_slope}}{Slope of the global upper line across dispersion bounds}
+\item{\code{new_int}}{Intercept of the global upper line across dispersion bounds}
+\item{\code{prob_factor}}{Normalized mixture weights across faces}
+\item{\code{UB2min}}{Minimum UB2 diagnostic value (duplicated for consistency)}
+}}
+}}
+\item{\code{EnvBuildLinBound()}}{Numeric vector of slopes of face constants with respect to dispersion, evaluated at the anchor \code{dispstar}}
+\item{\code{thetabar_const()}}{Numeric vector of base face constants computed from tangency points and gradient vectors under prior precision \code{P}}
+\item{\code{Inv_f3_with_disp()}}{Numeric matrix of inverse function evaluations at a given dispersion and face subset, returned by the C++ routine \code{_glmbayes_Inv_f3_with_disp}}
+\item{\code{UB2()}}{Numeric scalar representing the UB2 upper-bound criterion for a given dispersion and face, defined as \eqn{(1/dispersion) * (RSS - rss\_min\_global)}}
+\item{\code{rss_face_at_disp()}}{Numeric scalar giving the residual sum of squares for a specified face at a given dispersion, computed from cached matrices and the inverse function evaluation}
+}
 }
 \description{
 Constructs a dispersion-aware envelope for simulation in Gaussian models with uncertain variance.
@@ -112,60 +138,60 @@ The procedure follows these steps:
 \item \strong{Posterior precision (Gamma) parameters.}
 Using the prior and posterior-predictive RSS, set
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{    \deqn{ \mathrm{shape2} = \mathrm{Shape} + n_{\mathrm{obs}}/2, \quad
-               \mathrm{rate3}  = \mathrm{Rate} + \mathrm{RSS}_{\mathrm{post}}/2. }
+\deqn{ \mathrm{shape2} = \mathrm{Shape} + n_{\mathrm{obs}}/2, \quad
+         \mathrm{rate3}  = \mathrm{Rate} + \mathrm{RSS}_{\mathrm{post}}/2 }
 
-    These parameterize the posterior precision \eqn{v = 1/\sigma^2 \sim \mathrm{Gamma}(\mathrm{shape2}, \mathrm{rate3})}.
-}\if{html}{\out{</div>}}
+These parameterize the posterior precision
+\eqn{v = 1/\sigma^2 \sim \mathrm{Gamma}(\mathrm{shape2}, \mathrm{rate3})}.
 
 \item \strong{Central credible interval for dispersion (low, upp).}
 Choose a central mass level \code{max_disp_perc} (e.g., 0.99) for precision, then invert the corresponding
 Gamma quantiles to dispersion:
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{    \deqn{ \mathrm{low} = 1 / Q_{\Gamma}(\mathrm{max\_disp\_perc}; \mathrm{shape2}, \mathrm{rate3}), \quad
-               \mathrm{upp} = 1 / Q_{\Gamma}(1 - \mathrm{max\_disp\_perc}; \mathrm{shape2}, \mathrm{rate3}). }
+\deqn{ \mathrm{low} = 1 / Q_{\Gamma}(\mathrm{max\_disp\_perc}; \mathrm{shape2}, \mathrm{rate3}), \quad
+         \mathrm{upp} = 1 / Q_{\Gamma}(1 - \mathrm{max\_disp\_perc}; \mathrm{shape2}, \mathrm{rate3}) }
 
-    The interval \eqn{[\mathrm{low}, \mathrm{upp}]} is the domain over which all envelopes must dominate.
-}\if{html}{\out{</div>}}
+The interval \eqn{[\mathrm{low}, \mathrm{upp}]} is the domain over which all envelopes must dominate.
 
 \item \strong{Face slopes at an anchor (dispstar).}
-\deqn{ \mathrm{dispstar} = \mathrm{rate3} / (\mathrm{shape2} - 1) \quad \text{(posterior mean of } \sigma^2\text{)}. }
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{    Compute \eqn{\mathrm{New\_LL\_Slope}_j} for each face \eqn{j}.
-}\if{html}{\out{</div>}}
+\deqn{ \mathrm{dispstar} = \mathrm{rate3} / (\mathrm{shape2} - 1) }
+
+(posterior mean of \eqn{\sigma^2}). Compute \eqn{\mathrm{New\_LL\_Slope}_j} for each face \eqn{j}.
 
 \item \strong{Linear extrapolation of face constants.}
-\deqn{ \theta^{\mathrm{low}}_{\bar{j}} = \theta^{\mathrm{base}}_{\bar{j}} + (\mathrm{low} - \mathrm{dispstar}) \cdot \mathrm{New\_LL\_Slope}_j, }
-\deqn{ \theta^{\mathrm{upp}}_{\bar{j}} = \theta^{\mathrm{base}}_{\bar{j}} + (\mathrm{upp} - \mathrm{dispstar}) \cdot \mathrm{New\_LL\_Slope}_j. }
+
+\deqn{ \theta^{\mathrm{low}}_{\bar{j}} = \theta^{\mathrm{base}}_{\bar{j}} + (\mathrm{low} - \mathrm{dispstar}) \cdot \mathrm{New\_LL\_Slope}_j }
+
+\deqn{ \theta^{\mathrm{upp}}_{\bar{j}} = \theta^{\mathrm{base}}_{\bar{j}} + (\mathrm{upp} - \mathrm{dispstar}) \cdot \mathrm{New\_LL\_Slope}_j }
 
 \item \strong{Global upper line and endpoint maxima.}
-\deqn{ \mathrm{max\_low} = \max_j \theta^{\mathrm{low}}_{\bar{j}}, \quad
-               \mathrm{max\_upp} = \max_j \theta^{\mathrm{upp}}_{\bar{j}}. }
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{    \deqn{ \mathrm{new\_slope} = (\mathrm{max\_upp} - \mathrm{max\_low}) / (\mathrm{upp} - \mathrm{low}), \quad
-               \mathrm{new\_int}   = \mathrm{max\_low} - \mathrm{new\_slope} \cdot \mathrm{low}. }
-}\if{html}{\out{</div>}}
+\deqn{ \mathrm{max\_low} = \max_j \theta^{\mathrm{low}}_{\bar{j}}, \quad
+         \mathrm{max\_upp} = \max_j \theta^{\mathrm{upp}}_{\bar{j}} }
+
+\deqn{ \mathrm{new\_slope} = (\mathrm{max\_upp} - \mathrm{max\_low}) / (\mathrm{upp} - \mathrm{low}), \quad
+         \mathrm{new\_int}   = \mathrm{max\_low} - \mathrm{new\_slope} \cdot \mathrm{low} }
 
 \item \strong{Face slack and mixture weights.}
-\deqn{ \mathrm{lg\_prob\_factor}_j =
-               \max\big(\theta^{\mathrm{upp}}_{\bar{j}} - \mathrm{max\_upp},\;
-                         \theta^{\mathrm{low}}_{\bar{j}} - \mathrm{max\_low}\big). }
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{    Combine with \eqn{\mathrm{New\_logP2}_j = \mathrm{logP}_j + \tfrac{1}{2}\|\bar{c}_j\|^2}
-    to form mixture weights
-    \eqn{\mathrm{PLSD}_j \propto \exp\!\bigl(\mathrm{New\_logP2}_j + \mathrm{lg\_prob\_factor}_j\bigr)}.
-}\if{html}{\out{</div>}}
+\deqn{ \mathrm{lg\_prob\_factor}_j =
+         \max\big(\theta^{\mathrm{upp}}_{\bar{j}} - \mathrm{max\_upp},\;
+                   \theta^{\mathrm{low}}_{\bar{j}} - \mathrm{max\_low}\big) }
+
+Combine with \eqn{\mathrm{New\_logP2}_j = \mathrm{logP}_j + \tfrac{1}{2}\|\bar{c}_j\|^2}
+to form mixture weights
+\eqn{\mathrm{PLSD}_j \propto \exp\!\bigl(\mathrm{New\_logP2}_j + \mathrm{lg\_prob\_factor}_j\bigr)}.
 
 \item \strong{Gamma tilt and dispersion-axis envelope.}
-\deqn{ \mathrm{dispstar} = (\mathrm{upp} - \mathrm{low}) / \log(\mathrm{upp}/\mathrm{low}). }
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{    \deqn{ \mathrm{lm\_log2} = \mathrm{new\_slope} \cdot \mathrm{dispstar}, \quad
-               \mathrm{lm\_log1} = \mathrm{new\_int} + \mathrm{new\_slope} \cdot \mathrm{dispstar}
-                                  - \mathrm{new\_slope} \cdot \log(\mathrm{dispstar}). }
+\deqn{ \mathrm{dispstar} = (\mathrm{upp} - \mathrm{low}) / \log(\mathrm{upp}/\mathrm{low}) }
 
-    Tilt the Gamma proposal via \eqn{\mathrm{shape3} = \mathrm{shape2} - \mathrm{lm\_log2}}.
-}\if{html}{\out{</div>}}
+\deqn{ \mathrm{lm\_log2} = \mathrm{new\_slope} \cdot \mathrm{dispstar}, \quad
+         \mathrm{lm\_log1} = \mathrm{new\_int} + \mathrm{new\_slope} \cdot \mathrm{dispstar}
+                            - \mathrm{new\_slope} \cdot \log(\mathrm{dispstar}) }
 
+Tilt the Gamma proposal via \eqn{\mathrm{shape3} = \mathrm{shape2} - \mathrm{lm\_log2}}.
 }
 }
 \details{

@@ -174,21 +174,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // rss_face_at_disp
-double rss_face_at_disp(const Rcpp::List cache, double dispersion, const Rcpp::NumericVector cbars_j);
-RcppExport SEXP _glmbayes_rss_face_at_disp(SEXP cacheSEXP, SEXP dispersionSEXP, SEXP cbars_jSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Rcpp::List >::type cache(cacheSEXP);
-    Rcpp::traits::input_parameter< double >::type dispersion(dispersionSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type cbars_j(cbars_jSEXP);
-    rcpp_result_gen = Rcpp::wrap(rss_face_at_disp(cache, dispersion, cbars_j));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rss_face_at_disp_export
-double rss_face_at_disp_export(double dispersion, Rcpp::List cache, Rcpp::NumericVector cbars_j, Rcpp::NumericVector y, Rcpp::NumericMatrix x, Rcpp::NumericVector alpha, Rcpp::NumericVector wt);
-RcppExport SEXP _glmbayes_rss_face_at_disp_export(SEXP dispersionSEXP, SEXP cacheSEXP, SEXP cbars_jSEXP, SEXP ySEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP wtSEXP) {
+double rss_face_at_disp(double dispersion, Rcpp::List cache, Rcpp::NumericVector cbars_j, Rcpp::NumericVector y, Rcpp::NumericMatrix x, Rcpp::NumericVector alpha, Rcpp::NumericVector wt);
+RcppExport SEXP _glmbayes_rss_face_at_disp(SEXP dispersionSEXP, SEXP cacheSEXP, SEXP cbars_jSEXP, SEXP ySEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP wtSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -199,7 +186,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type x(xSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericVector >::type wt(wtSEXP);
-    rcpp_result_gen = Rcpp::wrap(rss_face_at_disp_export(dispersion, cache, cbars_j, y, x, alpha, wt));
+    rcpp_result_gen = Rcpp::wrap(rss_face_at_disp(dispersion, cache, cbars_j, y, x, alpha, wt));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -647,8 +634,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayes_EnvelopeBuild_c", (DL_FUNC) &_glmbayes_EnvelopeBuild_c, 16},
     {"_glmbayes_EnvelopeBuild_Ind_Normal_Gamma", (DL_FUNC) &_glmbayes_EnvelopeBuild_Ind_Normal_Gamma, 16},
     {"_glmbayes_Inv_f3_precompute_disp", (DL_FUNC) &_glmbayes_Inv_f3_precompute_disp, 7},
-    {"_glmbayes_rss_face_at_disp", (DL_FUNC) &_glmbayes_rss_face_at_disp, 3},
-    {"_glmbayes_rss_face_at_disp_export", (DL_FUNC) &_glmbayes_rss_face_at_disp_export, 7},
+    {"_glmbayes_rss_face_at_disp", (DL_FUNC) &_glmbayes_rss_face_at_disp, 7},
     {"_glmbayes_UB2", (DL_FUNC) &_glmbayes_UB2, 8},
     {"_glmbayes_EnvelopeDispersionBuild_cpp", (DL_FUNC) &_glmbayes_EnvelopeDispersionBuild_cpp, 16},
     {"_glmbayes_Set_Grid", (DL_FUNC) &_glmbayes_Set_Grid, 3},
