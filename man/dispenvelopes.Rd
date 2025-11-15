@@ -10,8 +10,8 @@
 \alias{rss_face_at_disp}
 \title{Builds Dispersion-Aware Envelope for Simulation}
 \usage{
-EnvelopeDispersionBuild(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML,
-    max_disp_perc = 0.99,disp_lower = NULL, disp_upper = NULL,verbose = FALSE)
+EnvelopeDispersionBuild(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, 
+mu, wt, max_disp_perc = 0.99, disp_lower = NULL, disp_upper = NULL, verbose = FALSE)
 
 EnvBuildLinBound(thetabars,cbars,y,x2,P2,alpha,dispstar)
 
@@ -44,6 +44,10 @@ rss_face_at_disp(dispersion, cache, cbars_j, y, x, alpha, wt)
 
 \item{RSS_ML}{Residual sum of squares associated with MLE estimate}
 
+\item{mu}{Prior mean parameter}
+
+\item{wt}{weight vector}
+
 \item{max_disp_perc}{Truncation level for dispersion (default 0.99)}
 
 \item{disp_lower}{lower bound truncation for dispersion}
@@ -71,8 +75,6 @@ rss_face_at_disp(dispersion, cache, cbars_j, y, x, alpha, wt)
 \item{cbars_small}{gradient vectors for standarized negative log-likelihood function}
 
 \item{cbars_j}{gradient vector for standarized negative log-likelihood function}
-
-\item{wt}{weight vector}
 
 \item{rss_min_global}{Minimum RSS across the face tangencies over the range defined by disp_lower and disp_upper}
 }
