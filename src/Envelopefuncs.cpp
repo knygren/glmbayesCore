@@ -1397,7 +1397,9 @@ List EnvelopeDispersionBuild_cpp(
     double max_disp_perc = 0.99,
     Nullable<double> disp_lower = R_NilValue,
     Nullable<double> disp_upper = R_NilValue,
-    bool verbose = false
+    bool verbose = false,
+    bool use_parallel = true   // ← add flag here
+  
 )
   {
   // Step 1: Posterior Gamma parameters (precision prior)

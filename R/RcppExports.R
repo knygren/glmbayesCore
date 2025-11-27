@@ -41,8 +41,8 @@ UB2 <- function(dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global) {
     .Call(`_glmbayes_UB2`, dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global)
 }
 
-EnvelopeDispersionBuild_cpp <- function(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc = 0.99, disp_lower = NULL, disp_upper = NULL, verbose = FALSE) {
-    .Call(`_glmbayes_EnvelopeDispersionBuild_cpp`, Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc, disp_lower, disp_upper, verbose)
+EnvelopeDispersionBuild_cpp <- function(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc = 0.99, disp_lower = NULL, disp_upper = NULL, verbose = FALSE, use_parallel = TRUE) {
+    .Call(`_glmbayes_EnvelopeDispersionBuild_cpp`, Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc, disp_lower, disp_upper, verbose, use_parallel)
 }
 
 .Set_Grid_cpp <- function(GIndex, cbars, Lint) {

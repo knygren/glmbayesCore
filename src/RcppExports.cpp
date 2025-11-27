@@ -213,8 +213,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // EnvelopeDispersionBuild_cpp
-List EnvelopeDispersionBuild_cpp(List Env, double Shape, double Rate, NumericMatrix P, NumericVector y, NumericMatrix x, NumericVector alpha, int n_obs, double RSS_post, double RSS_ML, NumericMatrix mu, NumericVector wt, double max_disp_perc, Nullable<double> disp_lower, Nullable<double> disp_upper, bool verbose);
-RcppExport SEXP _glmbayes_EnvelopeDispersionBuild_cpp(SEXP EnvSEXP, SEXP ShapeSEXP, SEXP RateSEXP, SEXP PSEXP, SEXP ySEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP n_obsSEXP, SEXP RSS_postSEXP, SEXP RSS_MLSEXP, SEXP muSEXP, SEXP wtSEXP, SEXP max_disp_percSEXP, SEXP disp_lowerSEXP, SEXP disp_upperSEXP, SEXP verboseSEXP) {
+List EnvelopeDispersionBuild_cpp(List Env, double Shape, double Rate, NumericMatrix P, NumericVector y, NumericMatrix x, NumericVector alpha, int n_obs, double RSS_post, double RSS_ML, NumericMatrix mu, NumericVector wt, double max_disp_perc, Nullable<double> disp_lower, Nullable<double> disp_upper, bool verbose, bool use_parallel);
+RcppExport SEXP _glmbayes_EnvelopeDispersionBuild_cpp(SEXP EnvSEXP, SEXP ShapeSEXP, SEXP RateSEXP, SEXP PSEXP, SEXP ySEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP n_obsSEXP, SEXP RSS_postSEXP, SEXP RSS_MLSEXP, SEXP muSEXP, SEXP wtSEXP, SEXP max_disp_percSEXP, SEXP disp_lowerSEXP, SEXP disp_upperSEXP, SEXP verboseSEXP, SEXP use_parallelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -234,7 +234,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Nullable<double> >::type disp_lower(disp_lowerSEXP);
     Rcpp::traits::input_parameter< Nullable<double> >::type disp_upper(disp_upperSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(EnvelopeDispersionBuild_cpp(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc, disp_lower, disp_upper, verbose));
+    Rcpp::traits::input_parameter< bool >::type use_parallel(use_parallelSEXP);
+    rcpp_result_gen = Rcpp::wrap(EnvelopeDispersionBuild_cpp(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, mu, wt, max_disp_perc, disp_lower, disp_upper, verbose, use_parallel));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -677,7 +678,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayes_rss_face_at_disp", (DL_FUNC) &_glmbayes_rss_face_at_disp, 7},
     {"_glmbayes_drss_ddisp", (DL_FUNC) &_glmbayes_drss_ddisp, 7},
     {"_glmbayes_UB2", (DL_FUNC) &_glmbayes_UB2, 8},
-    {"_glmbayes_EnvelopeDispersionBuild_cpp", (DL_FUNC) &_glmbayes_EnvelopeDispersionBuild_cpp, 16},
+    {"_glmbayes_EnvelopeDispersionBuild_cpp", (DL_FUNC) &_glmbayes_EnvelopeDispersionBuild_cpp, 17},
     {"_glmbayes_Set_Grid", (DL_FUNC) &_glmbayes_Set_Grid, 3},
     {"_glmbayes_setlogP", (DL_FUNC) &_glmbayes_setlogP, 4},
     {"_glmbayes_arithmetic_test_wrapper", (DL_FUNC) &_glmbayes_arithmetic_test_wrapper, 0},

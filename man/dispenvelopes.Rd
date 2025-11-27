@@ -16,7 +16,7 @@
 \title{Builds Dispersion-Aware Envelope for Simulation}
 \usage{
 EnvelopeDispersionBuild(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS_post, RSS_ML, 
-mu, wt, max_disp_perc = 0.99, disp_lower = NULL, disp_upper = NULL, verbose = FALSE)
+mu, wt, max_disp_perc = 0.99, disp_lower = NULL, disp_upper = NULL, verbose = FALSE, use_parallel = TRUE)
 
 EnvBuildLinBound(thetabars,cbars,y,x2,P2,alpha,dispstar)
 
@@ -96,6 +96,8 @@ EnvelopeUB2_parallel_internal(
 
 \item{verbose}{Option to have verbose output}
 
+\item{use_parallel}{Logical. Whether to use parallel processing.}
+
 \item{thetabars}{tangency points for envelope}
 
 \item{cbars}{gradient vectors for standarized negative log-likelihood function}
@@ -125,8 +127,6 @@ EnvelopeUB2_parallel_internal(
 \item{upp}{Dispersion parameter}
 
 \item{cores}{Dispersion parameter}
-
-\item{use_parallel}{Logical. Whether to use parallel processing.}
 }
 \value{
 \describe{
