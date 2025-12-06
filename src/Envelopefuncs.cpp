@@ -2064,9 +2064,9 @@ List EnvelopeDispersionBuild_cpp(
      
    NumericVector cbars_j = cbars(j, _);
   
-   double ub2_val_alt = UB2_Fun(0.271233, cache, cbars_j, y, x, alpha, wt, rss_min_global);
+//   double ub2_val_alt = UB2_Fun(0.271233, cache, cbars_j, y, x, alpha, wt, rss_min_global);
   
-  Rcpp::Rcout << "UB2_alt function: " << ub2_val_alt << ", disp_alt: " << 0.271233 << std::endl;
+//  Rcpp::Rcout << "UB2_alt function: " << ub2_val_alt << ", disp_alt: " << 0.271233 << std::endl;
   
   
    }
@@ -2090,7 +2090,7 @@ List EnvelopeDispersionBuild_cpp(
 
   
   for (int j = 0; j < gs; ++j) {
-    Rcpp::Rcout << "Index j: " << j << ", ub2_min[j]: " << ub2_min[j] << ", disp_min_ub2[j]: " << disp_min_ub2[j] << std::endl;
+//    Rcpp::Rcout << "Index j: " << j << ", ub2_min[j]: " << ub2_min[j] << ", disp_min_ub2[j]: " << disp_min_ub2[j] << std::endl;
     if (ub2_min[j] < ub2_min_global) {
       ub2_min_global = ub2_min[j];
       disp_min_global_ub2 = disp_min_ub2[j];
