@@ -147,10 +147,10 @@ $$
        - \(\text{lmc2} \cdot \text{dispstar2}\) adjusts the shape to ensure the proposal dominates the posterior.  
      - rate parameter and is defined further down
        \[
-       \text{rate}_2 = \text{rate} + \tfrac{\text{RSS}_{\text{ML}}}{2}
+       \text{rate}_2 = \text{rate} + \tfrac{\text{RSS_Min}}{2}
        \]
        where:
-       - \(\tfrac{\text{RSS}_{\text{ML}}}{2}\) is the classical residual sum of squares,  
+       - \(\tfrac{\text{RSS_Min}}{2}\) is the classical residual sum of squares,  
        - used as a conservative bound on the residual term that varies across tangency points.  
    - Construct the **Per-Face Subgradient Selection Probabilities (PLSD)** for each grid component \(j\) as follows:  
      \[
@@ -204,10 +204,12 @@ By laying out these constants first, we ensure that every symbol used in the pro
 ### 4.1 Definitions of Constants
 
 
+
+
+
 | Constant | Definition | Description |
 |----------|------------|-------------|
 | Posterior Gamma parameters | $\text{shape}_2 = \text{Shape} + n/2$ <br> $\text{rate}_2 = \text{Rate} + \mathrm{RSS}_{\text{post}}/2$ | Posterior shape and rate parameters. |
-| Gamma proposal parameters | $\text{shape}_3 = \text{shape}_2 - \mathrm{lm\_log2}$ <br> $\text{rate}_2 = \text{Rate} + \mathrm{RSS}_{ML}/2$ | Adjusted Gamma proposal parameters. |
 | Envelope dispersion anchor | $d^{*}_{1} = \dfrac{\text{rate}_2}{\text{shape}_2 - 1}$ | Dispersion used for baseline envelope. |
 | Dispersion bounds | $\text{low} = \tfrac{1}{qgamma(\mathrm{max\_disp\_perc},\, \text{shape}_2,\, \text{rate}_2)}$ <br> $\text{upp} = \tfrac{1}{qgamma(1-\mathrm{max\_disp\_perc},\, \text{shape}_2,\, \text{rate}_2)}$ | Lower and upper bounds for dispersion. |
 | Tangency offset vector | $B(d) = P\mu + \tfrac{1}{d}\,X^\top W(\alpha - y)$ | Offset vector used in the inverse map $c^{-1}(\bar{c}, d)$. Combines prior mean $\mu$ and weighted residuals. |
@@ -223,7 +225,17 @@ By laying out these constants first, we ensure that every symbol used in the pro
 | Global line parameters | $\text{lmc}_2 = \dfrac{\mathrm{max\_upp} - \mathrm{max\_low\_mean}}{\text{upp} - \text{low}}$ <br> $\text{lmc}_1 = \mathrm{max\_low\_mean} - \text{lmc}_2 \cdot \text{low}$ | Slope and intercept of global bounding line. |
 | Log-linear anchor | $d^{*}_{2} = \dfrac{\text{upp} - \text{low}}{\log(\text{upp}/\text{low})}$ | Anchor point for log–linear tilt. |
 | Log–tilt coefficients | $\mathrm{lm\_log2} = \text{lmc}_2 \cdot d^{*}_{2}$ <br> $\mathrm{lm\_log1} = \text{lmc}_1 + \text{lmc}_2 \cdot d^{*}_{2} - \text{lmc}_2 \cdot \log(d^{*}_{2})$ <br> $\mathrm{max\_LL\_log\_disp} = \mathrm{lm\_log1} + \mathrm{lm\_log2} \cdot \log(\text{upp})$ | Coefficients for log–tilt slope and intercept. |
-| Per-face shift | $\begin{aligned} \mathrm{lg\_prob\_factor}_j &= \max \Big\{ \mathrm{thetabarconst\_upp\_apprx}[j] - \mathrm{max\_upp}, \\[6pt] & \mathrm{thetabarconst\_low\_apprx}[j] - \mathrm{max\_low} \Big\} \end{aligned}$ | Adjustment factor per face, based on extrapolated shifts. |
+| $\text{RSS}_{j}(d)$ | $\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2$ | Residual Sum of of Squares for face j at d. |
+| $\text{RSS_Min}$ | $\begin{aligned} 
+&\min_{j}\;\min\limits_{d \in [\mathrm{low},\, \mathrm{upp}]} \;\sum_{i=1}^n w_i \,\Big(y_i - x_i^\top \bar c^{-1}(\bar c_j,d)\Big)^2 
+\end{aligned}$ | Global minimum residual sum of squares across all faces $j$ and dispersion values $d$ in $[d_{\mathrm{low}}, d_{\mathrm{upp}}]$. |
+| $\text{UB2}_{j}(d)$ | $\tfrac{1}{2d}\Big(\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \mathrm{RSS}_{Min}\Big)$ | Bound relative to the ML residual sum of squares. Always $\geq 0$ because the ML fit minimizes residuals. |
+| $\text{UB2_Min}_{j}$ | $\begin{aligned} 
+&\min\limits_{d \in [\mathrm{low},\, \mathrm{upp}]} \;\text{UB2}_{j}(d)
+\end{aligned}$ | Bound relative to the ML residual sum of squares. Always $\geq 0$ because the ML fit minimizes residuals. |
+| Per-face shift | $\begin{aligned} \mathrm{lg\_prob\_factor}_j &= \max \Big\{ \mathrm{thetabarconst\_upp\_apprx}[j] - \mathrm{max\_upp}, \\[6pt] & \mathrm{thetabarconst\_low\_apprx}[j] - \mathrm{max\_low} \Big\} \\[6pt] &
+-\text{UB2_Min}_{j} \end{aligned}$ | Adjustment factor per face, based on extrapolated shifts. |
+| Gamma proposal parameters | $\text{shape}_3 = \text{shape}_2 - \mathrm{lm\_log2}$ <br> $\text{rate}_3 = \text{Rate} + \text{RSS_Min}/2$ | Adjusted Gamma proposal parameters. |
 
 
 
@@ -247,16 +259,16 @@ For dispersion \(d \in [\,\text{low},\,\text{upp}\,]\), define the truncated inv
 \[
 \begin{aligned}
 \log q_\Gamma^{\text{trunc}}(d)
-&= \Big(\text{Shape} + \tfrac{n}{2} - \mathrm{lm\_log2}\Big)\,\log\!\Big(\text{Rate} + \tfrac{\mathrm{RSS}_{ML}}{2}\Big) \\
+&= \Big(\text{Shape} + \tfrac{n}{2} - \mathrm{lm\_log2}\Big)\,\log\!\Big(\text{Rate} + \tfrac{\mathrm{RSS_Min}}{2}\Big) \\
 &\quad - \log \Gamma\!\Big(\text{Shape} + \tfrac{n}{2} - \mathrm{lm\_log2}\Big) \\[6pt]
 &\quad - \Big(\text{Shape} + \tfrac{n}{2} - \mathrm{lm\_log2} + 1\Big)\,\log d
-   - \frac{\text{Rate} + \tfrac{\mathrm{RSS}_{ML}}{2}}{d} \\[6pt]
+   - \frac{\text{Rate} + \tfrac{\mathrm{RSS_Min}}{2}}{d} \\[6pt]
 &\quad - \log\!\Bigg(
 F_\Gamma\!\Big(\tfrac{1}{\text{low}};\,\text{Shape} + \tfrac{n}{2} - \mathrm{lm\_log2},\,
-\text{Rate} + \tfrac{\mathrm{RSS}_{ML}}{2}\Big)
+\text{Rate} + \tfrac{\text{RSS_Min}}{2}\Big)
 -\;
 F_\Gamma\!\Big(\tfrac{1}{\text{upp}};\,\text{Shape} + \tfrac{n}{2} - \mathrm{lm\_log2},\,
-\text{Rate} + \tfrac{\mathrm{RSS}_{ML}}{2}\Big)
+\text{Rate} + \tfrac{\text{RSS_Min}}{2}\Big)
 \Bigg),
 \end{aligned}
 \]
@@ -318,8 +330,16 @@ Together, they measure the “gap” between the proposal approximation and the 
 
 | Term | Definition | Description |
 |------|------------|-------------|
-| $\text{test1}(\beta,d)$ | $\begin{aligned}  & LL(\beta,d) - \Big( LL(\bar c^{-1}(\bar c_j,d),d) - \bar c_j^{\top}(\beta - \bar c^{-1}(\bar c_j,d)) \Big) \\[6pt] &= \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \beta)^2 - \tfrac{1}{2}\beta^\top P \beta \Bigg] \\[6pt] &\quad - \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \tfrac{1}{2}\big(\bar c^{-1}(\bar c_j,d)\big)^\top P\,\bar c^{-1}(\bar c_j,d) - \bar c_j^{\top}\big(\beta - \bar c^{-1}(\bar c_j,d)\big) \Bigg] \end{aligned}$ | Difference between the log‑likelihood and its linearization at the tangency point. By concavity, this term is always $\leq 0$. |
-| $\text{UB2}(d)$ | $\tfrac{1}{2d}\Big(\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \mathrm{RSS}_{ML}\Big)$ | Bound relative to the ML residual sum of squares. Always $\geq 0$ because the ML fit minimizes residuals. |
+| $\text{test1}_{j}(\beta,d)$ | $\begin{aligned}  & LL(\beta,d) - \Big( LL(\bar c^{-1}(\bar c_j,d),d) - \bar c_j^{\top}(\beta - \bar c^{-1}(\bar c_j,d)) \Big) \\[6pt] &= \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \beta)^2 - \tfrac{1}{2}\beta^\top P \beta \Bigg] \\[6pt] &\quad - \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \tfrac{1}{2}\big(\bar c^{-1}(\bar c_j,d)\big)^\top P\,\bar c^{-1}(\bar c_j,d) - \bar c_j^{\top}\big(\beta - \bar c^{-1}(\bar c_j,d)\big) \Bigg] \end{aligned}$ | Difference between the log‑likelihood and its linearization at the tangency point. By concavity, this term is always $\leq 0$. |
+| $\text{RSS}_{j}(d)$ | $\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2$ | Residual Sum of of Squares for face j at d. |
+| $\text{RSS_Min}$ | $\begin{aligned} 
+&\min_{j}\;\min\limits_{d \in [d_{\mathrm{low}},\, d_{\mathrm{upp}}]} \;\sum_{i=1}^n w_i \,\Big(y_i - x_i^\top \bar c^{-1}(\bar c_j,d)\Big)^2 
+\end{aligned}$ | Global minimum residual sum of squares across all faces $j$ and dispersion values $d$ in $[d_{\mathrm{low}}, d_{\mathrm{upp}}]$. |
+| $\text{UB2}_{j}(d)$ | $\tfrac{1}{2d}\Big(\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \mathrm{RSS}_{Min}\Big)$ | Bound relative to the ML residual sum of squares. Always $\geq 0$ because the ML fit minimizes residuals. |
+| $\text{UB2_Min}_{j}$ | $\begin{aligned} 
+&\min\limits_{d \in [d_{\mathrm{low}},\, d_{\mathrm{upp}}]} \;\text{UB2}_{j}(d)
+\end{aligned}$ | Bound relative to the ML residual sum of squares. Always $\geq 0$ because the ML fit minimizes residuals. |
+| $\text{UB2A}_{j}(d)$ | $\text{UB2}_{j}(d) - \text{UB2_Min}_{j}$  | Bound relative to the ML residual sum of squares. Always $\geq 0$ because the ML fit minimizes residuals. |
 | $\text{UB3A}_j(d)$ | $\begin{aligned} &\mathrm{lg\_prob\_factor\_j} + \text{lmc}_1 + \text{lmc}_2\, d \\ &\quad - \Big(-\tfrac{1}{2}(\bar c^{-1}(\bar c_j,d))^\top P\,\bar c^{-1}(\bar c_j,d) + \bar c_j^\top \bar c^{-1}(\bar c_j,d)\Big) \end{aligned}$ | Bound from the quadratic–linear face energy. Constructed so that the global line $(\text{lmc}_1 + \text{lmc}_2\,d)$ dominates the exact quadratic–linear term. |
 | $\text{UB3B}(d)$ | $\begin{aligned} &(\mathrm{max\_upp} - \mathrm{max\_LL\_log\_disp}) \\ &\quad + (\mathrm{lm\_log1} + \mathrm{lm\_log2} \cdot \log d) - (\text{lmc}_1 + \text{lmc}_2 \cdot d) \end{aligned}$ | Bound from the dispersion log–tilt construction. Ensures that the global log–linear approximation dominates the true log‑dispersion curve. |
 

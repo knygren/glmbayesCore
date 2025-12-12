@@ -220,7 +220,7 @@ dNormal<-function(mu,Sigma,dispersion=NULL){
 #' @rdname pfamily
 #' @order 3
 
-dGamma<-function(shape,rate,beta){
+dGamma<-function(shape,rate,beta,disp_lower=NULL,disp_upper=NULL){
 
   if(is.numeric(shape)==FALSE||is.numeric(rate)==FALSE||is.numeric(beta)==FALSE) stop("non-numeric argument to numeric function")
   
@@ -241,7 +241,7 @@ dGamma<-function(shape,rate,beta){
     return(oklinks)
   }
   
-  prior_list=list(shape=shape,rate=rate,beta=beta)
+  prior_list=list(shape=shape,rate=rate,beta=beta,disp_lower=disp_lower,disp_upper=disp_upper)
   attr(prior_list,"Prior Type")="dGamma"  
   outlist=list(pfamily="dGamma",prior_list=prior_list,okfamilies=okfamilies,
                plinks=plinks,             

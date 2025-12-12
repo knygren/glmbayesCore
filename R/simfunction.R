@@ -268,6 +268,21 @@ print.simfunction <- function(x, ...) {
 }
 
 
+## Constrained truncated gamma sampler on precision scale
+ctrgamma <- function(nn, shape, rate, lower_prec = NULL, upper_prec = NULL) {
+  if (is.null(lower_prec) && is.null(upper_prec)) {
+    return(stats::rgamma(nn, shape = shape, rate = rate))
+  }
+  a <- if (!is.null(lower_prec)) stats::pgamma(lower_prec, shape = shape, rate = rate) else 0
+  b <- if (!is.null(upper_prec)) stats::pgamma(upper_prec, shape = shape, rate = rate) else 1
+  if (!(a < b)) {
+    stop(sprintf("Invalid truncated gamma interval on precision: CDF(lower)=%.6g, CDF(upper)=%.6g", a, b))
+  }
+  u <- stats::runif(nn, min = a, max = b)
+  stats::qgamma(u, shape = shape, rate = rate)
+}
+
+
 #' @family simfuncs 
 #' @references A reference
 #' @example inst/examples/Ex_rglmb_dispersion.R
@@ -297,7 +312,27 @@ rGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
   b=prior_list$beta
   shape=prior_list$shape
   rate=prior_list$rate
+
+  ## New: extract optional low/upp from prior_list
+  if (!is.null(prior_list$disp_lower))  disp_lower <- prior_list$disp_lower  else disp_lower <- NULL
+  if (!is.null(prior_list$disp_upper))  disp_upper <- prior_list$disp_upper  else disp_upper <- NULL
   
+  ## Validation if both are provided
+  if (!is.null(disp_lower) && !is.null(disp_upper)) {
+    if (!is.numeric(disp_lower) || !is.numeric(disp_upper)) {
+      stop("prior_list$disp_lower and prior_list$disp_upper must be numeric.")
+    }
+    if (disp_lower <= 0 || disp_upper <= 0) {
+      stop("prior_list$disp_lower and prior_list$disp_upper must be positive.")
+    }
+    if (disp_upper <= disp_lower) {
+      stop("prior_list$disp_upper must be strictly greater than prior_list$disp_lower.")
+    }
+  }
+  
+
+  
+    
   if (is.character(family)) 
     family <- get(family, mode = "function", envir = parent.frame())
   if (is.function(family)) 
@@ -336,7 +371,21 @@ rGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
     a1<-shape+n1/2
     b1<-rate+sum(SS)/2
     
-    out<-1/rgamma(n,shape=a1,rate=b1) 
+
+    if (is.null(disp_lower) && is.null(disp_upper)) {
+      # Original unconstrained sampler
+      out <- 1 / rgamma(n, shape = a1, rate = b1)
+    } else {
+      # Constrained sampler on precision
+      prec <- ctrgamma(n, shape = a1, rate = b1,
+                       lower_prec = if (!is.null(disp_upper)) 1/disp_upper else NULL,
+                       upper_prec = if (!is.null(disp_lower)) 1/disp_lower else NULL)
+      out <- 1 / prec
+    }
+    
+    
+    
+    
   }
   
   if(family$family=="Gamma")
@@ -397,7 +446,22 @@ rGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
     for(i in 1:n)
     {
       while(a[i]==0){
-        out[i]<-rgamma(1,shape=shape2,rate=rate2)
+        
+        if (is.null(disp_lower) && is.null(disp_upper)) {
+          # Original unconstrained proposal
+          cand_prec <- rgamma(1, shape = shape2, rate = rate2)
+        } else {
+          # Constrained proposal
+          cand_prec <- ctrgamma(1, shape = shape2, rate = rate2,
+                                lower_prec = if (!is.null(disp_upper)) 1/disp_upper else NULL,
+                                upper_prec = if (!is.null(disp_lower)) 1/disp_lower else NULL)
+        }
+        out[i] <- cand_prec
+        
+        
+        ##out[i]<-rgamma(1,shape=shape2,rate=rate2)
+        
+      
         
         test[i]<-testfunc(out[i],wt)-(testbar+cbar*(out[i]-vstar))-log(runif(1,0,1))
         if(test[i]>0) a[i]<-1
@@ -900,7 +964,8 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
       gamma_list = gamma_list_new,
       UB_list = UB_list_new,
       family = "gaussian", link = "identity",
-      progbar = progbar
+      progbar = progbar,
+      verbose=verbose
     )
     
     if (verbose) {
@@ -937,7 +1002,8 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
       gamma_list = gamma_list_new,
       UB_list = UB_list_new,
       family = "gaussian", link = "identity",
-      progbar = progbar
+      progbar = progbar,
+      verbose=verbose
     )
     
     if (verbose) {

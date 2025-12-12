@@ -16,7 +16,8 @@ rnnorm_reg_std_cpp_parallel(
   Envelope,
   family,
   link,
-  progbar = 1L
+  progbar = 1L,
+  verbose = 0L
 )
 }
 \arguments{
@@ -50,6 +51,8 @@ rnnorm_reg_std_cpp_parallel(
 \item{link}{character string; link function (e.g. "identity").}
 
 \item{progbar}{integer (0 or 1); whether to display a progress bar.}
+
+\item{verbose}{Logical. Whether to print progress messages.}
 }
 \value{
 A list with components:

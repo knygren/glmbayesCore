@@ -113,12 +113,12 @@ nmath_test_wrapper <- function() {
     .Call(`_glmbayes_nmath_test_wrapper`)
 }
 
-.rindep_norm_gamma_reg_std_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = TRUE) {
-    .Call(`_glmbayes_rindep_norm_gamma_reg_std_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar)
+.rindep_norm_gamma_reg_std_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = TRUE, verbose = FALSE) {
+    .Call(`_glmbayes_rindep_norm_gamma_reg_std_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose)
 }
 
-.rindep_norm_gamma_reg_std_parallel_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = TRUE) {
-    .Call(`_glmbayes_rindep_norm_gamma_reg_std_parallel_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar)
+.rindep_norm_gamma_reg_std_parallel_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar = TRUE, verbose = FALSE) {
+    .Call(`_glmbayes_rindep_norm_gamma_reg_std_parallel_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose)
 }
 
 rmath_test_wrapper <- function() {
@@ -129,12 +129,12 @@ rmath_test_wrapper <- function() {
     .Call(`_glmbayes_glmb_Standardize_Model`, y, x, P, bstar, A1)
 }
 
-.rnnorm_reg_std_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar = 1L) {
-    .Call(`_glmbayes_rnnorm_reg_std_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar)
+.rnnorm_reg_std_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar = 1L, verbose = FALSE) {
+    .Call(`_glmbayes_rnnorm_reg_std_cpp`, n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar, verbose)
 }
 
-test_all_args <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar = 1L) {
-    .Call(`_glmbayes_rnnorm_reg_std_cpp_parallel`, n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar)
+test_all_args <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar = 1L, verbose = FALSE) {
+    .Call(`_glmbayes_rnnorm_reg_std_cpp_parallel`, n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar, verbose)
 }
 
 .rnnorm_reg_cpp <- function(n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family = "binomial", link = "logit", Gridtype = 2L, n_envopt = -1L, use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE) {

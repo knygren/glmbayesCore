@@ -658,8 +658,6 @@ List EnvelopeBuild_c(NumericVector bStar,
   Lint=yy_1b*arma::trans(bStar_2)+yy_2b*arma::trans(omega);
   
   
-  Rcpp::Rcout << "[DEBUG] 3.0" << std::endl;
-  
   // Call EnvelopeSize to determine grid structure and expected draws
 
     Rcpp::List size_info = EnvelopeSize(a_2, G1,

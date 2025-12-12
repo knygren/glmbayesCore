@@ -19,6 +19,7 @@
 #' @param family character string; distribution family (e.g. "gaussian").
 #' @param link character string; link function (e.g. "identity").
 #' @param progbar integer (0 or 1); whether to display a progress bar.
+#' @param verbose Logical. Whether to print progress messages.
 #'
 #' @return A list with components:
 #'   - out: numeric matrix (n × p) of sampled latent values.  
@@ -38,7 +39,8 @@ rnnorm_reg_std_cpp_parallel <- function(n,
                                         Envelope,
                                         family,
                                         link,
-                                        progbar = 1L) {
+                                        progbar = 1L,
+                                        verbose = 0L) {
   # insure RcppParallel symbols are registered
   RcppParallelLibs()
   
@@ -55,6 +57,7 @@ rnnorm_reg_std_cpp_parallel <- function(n,
     Envelope,
     as.character(family),
     as.character(link),
-    as.integer(progbar)
+    as.integer(progbar),
+    as.integer(verbose)
   )
 }

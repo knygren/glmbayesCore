@@ -86,7 +86,10 @@ Rcpp::List  rindep_norm_gamma_reg_std_cpp(int n,NumericVector y,NumericMatrix x,
                                              Function f2,Rcpp::List  Envelope,
                                              Rcpp::List  gamma_list,
                                              Rcpp::List  UB_list,
-                                             Rcpp::CharacterVector   family,Rcpp::CharacterVector   link, bool progbar=true)
+                                             Rcpp::CharacterVector   family,Rcpp::CharacterVector   link,
+                                             bool progbar=true,
+                                            bool verbose=false
+)
 {
   
   // 1. Grab the base environment
@@ -852,7 +855,8 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
     Rcpp::List UB_list,
     Rcpp::CharacterVector family,
     Rcpp::CharacterVector link,
-    bool progbar = true
+    bool progbar = true,
+    bool verbose = false
 ) {
 
 
@@ -951,7 +955,7 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
   auto t1 = std::chrono::steady_clock::now();
   double elapsed_test_sec = std::chrono::duration<double>(t1 - t0).count();
   
-  Rcpp::Rcout << "[Pilot] Single test run took " << elapsed_test_sec << "s.\n";
+  if (verbose) Rcpp::Rcout << "[Pilot] Single test run took " << elapsed_test_sec << "s.\n";
   
   // --- Conservative calibration sizing (time-bounded) ---
   // Use single test to bound worst-case per-observation time in ms
@@ -962,10 +966,10 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
   int m2 = std::max(1, (int)std::floor(300000.0 / std::max(1.0, per_obs_ms_serial))); // 300k ms ≈ 5 min
   int m_stage = std::min(m1, m2);   // <-- defined here, before use
   
-  Rcpp::Rcout << "Calibrating simulation time estimate using " << m_stage
+  if (verbose) {Rcpp::Rcout << "Calibrating simulation time estimate using " << m_stage
               << " observations at "
               << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
-              << "\n";
+              << "\n";}
   
   // --- Calibration run (parallel) ---
   auto t_cal0 = std::chrono::steady_clock::now();
@@ -978,10 +982,10 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
   double est_total_sec = per_obs_sec * (double)n;
   
   // Diagnostics
-  Rcpp::Rcout << "[CALIB] Calibration elapsed = " << cal_elapsed_sec
+  if (verbose){  Rcpp::Rcout << "[CALIB] Calibration elapsed = " << cal_elapsed_sec
               << " s for " << m_stage << " observations.\n";
   Rcpp::Rcout << "[CALIB] per_obs_sec = " << per_obs_sec
-              << " s; estimated total = " << est_total_sec << " s\n";
+              << " s; estimated total = " << est_total_sec << " s\n";}
   
   auto fmt_hms = [](double seconds) {
     long long s = static_cast<long long>(std::round(seconds));
@@ -994,8 +998,8 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
     return oss.str();
   };
   
-  Rcpp::Rcout << "[Estimate] Simulation time for " << n << " observations: "
-              << fmt_hms(est_total_sec) << " (" << est_total_sec << " seconds).\n";
+  if (verbose) {Rcpp::Rcout << "[Estimate] Simulation time for " << n << " observations: "
+                            << fmt_hms(est_total_sec) << " (" << est_total_sec << " seconds).\n";}
   
   
   // --- Interactive safeguard if estimate exceeds 5 minutes ---
@@ -1034,14 +1038,15 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
       Rcpp::Rcout << "[INFO] Proceeding with full run.\n";
     }
   }  
+
+  Rcpp::Function fmt("format");
+  Rcpp::Function systime("Sys.time");
+  Rcpp::CharacterVector now = fmt(systime(), Rcpp::Named("format") = "%H:%M:%S");
   
-  // if (verbose) {
-    Rcpp::Function fmt("format");
-    Rcpp::Function systime("Sys.time");
-    Rcpp::CharacterVector now = fmt(systime(), Rcpp::Named("format") = "%H:%M:%S");
+   if (verbose) {
     Rcpp::Rcout << "[Simulation] >>> Starting full run at "
                 << Rcpp::as<std::string>(now[0]) << " <<<\n";
-  // }
+   }
   
   // --- Capture start time ---
   double sim_start = Rcpp::as<double>(
@@ -1052,7 +1057,7 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
   RcppParallel::parallelFor(0, n, worker);
   // worker(0,n);
   
-  Rcpp::Rcout << "Exiting Parallel Worker" << std::endl;
+  if (verbose) Rcpp::Rcout << "Exiting Parallel Worker" << std::endl;
   
   // --- Capture end time ---
   double sim_end = Rcpp::as<double>(
@@ -1064,13 +1069,13 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
   int m_elapsed = static_cast<int>((sim_elapsed - h_elapsed*3600) / 60);
   int s_elapsed = static_cast<int>(sim_elapsed - h_elapsed*3600 - m_elapsed*60);
   
-  // if (verbose) {
+   if (verbose) {
     now = fmt(systime(), Rcpp::Named("format") = "%H:%M:%S");
     Rcpp::Rcout << "[Simulation] >>> Exiting full run at "
                 << Rcpp::as<std::string>(now[0]) << " <<<\n";
     Rcpp::Rcout << "[Simulation] Simulation completed in: "
                 << h_elapsed << " h  " << m_elapsed << " m  " << s_elapsed << " s.\n";
-  // }  
+   }  
 
 
 

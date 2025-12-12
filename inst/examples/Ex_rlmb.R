@@ -11,6 +11,8 @@ mu=ps$mu
 V=ps$Sigma
 mu[1,1]=mean(weight)
 
+
+
 Prior_Check(weight ~ group,family =gaussian(),
             pfamily=dNormal(mu=mu,Sigma=V))
 lm.D9 <- lm(weight ~ group,x=TRUE,y=TRUE)
@@ -47,8 +49,14 @@ for(i in 1:1000){
 colMeans(beta_out)
 mean(disp_out)
 
-# Same model using Independent_Normal_Gamma_Prior
-lmb.D9_v2=lmb(weight ~ group,dIndependent_Normal_Gamma(mu,V,shape=shape,rate=rate))
-summary(lmb.D9_v2)
+## Independent_Normal_Gamma_Prior 
+lmb.D9_v3=glmb(n=10000,weight ~ group,family=gaussian(),pfamily=dIndependent_Normal_Gamma(ps$mu,ps$Sigma,shape=ps$shape,rate=ps$rate
+                                                                                          ,disp_lower = 0.2711,disp_upper=1.0422)
+#               ,use_opencl=TRUE
+#               ,verbose = TRUE
+)
+summary(lmb.D9_v3)
+
+
 
 

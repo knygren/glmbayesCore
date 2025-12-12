@@ -41,9 +41,6 @@
 
 summary.glmb<-function(object,...){
   
-
-  message(">>> Entering Summary.glmb  <<<")
-  
     
   #est.disp <- FALSE
   

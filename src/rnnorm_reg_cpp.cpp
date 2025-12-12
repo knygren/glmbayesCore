@@ -250,7 +250,9 @@ Rcpp::List rnnorm_reg_std_cpp(
 
 Rcpp::List  rnnorm_reg_std_cpp(int n,NumericVector y,NumericMatrix x,
 NumericMatrix mu,NumericMatrix P,NumericVector alpha,NumericVector wt,
-Function f2,Rcpp::List  Envelope,Rcpp::CharacterVector   family,Rcpp::CharacterVector   link, int progbar=1)
+Function f2,Rcpp::List  Envelope,Rcpp::CharacterVector   family,Rcpp::CharacterVector   link, int progbar=1,
+                                 bool verbose = false                                 
+                                 )
 {
   
   
@@ -652,7 +654,9 @@ List rnnorm_reg_std_cpp_parallel(
     List                  Envelope,
     CharacterVector       family,
     CharacterVector       link,
-    int                   progbar = 1
+    int                   progbar = 1,
+    bool verbose = false
+  
 ) {
   
   // local debug toggle (temporary)
@@ -681,7 +685,7 @@ List rnnorm_reg_std_cpp_parallel(
   if (Envelope.containsElementNamed("E_draws")) {
     E_draws = Rcpp::as<double>(Envelope["E_draws"]);
   }
-  Rcpp::Rcout << "Estimated draws per Acceptance: " << E_draws << "\n";  
+  if (verbose)  Rcpp::Rcout << "Estimated draws per Acceptance: " << E_draws << "\n";  
 
 
 
@@ -968,7 +972,9 @@ Rcpp::List rnnorm_reg_cpp(int n,NumericVector y,NumericMatrix x,
     E_draws = Rcpp::as<double>(Envelope["E_draws"]);
   }
 
-  Rcpp::Rcout << "Estimated draws per Acceptance: " << E_draws << "\n";  
+  
+  
+  if (verbose)  Rcpp::Rcout << "Estimated draws per Acceptance: " << E_draws << "\n";  
   
   
   
@@ -1001,14 +1007,14 @@ Rcpp::List rnnorm_reg_cpp(int n,NumericVector y,NumericMatrix x,
                              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
       << "\n";    
     
-    sim = rnnorm_reg_std_cpp( n, y, x2_temp, mu2_temp, P2_temp, alpha, wt2,  f2, Envelope, family, link, progbar);  
+    sim = rnnorm_reg_std_cpp( n, y, x2_temp, mu2_temp, P2_temp, alpha, wt2,  f2, Envelope, family, link, progbar,verbose);  
   }
   else {  
     if (verbose) Rcpp::Rcout << ">>> Running parallel sampler (use_parallel=TRUE and n>1):"
                              << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                              << "\n";          
       
-    sim = rnnorm_reg_std_cpp_parallel(n, y, x2_temp, mu2_temp, P2_temp, alpha, wt2,  f2, Envelope, family, link, progbar);  
+    sim = rnnorm_reg_std_cpp_parallel(n, y, x2_temp, mu2_temp, P2_temp, alpha, wt2,  f2, Envelope, family, link, progbar,verbose);  
   }  
   
 
