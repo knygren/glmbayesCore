@@ -331,13 +331,41 @@ void f2_f3_kernel_runner(
   
   // 2) Platform & Device
   Rcpp::Rcout << "[runner] P0: before clGetPlatformIDs\n";
-  cl_platform_id platform;
-  cl_device_id   device;
-  status  = clGetPlatformIDs(1, &platform, nullptr);
-  Rcpp::Rcout << "[runner] P1: after clGetPlatformIDs, status=" << status << "\n";
   
-  status |= clGetDeviceIDs(platform, CL_DEVICE_TYPE_DEFAULT, 1, &device, nullptr);
-  Rcpp::Rcout << "[runner] P2: after clGetDeviceIDs, status=" << status << "\n";
+  cl_platform_id platform = nullptr;
+  cl_device_id   device   = nullptr;
+  
+  // ---- Platform ----
+  status = clGetPlatformIDs(1, &platform, nullptr);
+
+  // -1001 = CL_PLATFORM_NOT_FOUND_KHR (not always defined in headers)
+  if (status == -1001) {
+    throw std::runtime_error(
+        "OpenCL error: no OpenCL platforms found (clGetPlatformIDs returned -1001). "
+        "Your system does not expose an OpenCL platform."
+    );
+  }
+  if (status != CL_SUCCESS) {
+    std::ostringstream msg;
+    msg << "OpenCL error: clGetPlatformIDs failed with status " << status << ".";
+    throw std::runtime_error(msg.str());
+  }
+  
+  // ---- Device ----
+  status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_DEFAULT, 1, &device, nullptr);
+
+  // -9 = CL_DEVICE_NOT_FOUND
+  if (status == -9) {
+    throw std::runtime_error(
+        "OpenCL error: no suitable OpenCL GPU devices found "
+        "(clGetDeviceIDs returned -9)."
+    );
+  }
+  if (status != CL_SUCCESS) {
+    std::ostringstream msg;
+    msg << "OpenCL error: clGetDeviceIDs failed with status " << status << ".";
+    throw std::runtime_error(msg.str());
+  }
   
   // 3) Context & Queue
   Rcpp::Rcout << "[runner] P3: before clCreateContext\n";

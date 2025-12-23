@@ -284,6 +284,8 @@ After installation, reboot (Linux) or restart your shell (MSYS2) and confirm dri
        find /opt -name nvcc 2>/dev/null
        find /c -name nvcc 2>/dev/null
 
+
+
 4. **Add to PATH (permanent)**
 
    To make the PATH change permanent, append the directory you located above to your ~/.bashrc file.
@@ -308,14 +310,20 @@ After installation, reboot (Linux) or restart your shell (MSYS2) and confirm dri
        which nvcc
    Both should now work in any new shell session.
 
-### Step 4: Install OpenCL ICD Loader and Headers
 
-These packages install:
-- The OpenCL ICD loader (runtime dispatcher that loads vendor OpenCL drivers)
-- The OpenCL headers (required to compile OpenCL programs)
+### Step 4: Install OpenCL ICD Loader, Headers, and NVIDIA Runtime
+
+The OpenCL development files consist of:
+- The OpenCL ICD loader (libOpenCL.so)
+- The OpenCL headers (CL/cl.h)
+
+These are required to compile OpenCL programs, but they do not provide an
+actual OpenCL platform. NVIDIA GPUs require an additional vendor ICD package
+that supplies the OpenCL runtime.
 
 Ubuntu/Debian:
     sudo apt install ocl-icd-opencl-dev opencl-headers
+    sudo apt install nvidia-opencl-icd
 
 Fedora:
     sudo dnf install ocl-icd opencl-headers
@@ -325,7 +333,6 @@ Arch Linux:
 
 MSYS2 / Cygwin Arch (Windows):
     pacman -S mingw-w64-x86_64-opencl-icd mingw-w64-x86_64-opencl-headers
-    
 
 ### Step 5: Install glmbayes
 
