@@ -65,6 +65,10 @@ arithmetic_test_wrapper <- function() {
     .Call(`_glmbayes_arithmetic_test_wrapper`)
 }
 
+gpu_names <- function() {
+    .Call(`_glmbayes_gpu_names`)
+}
+
 f2_binomial_logit_prep <- function(b, y, x, mu, P, alpha, wt, progbar) {
     .Call(`_glmbayes_f2_binomial_logit_prep`, b, y, x, mu, P, alpha, wt, progbar)
 }

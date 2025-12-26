@@ -27,9 +27,188 @@ Explain the motivation for GPU acceleration in envelope construction.
 Highlight why OpenCL is chosen (cross‑platform, vendor‑neutral).  
 Note limitations of CPU‑only runs (toy examples vs. real models).
 
+# Installing and Using glmbayes with OpenCL Support
+
+Follow these steps to install and verify `glmbayes` with OpenCL:
+
+1. **Download and install build tools**
+   - **Windows**: Install Rtools (https://cran.r-project.org/bin/windows/Rtools/) and ensure it is on your PATH.
+   - **macOS**: Install Xcode Command Line Tools:
+     xcode-select --install
+   - **Linux**: Install compiler toolchain and R development headers:
+     - Ubuntu/Debian: sudo apt-get install build-essential r-base-dev
+     - Fedora: sudo dnf groupinstall "Development Tools" && sudo dnf install R-devel
+     - Arch: sudo pacman -S base-devel r
+
+2. **Install glmbayes from source via R-universe**
+   install.packages(
+     "glmbayes",
+     repos = c("https://knygren.r-universe.dev", "https://cloud.r-project.org"),
+     type = "source"
+   )
+
+3. **Load the package**
+   library(glmbayes)
+
+4. **Check for OpenCL availability**
+   has_opencl()
+   - Returns TRUE if OpenCL is available and detected.
+   - Returns FALSE if OpenCL is not available.
+
+5. **Follow helper functions for next steps**
+   - If has_opencl() returns TRUE, proceed with GPU‑accelerated workflows.
+   - If FALSE, use the provided helper functions to guide installation of OpenCL drivers or fall back to CPU execution.
+   
 # 2. Installing OpenCL
 
 ## 2.1 Installing and Validating OpenCL on Windows (NVIDIA GPUs)
+
+1. **Install the NVIDIA GPU Driver**  
+   The NVIDIA display driver enables GPU detection on Windows. It provides `nvidia-smi`, CUDA runtime components, and the OpenCL GPU runtime.  On most systems, this driver is already installed or delivered automatically through Windows Update, so no additional steps are usually required.
+
+2. **Ensure the OpenCL ICD Runtime Is Present**  
+   NVIDIA’s Windows driver includes the OpenCL ICD runtime. This is the component that allows OpenCL programs to run on the GPU. Because the ICD ships with the driver, users normally do not need to install any separate OpenCL packages.
+
+3. **Verify OpenCL DLLs Are Installed**  
+   Windows provides the OpenCL loader (`OpenCL.dll`), typically located in:
+
+   ```
+   C:\Windows\System32
+   ```
+
+   The NVIDIA driver provides the vendor ICD implementation (e.g., `nvopencl64.dll`).  
+   These files are normally installed automatically and require no manual configuration.  
+   Most users never need to modify PATH or install additional DLLs.
+
+4. **Run `diagnose_glmbayes()`**  
+   This diagnostic will confirm whether all required components—GPU driver, OpenCL runtime, headers, and libraries—are correctly detected.  
+   If something is missing (which is rare on Windows), the diagnostic will indicate what needs to be installed manually.
+   
+   
+## 2.2 Installing and Validating OpenCL on Linux (NVIDIA GPUs)
+
+1. **Install the NVIDIA GPU Driver**  
+   The proprietary NVIDIA driver provides full GPU support on Linux, including CUDA components, `nvidia-smi`, and the OpenCL GPU runtime.  
+   Most distributions offer this driver through their package manager (e.g., `apt`, `dnf`, `pacman`).  
+   Installing the driver normally enables OpenCL automatically.
+
+2. **Ensure the OpenCL ICD Loader Is Installed**  
+   Linux uses an ICD loader (`libOpenCL.so`) to dispatch OpenCL calls to vendor runtimes.  
+   Some distributions install this automatically; others package it separately.  
+   If needed, install the loader via your package manager:  
+   - **Ubuntu/Debian:** `sudo apt install ocl-icd-libopencl1`  
+   - **Fedora/RHEL:** `sudo dnf install ocl-icd`  
+   - **Arch Linux:** `sudo pacman -S ocl-icd`
+
+3. **Verify the NVIDIA OpenCL ICD Is Installed**  
+   The NVIDIA driver provides the vendor OpenCL implementation (e.g., `libnvidia-opencl.so.*`) and registers it via an ICD file in:
+
+   ```
+   /etc/OpenCL/vendors/
+   ```
+
+   These components are normally installed automatically with the driver.  
+   No manual configuration is usually required.
+
+4. **Check Library Paths (rare cases)**  
+   On most systems, the dynamic linker automatically locates the NVIDIA OpenCL libraries.  
+   In custom setups (HPC clusters, container environments, `.run` installer), you may need to refresh or adjust library paths:
+
+   ```
+   sudo ldconfig
+   ```
+
+   or temporarily:
+
+   ```
+   export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+   ```
+
+   These adjustments are uncommon for standard desktop installations.
+
+5. **Run `diagnose_glmbayes()`**  
+   This diagnostic will confirm whether all required components—NVIDIA driver, OpenCL ICD loader, and vendor runtime—are correctly detected.  
+   If something is missing, the diagnostic will indicate what needs to be installed or configured.
+
+
+
+## 2.3 Installing and Validating OpenCL on Windows (AMD GPUs)
+
+1. **Install the AMD Radeon or Radeon Pro Driver**  
+   The AMD display driver provides GPU support on Windows.  
+   Some versions include the OpenCL runtime automatically, while others require installing the full “AMD Software: Adrenalin Edition” package.
+
+2. **Ensure the AMD OpenCL ICD Runtime Is Present**  
+   AMD’s OpenCL GPU runtime is typically provided by one of the following DLLs:
+   - `amdocl64.dll`
+   - `amdocl12cl64.dll`
+   - `amdocl12cl.dll`
+
+   These are usually installed with the full AMD driver package.  
+   If they are missing, installing or updating the AMD Software package normally resolves the issue.
+
+3. **Verify OpenCL DLLs Are Installed**  
+   Windows provides the OpenCL loader (`OpenCL.dll`) in:
+
+   ```
+   C:\Windows\System32
+   ```
+
+   The AMD driver provides the vendor ICD implementation, typically located in:
+   - `C:\Windows\System32`
+   - or inside the DriverStore under `FileRepository`
+
+   No PATH changes are required.
+
+4. **Run `diagnose_glmbayes()`**  
+   This diagnostic will confirm whether the AMD OpenCL ICD and loader are correctly detected.  
+   If something is missing, the diagnostic will indicate whether the AMD driver or OpenCL components need to be installed.
+
+
+
+
+## 2.4 Installing and Validating OpenCL on Linux (AMD GPUs)
+
+1. **Install the AMDGPU or AMDGPU‑PRO Driver**  
+   Most modern Linux distributions include the open‑source AMDGPU driver by default.  
+   For OpenCL support, install either:
+   - **AMDGPU‑PRO OpenCL** (recommended for most users), or  
+   - **ROCm OpenCL** (supported on specific GPUs and distros)
+
+2. **Install the OpenCL ICD Loader**  
+   Linux requires an ICD loader (`libOpenCL.so`) to dispatch OpenCL calls.  
+   Install it via your package manager:
+   - **Ubuntu/Debian:** `sudo apt install ocl-icd-libopencl1`  
+   - **Fedora/RHEL:** `sudo dnf install ocl-icd`  
+   - **Arch Linux:** `sudo pacman -S ocl-icd`
+
+3. **Verify the AMD OpenCL ICD Is Installed**  
+   The AMD OpenCL runtime installs an ICD file in:
+
+   ```
+   /etc/OpenCL/vendors/
+   ```
+
+   Typical filenames include:
+   - `amdocl64.icd`
+   - `rocm-opencl.icd`
+
+   These files point to the actual OpenCL runtime libraries (e.g., `libamdocl64.so`).
+
+4. **Check Library Paths (rare cases)**  
+   Most systems automatically register AMD’s OpenCL libraries.  
+   If needed, refresh the dynamic linker cache:
+
+   ```
+   sudo ldconfig
+   ```
+
+   Manual `LD_LIBRARY_PATH` changes are rarely required.
+
+5. **Run `diagnose_glmbayes()`**  
+   This diagnostic will confirm whether the AMD OpenCL ICD loader and runtime are correctly detected.  
+   If something is missing, the diagnostic will indicate which package needs to be installed.
+
 
 
 ### Step 1: Verify GPU Presence
@@ -267,11 +446,9 @@ After installation, reboot (Linux) or restart your shell (MSYS2) and confirm dri
    - MSYS2/Windows:   Install via the official NVIDIA Windows installer.
 
 3. **Locate nvcc**
-
    Find the directory containing nvcc (nvcc.exe on Windows):
 
    Common locations are:
-   
    - Ubuntu/Debian: /usr/local/cuda/bin or /usr/bin
    - Fedora:        /usr/local/cuda/bin
    - Arch Linux:    /opt/cuda/bin
@@ -282,28 +459,33 @@ After installation, reboot (Linux) or restart your shell (MSYS2) and confirm dri
    or search manually:
        find /usr -name nvcc 2>/dev/null
        find /opt -name nvcc 2>/dev/null
-       find /c -name nvcc 2>/dev/null
-
-
+       find /c   -name nvcc 2>/dev/null
 
 4. **Add to PATH (permanent)**
-
    To make the PATH change permanent, append the directory you located above to your ~/.bashrc file.
 
    On Linux:
        echo 'export PATH=$PATH:/usr/local/cuda/bin' >> ~/.bashrc
 
-   On Windows/MSYS2 (quoted for spaces): 
+   On Windows/MSYS2 (quoted for spaces):
        echo 'export PATH=$PATH:"/c/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.9/bin"' >> ~/.bashrc
+   Tip: Use CTRL+C to copy and SHIFT+INSERT inside Windows/MSYS2 to paste the above line.
 
-   Note: You can use CTR+C to copye and then SHIFT+INSERT inside Windows/MSYS2 to paste the above line
+   On WSL (GPU-enabled):
+       echo 'export LD_LIBRARY_PATH=/usr/lib/wsl/lib:$LD_LIBRARY_PATH' >> ~/.bashrc
 
    Reload the updated PATH:
        source ~/.bashrc
 
-   - On Linux: sourcing ~/.bashrc applies changes immediately.
+   - On Linux/WSL: sourcing ~/.bashrc applies changes immediately.
    - On MSYS2: restart the MSYS2 terminal to ensure all subshells pick up the new PATH.
 
+5. **Verify**
+   Run:
+       nvcc --version
+       which nvcc
+       nvidia-smi
+   All three should now work in any new shell session.
 5. **Verify**
    Run:
        nvcc --version
