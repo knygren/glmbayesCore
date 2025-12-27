@@ -109,7 +109,7 @@ diagnose_glmbayes <- function() {
     # 4. Runtime probe (Linux/WSL only)
     runtime_ok <- NA
     if (paths_ok && tolower(info$environment) %in% c("linux", "wsl")) {
-      runtime_ok <- verify_opencl_runtime()
+      runtime_ok <- verify_opencl_runtime(rt$opencl$lib_dirs)
       if (runtime_ok) {
         cat("  [OK] OpenCL runtime probe succeeded (platform available)\n")
       } else {
