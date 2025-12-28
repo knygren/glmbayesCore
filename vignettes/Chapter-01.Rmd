@@ -1,13 +1,13 @@
 Yaml
 
 ---
-title: "Chapter 1: Getting started with glmbayes"
+title: "Chapter 01: Getting started with glmbayes"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter 1: Getting started with glmbayes}
+  %\VignetteIndexEntry{Chapter 01: Getting started with glmbayes}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

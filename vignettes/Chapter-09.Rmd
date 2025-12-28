@@ -1,10 +1,10 @@
 Yaml
 
 ---
-title: "Chapter 09: Models for the Gammma Family"
+title: "Chapter 09: Models for the Gamma Family"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter 09: Models for the Gammma Family}
+  %\VignetteIndexEntry{Chapter 09: Models for the Gamma Family}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

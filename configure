@@ -46,8 +46,8 @@ if [ "$(basename "$CXX")" = "em++" ] || [ "$OS" = "Darwin" ]; then
   EMSCRIPTEN_BUILD=YES
 else
   EMSCRIPTEN_BUILD=NO
-  OPENMP_CFLAGS="-fopenmp"
-  OPENMP_LDFLAGS="-fopenmp"
+  OPENMP_CFLAGS=""
+  OPENMP_LDFLAGS=""
 fi
 
 

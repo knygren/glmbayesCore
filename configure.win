@@ -4,13 +4,15 @@ echo "🛠 [configure.win] Starting OpenCL detection"
 echo "Shell = $SHELL"
 echo "Initial PATH = $PATH"
 
-##LOG_FILE="C:/Rpackages/configure_debug.txt"
-##SECONDARY_MAKEVARS="C:/Rpackages/Makevars.win"
+# --------------------------------------------------------------------
+# 1. Load system PATH entries
+# --------------------------------------------------------------------
+# On Windows, the PATH seen by msys2/bash may differ from the MACHINE-
+# level PATH where SDKs (CUDA, Intel, AMD) register themselves.
+# PowerShell reliably retrieves the MACHINE PATH, so we prefer it.
+# If PowerShell is unavailable, fall back to the msys2 PATH.
+# --------------------------------------------------------------------
 
-##echo "------ Configure Log (Windows) ------" > "$LOG_FILE"
-##echo "Start time: $(date)" >> "$LOG_FILE"
-
-# 🔍 Get system PATH directories via PowerShell and log them
 if command -v powershell.exe >/dev/null 2>&1; then
   echo "🔍 Loading MACHINE Path with PowerShell"
   IFS=';' read -ra SYSTEM_PATHS <<< "$(
@@ -21,18 +23,21 @@ else
   IFS=':' read -ra SYSTEM_PATHS <<< "$PATH"
 fi
 
-# Add dynamic PATH-based entries
+# Initialize search paths with system PATH entries
 SEARCH_PATHS+=("${SYSTEM_PATHS[@]}")
-
 
 echo "🔍 Current SEARCH_PATHS:"
 for p in "${SEARCH_PATHS[@]}"; do
   echo "   - $p"
 done
 
-# ------------------------------------------------------------
-# 2. Add user-defined environment variables
-# ------------------------------------------------------------
+# --------------------------------------------------------------------
+# 2. Add user-defined environment variables (OPENCL_HOME, OPENCL_SDK)
+# --------------------------------------------------------------------
+# These allow advanced users to explicitly point to an OpenCL SDK.
+# We check the root, root/include, and root/include/CL.
+# --------------------------------------------------------------------
+
 for var in OPENCL_HOME OPENCL_SDK; do
   val="${!var}"
   if [ -n "$val" ]; then
@@ -54,9 +59,16 @@ for p in "${SEARCH_PATHS[@]}"; do
   echo "   - $p"
 done
 
-# ------------------------------------------------------------
-# 3. Detect known SDK roots
-# ------------------------------------------------------------
+# --------------------------------------------------------------------
+# 3. Detect known OpenCL SDK installations
+# --------------------------------------------------------------------
+# These are common installation roots for:
+#   - NVIDIA CUDA Toolkit
+#   - Intel OpenCL SDK (legacy)
+#   - AMD APP SDK (legacy)
+#   - Intel oneAPI Toolkit
+# --------------------------------------------------------------------
+
 declare -A SDK_LABELS=(
   ["C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA"]="NVIDIA CUDA Toolkit"
   ["C:/Program Files (x86)/IntelSWTools/OpenCL SDK"]="Intel OpenCL SDK"
@@ -79,9 +91,13 @@ for p in "${SEARCH_PATHS[@]}"; do
   echo "   - $p"
 done
 
-# ------------------------------------------------------------
+# --------------------------------------------------------------------
 # 4. Dynamically scan CUDA versioned folders
-# ------------------------------------------------------------
+# --------------------------------------------------------------------
+# CUDA installs multiple versioned directories (v11.8, v12.2, etc.).
+# Each may contain its own OpenCL headers under include/CL.
+# --------------------------------------------------------------------
+
 CUDA_ROOT="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA"
 if [ -d "$CUDA_ROOT" ]; then
   for subdir in "$CUDA_ROOT"/v*; do
@@ -97,9 +113,15 @@ for p in "${SEARCH_PATHS[@]}"; do
   echo "   - $p"
 done
 
-# ------------------------------------------------------------
-# 5. Add fallback static paths (optional)
-# ------------------------------------------------------------
+# --------------------------------------------------------------------
+# 5. Add fallback static paths
+# --------------------------------------------------------------------
+# These are optional but useful for:
+#   - manually installed SDKs
+#   - portable OpenCL SDKs
+#   - custom developer setups
+# --------------------------------------------------------------------
+
 STATIC_PATHS=(
   "C:/OpenCL-SDK"
   "C:/opt"
@@ -120,11 +142,20 @@ for p in "${SEARCH_PATHS[@]}"; do
   echo "   - $p"
 done
 
-# Combine static and dynamic search paths
-#SEARCH_PATHS=("C:/Program Files (x86)" "C:/OpenCL-SDK" "C:/opt")
-##SEARCH_PATHS+=("${SYSTEM_PATHS[@]}")
-
 echo "🔍 Combined SEARCH_PATHS (n=${#SEARCH_PATHS[@]}): ${SEARCH_PATHS[*]}"
+
+# --------------------------------------------------------------------
+# 6. Search for cl.h
+# --------------------------------------------------------------------
+# We look for:
+#     <path>\CL\cl.h
+# This is the canonical OpenCL header location across:
+#   - CUDA Toolkit
+#   - Intel OpenCL SDK
+#   - AMD APP SDK
+#   - oneAPI
+#   - custom installs
+# --------------------------------------------------------------------
 
 CL_HEADER=""
 for dir in "${SEARCH_PATHS[@]}"; do
@@ -136,7 +167,19 @@ done
 
 echo "🔎 CL_HEADER = $CL_HEADER"
 
-# ✅ Write Makevars.win in two locations
+# --------------------------------------------------------------------
+# 7. Generate Makevars.win
+# --------------------------------------------------------------------
+# If cl.h is found:
+#   - enable USE_OPENCL
+#   - add include and lib paths
+#   - link against OpenCL.lib
+#
+# If not found:
+#   - fall back to CPU-only build
+# --------------------------------------------------------------------
+
+
 if [ -n "$CL_HEADER" ]; then
   CL_BASE=$(dirname "$CL_HEADER")
   INCLUDE_FLAG="-I\"$CL_BASE\""
@@ -151,19 +194,17 @@ if [ -n "$CL_HEADER" ]; then
   echo "⚙️  INCLUDE_FLAG = $INCLUDE_FLAG"
   echo "⚙️  LIB_FLAG     = $LIB_FLAG"
 
-  MAKEVARS_CONTENT="PKG_CXXFLAGS = \$(SHLIB_OPENMP_CXXFLAGS) -DUSE_OPENCL $INCLUDE_FLAG
-PKG_LIBS = \$(SHLIB_OPENMP_CXXFLAGS) $LIB_FLAG -lOpenCL  \$(LAPACK_LIBS) \$(BLAS_LIBS) \$(FLIBS)"
+  # CRAN-safe, OpenMP-free, quoting-stable
+  MAKEVARS_CONTENT="PKG_CXXFLAGS = -DGLMBAYES_BUILD -DUSE_OPENCL $INCLUDE_FLAG
+PKG_LIBS = $LIB_FLAG -lOpenCL \$(LAPACK_LIBS) \$(BLAS_LIBS) \$(FLIBS)"
 else
-  MAKEVARS_CONTENT="PKG_CXXFLAGS = \$(SHLIB_OPENMP_CXXFLAGS)
-PKG_LIBS = \$(SHLIB_OPENMP_CXXFLAGS)  \$(LAPACK_LIBS) \$(BLAS_LIBS) \$(FLIBS)"
+  # CPU-only fallback, also CRAN-safe
+  MAKEVARS_CONTENT="PKG_CXXFLAGS = -DGLMBAYES_BUILD
+PKG_LIBS = \$(LAPACK_LIBS) \$(BLAS_LIBS) \$(FLIBS)"
 fi
 
 echo "📦 MAKEVARS_CONTENT:"
 echo "$MAKEVARS_CONTENT"
 
-# Write to both locations
+# Write Makevars.win
 echo "$MAKEVARS_CONTENT" > src/Makevars.win
-##echo "$MAKEVARS_CONTENT" > "$SECONDARY_MAKEVARS"
-
-##echo "End time: $(date)" >> "$LOG_FILE"
-##echo "-------------------------------------" >> "$LOG_FILE"
