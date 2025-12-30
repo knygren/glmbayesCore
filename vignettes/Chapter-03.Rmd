@@ -277,11 +277,11 @@ Since the default value for pwt is 0.01, we have a 1% weight on the prior for th
 
 ## 2.4 The impact of the "null_model" and "null_effects" defaults for the interpretation of model diagnostics
 
-In addition to the **pwt** arguments with its default, we also see from above that the default for the **`intercept_source`** is the "null_model" and the default for the **`effects_source`** is "null_effects". The former means that the default prior for the intercept defaults to the estimate from the intercept only model while the latter means that the default prior for all effects variables is set to 0. This is in many ways consisten with the reference model utilized in most implementations for classical models. In particular, in classical models:
+In addition to the **pwt** arguments with its default, we also see from above that the default for the **`intercept_source`** is the "null_model" and the default for the **`effects_source`** is "null_effects". The former means that the default prior for the intercept defaults to the estimate from the intercept only model while the latter means that the default prior for all effects variables is set to 0. This is in many ways consistent with the reference model utilized in most implementations for classical models. In particular, in classical models:
 
 -The R^2 is defined relative to the null model (i.e., the R^2 is always zero for the null model)
 -The default F-test in a classical model is usally relative to the null model
--The t-statistics usually are designed to measure how far estimates are from 0 and this is the default for how p-values are calculated
+-The t-statistics usually are designed to measure how far estimates are from 0 and this is the default for how p-values are calculated.
 
 
 It is worthwhile to now take a look at what this default specification means for the posterior mean when `pwt` is a scalar and the posterior mean is simplified as in the earlier section. In that case, we have:
@@ -318,7 +318,7 @@ lmb.D9=lmb(weight ~ group,dNormal(mu=ps$mu,Sigma=ps$Sigma,dispersion=ps$dispersi
 sumlmb<-summary(lmb.D9)
 sumlmb$coefficients
 ```
-For the purposes of this vignette, we simply note that under our default assumptions for the intercept and effects,  the Pr(tail) for slope parameters in Bayesian linear models tend to be similar to the one-sided p-value in the classical models when we combined them with our default value for our **pwt** (i.e., 0.01). While we don't explore it fully here, there are certain aspects in which these become more fully equivalent in the limit as **pwt** is pushed further towards zero. A later vignette provides more details on exactly how these tail probabilities relate to their classical counterparts, while also demonstrating some properties as **pwt**, **n_prior**, and the sample size approach certain limits.
+For the purposes of this vignette, we simply note that under our default assumptions for the intercept and effects,  the Pr(tail) for slope parameters in Bayesian linear models tend to be similar to the one-sided p-value in the classical models when we combineex them with our default value for our **pwt** (i.e., 0.01). While we don't explore it fully here, there are certain aspects in which these become more fully equivalent in the limit as **pwt** is pushed further towards zero. A later vignette provides more details on exactly how these tail probabilities relate to their classical counterparts, while also demonstrating some properties as **pwt**, **n_prior**, and the sample size approach certain limits.
 
 # 3. Adjusting the strength of priors using **pwt**, **n_prior**, and *sd*
 
@@ -585,7 +585,8 @@ From this output, we can see that the prior means is very close to the MLE estim
 set.seed(333)
 lmb_cars8<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars8$mu,Sigma=pscars8$Sigma, dispersion = pscars8$dispersion),data =mtcars)
 sum_lmbcars8<-summary(lmb_cars8)
-sum_lmbcars8
+sum_lmbcars8$coefficients1
+sum_lmbcars8$coefficients
 ```
 
 
@@ -606,8 +607,11 @@ pscars9
 set.seed(333)
 lmb_cars9<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars9$mu,Sigma=pscars9$Sigma, dispersion = pscars9$dispersion),data =mtcars)
 sum_lmbcars9<-summary(lmb_cars9)
-sum_lmbcars9
+sum_lmbcars9$coefficients1
+sum_lmbcars9$coefficients
 ```
+
+
 
 ```{r Mt_cars_Default_Prior4}
 # Use Prior_Setup to illustrate prior strength
@@ -623,12 +627,8 @@ ps4 <- Prior_Setup(
 ps4
 ```
 
-
-
-
-
 ---
-# 3.  The role of the `intercept_source` in setting the prior mean for the intercept
+## 4.2  The role of the `intercept_source` in setting the prior mean for the intercept
 
 The `intercept_source` argument is used to initialize the prior mean for the intercept. Our Prior_Setup function provides two options for setting the prior mean for the intercept. The first (the default) is to initialize the prior mean to the intercept from a call to the **glm()** function for the null model, while the alternative is to initializes the prior mean to the intercept to the intercept from a a call to the **glm()** for a **null** intercept only model.  
 
@@ -639,11 +639,10 @@ The `intercept_source` argument is used to initialize the prior mean for the int
 The choice between these two specifications has some implications for the resulting estimates and standard errors for the effects parameters. Under the former, tail probabilities for effects under the default (discussed more below) are likely to be relatively close to one sided p-values in the classical frequentist model.  The other alternative can be a good choice if we want to test the hypothesis that the true model is an intercept only model.   The extent to which these two specifications are meaningfully different to a substantial degree from each other depends to a substantial degree on whether variables have been centered (in the case of continuous variables) and/or have been assigned reasonable reference levels (in the case of categorical variable).  
 
 The reason the null model is the default is because it tends to yield more reasonable predictions when combined with null effects.
-## 3.1
 
 In `glmbayes`, the default prior centering reflects a pragmatic balance between statistical rigor and user convenience:
 
-### Intercept Prior: Centered at Full Model MLE
+### 4.2.1 Intercept Prior: Centered at Full Model MLE
 
 By default, the prior for the intercept is centered at the maximum likelihood estimate from the full model. This avoids unintended shrinkage caused by poor centering or unbalanced predictors—especially in models with categorical variables. When predictors are not scaled or centered, the intercept in a full model can diverge substantially from the null model baseline. Even a weak prior (small `pwt`) can exert disproportionate influence if the prior mean is misaligned.
 
@@ -654,7 +653,7 @@ Centering the intercept prior at the full model MLE ensures:
 - Minimal distortion from prior miscentering  
 - A smoother user experience without requiring manual preprocessing
 
-### Effect Priors: Centered at Zero
+### 4.2.2 Effect Priors: Centered at Zero
 
 By contrast, the default prior for effect coefficients is centered at zero. This reflects a common statistical convention: the null hypothesis typically assumes no effect. Centering at zero allows users to interpret posterior summaries in terms of deviation from no effect, and makes tail probabilities (e.g. Pr(β < 0)) directly meaningful.
 
@@ -663,7 +662,7 @@ This setup also makes it easy to specify informative priors centered at zero sim
 - `pwt`: the prior weight, interpreted as relative sample size  
 - `n_prior`: the number of pseudo-observations contributing to the prior
 
-### Summary
+### 4.2.3 Summary
 
 The default prior centering in `glmbayes` reflects two complementary principles:
 - For intercepts: center at the full model MLE to avoid misalignment and unintended shrinkage.
@@ -672,7 +671,7 @@ The default prior centering in `glmbayes` reflects two complementary principles:
 This design ensures that default behavior is both statistically sound and user-friendly, while allowing flexible prior specification through `pwt` or `n_prior`.
 
 
-# 4. The role of the `effects_source` in setting the prior mean for the model effects
+## 4.3 The role of the `effects_source` in setting the prior mean for the model effects
 
  Like with the `intercept_source` argument, our Prior_Setup function provides two alternative options. 
 
@@ -685,1085 +684,177 @@ The alternative is to set them equal to the estimates from the **full_model**. T
   - `"null_effects"`: for each non-intercept \(j\), \(\mu_j = 0\)  
   - `"full_model"`: for each non-intercept \(j\), \(\mu_j = \widehat\beta_{j,\mathrm{MLE}}\)  
 
+## 4.4 Manually Setting Prior Means Using `mu`
 
+In addition to the automated centering mechanisms provided by `intercept_source` and `effects_source`, users may directly specify the prior mean vector through the `mu` argument. When supplied, `mu` overrides all other centering logic and is used exactly as provided.
 
-# 5. Estimating Bayesian Linear Models for a Poorly centered dataset
+### 4.4.1 How `mu` interacts with the other arguments
 
+The precedence rules in `Prior_Setup()` are:
 
-##  5.1 The Women Dataset and an **lm()** model
+1. If `mu` is supplied, it is used verbatim, and `intercept_source` and `effects_source` are ignored.
 
-```{r Women_Data}
-data(women)
-head(women)
-```
+2. If `mu` is not supplied, the function constructs the prior mean vector using:
+   - `intercept_source` for the intercept
+   - `effects_source` for all non‑intercept coefficients
 
+3. The length of `mu` must match the number of coefficients in the model matrix.
 
-```{r Women_Uncentered}
-lm_uncentered <- lm(weight ~ height, data = women)
-summary(lm_uncentered)
-```
+### 4.4.2 Requirements for user‑specified `mu`
 
-```{r Women_Uncentered_null}
-lm_uncentered_null <- lm(weight ~ 1, data = women)
-#summary(lm_uncentered_null)
-```
+`mu` may be provided as:
 
+- a numeric vector of length equal to the number of coefficients, or
+- a matrix of dimension nvar × 1
 
+The function validates:
 
-## 5.2 The Null Model
+- numeric type
+- correct length
+- correct dimensions
+- assigns coefficient names automatically
 
-```{r Women_Prior_null}
-ps_null=Prior_Setup(weight ~ height,family=gaussian(),intercept_source = "null_model", effects_source = "null_effects",data=women)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-lmb.women_null=lmb(weight ~ height,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=women,n=10000)
-```
+If the dimensions do not match, the function stops with an informative error.
 
+### 4.4.3 When manual `mu` is useful
 
-```{r Women_Prior_null_midpwt}
-ps_null=Prior_Setup(weight ~ height,family=gaussian(),pwt=0.05,intercept_source = "null_model", effects_source = "null_effects",data=women)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-lmb.women_null_midpwt=lmb(weight ~ height,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=women,n=10000)
-```
+Manually specifying `mu` is appropriate when:
 
+- domain knowledge suggests plausible effect sizes
+- the analyst wants to encode directional or magnitude expectations
+- the default centering (null model or full model) is inappropriate
+- different predictors require different prior locations
+- the model is part of a hierarchical or multi‑level structure
+- the analyst wants to reproduce a prior from an external study
 
-```{r Women_Prior_null_hipwt}
-ps_null=Prior_Setup(weight ~ height,family=gaussian(),pwt=0.5,intercept_source = "null_model", effects_source = "null_effects",data=women)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-lmb.women_null_hipwt=lmb(weight ~ height,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=women,n=10000)
-```
+### 4.4.4 Example: specifying a custom prior mean
 
+A simple example using the `mtcars` data:
 
+```{r Custom_prior}
 
-## 5.3 The Full Model
-
-```{r Women_Prior_full}
-ps_full=Prior_Setup(weight ~ height,family=gaussian(),pwt=0.01,intercept_source = "full_model", effects_source = "full_model",data=women)
-mu_full=ps_full$mu
-V_full=ps_full$Sigma
-disp_ML_full=ps_full$dispersion
-lmb.women_full=lmb(weight ~ height,dNormal(mu_full,V_full,dispersion=disp_ML_full),data=women,n=10000)
-
-```
-
-
-```{r Women_Prior_full_midpwt}
-ps_full=Prior_Setup(weight ~ height,family=gaussian(),pwt=0.05,intercept_source = "full_model", effects_source = "full_model",data=women)
-mu_full=ps_full$mu
-V_full=ps_full$Sigma
-disp_ML_full=ps_full$dispersion
-lmb.women_full_midpwt=lmb(weight ~ height,dNormal(mu_full,V_full,dispersion=disp_ML_full),data=women,n=10000)
-
-
-```
-
-```{r Women_Prior_full_hipwt}
-ps_full=Prior_Setup(weight ~ height,family=gaussian(),pwt=0.5,intercept_source = "full_model", effects_source = "full_model",data=women)
-mu_full=ps_full$mu
-V_full=ps_full$Sigma
-disp_ML_full=ps_full$dispersion
-lmb.women_full_hipwt=lmb(weight ~ height,dNormal(mu_full,V_full,dispersion=disp_ML_full),data=women,n=10000)
-
-
-```
-
-## 5.4 The "Control" prior
-
-
-```{r Women_Prior_default}
-ps_default=Prior_Setup(weight ~ height,family=gaussian(),intercept_source = "full_model", effects_source = "null_effects",data=women)
-mu_default=ps_default$mu
-V_default=ps_default$Sigma
-disp_ML_default=ps_default$dispersion
-```
-
-
-```{r women_lmb_call_default}
-lmb.women_default=lmb(weight ~ height,dNormal(mu_default,V_default,dispersion=disp_ML_default),data=women,n=10000)
-```
-
-
-
-
-```{r Women_Prior_midpwt}
-ps_midpwt=Prior_Setup(weight ~ height,family=gaussian(),pwt=0.05,intercept_source = "full_model", effects_source = "null_effects",data=women)
-mu_midpwt=ps_midpwt$mu
-V_midpwt=ps_midpwt$Sigma
-disp_ML_midpwt=ps_midpwt$dispersion
-lmb.women_midpwt=lmb(weight ~ height,dNormal(mu_midpwt,V_midpwt,dispersion=disp_ML_midpwt),data=women,n=10000)
-
-```
-
-
-
-```{r Women_Prior_hipwt}
-ps_hipwt=Prior_Setup(weight ~ height,family=gaussian(),pwt=0.5,intercept_source = "full_model", effects_source = "null_effects",data=women)
-mu_hipwt=ps_hipwt$mu
-V_hipwt=ps_hipwt$Sigma
-disp_ML_hipwt=ps_hipwt$dispersion
-lmb.women_hipwt=lmb(weight ~ height,dNormal(mu_hipwt,V_hipwt,dispersion=disp_ML_hipwt),data=women,n=10000)
-
-```
-
-
-## 5.7 Comparative Impact of Prior Specifications on Inference
-
-
-This section compares posterior summaries for the height effect across five Bayesian prior configurations and a classical linear model. We report the posterior mean, one-sided tail probability Pr(β > mu), posterior standard deviation, and the effective number of parameters. These metrics reveal how prior centering and prior weight (pwt) influence inference, uncertainty, and model complexity.
-
-
-```{r Summary_Comparisons}
-summary_classical <- summary(lm_uncentered)
-
-intercept_classical <- coef(summary_classical)["(Intercept)", "Estimate"]
-estimate_classical <- coef(summary_classical)["height", "Estimate"]
-se_classical       <- coef(summary_classical)["height", "Std. Error"]
-pr_tail_classical  <- coef(summary_classical)["height", "Pr(>|t|)"] / 2
-eff_params_classical <- extractAIC(lm_uncentered)[1]
-AIC_Classical <-AIC(lm_uncentered)-2
-
-summary_classical_null <- summary(lm_uncentered_null)
-
-intercept_classical_null <- coef(summary_classical_null)["(Intercept)", "Estimate"]
-estimate_classical_null <- NA_real_
-se_classical_null       <- NA_real_
-pr_tail_classical_null  <- NA_real_
-eff_params_classical_null <- extractAIC(lm_uncentered_null)[1]
-AIC_Classical_null <-AIC(lm_uncentered_null)-2
-
-
-
-sum_default=summary(lmb.women_default)
-
-intercept_default <- coef(sum_default)["(Intercept)", "Post.Mean"]
-estimate_default <- sum_default$coefficients["height", "Post.Mean"]
-sd_default       <- sum_default$coefficients["height", "Post.Sd"]
-pr_tail_default  <- sum_default$coefficients["height", "Pr(Prior_tail)"]
-eff_params_default <- sum_default$pD
-DIC_default <- sum_default$DIC
-
-
-sum_null=summary(lmb.women_null)
-
-intercept_null <- coef(sum_null)["(Intercept)", "Post.Mean"]
-estimate_null <- sum_null$coefficients["height", "Post.Mean"]
-sd_null       <- sum_null$coefficients["height", "Post.Sd"]
-pr_tail_null  <- sum_null$coefficients["height", "Pr(Prior_tail)"]
-eff_params_null <- sum_null$pD
-DIC_null <- sum_null$DIC
-
-sum_null_midpwt=summary(lmb.women_null_midpwt)
-
-intercept_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Post.Mean"]
-estimate_null_midpwt <- sum_null_midpwt$coefficients["height", "Post.Mean"]
-sd_null_midpwt       <- sum_null_midpwt$coefficients["height", "Post.Sd"]
-pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["height", "Pr(Prior_tail)"]
-eff_params_null_midpwt <- sum_null_midpwt$pD
-DIC_null_midpwt <- sum_null_midpwt$DIC
-
-sum_null_hipwt=summary(lmb.women_null_hipwt)
-
-intercept_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Post.Mean"]
-estimate_null_hipwt <- sum_null_hipwt$coefficients["height", "Post.Mean"]
-sd_null_hipwt       <- sum_null_hipwt$coefficients["height", "Post.Sd"]
-pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["height", "Pr(Prior_tail)"]
-eff_params_null_hipwt <- sum_null_hipwt$pD
-DIC_null_hipwt <- sum_null_hipwt$DIC
-
-
-
-sum_full=summary(lmb.women_full)
-
-intercept_full <- coef(sum_full)["(Intercept)", "Post.Mean"]
-estimate_full <- sum_full$coefficients["height", "Post.Mean"]
-sd_full       <- sum_full$coefficients["height", "Post.Sd"]
-pr_tail_full  <- sum_full$coefficients["height", "Pr(Prior_tail)"]
-eff_params_full <- sum_full$pD
-DIC_full <- sum_full$DIC
-
-sum_full_midpwt=summary(lmb.women_full_midpwt)
-
-intercept_full_midpwt <- coef(sum_full_midpwt)["(Intercept)", "Post.Mean"]
-estimate_full_midpwt <- sum_full_midpwt$coefficients["height", "Post.Mean"]
-sd_full_midpwt       <- sum_full_midpwt$coefficients["height", "Post.Sd"]
-pr_tail_full_midpwt  <- sum_full_midpwt$coefficients["height", "Pr(Prior_tail)"]
-eff_params_full_midpwt <- sum_full_midpwt$pD
-DIC_full_midpwt <- sum_full_midpwt$DIC
-
-sum_full_hipwt=summary(lmb.women_full_hipwt)
-
-intercept_full_hipwt <- coef(sum_full_hipwt)["(Intercept)", "Post.Mean"]
-estimate_full_hipwt <- sum_full_hipwt$coefficients["height", "Post.Mean"]
-sd_full_hipwt       <- sum_full_hipwt$coefficients["height", "Post.Sd"]
-pr_tail_full_hipwt  <- sum_full_hipwt$coefficients["height", "Pr(Prior_tail)"]
-eff_params_full_hipwt <- sum_full_hipwt$pD
-DIC_full_hipwt <- sum_full_hipwt$DIC
-
-
-sum_midpwt=summary(lmb.women_midpwt)
-
-intercept_midpwt <- coef(sum_midpwt)["(Intercept)", "Post.Mean"]
-estimate_midpwt <- sum_midpwt$coefficients["height", "Post.Mean"]
-sd_midpwt       <- sum_midpwt$coefficients["height", "Post.Sd"]
-pr_tail_midpwt  <- sum_midpwt$coefficients["height", "Pr(Prior_tail)"]
-eff_params_midpwt <- sum_midpwt$pD
-DIC_midpwt <- sum_midpwt$DIC
-
-sum_hipwt=summary(lmb.women_hipwt)
-
-intercept_hipwt <- coef(sum_hipwt)["(Intercept)", "Post.Mean"]
-estimate_hipwt <- sum_hipwt$coefficients["height", "Post.Mean"]
-sd_hipwt       <- sum_hipwt$coefficients["height", "Post.Sd"]
-pr_tail_hipwt  <- sum_hipwt$coefficients["height", "Pr(Prior_tail)"]
-eff_params_hipwt <- sum_hipwt$pD
-DIC_hipwt <- sum_hipwt$DIC
-
-
-comparison <- data.frame(
-  Model           = c("Classical LM Null","Classical LM", "Null Model Prior (pwt=0.01)","Null Model Prior (pwt=0.05)","Null Model Prior (pwt=0.5)","Full-Model Prior  (pwt=0.01)","Full-Model Prior  (pwt=0.05)","Full-Model Prior  (pwt=0.5)","Control Prior (pwt=0.01) ","Control Prior (pwt=0.05)","Control Prior (pwt=0.5)"),
-  Post.Intercept_Mean        = c(intercept_classical_null,intercept_classical, intercept_null,intercept_null_midpwt,intercept_null_hipwt, intercept_full,intercept_full_midpwt,intercept_full_hipwt, intercept_default, intercept_midpwt, intercept_hipwt),
-    Post.Mean        = c(estimate_classical_null,estimate_classical,  estimate_null,estimate_null_midpwt,estimate_null_hipwt, estimate_full,estimate_full_midpwt,estimate_full_hipwt, estimate_default,estimate_midpwt, estimate_hipwt),
-  Post.SD        = c(se_classical_null,se_classical, sd_null,sd_null_midpwt, sd_null_hipwt,sd_full, sd_full_midpwt,sd_full_hipwt,  sd_default,sd_midpwt, sd_hipwt),
-  Pr_Tail         = c(pr_tail_classical_null,pr_tail_classical,  pr_tail_null, pr_tail_null_midpwt,pr_tail_null_hipwt, pr_tail_full, pr_tail_full_midpwt,pr_tail_full_hipwt,pr_tail_default, pr_tail_midpwt, pr_tail_hipwt),
-  Eff.Params      = c(eff_params_classical_null,eff_params_classical,  eff_params_null,eff_params_null_midpwt,eff_params_null_hipwt, eff_params_full,eff_params_full_midpwt,eff_params_full_hipwt, eff_params_default,eff_params_midpwt, eff_params_hipwt),
-  DIC      = c(AIC_Classical_null,AIC_Classical,  DIC_null,DIC_null_midpwt, DIC_null_hipwt, DIC_full,DIC_full_midpwt,DIC_full_hipwt,DIC_default, DIC_midpwt, DIC_hipwt)
-)                     
-#comparison
-
-
-
-knitr::kable(
-  comparison, 
-  digits  = 4,     # rounds all numeric columns to 4 decimals
-  caption = "Comparison of Priors"
+ps_custom <- Prior_Setup(
+  gpm ~ c_wt + c_cyl,
+  data = mtcars,
+  pwt  = 0.01,
+  mu   = c(0.05423, 0.01494, 0)   # intercept, c_wt, c_cyl
 )
 
-##AIC(lm_uncentered)
-#residuals(lm_uncentered)
+ps_custom$mu
 ```
 
-# 7.5 
-
-```{r half_space_tail}
-
-directional_half_space_tail <- function(fit,
-                                               normalize = TRUE) {
-  # 1. Extract posterior draws and prior moments
-  post        <- fit$coefficients            # S × p matrix
-  mu_prior    <- as.numeric(fit$Prior$mean)  # length-p
-  V0          <- as.matrix(fit$Prior$Variance)  # p × p
-  
-  # 2. Compute prior precision and its symmetric square root
-  P0    <- solve(V0)   # prior precision = Σ_prior^{-1}
-  eig   <- eigen(P0, symmetric = TRUE)
-  P0_sqrt <- eig$vectors %*% diag(sqrt(eig$values)) %*% t(eig$vectors)
-  # Now P0_sqrt %*% P0_sqrt = P0
-  
-  # 3. Whiten draws and prior mean
-  #    Z = Σ_prior^{-1/2} * (post - mu_prior)
-  centered <- sweep(post, 2, mu_prior, FUN = "-")   # S × p
-  Z        <- t(P0_sqrt %*% t(centered))            # S × p
-  # In this whitened space the prior is N(0, I)
-  
-  # 4. Compute posterior mean in whitened space
-  mu_post_z <- colMeans(Z)     # length-p
-  delta     <- mu_post_z       # shift from zero
-  
-  # 5. Choose signed weights: +1 if delta>0, -1 if delta<0
-  sign_vec <- sign(delta)      # length-p of ±1
-  
-  # 6. Raw weights (no need to divide by any SD since prior sd=1 in Z-space)
-  w_raw    <- sign_vec         # length-p
-  
-  # 7. Optional normalization to unit length
-  if (normalize) {
-    w <- w_raw / sqrt(sum(w_raw^2))
-  } else {
-    w <- w_raw
-  }
-  
-  # 8. Project and get reverse‐tail probability
-  proj      <- Z %*% w         # S×1 vector of wᵀZ
-  tail_prob <- mean(proj < 0)  # P(wᵀZ < 0)
-  
-  # 9. Return results
-  list(
-    tail_prob = as.numeric(tail_prob),
-    weights   = as.numeric(w),
-    proj      = as.numeric(proj),
-    delta     = delta
-  )
-}
-```
-
-
-```{r test1}
-
-directional_half_space_tail(lmb.women_null)
-```
-
-
-# 6. Analyzing a Centered Version of the Women Dataset
-
-
-## 6.1 The Classical Models 
-
-```{r women_centering}
-
-# 1. Load the data
-data(women)
-
-# 2. Create a new column height_c = height – mean(height)
-women_centered <- women
-women_centered$height_c <- women_centered$height - mean(women_centered$height)
-
-# 3. Quick check
-head(women_centered)
-#>   height weight height_c
-#> 1     58    115     -3.5
-#> 2     59    117     -2.5
-#> 3     60    120     -1.5
-#> 4     61    123     -0.5
-#> 5     62    126      0.5
-#> 6     63    129      1.5
+This produces a prior centered at the user‑specified values, with the prior covariance still determined by `pwt` (or by `n_prior` or `sd`, if supplied).
 
-```
+### 4.4.5 Relationship between `mu` and prior strength
 
-```{r women_centered}
+It is important to distinguish:
 
-# 4. Re‐fit the linear model using centered height
-lm_centered <- lm(weight ~ height_c, data = women_centered)
-summary(lm_centered)
-```
-```{r women_centered_null}
-lm_centered_null <- lm(weight ~ 1, data = women_centered)
-summary(lm_centered_null)
-```
+- `mu` controls the location of the prior, while
+- `pwt`, `n_prior`, and `sd` control the strength of the prior.
 
-## 6.2 Null Models 
+Thus:
 
+- A strongly informative prior mean will have minimal influence if `pwt` is small.
+- A weakly informative prior mean can have substantial influence if `pwt` is large.
 
-```{r Women_c_Prior_null}
-ps_null=Prior_Setup(weight ~ height_c,family=gaussian(),intercept_source = "null_model", effects_source = "null_effects",data=women_centered)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-lmb.women_null=lmb(weight ~ height_c,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=women_centered,n=10000)
-```
+### 4.4.6 Summary
 
+- Use `mu` when you want full control over prior centering.
+- Use `intercept_source` and `effects_source` when you want automatic empirical centering.
+- `mu` always overrides the other two.
+- Prior strength is controlled separately through `pwt`, `n_prior`, or `sd`.
 
-```{r Women_c_Prior_null_midpwt}
-ps_null=Prior_Setup(weight ~ height_c,family=gaussian(),pwt=0.05,intercept_source = "null_model", effects_source = "null_effects",data=women_centered)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-lmb.women_null_midpwt=lmb(weight ~ height_c,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=women_centered,n=10000)
-```
+## 5. Practical Considerations for Prior Means and Prior Strength
 
+Specifying a prior involves two connected decisions:
 
-```{r Women_c_Prior_null_hipwt}
-ps_null=Prior_Setup(weight ~ height_c,family=gaussian(),pwt=0.5,intercept_source = "null_model", effects_source = "null_effects",data=women_centered)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-lmb.women_null_hipwt=lmb(weight ~ height_c,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=women_centered,n=10000)
-```
+1. **Where to center the prior** (the prior mean)
+2. **How strongly the prior should pull the posterior** (the prior variance or weight)
 
+The behavior of the posterior depends on both. This section summarizes practical considerations that help guide the choice of `intercept_source`, `effects_source`, `mu`, and the prior strength parameters `pwt`, `n_prior`, and `sd`.
 
+### 5.1 Centering and Scaling of Predictors
 
+The effect of prior centering depends on how predictors are coded.
 
-## 6.3 Full Models
+- Continuous predictors should ideally be centered. This aligns the null-model intercept with the full-model intercept and reduces unintended shrinkage.
+- Categorical predictors should have interpretable reference levels. Poor reference levels can cause the full-model intercept to differ substantially from the null-model intercept.
 
+When predictors are not centered or reference levels are not meaningful, using `intercept_source = "full_model"` often produces more stable behavior.
 
-```{r Women_c_Prior_full}
-ps_full=Prior_Setup(weight ~ height_c,family=gaussian(),pwt=0.01,intercept_source = "full_model", effects_source = "full_model",data=women_centered)
-mu_full=ps_full$mu
-V_full=ps_full$Sigma
-disp_ML_full=ps_full$dispersion
-lmb.women_full=lmb(weight ~ height_c,dNormal(mu_full,V_full,dispersion=disp_ML_full),data=women_centered,n=10000)
+### 5.2 Choosing the Prior Mean for the Intercept
 
-```
+- `intercept_source = "null_model"` (default)  
+  Appropriate when predictors are centered or balanced. Posterior tail probabilities resemble classical one-sided p-values.
 
-## 6.4 Control Models
+- `intercept_source = "full_model"`  
+  Preferable when predictors are uncentered or categorical. This avoids shrinkage toward an intercept that does not reflect the structure of the full model.
 
+The intercept prior can have a noticeable influence when predictors are poorly centered, even when `pwt` is small.
 
-```{r Women_c_Prior_default}
-ps_default=Prior_Setup(weight ~ height_c,family=gaussian(),intercept_source = "full_model", effects_source = "null_effects",data=women_centered)
-mu_default=ps_default$mu
-V_default=ps_default$Sigma
-disp_ML_default=ps_default$dispersion
-```
+### 5.3 Choosing the Prior Means for the Effects
 
+- `effects_source = "null_effects"` (default)  
+  Centers all effects at zero. Appropriate for hypothesis testing or when the analyst wants posterior summaries relative to the classical null.
 
-```{r women_c_lmb_call_default}
-lmb.women_default=lmb(weight ~ height_c,dNormal(mu_default,V_default,dispersion=disp_ML_default),data=women_centered,n=10000)
-```
+- `effects_source = "full_model"`  
+  Centers the prior at the maximum likelihood estimates. Useful when the goal is regularization rather than hypothesis testing, or when the analyst wants the posterior to remain close to the classical estimates.
 
+### 5.4 When to Specify `mu` Directly
 
+Manual specification of `mu` is appropriate when:
 
+- domain knowledge suggests plausible effect sizes
+- the analyst wants to encode directional expectations
+- the default centering mechanisms are inappropriate
+- different predictors require different prior locations
+- the model is part of a hierarchical or multi-level structure
 
-```{r Women_c_Prior_midpwt}
-ps_midpwt=Prior_Setup(weight ~ height_c,family=gaussian(),pwt=0.05,intercept_source = "full_model", effects_source = "null_effects",data=women_centered)
-mu_midpwt=ps_midpwt$mu
-V_midpwt=ps_midpwt$Sigma
-disp_ML_midpwt=ps_midpwt$dispersion
-lmb.women_midpwt=lmb(weight ~ height_c,dNormal(mu_midpwt,V_midpwt,dispersion=disp_ML_midpwt),data=women_centered,n=10000)
+When `mu` is supplied, it overrides both `intercept_source` and `effects_source`.
 
-```
+### 5.5 Choosing the Strength of the Prior
 
+The strength of the prior is controlled by:
 
+- `pwt`: prior weight relative to the likelihood
+- `n_prior`: effective prior sample size
+- `sd`: prior standard deviations (converted internally to `pwt`)
 
-```{r Women_c_Prior_hipwt}
-ps_hipwt=Prior_Setup(weight ~ height_c,family=gaussian(),pwt=0.5,intercept_source = "full_model", effects_source = "null_effects",data=women_centered)
-mu_hipwt=ps_hipwt$mu
-V_hipwt=ps_hipwt$Sigma
-disp_ML_hipwt=ps_hipwt$dispersion
-lmb.women_hipwt=lmb(weight ~ height_c,dNormal(mu_hipwt,V_hipwt,dispersion=disp_ML_hipwt),data=women_centered,n=10000)
+These parameters determine how strongly the prior mean influences the posterior.
 
-```
+- Small `pwt` (for example, 0.01)  
+  The posterior remains close to the maximum likelihood estimate unless the prior mean is far from the likelihood estimate.
 
+- Moderate or large `pwt` (for example, from `n_prior = 1` or small `sd`)  
+  The posterior is pulled more strongly toward the prior mean.
 
+- Vector `pwt` or vector `sd`  
+  Allows different predictors to have different prior strengths.
 
-## 6.5 Model Comparisons
+### 5.6 Interaction Between Prior Location and Prior Strength
 
+Prior location and prior strength must be considered together.
 
-```{r Summary_Comparisons_centered}
-summary_classical <- summary(lm_centered)
+- A well-chosen prior mean has little effect if the prior is weak.
+- A poorly chosen prior mean can have substantial influence if the prior is strong.
+- Using `"full_model"` centering with a strong prior can effectively reproduce the maximum likelihood estimates.
+- Using `"null_effects"` with a strong prior can shrink effects strongly toward zero.
 
-intercept_classical <- coef(summary_classical)["(Intercept)", "Estimate"]
-estimate_classical <- coef(summary_classical)["height_c", "Estimate"]
-se_classical       <- coef(summary_classical)["height_c", "Std. Error"]
-pr_tail_classical  <- coef(summary_classical)["height_c", "Pr(>|t|)"] / 2
-eff_params_classical <- extractAIC(lm_centered)[1]
-AIC_Classical <-AIC(lm_uncentered)-2
+This interaction is especially important when predictors are uncentered or when the intercept differs substantially between the null and full models.
 
-summary_classical_null <- summary(lm_centered_null)
+### 5.7 Summary
 
-intercept_classical_null <- coef(summary_classical_null)["(Intercept)", "Estimate"]
-estimate_classical_null <- NA_real_
-se_classical_null       <- NA_real_
-pr_tail_classical_null  <- NA_real_
-eff_params_classical_null <- extractAIC(lm_centered_null)[1]
-AIC_Classical_null <-AIC(lm_uncentered_null)-2
+- Prior means (`intercept_source`, `effects_source`, `mu`) determine **where** the prior pulls.
+- Prior strength (`pwt`, `n_prior`, `sd`) determines **how strongly** it pulls.
+- Center and scale predictors when possible.
+- Choose prior centering based on the modeling goal:
+  - classical-like inference: `"null_model"` and `"null_effects"`
+  - regularization toward empirical estimates: `"full_model"`
+  - domain-informed priors: `mu`
+- Always consider prior strength when evaluating the impact of prior centering.
 
+These considerations help ensure that prior specification behaves predictably and supports the analyst's inferential goals.
 
 
 
-sum_null=summary(lmb.women_null)
-
-intercept_null <- coef(sum_null)["(Intercept)", "Post.Mean"]
-estimate_null <- sum_null$coefficients["height_c", "Post.Mean"]
-sd_null       <- sum_null$coefficients["height_c", "Post.Sd"]
-pr_tail_null  <- sum_null$coefficients["height_c", "Pr(Prior_tail)"]
-eff_params_null <- sum_null$pD
-DIC_null <- sum_null$DIC
-
-sum_null_midpwt=summary(lmb.women_null_midpwt)
-
-intercept_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Post.Mean"]
-estimate_null_midpwt <- sum_null_midpwt$coefficients["height_c", "Post.Mean"]
-sd_null_midpwt       <- sum_null_midpwt$coefficients["height_c", "Post.Sd"]
-pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["height_c", "Pr(Prior_tail)"]
-eff_params_null_midpwt <- sum_null_midpwt$pD
-DIC_null_midpwt <- sum_null_midpwt$DIC
-
-sum_null_hipwt=summary(lmb.women_null_hipwt)
-
-intercept_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Post.Mean"]
-estimate_null_hipwt <- sum_null_hipwt$coefficients["height_c", "Post.Mean"]
-sd_null_hipwt       <- sum_null_hipwt$coefficients["height_c", "Post.Sd"]
-pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["height_c", "Pr(Prior_tail)"]
-eff_params_null_hipwt <- sum_null_hipwt$pD
-DIC_null_hipwt <- sum_null_hipwt$DIC
-
-
-
-sum_full=summary(lmb.women_full)
-
-intercept_full <- coef(sum_full)["(Intercept)", "Post.Mean"]
-estimate_full <- sum_full$coefficients["height_c", "Post.Mean"]
-sd_full       <- sum_full$coefficients["height_c", "Post.Sd"]
-pr_tail_full  <- sum_full$coefficients["height_c", "Pr(Prior_tail)"]
-eff_params_full <- sum_full$pD
-DIC_full <- sum_full$DIC
-
-
-sum_default=summary(lmb.women_default)
-
-intercept_default <- coef(sum_default)["(Intercept)", "Post.Mean"]
-estimate_default <- sum_default$coefficients["height_c", "Post.Mean"]
-sd_default       <- sum_default$coefficients["height_c", "Post.Sd"]
-pr_tail_default  <- sum_default$coefficients["height_c", "Pr(Prior_tail)"]
-eff_params_default <- sum_default$pD
-DIC_default <- sum_default$DIC
-
-
-sum_midpwt=summary(lmb.women_midpwt)
-
-intercept_midpwt <- coef(sum_midpwt)["(Intercept)", "Post.Mean"]
-estimate_midpwt <- sum_midpwt$coefficients["height_c", "Post.Mean"]
-sd_midpwt       <- sum_midpwt$coefficients["height_c", "Post.Sd"]
-pr_tail_midpwt  <- sum_midpwt$coefficients["height_c", "Pr(Prior_tail)"]
-eff_params_midpwt <- sum_midpwt$pD
-DIC_midpwt <- sum_midpwt$DIC
-
-sum_hipwt=summary(lmb.women_hipwt)
-
-intercept_hipwt <- coef(sum_hipwt)["(Intercept)", "Post.Mean"]
-estimate_hipwt <- sum_hipwt$coefficients["height_c", "Post.Mean"]
-sd_hipwt       <- sum_hipwt$coefficients["height_c", "Post.Sd"]
-pr_tail_hipwt  <- sum_hipwt$coefficients["height_c", "Pr(Prior_tail)"]
-eff_params_hipwt <- sum_hipwt$pD
-DIC_hipwt <- sum_hipwt$DIC
-
-
-comparison <- data.frame(
-  Model           = c("Classical LM Null","Classical LM", "Null Model Prior (pwt=0.01)","Null Model Prior (pwt=0.05)","Null Model Prior (pwt=0.5)","Full-Model Prior  (pwt=0.01)","Control Prior (pwt=0.01) ","Control Prior (pwt=0.05)","Control Prior (pwt=0.5)"),
-  Post.Intercept_Mean        = c(intercept_classical_null,intercept_classical, intercept_null,intercept_null_midpwt,intercept_null_hipwt, intercept_full, intercept_default, intercept_midpwt, intercept_hipwt),
-    Post.Mean        = c(estimate_classical_null,estimate_classical,  estimate_null,estimate_null_midpwt,estimate_null_hipwt, estimate_full, estimate_default,estimate_midpwt, estimate_hipwt),
-  Post.SD        = c(se_classical_null,se_classical, sd_null,sd_null_midpwt, sd_null_hipwt,sd_full,  sd_default,sd_midpwt, sd_hipwt),
-  Pr_Tail         = c(pr_tail_classical_null,pr_tail_classical,  pr_tail_null, pr_tail_null_midpwt,pr_tail_null_hipwt, pr_tail_full,pr_tail_default, pr_tail_midpwt, pr_tail_hipwt),
-  Eff.Params      = c(eff_params_classical_null,eff_params_classical,  eff_params_null,eff_params_null_midpwt,eff_params_null_hipwt, eff_params_full, eff_params_default,eff_params_midpwt, eff_params_hipwt),
-  DIC      = c(AIC_Classical_null,AIC_Classical,  DIC_null,DIC_null_midpwt, DIC_null_hipwt, DIC_full,DIC_default, DIC_midpwt, DIC_hipwt)
-)                     
-#comparison
-
-
-
-knitr::kable(
-  comparison, 
-  digits  = 4,     # rounds all numeric columns to 4 decimals
-  caption = "Comparison of Priors"
-)
-
-##AIC(lm_uncentered)
-#residuals(lm_uncentered)
-```
-
-
-
-## 7.
-
-```{r women_glmb_summary_default}
-glmb.women_default=glmb(weight ~ height,family=gaussian(),pfamily=dNormal(mu_default,V_default,dispersion=disp_ML_default),data=women,n=10000)
-
-summary(glmb.women_default)
-
-```
-
-
-
-```{r women_glmb_summary_null}
-glmb.women_null=glmb(weight ~ height,family=gaussian(),pfamily=dNormal(mu_null,V_null,dispersion=disp_ML_null),data=women,n=10000)
-
-summary(glmb.women_null)
-
-```
-
-
-```{r women_glmb_summary_full}
-glmb.women_full=glmb(weight ~ height,family=gaussian(),pfamily=dNormal(mu_full,V_full,dispersion=disp_ML_full),data=women,n=10000)
-
-summary(glmb.women_full)
-
-```
-
-
-
-
-
-```{r women_glmb_summary_lowpwt}
-glmb.women_lowpwt=glmb(weight ~ height,family=gaussian(),pfamily=dNormal(mu_default,V_default,dispersion=disp_ML_default),data=women,n=10000)
-summary(glmb.women_lowpwt)
-
-```
-
-
-
-```{r women_glmb_call_lowpwt_null}
-glmb.women_lowpwt_null=glmb(weight ~ height,family=gaussian(),pfamily=dNormal(mu_null,V_default,dispersion=disp_ML_default),data=women,n=10000)
-summary(glmb.women_lowpwt_null)
-
-```
-
-
-
-
-
-```{r women_glmb_call_hipwt_null}
-glmb.women_hipwt_null=glmb(weight ~ height,family=gaussian(),pfamily=dNormal(mu_null,V_hipwt,dispersion=disp_ML_hipwt),data=women,n=10000)
-summary(glmb.women_hipwt_null)
-```
-
-
-
-```{r Residual_Check}
-#residuals(glmb.women_default)
-extractAIC(glmb.women_default)
-
-```
-
-
-# 6. Estimating Bayesian Linear Models under various Prior_Setup settings
-
-
-
-```{r Plant_Setup}
-## Annette Dobson (1990) "An Introduction to Generalized Linear Models".
-## Page 9: Plant Weight Data.
-ctl    <- c(4.17, 5.58, 5.18, 6.11, 4.50, 4.61, 5.17, 4.53, 5.33, 5.14)
-trt    <- c(4.81, 4.17, 4.41, 3.59, 5.87, 3.83, 6.03, 4.89, 4.32, 4.69)
-group  <- gl(2, 10, 20, labels = c("Ctl", "Trt"))
-weight <- c(ctl, trt)
-
-dat <- data.frame(weight, group)
-#dat2<-rbind(dat,dat,dat,dat)
-dat2<-rbind(dat)
-```
-
-
-```{r Plant_lm_call_default}
-lm.D9_default=lm(weight ~ group,data=dat2)
-```
-
-
-```{r Plant_lm_summary_default}
-summary(lm.D9_default)
-```
-
-
-## 5.1 The Default Prior
-
-
-
-## 5.2 The Null Model Prior
-
-
-```{r Plant_Prior_null}
-ps_null=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.01,intercept_source = "null_model", effects_source = "null_effects",data=dat2)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-```
-
-```{r Plant_lmb_call_null}
-lmb.D9_null=lmb(weight ~ group,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=dat2,n=10000)
-summary(lmb.D9_null)
-```
-
-
-
-```{r Plant_Prior_null_midpwt}
-ps_null=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.05,intercept_source = "null_model", effects_source = "null_effects",data=dat2)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-```
-
-```{r Plant_lmb_call_null_midpwt}
-lmb.D9_null_midpwt=lmb(weight ~ group,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=dat2,n=10000)
-summary(lmb.D9_null_midpwt)
-```
-
-```{r Plant_Prior_null_hipwt}
-ps_null=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.5,intercept_source = "null_model", effects_source = "null_effects",data=dat2)
-mu_null=ps_null$mu
-V_null=ps_null$Sigma
-disp_ML_null=ps_null$dispersion
-```
-
-```{r Plant_lmb_call_null_hipwt}
-lmb.D9_null_hipwt=lmb(weight ~ group,dNormal(mu_null,V_null,dispersion=disp_ML_null),data=dat2,n=10000)
-summary(lmb.D9_null_hipwt)
-```
-
-
-## 5.3 The Full Model Prior
-
-
-```{r Plant_Prior_full}
-ps_full=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.01,intercept_source = "full_model", effects_source = "full_model",data=dat2)
-mu_full=ps_full$mu
-V_full=ps_full$Sigma
-disp_ML_full=ps_full$dispersion
-```
-
-```{r Plant_lmb_call_full}
-lmb.D9_full=lmb(weight ~ group,dNormal(mu_full,V_full,dispersion=disp_ML_full),data=dat2,n=10000)
-summary(lmb.D9_full)
-```
-
-
-
-```{r Plant_Prior_full_midpwt}
-ps_full=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.05,intercept_source = "full_model", effects_source = "full_model",data=dat2)
-mu_full=ps_full$mu
-V_full=ps_full$Sigma
-disp_ML_full=ps_full$dispersion
-```
-
-```{r Plant_lmb_call_full_midpwt}
-lmb.D9_full_midpwt=lmb(weight ~ group,dNormal(mu_full,V_full,dispersion=disp_ML_full),data=dat2,n=10000)
-summary(lmb.D9_full_midpwt)
-```
-
-
-
-
-```{r Plant_Prior_full_hipwt}
-ps_full=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.5,intercept_source = "full_model", effects_source = "full_model",data=dat2)
-mu_full=ps_full$mu
-V_full=ps_full$Sigma
-disp_ML_full=ps_full$dispersion
-```
-
-```{r Plant_lmb_call_full_hipwt}
-lmb.D9_full_hipwt=lmb(weight ~ group,dNormal(mu_full,V_full,dispersion=disp_ML_full),data=dat2,n=10000)
-summary(lmb.D9_full_hipwt)
-```
-
-## 5.4 Mid pwt Prior
-
-
-```{r Plant_Prior_default}
-ps_default=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.05,intercept_source = "full_model", effects_source = "null_effects",data=dat2)
-mu_default=ps_default$mu
-V_default=ps_default$Sigma
-disp_ML_default=ps_default$dispersion
-```
-
-
-
-```{r Plant_lmb_call_default}
-lmb.D9_default=lmb(weight ~ group,dNormal(mu_default,V_default,dispersion=disp_ML_default),data=dat2,n=10000)
-```
-
-
-```{r Plant_lmb_summary_default}
-summary(lmb.D9_default)
-```
-
-
-```{r Plant_Prior_mid}
-ps_midpwt=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.05,intercept_source = "full_model", effects_source = "null_effects",data=dat2)
-mu_midpwt=ps_midpwt$mu
-V_midpwt=ps_midpwt$Sigma
-disp_ML_midpwt=ps_midpwt$dispersion
-```
-
-```{r Plant_lmb_call_midpwt}
-lmb.D9_midpwt=lmb(weight ~ group,dNormal(mu_midpwt,V_midpwt,dispersion=disp_ML_midpwt),data=dat2,n=10000)
-```
-
-
-```{r Plant_lmb_summary_midpwt}
-summary(lmb.D9_midpwt)
-```
-
-
-
-
-
-## 5.5  Highpwt Model
-
-
-
-```{r Plant_Prior_high}
-ps_hipwt=Prior_Setup(weight ~ group,family=gaussian(),pwt=0.5,intercept_source = "full_model", effects_source = "null_effects",data=dat2)
-mu_hipwt=ps_hipwt$mu
-V_hipwt=ps_hipwt$Sigma
-disp_ML_hipwt=ps_hipwt$dispersion
-```
-
-```{r Plant_lmb_call_hipwt}
-lmb.D9_hipwt=lmb(weight ~ group,dNormal(mu_hipwt,V_hipwt,dispersion=disp_ML_hipwt),data=dat2,n=10000)
-```
-
-
-```{r Plant_lmb_summary_hipwt}
-summary(lmb.D9_hipwt)
-```
-```{r Plant_lmb_call}
-lm.D9_default=lm(weight ~ group,data=dat2)
-```
-
-```{r Plant_lm_summary}
-summary(lm.D9_default)
-```
-
-## 5.6 Comparative Impact of Prior Specifications on Inference
-
-
-This section compares posterior summaries for the group effect (groupTrt) across five Bayesian prior configurations and a classical linear model. We report the posterior mean, one-sided tail probability Pr(β < 0), posterior standard deviation, and the effective number of parameters. These metrics reveal how prior centering and prior weight (pwt) influence inference, uncertainty, and model complexity.
-
-```{r Null_Dev_residuals}
-
-# 1a) Fit the null model via glm (Gaussian identity link)
-fit_glm_null <- glm(weight ~ 1,
-                    data   = dat2,
-                    family = gaussian(link = "identity"))
-
-# 1b) Extract deviance residuals directly
-dev_resids <- residuals(fit_glm_null, type = "deviance")
-
-# 1c) Check: sum of squared deviance residuals = residual deviance
-sum(dev_resids^2)         # should equal deviance(fit_glm_null)
-deviance(fit_glm_null)
-```
-
-```{r Plant_glmb_call_null}
-glmb.D9_null=glmb(weight ~ group,family=gaussian(),pfamily=dNormal(mu_null,V_null,dispersion=disp_ML_null),data=dat2,n=10000)
-summary(glmb.D9_null)
-```
-
-```{r Revised_p_val}
-# A) Classical fits and observed statistic
-fit_glm_null   <- glm(weight ~ 1,                  data = dat2, family = gaussian())
-fit_glm_full   <- glm(weight ~ group ,    data = dat2, family = gaussian())
-
-D0             <- deviance(fit_glm_null)           # null deviance
-Df_mle         <- deviance(fit_glm_full)           # full-model deviance
-T_obs          <- D0 - Df_mle                      # observed drop
-
-ps_null <- Prior_Setup(
-  formula = weight ~ 1,
-  data    = dat2
-)
-
-
-# B) Bayesian fits via glmbayes
-glmb_null      <- glmb(
-  weight ~ 1,
-  family   = gaussian(),
-  pfamily  = dNormal(ps_null$mu,ps_null$Sigma,dispersion=disp_ML_null),
-  data     = dat2,
-  n        = 5000
-)
-
-glmb_full      <- glmb(
-  weight ~ group ,
-  family   = gaussian(),
-  pfamily  = dNormal(mu_null,V_null,dispersion=disp_ML_null),
-  data     = dat2,
-  n        = 5000
-)
-
-# C) Posterior-draw deviances under null & full
-R0_draws       <- residuals(glmb_null, type = "deviance")   # S × n
-R1_draws       <- residuals(glmb_full, type = "deviance")   # S × n
-
-D0_draws       <- rowSums(R0_draws^2)                       # null deviance draws
-D1_draws       <- rowSums(R1_draws^2)                       # full deviance draws
-
-# D) Compute replicate drops and Bayesian p-value
-T_draws        <- D0_draws - D1_draws
-p_Bayes        <- mean(T_draws >= T_obs)
-
-p_Bayes
-
-#sprintf("Classical F-test p ≈ %.3f;  Bayesian deviance-drop p = %.3f",
-#        pf(q = T_obs, df1 = p, df2 = n - (p+1), lower.tail = FALSE),
-#        p_Bayes)
-```
-
-
-```{r Summary_Comparisons2}
-fit_classical <- lm(weight ~ group, data = dat2)
-summary_classical <- summary(fit_classical)
-
-intercept_classical <- coef(summary_classical)["(Intercept)", "Estimate"]
-intercept_classical_Prtail <- NA_real_
-estimate_classical <- coef(summary_classical)["groupTrt", "Estimate"]
-se_classical       <- coef(summary_classical)["groupTrt", "Std. Error"]
-pr_tail_classical  <- coef(summary_classical)["groupTrt", "Pr(>|t|)"] / 2
-eff_params_classical <- extractAIC(fit_classical)[1]
-AIC_Classical <-AIC(fit_classical)-2
-
-fit_classical_null <- lm(weight ~ 1, data = dat2)
-summary_classical_null <- summary(fit_classical_null)
-
-intercept_classical_null <- coef(summary_classical_null)["(Intercept)", "Estimate"]
-intercept_classical_Prtail_null <- NA_real_
-estimate_classical_null <- NA_real_
-se_classical_null       <- NA_real_
-pr_tail_classical_null  <- NA_real_
-eff_params_classical_null <- extractAIC(fit_classical_null)[1]
-AIC_Classical_null <-AIC(fit_classical_null)-2
-
-sum_default=summary(lmb.D9_default)
-
-intercept_default <- coef(sum_default)["(Intercept)", "Post.Mean"]
-intercept_Prtail_default <- coef(sum_default)["(Intercept)", "Pr(Prior_tail)"]
-
-estimate_default <- sum_default$coefficients["groupTrt", "Post.Mean"]
-sd_default       <- sum_default$coefficients["groupTrt", "Post.Sd"]
-pr_tail_default  <- sum_default$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_default <- sum_default$pD
-DIC_default <- sum_default$DIC
-
-
-sum_null=summary(lmb.D9_null)
-
-intercept_null <- coef(sum_null)["(Intercept)", "Post.Mean"]
-intercept_Prtail_null <- coef(sum_null)["(Intercept)", "Pr(Prior_tail)"]
-estimate_null <- sum_null$coefficients["groupTrt", "Post.Mean"]
-sd_null       <- sum_null$coefficients["groupTrt", "Post.Sd"]
-pr_tail_null  <- sum_null$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_null <- sum_null$pD
-DIC_null <- sum_null$DIC
-
-
-sum_null_midpwt=summary(lmb.D9_null_midpwt)
-
-intercept_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_null_midpwt <- coef(sum_null_midpwt)["(Intercept)", "Pr(Prior_tail)"]
-estimate_null_midpwt <- sum_null_midpwt$coefficients["groupTrt", "Post.Mean"]
-sd_null_midpwt       <- sum_null_midpwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_null_midpwt  <- sum_null_midpwt$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_null_midpwt <- sum_null_midpwt$pD
-DIC_null_midpwt <- sum_null_midpwt$DIC
-
-
-sum_null_hipwt=summary(lmb.D9_null_hipwt)
-
-intercept_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_null_hipwt <- coef(sum_null_hipwt)["(Intercept)", "Pr(Prior_tail)"]
-estimate_null_hipwt <- sum_null_hipwt$coefficients["groupTrt", "Post.Mean"]
-sd_null_hipwt       <- sum_null_hipwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_null_hipwt  <- sum_null_hipwt$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_null_hipwt <- sum_null_hipwt$pD
-DIC_null_hipwt <- sum_null_hipwt$DIC
-
-
-
-sum_full=summary(lmb.D9_full)
-
-intercept_full <- coef(sum_full)["(Intercept)", "Post.Mean"]
-intercept_Prtail_full <- coef(sum_full)["(Intercept)", "Pr(Prior_tail)"]
-estimate_full <- sum_full$coefficients["groupTrt", "Post.Mean"]
-sd_full       <- sum_full$coefficients["groupTrt", "Post.Sd"]
-pr_tail_full  <- sum_full$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_full <- sum_full$pD
-DIC_full <- sum_null$DIC
-
-
-
-sum_full_midpwt=summary(lmb.D9_full_midpwt)
-
-intercept_full_midpwt <- coef(sum_full_midpwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_full_midpwt <- coef(sum_full_midpwt)["(Intercept)", "Pr(Prior_tail)"]
-estimate_full_midpwt <- sum_full_midpwt$coefficients["groupTrt", "Post.Mean"]
-sd_full_midpwt       <- sum_full_midpwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_full_midpwt  <- sum_full_midpwt$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_full_midpwt <- sum_full_midpwt$pD
-DIC_full_midpwt <- sum_null_midpwt$DIC
-
-
-
-sum_full_hipwt=summary(lmb.D9_full_hipwt)
-
-intercept_full_hipwt <- coef(sum_full_hipwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_full_hipwt <- coef(sum_full_hipwt)["(Intercept)", "Pr(Prior_tail)"]
-estimate_full_hipwt <- sum_full_hipwt$coefficients["groupTrt", "Post.Mean"]
-sd_full_hipwt       <- sum_full_hipwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_full_hipwt  <- sum_full_hipwt$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_full_hipwt <- sum_full_hipwt$pD
-DIC_full_hipwt <- sum_full_hipwt$DIC
-
-
-sum_midpwt=summary(lmb.D9_midpwt)
-
-intercept_midpwt <- coef(sum_midpwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_midpwt <- coef(sum_midpwt)["(Intercept)", "Pr(Prior_tail)"]
-estimate_midpwt <- sum_midpwt$coefficients["groupTrt", "Post.Mean"]
-sd_midpwt       <- sum_midpwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_midpwt  <- sum_midpwt$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_midpwt <- sum_midpwt$pD
-DIC_midpwt <- sum_midpwt$DIC
-
-
-sum_hipwt=summary(lmb.D9_hipwt)
-
-intercept_hipwt <- coef(sum_hipwt)["(Intercept)", "Post.Mean"]
-intercept_Prtail_hipwt <- coef(sum_hipwt)["(Intercept)", "Pr(Prior_tail)"]
-estimate_hipwt <- sum_hipwt$coefficients["groupTrt", "Post.Mean"]
-sd_hipwt       <- sum_hipwt$coefficients["groupTrt", "Post.Sd"]
-pr_tail_hipwt  <- sum_hipwt$coefficients["groupTrt", "Pr(Prior_tail)"]
-eff_params_hipwt <- sum_hipwt$pD
-DIC_hipwt <- sum_hipwt$DIC
-
-
-comparison <- data.frame(
-  Model           = c("Classical LM","Classical LM_null", "Null-Model Prior (0.01)","Null-Model Prior midpwt (0.05)","Null-Model Prior hipwt (0.5)","Full-Model Prior (0.01)","Full-Model Prior midpwt (0.05)","Full-Model Prior hipwt (0.5)","Control Prior (pwt=0.01) ","Control Prior midpwt (0.05)","Control Prior hipwt (0.5)"),
-  Post.Intercept_Mean        = c(intercept_classical,intercept_classical_null, intercept_null,intercept_null_midpwt,intercept_null_hipwt, intercept_full,intercept_full_midpwt,intercept_full_hipwt, intercept_default, intercept_midpwt, intercept_hipwt),
-    Post.Intercept_Prtail        = c(intercept_classical_Prtail,intercept_classical_Prtail_null, intercept_Prtail_null,intercept_Prtail_null_midpwt,intercept_Prtail_null_hipwt, intercept_Prtail_full,intercept_Prtail_full_midpwt,intercept_Prtail_full_hipwt, intercept_Prtail_default, intercept_Prtail_midpwt, intercept_Prtail_hipwt),
-
-  Post.Mean        = c(estimate_classical,estimate_classical_null, estimate_null, estimate_null_midpwt,estimate_null_hipwt, estimate_full, estimate_full_midpwt, estimate_full_hipwt, estimate_default, estimate_midpwt, estimate_hipwt),
-  Post.SD        = c(se_classical,se_classical_null, sd_null, sd_null_midpwt,sd_null_hipwt, sd_full, sd_full_midpwt, sd_full_hipwt, sd_default, sd_midpwt, sd_hipwt),
-  Pr_Tail         = c(pr_tail_classical,pr_tail_classical_null, pr_tail_null, pr_tail_null_midpwt,pr_tail_null_hipwt, pr_tail_full, pr_tail_full_midpwt, pr_tail_full_hipwt, pr_tail_default, pr_tail_midpwt, pr_tail_hipwt),
-  Eff.Params      = c(eff_params_classical,eff_params_classical_null, eff_params_null, eff_params_null_midpwt,eff_params_null_hipwt, eff_params_full, eff_params_full_midpwt, eff_params_full_hipwt, eff_params_default, eff_params_midpwt, eff_params_hipwt),
-  DIC      = c(AIC_Classical,AIC_Classical_null, DIC_null, DIC_null_midpwt,DIC_null_hipwt, DIC_full, DIC_full_midpwt, DIC_full_hipwt,DIC_default, DIC_midpwt, DIC_hipwt)
-  )
-
-
-knitr::kable(
-  comparison, 
-  digits  = 4,     # rounds all numeric columns to 4 decimals
-  caption = "Comparison of Priors"
-)
-```
-
-```{r Validation}
-
-fit_classical <- lm(weight ~ group, data = dat2)
-summary_classical <- summary(fit_classical)
-#summary_classical
-sum_null_hipwt
-```
-
-
-```{r test2}
-
-directional_half_space_tail(lmb.D9_null)
-```
-
-```{r QC}
-directional_half_space_tail
-```
-
-#### Key Patterns
-
-🔸 Posterior Means
-- Changing intercept_source alone (Default vs Null) shifts the intercept but leaves the slope nearly unchanged (–0.3486 → –0.3483).
-- Centering effects on the MLE (Full-Model Prior) pulls the slope toward the classical estimate (–0.3816 vs –0.3710).
-- Decreasing pwt (Low-pwt) gives more weight to the data, nudging the slope closer to the MLE.
-- Increasing pwt (High-pwt) shrinks the slope toward zero, halving its magnitude.
-
-🔸 Tail Probabilities Pr(β < 0)
-- Weak or default priors (Default, Null, Low) yield Pr(β < 0) ≈ 0.11–0.13, echoing the classical one-sided p-value.
-- Full-Model centering produces a symmetric posterior around the MLE, yielding Pr(β < 0) ≈ 0.48.
-- A strong skeptical prior (High-pwt) reduces certainty, lowering Pr(β < 0) to 0.193.
-
-🔸 Effective Number of Parameters
-- Low-pwt behaves like an unregularized fit: Eff.Params ≈ 1.00.
-- Default/Null priors (pwt = 0.05) modestly regularize: Eff.Params ≈ 0.88–0.89.
-- Full-Model Prior (centered at MLE) avoids shrinkage: Eff.Params ≈ 0.96.
-- High-pwt (strong shrinkage) reduces flexibility: Eff.Params ≈ 0.49.
-
-🔸 Posterior Standard Deviations
-- As pwt ↓, Post.SD ↑ toward classical SEs (Low-pwt: 0.3165 vs SE = 0.311).
-- Default/Null priors yield modest SD reduction (0.2953–0.2992).
-- Full-Model centering slightly inflates SD (0.3042).
-- High-pwt sharply reduces SD (0.2223), reflecting equal prior–data precision
-
-In practice, selecting a prior involves balancing skepticism (via pwt) with your anchoring assumptions (via intercept_source and effects_source). This comparison illustrates how those choices shape posterior estimates, uncertainty, and model complexity—offering a transparent framework for prior sensitivity analysis in Bayesian GLMs.
- 
-
-
-
-# References
+# 6. References 
