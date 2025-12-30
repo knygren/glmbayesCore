@@ -506,7 +506,7 @@ Rcpp::List f2_f3_opencl(
     "\n" +nmath_source   
   + "\n" +   ksrc;
   
-  Rcpp::Rcout << "Entering f2_f3_kernel runner \n";
+  // Rcpp::Rcout << "Entering f2_f3_kernel runner \n";
   
   
   f2_f3_kernel_runner(
@@ -521,7 +521,7 @@ Rcpp::List f2_f3_opencl(
     progbar
   );
   
-  Rcpp::Rcout << "Exiting f2_f3_kernel runner \n";
+  // Rcpp::Rcout << "Exiting f2_f3_kernel runner \n";
   
   
   // rebuild xb, qf exactly as before
