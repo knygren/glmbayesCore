@@ -31,54 +31,106 @@ vignette:
   encoding: UTF-8
 ---
 
-**Chapter 00: Introduction**
+# Chapter 00: Introduction
 
-This vignette introduces glmbayes, a package for fitting Bayesian generalized linear models via efficient envelope-based sampling. Over the next thirteen chapters you’ll progress from installing the package and running your first Bayesian GLM, through custom prior construction and model diagnostics, to specialized extensions such as multinomial outcomes and GPU acceleration. Each chapter builds on the last, guiding you from basic workflows to advanced techniques for large-scale and complex models.
+This vignette introduces **glmbayes**, a package for fitting Bayesian generalized linear models via efficient envelope-based sampling. The vignette series is organized into five main parts and a set of technical appendices. You will move from basic installation and first models, through linear and generalized linear models, to advanced prior structures, dispersion modeling, and GPU-accelerated computation. The appendices document the underlying simulation methods and implementation details.
 
-**Overview of Chapters**
+## Part 1: An Introduction
 
-- **Chapter 1: Getting Started with glmbayes**  
-  Learn how to install and load glmbayes, set up your first Bayesian GLM using `glmb()`, and interpret posterior summaries (means, credible intervals) in an interface that mirrors R’s `glm()`.
+These chapters provide a high-level overview of the package, its design philosophy, and the basic workflow for fitting Bayesian linear and generalized linear models.
 
-- **Chapter 2: Estimating Bayesian Linear Models**  
-  Focus on the Gaussian identity-link case with `lmb()`. Draw directly from the multivariate normal posterior, compare Bayesian estimates to classical least squares, and explore shrinkage benefits.
+- **Chapter 00 — Introduction**  
+  Overview of the vignette structure, major modeling capabilities, and how the different parts fit together.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-00.html>
 
-- **Chapter 3: Tailoring Priors – Leveraging the Prior_Setup Function**  
-  Construct multivariate normal priors via `Prior_Setup()`. Choose prior mean vectors and covariance matrices, then observe how these hyperparameters shape posterior inference.
+- **Chapter 01 — Getting Started with glmbayes**  
+  Install and load `glmbayes`, fit your first Bayesian GLM using `glmb()`, and interpret posterior summaries (means, credible intervals) via an interface that mirrors base `glm()`.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-01.html>
 
-- **Chapter 4: Reviewing Model Predictions, Deviance Residuals and Model** Statistics  
-  Generate fitted values and posterior predictive draws, compute deviance residuals, and summarize model-fit statistics such as the Deviance Information Criterion (DIC).
+## Part 2: Estimating Bayesian Linear Models
 
-- **Chapter 5: Foundations of GLMs – Families, Links, and Log-Concave Likelihoods**  
-  Delve into theoretical underpinnings: review exponential-family GLMs, link functions, and the log-concave likelihood property that enables envelope-based rejection sampling.
+This part focuses on Bayesian linear regression under the Gaussian family and identity link. It establishes the foundational ideas in a setting where exact multivariate normal posteriors are available.
 
-- **Chapter 6: Estimating Bayesian Generalized Linear Models**  
-  Generalize beyond Gaussian models: fit Binomial, Poisson, and Gamma GLMs with `glmb()`, learn how the envelope engine adapts to each family, and compare posterior summaries across links.
+- **Chapter 02 — Estimating Bayesian Linear Models**  
+  Work with the Gaussian identity-link case using `lmb()`. Draw from the multivariate normal posterior, compare Bayesian estimates to classical least squares, and explore shrinkage behavior.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-02.html>
 
-- **Chapter 7: Models for the Binomial Family**  
-  Walk through logistic and probit regressions. Handle binomial outcomes, specify informative priors, and interpret posterior distributions for classification tasks.
+- **Chapter 03 — Tailoring Priors – Leveraging the Prior_Setup Function**  
+  Construct multivariate normal priors via `Prior_Setup()`. Specify prior mean vectors and covariance matrices, and study how these hyperparameters influence posterior inference and regularization.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-03.html>
 
-- **Chapter 8: Models for the Poisson Family**  
-  Fit count models with a log link. Cover overdispersion diagnostics, zero-inflation checks, and the impact of prior choice on rate parameters.
+- **Chapter 04 — Reviewing Model Predictions, Deviance Residuals and Model Statistics**  
+  Generate fitted values and posterior predictive draws, compute deviance residuals, and review model-fit summaries such as deviance-based measures and related diagnostics.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-04.html>
 
-- **Chapter 9: Models for the Gamma Family**  
-  Address positive continuous outcomes. Jointly sample regression coefficients and dispersion parameters via a two-stage sampler, and interpret overdispersion in applications like insurance claims or reaction times.
+## Part 3: Generalized Linear Models
 
-- **Chapter 10: Informative Priors: Centering and Differentiated Prior Weights**  
-  Build advanced priors: center on domain-specific values, assign variable-specific scales, and see how differentiated weights influence regularization.
+This part presents Bayesian GLMs across the major likelihood families, including Binomial, quasi-Binomial, Poisson, quasi-Poisson, and Gamma models. It emphasizes link functions, log-concavity, and practical posterior interpretation.
 
-- **Chapter 11: Estimating Models with Unknown Dispersion Parameters**  
-  Extend envelope sampling to families with extra dispersion (e.g., Gamma, quasi-families). Use `rglmbdisp()` for joint posterior draws and quantify overdispersion uncertainty.
+- **Chapter 05 — Foundations of GLMs – Families, Links, and Log-Concave Likelihoods**  
+  Review exponential-family GLMs, canonical and non-canonical link functions, and the log-concave likelihood property that enables envelope-based accept–reject sampling.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-05.html>
 
-- **Chapter 12: Large Models: GPU Acceleration using OpenCL**  
-  Scale Bayesian GLMs to high-dimensional data by offloading gradient and envelope calculations to the GPU. Set up OpenCL kernels, tune workgroup sizes, and benchmark performance gains.
+- **Chapter 06 — Estimating Bayesian Generalized Linear Models**  
+  Move beyond Gaussian models and fit Binomial, Poisson, and Gamma GLMs with `glmb()`. See how the envelope engine adapts to each family and compare posterior summaries under different links.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-06.html>
 
-- **Chapter 13: Models for Multinomial Responses**  
-  Fit multinomial logistic and probit models for multi-category outcomes. Specify reference levels, set category-specific priors, interpret coefficient matrices, and extract predictive probabilities. Illustrate with choice and survey data, discussing identifiability constraints.
+- **Chapter 07 — Models for the Binomial Family**  
+  Work with logistic and probit regressions. Handle binomial outcomes, specify informative priors, and interpret posterior distributions for classification and proportion-type data.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-07.html>
 
-- **Chapter A1: Overview of Estimation Procedures**
-  As a technical appendix, this chapter lays out the mathematical foundations behind each sampler. You’ll review the derivation of the full posterior, understand how the enveloping functions are constructed, and see the theoretical acceptance-rate bounds that guarantee algorithmic efficiency.
+- **Chapter 08 — Models for the Poisson Family**  
+  Fit count models with a log link. Explore overdispersion diagnostics, zero-inflation checks, and the impact of prior choice on rate parameters.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-08.html>
 
+- **Chapter 09 — Models for the Gamma Family**  
+  Model positive continuous outcomes using Gamma regression. Combine regression and dispersion modeling, and interpret overdispersion in applications such as insurance claims or reaction-time data.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-09.html>
 
-- **Chapter A2: Simulation_Methods – Likelihood Subgradient Densities**
-  This appendix dives into the likelihood-subgradient approach for non-Gaussian families. It details how subgradients define tangent envelopes, walks through envelope construction step by step, and explains why this method yields valid acceptance-rejection sampling for log-concave likelihoods.
+## Part 4: Advanced Topics
+
+These chapters explore more complex modeling scenarios and computational strategies, including informative priors, unknown dispersion parameters, and GPU-accelerated envelope construction.
+
+- **Chapter 10 — Informative Priors: Centering and Priors with Differentiated Weights**  
+  Construct more flexible priors by centering on domain-specific values and assigning variable-specific scales. Examine how differentiated prior weights influence shrinkage and interpretability.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-10.html>
+
+- **Chapter 11 — Estimating Models with Unknown Dispersion Parameters**  
+  Extend envelope-based methods to models with unknown dispersion (e.g., Gamma and quasi-families). Use dedicated dispersion samplers to obtain joint posterior draws and quantify overdispersion uncertainty.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-11.html>
+
+- **Chapter 12 — Large Models: GPU Acceleration using OpenCL**  
+  Scale Bayesian GLMs to higher-dimensional settings by offloading key computations to the GPU. Configure OpenCL, tune envelope construction for large models, and benchmark performance gains.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-12.html>
+
+## Part 5: Simulation Methods and Technical Implementation
+
+The appendices document the mathematical and algorithmic foundations of the samplers used in **glmbayes**, including likelihood subgradient methods, envelope construction, and accept–reject schemes for both regression and dispersion parameters.
+
+- **Chapter A1 — Overview of Estimation Procedures**  
+  Present the mathematical foundations behind each sampler, including derivations of the posterior, the structure of enveloping functions, and bounds on expected draws per acceptance.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A1.html>
+
+- **Chapter A2 — Simulation Methods – Likelihood Subgradient Densities**  
+  Detail the likelihood-subgradient approach for non-Gaussian families. Show how subgradients define tangent envelopes and explain why this yields valid accept–reject sampling for log-concave likelihoods.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A2.html>
+
+- **Chapter A3 — Methods Available in glmbayes**  
+  Summarize the key functions, samplers, and diagnostics implemented in the package, with a focus on how they relate to the underlying estimation framework.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A3.html>
+
+- **Chapter A5 — Technical Report for Likelihood Subgradient-Based Samplers**  
+  Provide a more formal technical report on the construction and properties of likelihood subgradient-based samplers, including assumptions, convergence properties, and implementation notes.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A5.html>
+
+- **Chapter A6 — Accept–Reject Sampling for Dispersion in Gamma Regression**  
+  Describe the specialized accept–reject scheme for dispersion parameters in Gamma regression, including envelope design, proposal choices, and efficiency considerations.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A6.html>
+
+- **Chapter A7 — Accept–Reject Sampling for Gaussian Regression Models with Independent Normal–Gamma Priors**  
+  Detail the accept–reject-based approach for Gaussian regression with independent normal–gamma priors, including the structure of the joint prior, conditional distributions, and sampler efficiency.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A7.html>
+
+---
+
+Together, these chapters and appendices form a coherent progression: from basic usage and model specification, through applied Bayesian GLMs, to the mathematical and computational details that underlie the envelope-based samplers and GPU-accelerated implementations in **glmbayes**.
