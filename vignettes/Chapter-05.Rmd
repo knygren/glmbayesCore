@@ -564,6 +564,8 @@ f(y \mid \theta, \phi)
 
 ---
 
+## 6. References
+
 ## A.1 Gaussian Family
 
 | Family | Link | \( g(\mu)=\eta \) | \( \mu=g^{-1}(\eta) \) | \( \theta \) | \( b(\theta) \) | \( V(\mu) \) |
@@ -654,32 +656,3 @@ These are not true exponential families, but `glm()` allows them.
 | quasipoisson | same as poisson | \( \mu \) up to scale |
 
 ---
-
-# End of Appendix A
-
-
-
-
-
-
-
-# 3. Supported Families and Link Functions in glmb
-- Table of currently implemented families (e.g., Gaussian, Poisson, Gamma, Binomial)
-- Supported link functions for each family
-- Notes on compatibility with Prior_Setup()
-
-# 4. Specifying Families and Links in Practice
-- Examples using glmb() and Prior_Setup()
-model <- glmb(y ~ x, family = gaussian(link = "identity"), prior = Prior_Setup(...))
-- Commentary on how link choice affects interpretation and estimation
-
-# 5. Log-Concavity and Estimation Procedures
-- Why log-concave likelihoods simplify envelope construction
-- Implications for Gibbs sampling and subgradient methods
-- When non-log-concave models require fallback strategies
-
-# 6. Pedagogical Notes and Textbook Mappings
-- Cross-reference to canonical GLM theory (e.g., McCullagh & Nelder, Gelman et al.)
-- Suggestions for further reading or simulation exercises
-
-
