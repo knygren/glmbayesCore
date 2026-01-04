@@ -381,26 +381,32 @@ Together, they measure the “gap” between the proposal approximation and the 
 | Term | Definition | Description |
 |------|------------|-------------|
 | $\text{test1}_{j}(\beta,d)$ | $$\begin{aligned}
-& LL(\beta,d) - \Big( LL(\bar c^{-1}(\bar c_j,d),d) - \bar c_j^{\top}(\beta - \bar c^{-1}(\bar c_j,d)) \Big) \\[6pt]
+& LL(\beta,d) - \\[4pt]
+& \Big( LL(\bar c^{-1}(\bar c_j,d),d) - \bar c_j^{\top}(\beta - \bar c^{-1}(\bar c_j,d)) \Big) \\[6pt]
 &= \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \beta)^2 - \tfrac{1}{2}\beta^\top P \beta \Bigg] \\[6pt]
-&\quad - \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \tfrac{1}{2}\big(\bar c^{-1}(\bar c_j,d)\big)^\top P\,\bar c^{-1}(\bar c_j,d) - \bar c_j^{\top}\big(\beta - \bar c^{-1}(\bar c_j,d)\big) \Bigg]
+&\quad - \Bigg[ - \tfrac{1}{2d}\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2  \\[4pt]
+& -\tfrac{1}{2}\big(\bar c^{-1}(\bar c_j,d)\big)^\top P\,\bar c^{-1}(\bar c_j,d) \\[4pt]
+& - \bar c_j^{\top}\big(\beta - \bar c^{-1}(\bar c_j,d)\big) \Bigg]
 \end{aligned}$$ | Difference between the log‑likelihood and its linearization at the tangency point. By concavity, this term is always $\leq 0$. |
-| $\text{RSS}_{j}(d)$ | $\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2$ | Residual Sum of Squares for face j at dispersion $d$. |
-| $\text{RSS\_Min}$ | $$\begin{aligned}
-\min_{j}\;\min\limits_{d \in [d_{\mathrm{low}},\, d_{\mathrm{upp}}]} \;\sum_{i=1}^n w_i \,\Big(y_i - x_i^\top \bar c^{-1}(\bar c_j,d)\Big)^2
+| $\text{RSS}_{j}(d)$ | $\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2$ | Residual Sum of Squares for face j at dispersion $d$ . |
+| $\mathrm{RSS\_Min}$ | $$\begin{aligned}
+& \min_{j}\;\min\limits_{d \in [d_{\mathrm{low}},\, d_{\mathrm{upp}}]} \\[4pt]
+& \sum_{i=1}^n w_i \,\Big(y_i - x_i^\top \bar c^{-1}(\bar c_j,d)\Big)^2
 \end{aligned}$$ | Global minimum residual sum of squares across all faces $j$ and dispersion values $d$. |
 | $\text{UB2}_{j}(d)$ | $\tfrac{1}{2d}\Big(\sum_{i=1}^n w_i\,(y_i - x_i^\top \bar c^{-1}(\bar c_j,d))^2 - \mathrm{RSS}_{Min}\Big)$ | Bound relative to the ML residual sum of squares. Always $\geq 0$. |
-| $\text{UB2\_Min}_{j}$ | $$\begin{aligned}
+| $\mathrm{UB2\_Min}_{j}$ | $$\begin{aligned} &
 \min\limits_{d \in [d_{\mathrm{low}},\, d_{\mathrm{upp}}]} \;\text{UB2}_{j}(d)
 \end{aligned}$$ | Minimum UB2 value across the dispersion range. |
-| $\text{UB2A}_{j}(d)$ | $\text{UB2}_{j}(d) - \text{UB2\_Min}_{j}$ | Non‑negative UB2 adjustment. |
+| $\text{UB2A}_{j}(d)$ | $\text{UB2}_{j}(d) - \mathrm{UB2\_Min}_{j}$ | Non‑negative UB2 adjustment. |
 | $\text{UB3A}_j(d)$ | $$\begin{aligned}
 &\mathrm{lg\_prob\_factor\_j} + \text{lmc}_1 + \text{lmc}_2\, d \\
-&\quad - \Big(-\tfrac{1}{2}(\bar c^{-1}(\bar c_j,d))^\top P\,\bar c^{-1}(\bar c_j,d) + \bar c_j^\top \bar c^{-1}(\bar c_j,d)\Big)
+&- \Big(-\tfrac{1}{2}(\bar c^{-1}(\bar c_j,d))^\top P\,\bar c^{-1}(\bar c_j,d) \\[4pt]
+& + \bar c_j^\top \bar c^{-1}(\bar c_j,d)\Big)
 \end{aligned}$$ | Bound from the quadratic–linear face energy. Constructed so the global line dominates the exact quadratic–linear term. |
 | $\text{UB3B}(d)$ | $$\begin{aligned}
 &(\mathrm{max\_upp} - \mathrm{max\_LL\_log\_disp}) \\
-&\quad + (\mathrm{lm\_log1} + \mathrm{lm\_log2} \cdot \log d) - (\text{lmc}_1 + \text{lmc}_2 \cdot d)
+&+ (\mathrm{lm\_log1} + \mathrm{lm\_log2} \cdot \log d) \\[4pt]
+& - (\text{lmc}_1 + \text{lmc}_2 \cdot d)
 \end{aligned}$$ | Bound from the dispersion log–tilt construction. Ensures the global log–linear approximation dominates the true log‑dispersion curve. |
 
 
