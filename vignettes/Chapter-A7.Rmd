@@ -220,7 +220,60 @@ Before we can state the main proposition that formalizes this decomposition, we 
 
 By laying out these constants first, we ensure that every symbol used in the proposition and its supporting claims is defined explicitly and consistently. The table below serves as a reference point for all subsequent derivations.
 
-### 4.1 Definitions of Constants (new version)
+
+
+| Constant | Definition | Description |
+|----------|------------|-------------|
+| **Posterior Gamma parameters** | $\text{shape}_2 = \text{Shape} + n/2$ <br> $\text{rate}_2 = \text{Rate} + \mathrm{RSS}_{\text{post}}/2$ | Posterior shape and rate parameters. |
+| **Envelope dispersion anchor** | $d^{*}_{1} = \dfrac{\text{rate}_2}{\text{shape}_2 - 1}$ | Dispersion used for baseline envelope. |
+| **Dispersion bounds** | $\text{low} = \dfrac{1}{qgamma(\mathrm{max\_disp\_perc},\,\text{shape}_2,\,\text{rate}_2)}$ <br> $\text{upp} = \dfrac{1}{qgamma(1-\mathrm{max\_disp\_perc},\,\text{shape}_2,\,\text{rate}_2)}$ | Lower and upper bounds for dispersion. |
+| **Tangency offset vector** | $B(d) = P\mu + \dfrac{1}{d}\,X^\top W(\alpha - y)$ | Offset vector used in the inverse map $c^{-1}(\bar c, d)$. |
+| **Tangency slope components** | $\begin{aligned} Q &= X^\top X \\ A(d) &= Q + dP \\ r &= X^\top(y-\alpha) \\ V(d) &= \bar c_j - P\,A(d)^{-1}(r + d\,\bar c_j) \end{aligned}$ | Components for quad–linear slope term. |
+| **Tangency inverse map** | $c^{-1}(\bar c, d) = A(d)^{-1}(\bar c - B(d))$ | Maps gradient vector $\bar c$ and dispersion $d$ to tangency point $\theta$. |
+| **Tangency map** | $\theta(d) = c^{-1}(\bar c_j, d)$ | Tangency point in coefficient space at dispersion $d$. |
+| **Baseline face constant** | $\begin{aligned} & \mathrm{thetabarconst}[j] = \\[4pt] 
+ &  -\tfrac{1}{2}\,\theta(d^{*}_{1})^\top P\,\theta(d^{*}_{1})  \\[4pt]
+ & \quad + \bar c_j^\top\,\theta(d^{*}_{1}) \end{aligned}$ | Baseline constant for face $j$ at $d^{*}_{1}$. |
+| **Quad–linear dispersion slope** | $\begin{aligned} & \mathrm{New\_LL\_Slope}[j] = \\[4pt]
+&  V(d^{*}_{1})^\top A(d^{*}_{1})^{-1}\bar c_j \\[4pt] 
+&  - V(d^{*}_{1})^\top A(d^{*}_{1})^{-1}P\,A(d^{*}_{1})^{-1}(r + d^{*}_{1}\bar c_j) \end{aligned}$ | Slope of quad–linear face energy w.r.t. dispersion. |
+| **Mean quad–linear slope** | $\mathrm{m\_New\_LL\_Slope} = \mathrm{mean}\big(\mathrm{New\_LL\_Slope}[i]\big)$ | Average slope across faces. |
+| **Extrapolated face constants** | $\begin{aligned} & \mathrm{thetabarconst\_upp\_apprx}[j] = \\[4pt] 
+&  \mathrm{thetabarconst}[j] \\[4pt]
+& + (\text{upp}-d^{*}_{1})\,\mathrm{New\_LL\_Slope}[j] \\[4pt] 
+& \mathrm{thetabarconst\_low\_apprx}[j] = \\[4pt]
+& \mathrm{thetabarconst}[j] \\[4pt]
+& + (\text{low}-d^{*}_{1})\,\mathrm{New\_LL\_Slope}[j] \end{aligned}$ | Linear extrapolations to dispersion bounds. |
+| **Endpoint maxima** | $\begin{aligned} & \mathrm{max\_upp} \\[4pt]
+& = \max_j\!\Big(\mathrm{thetabarconst}[j] \\[4pt] 
+& + (\text{upp}-d^{*}_{1})\,\mathrm{New\_LL\_Slope}[j]\Big) \\[4pt] & \mathrm{max\_low} = \\[4pt] 
+& \max_j\!\Big(\mathrm{thetabarconst}[j] \\[4pt]
+& + (\text{low}-d^{*}_{1})\,\mathrm{New\_LL\_Slope}[j]\Big) \end{aligned}$ | Maxima at upper and lower dispersion bounds. |
+| **Mean lower-bound maximum** | $\begin{aligned}
+&\mathrm{max\_low\_mean} \\[4pt]
+&= \mathrm{max\_upp} \\[4pt]
+&\quad - \mathrm{m\_New\_LL\_Slope}\,(\text{upp}-\text{low})
+\end{aligned}$ | Linearized lower-bound maximum. |
+| **Global line parameters** | $\text{lmc}_2 = \dfrac{\mathrm{max\_upp} - \mathrm{max\_low\_mean}}{\text{upp}-\text{low}}$ <br> $\text{lmc}_1 = \mathrm{max\_low\_mean} - \text{lmc}_2\,\text{low}$ | Slope and intercept of global affine bound. |
+| **Log–linear anchor** | $d^{*}_{2} = \dfrac{\text{upp}-\text{low}}{\log(\text{upp}/\text{low})}$ | Anchor point for log–tilt. |
+| **Log–tilt coefficients** | $\begin{aligned} & \mathrm{lm\_log2} = \\[4pt]
+& \text{lmc}_2\,d^{*}_{2} \\[4pt]
+& \mathrm{lm\_log1} = \\[4pt]
+& \text{lmc}_1 + \text{lmc}_2 d^{*}_{2} - \text{lmc}_2\log(d^{*}_{2}) \\[4pt]
+& \mathrm{max\_LL\_log\_disp} =\\[4pt]
+& \mathrm{lm\_log1} + \mathrm{lm\_log2}\log(\text{upp}) \end{aligned}$ | Coefficients for log–tilt bounding function. |
+| **Face-specific RSS** | $\mathrm{RSS}_j(d) = \sum_{i=1}^n w_i\,(y_i - x_i^\top c^{-1}(\bar c_j,d))^2$ | Residual sum of squares for face $j$ at dispersion $d$. |
+| **Global minimum RSS** | $\mathrm{RSS\_Min} = \min_{j}\;\min_{d\in[\text{low},\,\text{upp}]}\;\mathrm{RSS}_j(d)$ | Global minimum RSS across all faces and dispersion values. |
+| **UB2 term** | $\mathrm{UB2}_j(d) = \dfrac{1}{2d}\big(\mathrm{RSS}_j(d) - \mathrm{RSS\_Min}\big)$ | Nonnegative UB2 bound for face $j$. |
+| **Per-face UB2 minimum** | $\mathrm{UB2\_Min}_j = \min_{d\in[\text{low},\,\text{upp}]}\mathrm{UB2}_j(d)$ | Minimum UB2 value for face $j$. |
+| **Per-face shift** | $\begin{aligned} & \mathrm{lg\_prob\_factor}_j =\\[4pt]
+& \max\Big\{ \mathrm{thetabarconst\_upp\_apprx}[j] - \mathrm{max\_upp}, \\[-2pt] 
+& \qquad\mathrm{thetabarconst\_low\_apprx}[j] - \mathrm{max\_low} \Big\} \\[4pt] &\quad - \mathrm{UB2\_Min}_j \end{aligned}$ | Shift applied to mixture weights; absorbs $\mathrm{UB2\_Min}_j$. |
+| **Gamma proposal parameters** | $\text{shape}_3 = \text{shape}_2 - \mathrm{lm\_log2}$ <br> $\text{rate}_3 = \text{Rate} + \mathrm{RSS\_Min}/2$ | Adjusted Gamma proposal parameters. |
+
+
+
+### 4.1 Definitions of Constants (version2)
 
 | Constant | Definition | Description |
 |----------|------------|-------------|
