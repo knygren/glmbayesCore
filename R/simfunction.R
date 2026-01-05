@@ -1249,6 +1249,7 @@ rNormal_Gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussi
     stop("incompatible dimensions")
   if(!isSymmetric(P))stop("matrix P must be symmetric")
   if(length(wt)==1) wt=rep(wt,nobs)
+  if(any(wt < 0)) stop("weights must be non-negative")
   nobs2=NROW(wt)
   nobs3=NROW(x)
   nobs4=NROW(offset2)
@@ -1280,11 +1281,15 @@ rNormal_Gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussi
   if(m==1){  out2=matrix(0,nrow=n,ncol=1)  }
   if(m>1){  out2<-vector("list", n)}   # Code if we had multiple columns of data (should perhaps have m items)
   
+  # Effective sample size for Gaussian likelihood
+  sum_wt <- sum(wt)  # wt has already been expanded to length nobs
+  
   a_prior=shape     ## Should be relationship to shape in Wishart  
   b_prior=rate  ## Should be relationship to scale in Wishart (could also be V/2)
   
-  a_post=a_prior+(nobs/2) # Posterior Shape parameter
-  b_post=b_prior+0.5*S # Posterior rate  (S is scaled differently than V?)
+  # Posterior Gamma parameters for precision tau = 1/phi
+  a_post <- a_prior + sum_wt / 2      # instead of nobs / 2
+  b_post <- b_prior + 0.5 * S         # S is weighted RSS from rNormal_reg.wfit
   
   out1<-matrix(0,nrow=n,ncol=k)
   dispersion=1/rgamma(n=n,shape=a_post,rate=b_post)
