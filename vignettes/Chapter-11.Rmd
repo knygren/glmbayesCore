@@ -817,7 +817,7 @@ for(i in 1:1000){
 
   ## --- SCALE dispersion for the next beta update ---
   ## Convert quasi  (from out2) to MLE for consistency
-  dispersion2 <- out2$dispersion * ((m - p)/m)
+  dispersion2 <- out2$dispersion ##* ((m - p)/m)
 
 }
 
@@ -845,9 +845,9 @@ suppressWarnings(
                          beta = out1$coefficients[1,]),
         weights = Claims
       )
-      dispersion2 <- out2$dispersion * ((m - p) / m)
+      dispersion2 <- out2$dispersion ##* ((m - p) / m)
       beta_out[i, 1:8] <- out1$coefficients[1, 1:8]
-      disp_out[i] <- out2$dispersion * ((m - p) / m)
+      disp_out[i] <- out2$dispersion ##* ((m - p) / m)
     }
   )
 )

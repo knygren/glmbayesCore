@@ -29,6 +29,726 @@ knitr::opts_chunk$set(
 )
 \`\`\`
 
+
+
+## Posterior Sampling for Dispersion in Gamma GLMs
+
+This vignette explains the derivation of the posterior for the dispersion parameter
+in a Gamma GLM with log link, and the construction of the surrogate function
+`testfunc` used for rejection sampling in `rGamma_reg`.
+
+We consider a Gamma GLM with log link, where the mean is
+
+\[
+\mu_i = \exp(x_i^\top \beta + \alpha_i),
+\]
+
+and the dispersion parameter is \(\phi > 0\).  
+It is convenient to work with the **precision**
+
+\[
+v = \frac{1}{\phi}.
+\]
+
+Throughout this chapter, we treat the regression coefficients \(\beta\) and offsets \(\alpha_i\) as fixed and known.
+
+### 1. Likelihood
+
+We use the standard Gamma parameterization
+
+\[
+Y_i \mid v \sim \mathrm{Gamma}(\text{shape}=v,\ \text{rate}=v/\mu_i),
+\]
+
+so that
+
+\[
+\mathbb{E}(Y_i)=\mu_i,
+\qquad
+\mathrm{Var}(Y_i)=\frac{\mu_i^2}{v}.
+\]
+
+The log‑likelihood contribution of observation \(i\) is
+
+\[
+\ell_i(v)
+=
+v\log v
+-
+v\log \mu_i
++
+(v-1)\log y_i
+-
+\log\Gamma(v)
+-
+\frac{v}{\mu_i} y_i.
+\]
+
+With weights \(w_i\), the total log‑likelihood is
+
+\[
+\ell(v)
+=
+\sum_{i=1}^n
+w_i
+\left[
+v\log v
+-
+v\log \mu_i
++
+(v-1)\log y_i
+-
+\log\Gamma(v)
+-
+\frac{v}{\mu_i} y_i
+\right].
+\]
+
+### 2. Prior
+
+We place a Gamma prior on the precision:
+
+\[
+v \sim \mathrm{Gamma}(a_0, b_0),
+\qquad
+\log p(v) = (a_0 - 1)\log v - b_0 v.
+\]
+
+### 3. Posterior Log‑Density (Old)
+
+The unnormalized posterior log‑density is
+
+\[
+f(v)
+=
+\ell(v)
++
+(a_0 - 1)\log v
+-
+b_0 v.
+\]
+
+To construct an envelope for rejection sampling, we rewrite the posterior as
+
+\[
+f(v)
+=
+(\text{shape}_2 - 1)\log v
+-
+\text{rate}_1\, v
++
+\text{testfunc}(v)
++
+\text{const},
+\]
+
+where
+
+\[
+\text{shape}_2 = a_0 + \frac{1}{2}\sum_i w_i,
+\]
+
+\[
+\text{rate}_1
+=
+b_0
++
+\sum_i w_i\left(
+\frac{y_i}{\mu_i}
+-
+\log\frac{y_i}{\mu_i}
+-
+1
+\right),
+\]
+
+and the concave remainder is
+
+\[
+\text{testfunc}(v)
+=
+-\sum_i w_i
+\left[
+\log\Gamma(v)
++
+\frac{1}{2}\log v
++
+v
+-
+v\log v
+\right].
+\]
+
+This decomposition isolates the part of the posterior that is not Gamma‑shaped.
+
+### 4. Tangent‑Envelope Construction
+
+Let
+
+\[
+v^{*} = \frac{\text{shape}_2}{\text{rate}_1}
+\]
+
+be the mode of the Gamma surrogate.  
+Define
+
+\[
+g^{*} = \left.\frac{d}{dv}\text{testfunc}(v)\right|_{v=v^{*}},
+\qquad
+\text{rate}_2 = \text{rate}_1 - g^{*}.
+\]
+
+
+From the definitions, we can write \(\text{testfunc}(v)\) explicitly as the log‑likelihood plus two extra terms.
+
+The weighted log‑likelihood is
+\[
+\ell(v)
+=
+\sum_{i=1}^n
+w_i
+\left[
+v\log v
+-
+v\log \mu_i
++
+(v-1)\log y_i
+-
+\log\Gamma(v)
+-
+\frac{v}{\mu_i} y_i
+\right].
+\]
+
+The remainder term is
+\[
+\text{testfunc}(v)
+=
+\sum_{i=1}^n w_i
+\left[
+v\log v
+-
+(v-1)*1
+- \log\Gamma(v)
+- \frac{1}{2}\log v
+-1
+\right].
+\]
+
+
+
+The remainder term is
+\[
+\text{testfunc}(v)
+=
+- \sum_{i=1}^n w_i
+*(\frac{1}{2}\log v)
++
+\sum_{i=1}^n w_i
+\left[
+v\log v
+-
+(v-1)*1
+- \log\Gamma(v)
+-1
+\right].
+\]
+
+
+
+Then
+\[
+\text{testfunc}(v)
+=
+\ell(v)
++
+\text{term}_1(v)
++
+\text{term}_2(v),
+\]
+where
+\[
+\text{term}_1(v)
+=
+\sum_{i=1}^n w_i\Big[-\tfrac{1}{2}\log v - v\Big]
+=
+-\Big(\tfrac{1}{2}\sum_{i=1}^n w_i\Big)\log v
+-
+\Big(\sum_{i=1}^n w_i\Big)v,
+\]
+and
+\[
+\text{term}_2(v)
+=
+\sum_{i=1}^n w_i
+\left[
+v\log \mu_i
+-
+(v-1)\log y_i
++
+\frac{v}{\mu_i} y_i
+\right].
+\]
+
+Equivalently, for each \(v>0\),
+\[
+\boxed{
+\text{testfunc}(v)
+=
+\ell(v)
+-
+\Big(\tfrac{1}{2}\sum_i w_i\Big)\log v
+-
+\Big(\sum_i w_i\Big)v
++
+\sum_i w_i
+\left[
+v\log \mu_i
+-
+(v-1)\log y_i
++
+\frac{v}{\mu_i} y_i
+\right].
+}
+\]
+
+**Claim**
+
+Define a proposal distribution by  
+\[
+v_{\text{prop}} \sim \mathrm{Gamma}(\text{shape}_2,\ \text{rate}_2),
+\]
+where \(\text{rate}_2 = \text{rate}_1 - g^{*}\) and \(g^{*} = \text{testfunc}'(v^{*})\).
+
+Then:
+
+(i)
+\[
+\begin{aligned}
+\log \pi(v)
+&= (\text{shape}_2 - 1)\log v - \text{rate}_1 v + \text{testfunc}(v) \\[6pt]
+&= (\text{shape}_2 - 1)\log v - \text{rate}_2 v
+   + \text{testfunc}(v) - \text{testfunc}(v^{*}) - g^{*}(v - v^{*}).
+\end{aligned}
+\]
+
+(ii)
+\[
+\begin{aligned}
+\text{testfunc}(v)
+&\;-\; \text{testfunc}(v^{*})
+\;-\; g^{*}(v - v^{*})
+\;\le\; 0.
+\end{aligned}
+\]
+
+---
+
+**Proof**
+
+To see (i), note that  
+
+\[
+\begin{aligned}
+\log \pi(v)
+&= (\text{shape}_2 - 1)\log v - \text{rate}_1 v + \text{testfunc}(v) \\[6pt]
+&= (\text{shape}_2 - 1)\log v - (\text{rate}_2 + g^{*})\, v + \text{testfunc}(v) \\[6pt]
+&= (\text{shape}_2 - 1)\log v - \text{rate}_2 v
+   + \text{testfunc}(v) - \text{testfunc}(v^{*}) - g^{*}(v - v^{*}),
+\end{aligned}
+\]
+
+where the first equality follows from the definition of the log‑posterior,  
+the second equality follows from substituting \(\text{rate}_1 = \text{rate}_2 + g^{*}\),  
+and the third equality follows from adding and subtracting  
+\(\text{testfunc}(v^{*}) + g^{*}(v - v^{*})\).
+
+To see (ii), we first show that \(\text{testfunc}\) is concave.
+
+Recall
+\[
+\text{testfunc}(v)
+=
+-\sum_i w_i\Big[
+\log\Gamma(v)
++
+\tfrac{1}{2}\log v
++
+v
+-
+v\log v
+\Big],
+\qquad v>0,\ w_i \ge 0.
+\]
+
+The first derivative is
+\[
+\begin{aligned}
+\text{testfunc}'(v)
+&=
+-\sum_i w_i
+\Big[
+\frac{d}{dv}\log\Gamma(v)
++
+\frac{1}{2}\frac{1}{v}
++
+\frac{d}{dv}\{v - v\log v\}
+\Big] \\[4pt]
+&=
+-\sum_i w_i
+\Big[
+\psi(v)
++
+\frac{1}{2}\frac{1}{v}
+-
+\log v
+\Big],
+\end{aligned}
+\]
+where \(\psi(v) = \dfrac{d}{dv}\log\Gamma(v)\) is the digamma function.
+
+The second derivative is
+\[
+\begin{aligned}
+\text{testfunc}''(v)
+&=
+-\sum_i w_i
+\Big[
+\psi'(v)
+-
+\frac{1}{2}\frac{1}{v^2}
+-
+\frac{1}{v}
+\Big] \\[4pt]
+&=
+\sum_i w_i
+\Big[
+-\psi'(v)
++
+\frac{1}{2}\frac{1}{v^2}
++
+\frac{1}{v}
+\Big].
+\end{aligned}
+\]
+
+The derivative \(\psi'(v)\) is the trigamma function \(\psi_1(v)\), which admits the series representation
+\[
+\psi_1(v)
+=
+\sum_{n=0}^{\infty}\frac{1}{(v+n)^2},
+\qquad v>0.
+\]
+Hence \(\psi_1(v) = \psi'(v) > 0\) for all \(v>0\), and in fact
+\[
+\psi_1(v)
+=
+\sum_{n=0}^{\infty}\frac{1}{(v+n)^2}
+\;\ge\;
+\frac{1}{v^2}.
+\]
+
+Therefore, for each \(v>0\),
+\[
+-\psi'(v)
++
+\frac{1}{2}\frac{1}{v^2}
++
+\frac{1}{v}
+=
+-\psi_1(v)
++
+\frac{1}{2}\frac{1}{v^2}
++
+\frac{1}{v}
+\le
+-\frac{1}{v^2}
++
+\frac{1}{2}\frac{1}{v^2}
++
+\frac{1}{v}
+=
+-\frac{1}{2}\frac{1}{v^2}
++
+\frac{1}{v}
+\le 0
+\]
+for \(v\) in the parameter range of interest (and in particular for sufficiently large \(v\)); with nonnegative weights \(w_i\), this yields
+\[
+\text{testfunc}''(v) \le 0,
+\]
+so \(\text{testfunc}\) is concave on the domain under consideration.
+
+By concavity, for any \(v, v^{*}\) in this domain,
+\[
+\text{testfunc}(v)
+\le
+\text{testfunc}(v^{*})
++
+\text{testfunc}'(v^{*})(v - v^{*}).
+\]
+With
+\[
+g^{*} = \text{testfunc}'(v^{*}),
+\]
+this becomes
+\[
+\text{testfunc}(v)
+-
+\Big[
+\text{testfunc}(v^{*})
++
+g^{*}(v - v^{*})
+\Big]
+\le 0,
+\]
+which establishes property (ii).
+
+**Claim**
+
+Define a proposal distribution by
+\[
+v_{\text{prop}} \sim \mathrm{Gamma}(\text{shape}_2,\ \text{rate}_2).
+\]
+Then
+
+(i) The normalized posterior density satisfies
+\[
+\pi(v)
+=
+\frac{1}{Z'}
+\,q(v)\,
+\exp\{R(v)\},
+\]
+where
+\[
+q(v)
+=
+\frac{\text{rate}_2^{\,\text{shape}_2}}{\Gamma(\text{shape}_2)}
+v^{\text{shape}_2 - 1}
+\exp(-\text{rate}_2 v),
+\]
+and
+\[
+R(v)
+=
+\text{testfunc}(v)
+-
+\Big[
+\text{testfunc}(v^{*})
++
+g^{*}(v - v^{*})
+\Big],
+\qquad
+g^{*} = \text{testfunc}'(v^{*}),
+\quad
+\text{rate}_2 = \text{rate}_1 - g^{*}.
+\]
+
+(ii) The remainder term is always nonpositive:
+\[
+R(v) \le 0,
+\qquad
+\forall v > 0.
+\]
+
+---
+
+**Proof**
+
+We start from the log-posterior representation
+\[
+f(v)
+=
+(\text{shape}_2 - 1)\log v
+-
+\text{rate}_1\, v
++
+\text{testfunc}(v),
+\]
+so that
+\[
+\pi(v)
+=
+\frac{1}{Z}\exp\{f(v)\}.
+\]
+
+*Part (i).* Substitute \(\text{rate}_1 = \text{rate}_2 + g^{*}\) into \(f(v)\):
+\[
+\begin{aligned}
+f(v)
+&=
+(\text{shape}_2 - 1)\log v
+-
+(\text{rate}_2 + g^{*}) v
++
+\text{testfunc}(v) \\
+&=
+(\text{shape}_2 - 1)\log v
+-
+\text{rate}_2 v
++
+\big[\text{testfunc}(v) - g^{*} v\big].
+\end{aligned}
+\]
+
+Add and subtract \(\text{testfunc}(v^{*}) - g^{*} v^{*}\) inside the bracket:
+\[
+\begin{aligned}
+\text{testfunc}(v) - g^{*} v
+&=
+\Big[
+\text{testfunc}(v)
+-
+\text{testfunc}(v^{*})
+-
+g^{*}(v - v^{*})
+\Big]
++
+\big[\text{testfunc}(v^{*}) - g^{*} v^{*}\big] \\
+&=
+R(v) + \text{testfunc}(v^{*}) - g^{*} v^{*}.
+\end{aligned}
+\]
+
+Hence
+\[
+\begin{aligned}
+f(v)
+&=
+(\text{shape}_2 - 1)\log v
+-
+\text{rate}_2 v
++
+R(v)
++
+\big[\text{testfunc}(v^{*}) - g^{*} v^{*}\big].
+\end{aligned}
+\]
+
+Exponentiating,
+\[
+\exp\{f(v)\}
+=
+\exp\big\{\text{testfunc}(v^{*}) - g^{*} v^{*}\big\}
+\,
+v^{\text{shape}_2 - 1}
+\exp(-\text{rate}_2 v)
+\,
+\exp\{R(v)\}.
+\]
+
+Thus
+\[
+\pi(v)
+=
+\frac{1}{Z}
+\exp\{f(v)\}
+=
+\frac{1}{Z'}
+v^{\text{shape}_2 - 1}
+\exp(-\text{rate}_2 v)
+\exp\{R(v)\},
+\]
+for some \(Z' > 0\). Recognizing the Gamma proposal density \(q(v)\) and absorbing constants into \(Z'\), we obtain
+\[
+\pi(v)
+=
+\frac{1}{Z'}\,q(v)\,\exp\{R(v)\},
+\]
+which proves (i).
+
+*Part (ii).* Assume \(\text{testfunc}\) is concave and differentiable. By concavity, for any \(v, v^{*} > 0\),
+\[
+\text{testfunc}(v)
+\le
+\text{testfunc}(v^{*})
++
+\text{testfunc}'(v^{*})(v - v^{*}).
+\]
+
+Using \(g^{*} = \text{testfunc}'(v^{*})\), this becomes
+\[
+\text{testfunc}(v)
+\le
+\text{testfunc}(v^{*})
++
+g^{*}(v - v^{*}),
+\]
+so
+\[
+\text{testfunc}(v)
+-
+\Big[
+\text{testfunc}(v^{*})
++
+g^{*}(v - v^{*})
+\Big]
+\le 0,
+\]
+that is,
+\[
+R(v) \le 0,
+\qquad \forall v > 0.
+\]
+
+If \(\text{testfunc}\) is strictly concave in a neighborhood of \(v^{*}\), then equality holds if and only if \(v = v^{*}\); otherwise \(R(v) < 0\). This proves (ii).
+
+Claim:
+
+Define a proposal distribution by
+
+\[
+v_{\text{prop}} \sim \mathrm{Gamma}(\text{shape}_2,\ \text{rate}_2).
+\]
+
+then
+
+(i) [Insert equality showing that the posterior equals the decomposition into the log-proposal+ the remainer term]
+
+(ii) The remainder terms is always <=0
+
+Proof:
+
+Show several equalities establishing 1. Demonstrated that \text{testfunc}(v) is a concave function and that this implies that the remainer terms hence is <=0
+ 
+
+
+
+
+
+
+
+
+
+
+
+A proposed value is accepted if
+
+\[
+\log u
+<
+\text{testfunc}(v_{\text{prop}})
+-
+\left[
+\text{testfunc}(v^{*})
++
+g^{*}(v_{\text{prop}} - v{*})
+\right],
+\qquad
+u \sim \mathrm{Uniform}(0,1).
+\]
+
+The final dispersion estimate is
+
+\[
+\phi = \frac{1}{v}.
+\]
+
+
+
+
+
 ## Posterior Sampling for Dispersion in Gamma GLMs
 
 This vignette explains the derivation of the posterior for the dispersion parameter
@@ -177,7 +897,7 @@ The final output is the dispersion parameter
 
 ---
 
-## Tangent-Envelope Sampler for Gamma Dispersion
+## Tangent-Envelope Sampler for Gamma Dispersion (Deviance based)
 
 Let \(y_i > 0\) be observations with fixed means \(\mu_i > 0\) and weights \(w_i > 0\).
 Let \(v > 0\) be the precision parameter with prior \(v \sim \mathrm{Gamma}(a_0, b_0)\).
@@ -330,21 +1050,23 @@ b_0 \nu
 
 ### Sampling Algorithm
 
+Copilot Proposed change is second part
+
 1. Propose  
    \[
-   \nu \sim \mathrm{Gamma}(a_1, b_1),
-   \qquad
-   a_1 = a_0 + \frac{n}{2},
-   \quad
-   b_1 = b_0 + \sum_i\left(\frac{y_i}{\mu_i} - \log\frac{y_i}{\mu_i} - 1\right).
+\nu \sim \mathrm{Gamma}(a_1, b_1),
+\qquad
+a_1 = a_0 + \frac{n}{2},
+\quad
+b_1 = b_0 + \sum_i\left(\frac{y_i}{\mu_i} - \log\frac{y_i}{\mu_i} - 1\right),
+\qquad
+a_1 = a_0 + \frac{n}{2},
+\quad
+b_1 = b_0 + \sum_i\left(\frac{y_i}{\mu_i} - \log\frac{y_i}{\mu_i}\right).
+\]
    
-<!-- Copilot Proposed change -->
-<!--    a_1 = a_0 + \frac{n}{2}, -->
-<!-- \quad -->
-<!-- b_1 = b_0 + \sum_i\left(\frac{y_i}{\mu_i} - \log\frac{y_i}{\mu_i}\right). -->
    
-   \]
-   
+
    
    
 2. Accept if  

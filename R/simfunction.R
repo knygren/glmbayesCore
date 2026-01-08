@@ -432,37 +432,46 @@ rGamma_reg <- function(
   }
   
   ## ----------------------
-  ## Gamma case (unchanged)
+  ## Gamma case (MODIFIED)
   ## ----------------------
   if (family$family == "Gamma") {
     
     ## Compute mu1 using the fixed coefficients
     mu1 <- t(exp(alpha + x %*% b))
     
-    ## testfunc is part of the log-likelihood (excluding a constant and the part included in the prior)
+    ## testfunc: remainder in v (EXCLUDING the 0.5 * log v term)
+    ## Original had: + 0.5 * log(wt * v)
+    ## We now drop that to restore concavity of the remainder.
     testfunc <- function(v, wt) {
-      -sum(lgamma(wt * v) + 0.5 * log(wt * v) + wt * v - wt * v * log(wt * v))
+      -sum(
+        lgamma(wt * v) +
+          wt * v -
+          wt * v * log(wt * v)
+      )
     }
     
-    ## Update the shape and rate using the fitted values from the likelihood
-    # shape2 = shape + 0.5 * n1
-    # Consistent with glm function
+    ## Update the rate using the fitted values from the likelihood
+    ## (unchanged)
     rate1 <- rate + sum(wt * ((y / mu1) - log(y / mu1) - 1))
     
-    ## Changes 1/2/2026 - Proposed by copilot
-    ## Potentially consistent with gamma.dispersion
-    shape2 <- shape + 0.5 * n1
-    # rate1  <- rate + sum(wt * ( (y / mu1) - log(y / mu1) ))
+    ## OLD: shape2 <- shape + 0.5 * n1
+    ## This implicitly assumed an extra 0.5 * sum_i log(v) in the log-density.
+    ## NEW: keep shape2 purely from the prior shape, consistent with the
+    ## actual posterior decomposition.
+    shape2 <- shape
     
-    ## Initialize vstar1 to the ratio (i.e., posterior mode)
+    ## Initialize vstar1 to the ratio (i.e., prior/posterior "Gamma" center)
     vstar1 <- shape2 / rate1
     
-    ## Use Newton method to update vstar1 and to solve for posterior mode
+    ## Newton-like fixed-point iteration for the mode in v
+    ## Original vout had + 0.5 / v term (from 0.5 * log v); we drop it.
     vout <- function(v) {
-      vstar1 - (v / rate1) * sum((wt * digamma(wt * v) - wt * log(wt * v) + 0.5 / v))
+      vstar1 - (v / rate1) * sum(
+        wt * digamma(wt * v) - wt * log(wt * v)
+      )
     }
     
-    # Initialize vstar2
+    # Initialize vstar
     vstar <- vstar1
     
     ## Optimize vstar
@@ -470,26 +479,31 @@ rGamma_reg <- function(
       vstar <- vout(vstar)
     }
     
-    ## Find value of testfunc at the posterior mode
-    ## and the negative of the gradient of the testfunc at vstar
+    ## Value of testfunc at the posterior mode
     testbar <- testfunc(vstar, wt)
-    cbar    <- -sum((wt * digamma(wt * vstar) - wt * log(wt * vstar) + 0.5 / vstar))
     
-    ## Set the rate to correspond to the posterior mode
-    ## Consistent with dispersion reported by glm
-    rate2 <- rate + sum(wt * ((y / mu1) - log(y / mu1) - 1)) -
-      sum((wt * digamma(wt * vstar) - wt * log(wt * vstar) + 0.5 / vstar))
+    ## Negative gradient of testfunc at vstar
+    ## Original had: + 0.5 / vstar in the sum; we remove it.
+    cbar <- -sum(
+      wt * digamma(wt * vstar) - wt * log(wt * vstar)
+    )
+    
+    ## Set the rate so that the Gamma envelope has mode at vstar
+    ## Original had + 0.5 / vstar inside the sum; we remove that term.
+    rate2 <- rate +
+      sum(wt * ((y / mu1) - log(y / mu1) - 1)) -
+      sum(wt * digamma(wt * vstar) - wt * log(wt * vstar))
     
     out  <- matrix(0, n)
     test <- matrix(0, n)
     a    <- matrix(0, n)
     
-    ## Implements rejection sampling for dispersion (likelihood subgradient approach)
+    ## Rejection sampling for dispersion (precision in v)
     for (i in 1:n) {
       while (a[i] == 0) {
         
         if (is.null(disp_lower) && is.null(disp_upper)) {
-          # Original unconstrained proposal
+          # Unconstrained proposal
           cand_prec <- rgamma(1, shape = shape2, rate = rate2)
         } else {
           # Constrained proposal
@@ -503,7 +517,9 @@ rGamma_reg <- function(
         }
         out[i] <- cand_prec
         
-        test[i] <- testfunc(out[i], wt) - (testbar + cbar * (out[i] - vstar)) -
+        ## Same envelope test, with the updated testfunc and cbar
+        test[i] <- testfunc(out[i], wt) -
+          (testbar + cbar * (out[i] - vstar)) -
           log(runif(1, 0, 1))
         if (test[i] > 0) a[i] <- 1
       }
