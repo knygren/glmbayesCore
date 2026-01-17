@@ -1,10 +1,10 @@
 Yaml
 
 ---
-title: "Chapter 13: Block Gibbs Sampling Using rlmb and rglmb"
+title: "Chapter A10: Accelerated EnvelopeBuild Implementation using OpenCL"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter 13: Block Gibbs Sampling Using rlmb and rglmb}
+  %\VignetteIndexEntry{Chapter A10: Accelerated EnvelopeBuild Implementation using OpenCL}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

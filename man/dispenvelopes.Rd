@@ -3,16 +3,9 @@
 \name{dispenvelopes}
 \alias{dispenvelopes}
 \alias{EnvelopeDispersionBuild}
-\alias{EnvBuildLinBound}
-\alias{thetabar_const}
-\alias{Inv_f3_with_disp}
 \alias{UB2}
 \alias{rss_face_at_disp}
 \alias{drss_ddisp}
-\alias{EnvelopeDispersionBuild_parallel}
-\alias{EnvelopeUB2_parallel}
-\alias{EnvelopeDispersionBuild_parallel_internal}
-\alias{EnvelopeUB2_parallel_internal}
 \title{Builds Dispersion-Aware Envelope for Simulation}
 \usage{
 EnvelopeDispersionBuild(
@@ -22,56 +15,11 @@ EnvelopeDispersionBuild(
   verbose = FALSE, use_parallel = TRUE
 )
 
-EnvBuildLinBound(thetabars,cbars,y,x2,P2,alpha,dispstar)
-
-thetabar_const(P,cbars,thetabar)
-
-Inv_f3_with_disp(cache, dispersion, cbars_small)
-
 UB2(dispersion, cache, cbars_j, y, x, alpha, wt, rss_min_global)
 
 rss_face_at_disp(dispersion, cache, cbars_j, y, x, alpha, wt)
 
 drss_ddisp(dispersion, cache, cbars_j, y, x, alpha, wt)
-
-EnvelopeDispersionBuild_parallel(
-  par0, low, upp, cache, cbars, y, x, alpha, wt,
-  cores, use_parallel = TRUE
-)
-
-EnvelopeUB2_parallel(
-  par0, low, upp, cache, cbars, y, x, alpha, wt,
-  rss_min_global, cores, use_parallel = TRUE
-)
-
-EnvelopeDispersionBuild_parallel_internal(
-  par0,
-  low,
-  upp,
-  cache,
-  cbars,
-  y,
-  x,
-  alpha,
-  wt,
-  cores = parallel::detectCores(logical = FALSE),
-  use_parallel = TRUE
-)
-
-EnvelopeUB2_parallel_internal(
-  par0,
-  low,
-  upp,
-  cache,
-  cbars,
-  y,
-  x,
-  alpha,
-  wt,
-  rss_min_global,
-  cores = parallel::detectCores(logical = FALSE),
-  use_parallel = TRUE
-)
 }
 \arguments{
 \item{Env}{Envelope object from \code{\link{EnvelopeBuild}}, containing tangency points and gradients}
@@ -108,35 +56,13 @@ EnvelopeUB2_parallel_internal(
 
 \item{use_parallel}{Logical. Whether to use parallel processing.}
 
-\item{thetabars}{tangency points for envelope}
-
-\item{cbars}{gradient vectors for standarized negative log-likelihood function}
-
-\item{x2}{Design matrix}
-
-\item{P2}{Precision matrix for coefficients}
-
-\item{dispstar}{Baseline Dispersion used for main envelope construction}
-
-\item{thetabar}{tangency points for envelope}
-
-\item{cache}{Precomputed set of outputs passed downstream}
-
 \item{dispersion}{Dispersion parameter}
 
-\item{cbars_small}{gradient vectors for standarized negative log-likelihood function}
+\item{cache}{Precomputed set of outputs passed downstream}
 
 \item{cbars_j}{gradient vector for standarized negative log-likelihood function}
 
 \item{rss_min_global}{Minimum RSS across the face tangencies over the range defined by disp_lower and disp_upper}
-
-\item{par0}{Dispersion parameter}
-
-\item{low}{Dispersion parameter}
-
-\item{upp}{Dispersion parameter}
-
-\item{cores}{Dispersion parameter}
 }
 \value{
 \describe{

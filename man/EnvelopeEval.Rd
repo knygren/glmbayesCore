@@ -145,8 +145,11 @@ whether OpenCL acceleration is likely to be beneficial.
 \itemize{
 \item \code{NegLL}: numeric vector of negative log-likelihood values.
 \item \code{cbars}: numeric matrix of gradients (parameters * grid points).
-\strong{6. Role of likelihood and gradients in sampling}
 }
+}
+
+\strong{6. Role of likelihood and gradients in sampling}
+\itemize{
 \item The outputs of \code{EnvelopeEval()} - the negative log-likelihood values
 (\code{NegLL}) and the gradient matrix (\code{cbars}) - are not endpoints in
 themselves. They form the \emph{envelope} used in the rejection sampler

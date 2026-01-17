@@ -191,6 +191,8 @@ https://knygren.r-universe.dev/articles/glmbayes/Chapter-11.html
 - **Chapter 12 — Large Models: GPU Acceleration using OpenCL**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-12.html
 
+- **Chapter 13 — Block Gibbs Sampling Using rlmb and rglmb**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-13.html
 
 ### Part 5: Simulation Methods and Technical Implementation
 This part documents the mathematical and algorithmic foundations of the package. Topics include
@@ -216,6 +218,14 @@ https://knygren.r-universe.dev/articles/glmbayes/Chapter-A6.html
 - **Chapter A7 — Accept-Reject Sampling for gaussian Regression models with independent normal-gamma priors**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-A7.html
 
+- **Chapter A8 — Overview of Envelope Related Functions**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-A8.html
+
+- **Chapter A9 — Parallel Sampling Implementation using RcppParallel**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-A9.html
+
+- **Chapter A10 — Accelerated EnvelopeBuild Implementation using OpenCL**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-A10.html
 
 
 Together, these vignettes form a comprehensive reference that supports users at all levels, from first-time Bayesian GLM users to researchers interested in the mathematical and computational details behind the samplers.

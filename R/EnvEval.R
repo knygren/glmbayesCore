@@ -88,6 +88,7 @@
 #' * All backends return a list with:
 #'   - `NegLL`: numeric vector of negative log-likelihood values.
 #'   - `cbars`: numeric matrix of gradients (parameters * grid points).
+#'   
 #' **6. Role of likelihood and gradients in sampling**
 #'
 #' * The outputs of `EnvelopeEval()` - the negative log-likelihood values

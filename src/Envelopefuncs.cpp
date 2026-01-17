@@ -1771,7 +1771,11 @@ List EnvelopeDispersionBuild_cpp(
   
   // Step 3C: Minimize RSS over dispersion for each face
   Rcpp::Function optim("optim");
-  Rcpp::Function rss_fn("rss_face_at_disp");
+  
+  // --- NEW: Call parallel helper and time it ---
+  Rcpp::Environment ns3 = Rcpp::Environment::namespace_env("glmbayes");
+  Rcpp::Function rss_fn = ns3["rss_face_at_disp"];
+  
 //  Rcpp::Function grad_fn("drss_ddisp");   // exported gradient
   
   
@@ -1806,8 +1810,12 @@ List EnvelopeDispersionBuild_cpp(
   
     
   // --- NEW: Call parallel helper and time it ---
-  Rcpp::Function parallel_fn("EnvelopeDispersionBuild_parallel");
+//  Rcpp::Function parallel_fn("EnvelopeDispersionBuild_parallel");
 
+  // --- NEW: Call parallel helper and time it ---
+  Rcpp::Environment ns = Rcpp::Environment::namespace_env("glmbayes");
+  Rcpp::Function parallel_fn = ns["EnvelopeDispersionBuild_parallel"];
+  
   double est_total = 0.0;  // declare before pilot block
   
     
@@ -1993,7 +2001,10 @@ List EnvelopeDispersionBuild_cpp(
     
   
   // --- NEW: Call UB2 parallel helper and time it ---
-  Rcpp::Function ub2_parallel_fn("EnvelopeUB2_parallel");
+//  Rcpp::Function ub2_parallel_fn("EnvelopeUB2_parallel");
+  Rcpp::Environment ns2 = Rcpp::Environment::namespace_env("glmbayes");
+    
+  Rcpp::Function ub2_parallel_fn = ns2["EnvelopeUB2_parallel"];
   
   double est_total_ub2 = 0.0;  // declare before pilot block
   

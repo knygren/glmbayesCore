@@ -23,6 +23,35 @@ For advanced users who are interested in implementing Block-Gibbs sampling proce
 For users who are interested in the details of how the simulation is performed there is the final section that contains a discussion of the various simulation functions that are used to sample from the posterior distributions.  This includes a discussion of three core function that simulate for the currently implemented prior families and a couple of functions related to what we call the Central Normal distribution (the normal distribution between a lower and an upper bound). It also includes a discussion of a set of functions that are used in order to utilize the enveloping functions needed to get iid samples for some of the posterior distributions. That material is rather technical and we refer the user to the Nygren and Nygren (2006) paper that forms the foundation for the simulation procedure. 
 
 
+| Function Type | Functions | Vignettes |
+|---------------|-----------|-----------|
+| **Prior Setup function**| **Prior_Setup** | Chapter 01 — Getting Started with glmbayes  |
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 01 — Getting Started with glmbayes |
+|**Methods**|**print.glmb** | Chapter 01 — Getting Started with glmbayes |
+| **pfamilies** | **dNormal**|Chapter 02 — Estimating Bayesian Linear Models|
+| **Main Model Interfaces (GLM / LM)**| **lmb**  |Chapter 02 — Estimating Bayesian Linear Models |
+| **Methods**| **summary.lmb**  |Chapter 02 — Estimating Bayesian Linear Models |
+| **Prior Setup function**| **Prior_Setup** | Chapter 03 - Tailoring Priors - Leveraging the Prior_Setup Function  |
+| **Methods****| **print.PriorSetup** | Chapter 03 - Tailoring Priors - Leveraging the Prior_Setup Function  |
+| **Methods**| **predict.glmb, residuals.glmb, extractAIC.glmb** | Chapter 04 — Predictions, Deviance Residuals, Model Statistics |
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 06 — Estimating Bayesian Generalized Linear Models |
+|**Methods**|**summary.glmb** | Chapter 06 — Estimating Bayesian Generalized Linear Models |
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 07 — Models for the Binomial Family|
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 08 — Models for the Poisson Family
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 09 — Models for the Gamma Family |
+| **Lower-Level Interfaces  (GLM / LM)**| **rlmb, rglmb** | Chapter 13: Block Gibbs Sampling Using rlmb and rglmb |
+| **Model-Specific Simulation Functions** | **rNormal_reg, rGamma_reg, rNormal_Gamma_reg, rindependent_norm_gamma_reg** | Chapter A2: Overview of Estimation Procedures |
+| **pfamilies** |**dGamma, dNormal_Gamma, dIndependent_Normal_Gamma** | Chapter 11 — Estimating Models with Unknown Dispersion Parameters |
+| **Methods**| **Various method functions for glmbayes** | Chapter A3 — Methods Available in glmbayes |
+| **Envelope Related Functions** | Various Functions | Chapter A8 — Overview of Envelope Related Functions |
+| **Parallel Simulation Related Functions** | Various Functions | Chapter A9: Parallel Sampling Implementation using RcppParallel |
+| **Accelerated EnvelopedBuild Related Functions** | Various Functions | Chapter A10: Accelerated EnvelopeBuild Implementation using OpenCL |
+| **Utilities** | add_to_libpath_linux, add_to_path, add_to_path_linux, add_to_path_windows| Chapter 00 — Introduction<br>Chapter 01 — Getting Started |
+| **Datasets** | AMI, carinsca, Cleveland | Chapter 01 — Getting Started |
+
+
+
+
 
 ## Loading the package 
 

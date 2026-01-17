@@ -88,22 +88,11 @@
 #' @param disp_lower lower bound truncation for dispersion 
 #' @param disp_upper upper bound truncation for dispersion
 #' @param verbose Option to have verbose output
-#' @param thetabars   tangency points for envelope
-#' @param cbars       gradient vectors for standarized negative log-likelihood function
-#' @param x2          Design matrix
-#' @param P2          Precision matrix for coefficients
-#' @param dispstar    Baseline Dispersion used for main envelope construction 
-#' @param thetabar    tangency points for envelope
 #' @param cache       Precomputed set of outputs passed downstream
-#' @param cbars_small gradient vectors for standarized negative log-likelihood function
 #' @param cbars_j     gradient vector for standarized negative log-likelihood function
 #' @param wt          weight vector
 #' @param rss_min_global Minimum RSS across the face tangencies over the range defined by disp_lower and disp_upper
 #' @param dispersion  Dispersion parameter
-#' @param par0  Dispersion parameter
-#' @param low  Dispersion parameter
-#' @param upp  Dispersion parameter
-#' @param cores  Dispersion parameter
 #' @param use_parallel Logical. Whether to use parallel processing.
 #'
 #' @return
@@ -221,10 +210,8 @@ EnvelopeDispersionBuild <- function(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS
 
 
 
-#' @usage EnvBuildLinBound(thetabars,cbars,y,x2,P2,alpha,dispstar)
-#' @export 
-#' @rdname dispenvelopes
-#' @order 2
+
+#' @noRd
 
 EnvBuildLinBound<-function(thetabars,cbars,y,x2,P2,alpha,dispstar){
   
@@ -259,13 +246,7 @@ EnvBuildLinBound<-function(thetabars,cbars,y,x2,P2,alpha,dispstar){
 
 }
 
-#' @usage thetabar_const(P,cbars,thetabar)
-#' @export 
-#' @rdname dispenvelopes
-#' @order 3
-
-
-
+#' @noRd
 
 thetabar_const<-function(P,cbars,thetabar){
   
@@ -284,10 +265,7 @@ thetabar_const<-function(P,cbars,thetabar){
 }
 
 
-#' @usage Inv_f3_with_disp(cache, dispersion, cbars_small)
-#' @export
-#' @rdname dispenvelopes
-#' @order 4
+#' @noRd
 
 Inv_f3_with_disp <- function(cache, dispersion, cbars_small) {
   .Call(`_glmbayes_Inv_f3_with_disp`, cache, dispersion, cbars_small)
@@ -323,7 +301,7 @@ drss_ddisp <- function(dispersion, cache, cbars_j, y, x, alpha, wt) {
   .Call(`_glmbayes_drss_ddisp`, dispersion, cache, cbars_j, y, x, alpha, wt)
 }
 
-#' @rdname dispenvelopes
+#' @noRd
 #' @order 11
 
 EnvelopeDispersionBuild_parallel_internal <- function(par0, low, upp,
@@ -377,14 +355,7 @@ EnvelopeDispersionBuild_parallel_internal <- function(par0, low, upp,
   list(disp_min = disp_min, rss_min = rss_min)
 }
 
-#' Safe parallel dispersion builder
-#'
-#' @usage EnvelopeDispersionBuild_parallel(
-#'   par0, low, upp, cache, cbars, y, x, alpha, wt,
-#'   cores, use_parallel = TRUE
-#' )
-#' @export
-#' @rdname dispenvelopes
+#' @noRd
 #' @order 8
 
 EnvelopeDispersionBuild_parallel <- function(par0, low, upp,
@@ -402,7 +373,7 @@ EnvelopeDispersionBuild_parallel <- function(par0, low, upp,
 
 
 
-#' @rdname dispenvelopes
+#' @noRd
 #' @order 12
 
 
@@ -459,14 +430,7 @@ EnvelopeUB2_parallel_internal <- function(par0, low, upp,
   list(disp_min = disp_min_ub2, ub2_min = ub2_min)
 }
 
-#' Safe UB2 parallel dispersion builder
-#'
-#' @usage EnvelopeUB2_parallel(
-#'   par0, low, upp, cache, cbars, y, x, alpha, wt,
-#'   rss_min_global, cores, use_parallel = TRUE
-#' )
-#' @export
-#' @rdname dispenvelopes
+#' @noRd
 #' @order 9
 
 EnvelopeUB2_parallel <- function(par0, low, upp,

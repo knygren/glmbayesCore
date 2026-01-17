@@ -1,10 +1,10 @@
 Yaml
 
 ---
-title: "Chapter 13: Block Gibbs Sampling Using rlmb and rglmb"
+title: "Chapter A9: Parallel Sampling Implementation using RcppParallel"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter 13: Block Gibbs Sampling Using rlmb and rglmb}
+  %\VignetteIndexEntry{Chapter A9: Parallel Sampling Implementation using RcppParallel}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

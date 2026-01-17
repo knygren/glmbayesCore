@@ -146,7 +146,7 @@ Key properties:
 Noncanonical links (identity, square‑root) do **not** preserve log‑concavity and are not supported in `glmb()`.
 
 
-### 2.4 Likelihood, Prior, and Posterior (Normal Prior on β)
+### 2.4 Likelihood, Prior, and Posterior (Normal Prior on beta)
 
 With the log link, the weighted log‑likelihood is
 
