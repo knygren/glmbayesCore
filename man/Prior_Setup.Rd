@@ -2,6 +2,7 @@
 % Please edit documentation in R/Prior.R
 \name{Prior_Setup}
 \alias{Prior_Setup}
+\alias{print.PriorSetup}
 \title{Setup Prior Objects}
 \usage{
 Prior_Setup(
@@ -23,6 +24,8 @@ Prior_Setup(
   mu = NULL,
   ...
 )
+
+\method{print}{PriorSetup}(x, ...)
 }
 \arguments{
 \item{formula}{an object of class \code{"\link[stats]{formula}"} (or one that

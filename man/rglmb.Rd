@@ -204,4 +204,3 @@ than the \code{glmb} function. It also borrows some of its structure from other 
 like \code{\link{rnorm}} and hence the \code{r} prefix.
 }
 \concept{modelfuns}
-\keyword{internal}

@@ -486,4 +486,3 @@ A reference
 The simulation framework was developed by Kjell Nygren as part of the \pkg{glmbayes} package. It builds on the likelihood subgradient approach described in \insertCite{Nygren2006}{glmbayes}, and extends classical Bayesian GLM sampling techniques.
 }
 \concept{simfuncs}
-\keyword{internal}

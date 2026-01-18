@@ -2,9 +2,12 @@
 % Please edit documentation in R/directional_tail.R
 \name{directional_tail}
 \alias{directional_tail}
+\alias{print.directional_tail}
 \title{Directional Tail Diagnostic}
 \usage{
 directional_tail(fit, mu0 = NULL)
+
+\method{print}{directional_tail}(x, ...)
 }
 \arguments{
 \item{fit}{A fitted model object of class 'glmb' or 'lmb'}

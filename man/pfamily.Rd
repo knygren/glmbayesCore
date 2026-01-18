@@ -231,4 +231,3 @@ inspired by the family used by the \code{\link{glmb}} function to specify the li
 function. That design in turn was inspired by S functions of the same names described in
 Hastie and Pregibon (1992).
 }
-\keyword{internal}

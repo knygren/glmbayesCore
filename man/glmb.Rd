@@ -356,4 +356,3 @@ to mirror the features of the \code{glm} function to the greatest extent possibl
 on the author(s) for the \code{glm} function see the documentation for \code{\link[stats]{glm}}.
 }
 \concept{modelfuns}
-\keyword{internal}
