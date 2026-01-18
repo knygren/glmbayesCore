@@ -13,6 +13,8 @@ directional_tail(fit, mu0 = NULL)
 \item{fit}{A fitted model object of class 'glmb' or 'lmb'}
 
 \item{mu0}{An optional argument containing a reference vector relative to which the directional tail is computed. Defaults to the prior mean.}
+
+\item{x}{An object of class \code{directional_tail}}
 }
 \value{
 An object of class 'directional_tail' containing:

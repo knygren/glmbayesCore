@@ -91,6 +91,8 @@ dimension is 14 or greater. Defaults to 0.05.}
 
     For \code{weights}: further arguments passed to or from other methods.
   }
+
+\item{x}{An object of class \code{"PriorSetup"}}
 }
 \value{
 A list with items related to the prior.
