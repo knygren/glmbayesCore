@@ -35,7 +35,6 @@
 #' to extract various useful features of the value returned by \code{\link{lmb}}.
 #' 
 #' An object of class \code{"lmb"} is a list containing at least the following components:
-
 #' \item{lm}{an object of class \code{"lm"} containing the output from a call to the function \code{\link{lm}}}
 #' \item{coefficients}{a matrix of dimension \code{n} by \code{length(mu)} with one sample in each row}
 #' \item{coef.means}{a vector of \code{length(mu)} with the estimated posterior mean coefficients}

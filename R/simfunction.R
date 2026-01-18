@@ -1,12 +1,11 @@
-#' @title 
 #' Simulation Functions for Bayesian Generalized Linear Models
 #'
 #' @description
 #' Simulation functions provide a unified interface for generating posterior samples from Bayesian GLMs.
-#'  These functions are typically used within model fitting routines such as \code{\link{rglmb}} and \code{\link{rlmb}}, and 
-#'  are also suitable for use im Block Gibbs sampling and other simulation-based inference techniques.
+#' These functions are typically used within model fitting routines such as \code{\link{rglmb}} and \code{\link{rlmb}}, and
+#' are also suitable for use in Block Gibbs sampling and other simulation-based inference techniques.
 #'
-#' @name simfuncs 
+#' @name simfuncs
 #' @param object A fitted model object containing a \code{pfamily} component. The generic function \code{simfunction()} accesses the simulation metadata stored within such objects.
 #' @param x An object of class \code{"simfunction"} or \code{"rGamma_reg"} to be printed.
 #' @param n Number of draws to generate. If \code{length(n) > 1}, the length is taken to be the number required.
@@ -162,11 +161,6 @@
 #'
 #' \code{\link{EnvelopeBuild}} for envelope construction methods used in likelihood subgradient sampling.
 #'
-
-
-
-
-
 #' @usage simfunction(object, ...)
 #' @export
 #' @rdname simfuncs

@@ -1,6 +1,6 @@
-#' @name dispenvelopes 
-#' @title 
 #' Builds Dispersion-Aware Envelope for Simulation
+#'
+#' @name dispenvelopes
 #'
 #' @description
 #' Constructs a dispersion-aware envelope for simulation in Gaussian models with uncertain variance.

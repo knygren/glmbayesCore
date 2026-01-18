@@ -35,7 +35,6 @@
 #' to extract various useful features of the value returned by \code{\link{glmb}}.
 #' 
 #' An object of class \code{"glmb"} is a list containing at least the following components:
-
 #' \item{glm}{an object of class \code{"glm"} containing the output from a call to the function \code{\link{glm}}}
 #' \item{coefficients}{a matrix of dimension \code{n} by \code{length(mu)} with one sample in each row}
 #' \item{coef.means}{a vector of \code{length(mu)} with the estimated posterior mean coefficients}

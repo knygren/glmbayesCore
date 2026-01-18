@@ -118,8 +118,7 @@ iid draws from the posterior distribution. The implementation follows
 The envelope is typically built around the posterior mode \eqn{\theta^\star} for a model in standard
 form (which in this context means a model with a diagonal posterior precision matrix
 and prior identity precision matrix - \code{glmb_Standardize_Model}). It uses dimension-specific width parameters
-\eqn{\omega_i} derived from the precision
-matrix. Tangency points are selected per dimension, and the full grid is
+\eqn{\omega_i} derived from the precision matrix. Tangency points are selected per dimension, and the full grid is
 formed via Cartesian expansion. Negative log-likelihood and gradient values
 are computed at each grid point, either on CPU or GPU depending on the
 \code{use_opencl} flag. These values are used to construct a piecewise

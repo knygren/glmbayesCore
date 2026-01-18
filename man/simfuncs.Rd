@@ -164,7 +164,7 @@ Elements include:
 \description{
 Simulation functions provide a unified interface for generating posterior samples from Bayesian GLMs.
 These functions are typically used within model fitting routines such as \code{\link{rglmb}} and \code{\link{rlmb}}, and
-are also suitable for use im Block Gibbs sampling and other simulation-based inference techniques.
+are also suitable for use in Block Gibbs sampling and other simulation-based inference techniques.
 }
 \details{
 The low-level simulation functions \strong{\code{rNormal_reg()}}, \strong{\code{rNormal_Gamma_reg()}},
