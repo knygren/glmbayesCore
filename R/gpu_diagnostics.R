@@ -22,7 +22,6 @@
 #'   }
 #' @param lib_dirs A list of OpenCL directories
 #' @param runtime_info The structured list returned by \code{detect_compute_runtimes()}.
-#' @param dirs Character vector of directories to add.
 #' @return A structured list with diagnostics for each runtime, including:
 #'   \itemize{
 #'     \item installed: whether the runtime was detected
@@ -1003,46 +1002,3 @@ check_runtime_env <- function(runtime_info) {
 
 
 
-#' @export
-#' @rdname gpu_diagnostics
-#' @order 9
-add_to_path_windows <- function(dirs) {
-  for (d in dirs) {
-    cmd <- sprintf(
-      '[System.Environment]::SetEnvironmentVariable("PATH", "%s;%s", "User")',
-      d, Sys.getenv("PATH")
-    )
-    system2("powershell", c("-Command", cmd))
-  }
-  message("[ACTION] Permanently added missing PATH dirs to user environment.")
-  message("         Restart your shell/session to see changes.")
-}
-
- 
-#' @export
-#' @rdname gpu_diagnostics
-#' @order 10
-add_to_path_linux <- function(dirs) {
-  bashrc <- file.path(Sys.getenv("HOME"), ".bashrc")
-  for (d in dirs) {
-    line <- sprintf('export PATH="%s:$PATH"', d)
-    write(line, bashrc, append = TRUE)
-  }
-  message("[ACTION] Permanently added missing PATH dirs to ~/.bashrc.")
-  message("         Restart your shell or run `source ~/.bashrc` to apply changes.")
-}
-
-
-
-#' @export
-#' @rdname gpu_diagnostics
-#' @order 11
-add_to_libpath_linux <- function(dirs) {
-  bashrc <- file.path(Sys.getenv("HOME"), ".bashrc")
-  for (d in dirs) {
-    line <- sprintf('export LD_LIBRARY_PATH="%s:$LD_LIBRARY_PATH"', d)
-    write(line, bashrc, append = TRUE)
-  }
-  message("[ACTION] Permanently added missing library dirs to ~/.bashrc (LD_LIBRARY_PATH).")
-  message("         Restart your shell or run `source ~/.bashrc` to apply changes.")
-}

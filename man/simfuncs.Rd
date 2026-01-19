@@ -8,9 +8,7 @@
 \alias{rindependent_norm_gamma_reg}
 \alias{rGamma_reg}
 \alias{print.rGamma_reg}
-\alias{summary.rGamma_reg}
 \alias{print.simfunction}
-\alias{print.summary.rGamma_reg}
 \title{Simulation Functions for Bayesian Generalized Linear Models}
 \usage{
 simfunction(object, ...)
@@ -34,11 +32,7 @@ rGamma_reg(n, y, x, prior_list, offset = NULL, weights = 1, family = gaussian(),
 
 \method{print}{rGamma_reg}(x, digits = max(3, getOption("digits") - 3), ...)
 
-\method{summary}{rGamma_reg}(object, ...)
-
 \method{print}{simfunction}(x, ...)
-
-\method{print}{summary.rGamma_reg}(x, digits = max(3, getOption("digits") - 3), ...)
 }
 \arguments{
 \item{object}{A fitted model object containing a \code{pfamily} component. The generic function \code{simfunction()} accesses the simulation metadata stored within such objects.}

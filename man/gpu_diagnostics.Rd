@@ -9,9 +9,6 @@
 \alias{has_opencl}
 \alias{verify_opencl_runtime}
 \alias{check_runtime_env}
-\alias{add_to_path_windows}
-\alias{add_to_path_linux}
-\alias{add_to_libpath_linux}
 \alias{gpu_diagnostics}
 \title{GPU and OpenCL Diagnostics for glmbayes}
 \usage{
@@ -30,12 +27,6 @@ has_opencl()
 verify_opencl_runtime(lib_dirs = NULL)
 
 check_runtime_env(runtime_info)
-
-add_to_path_windows(dirs)
-
-add_to_path_linux(dirs)
-
-add_to_libpath_linux(dirs)
 }
 \arguments{
 \item{info}{A list returned by \code{detect_environment_and_gpus()}. The list must
@@ -50,8 +41,6 @@ contain the following elements:
 \item{lib_dirs}{A list of OpenCL directories}
 
 \item{runtime_info}{The structured list returned by \code{detect_compute_runtimes()}.}
-
-\item{dirs}{Character vector of directories to add.}
 }
 \value{
 A structured list with diagnostics for each runtime, including:

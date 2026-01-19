@@ -35,6 +35,18 @@
   )
 }
 
+.rnnorm_reg_std_cpp <- function(n, y, x, mu, P, alpha, wt,
+                                f2, Envelope,
+                                family, link,
+                                progbar = 1L,
+                                verbose = FALSE) {
+  .Call(`_glmbayes_rnnorm_reg_std_cpp`,
+        n, y, x, mu, P, alpha, wt,
+        f2, Envelope,
+        family, link,
+        progbar, verbose)
+}
+
 
 #' @noRd
 #' @keywords internal
