@@ -193,3 +193,12 @@
   .Call(`_glmbayes_load_kernel_library_wrapper`, subdir, package, verbose)
 }
 
+
+#' @noRd
+#' @keywords internal
+.get_opencl_core_count <- function() {
+  .Call("_glmbayes_get_opencl_core_count")
+}
+
+
+
