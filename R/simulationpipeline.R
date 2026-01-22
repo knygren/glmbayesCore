@@ -1793,8 +1793,6 @@ setlogP <- function(logP, NegLL, cbars, G3) {
 #' @param link Character string; link function (e.g. \code{"identity"}).
 #' @param use_opencl Logical; if \code{TRUE}, attempt OpenCL acceleration.
 #' @param verbose Logical; if \code{TRUE}, print diagnostic output.
-#' @param progbar Integer flag for progress bar control (internal use).
-#' @param b Numeric matrix of parameter values (parameters * grid points).
 #' @details
 #' The evaluation workflow has several layers:
 #' **1. High-level dispatch (`EnvelopeEval`)**
@@ -1935,23 +1933,6 @@ EnvelopeEval <- function(G4, y, x, mu, P, alpha, wt,
                family, link,
                use_opencl, verbose)
 }
-
-#' @rdname EnvelopeEval
-#' @export
-#' @usage f2_f3_non_opencl(family, link, b, y, x, mu, P, alpha, wt, progbar)
-
-f2_f3_non_opencl <- function(family, link, b, y, x, mu, P, alpha, wt, progbar = 0L) {
-  .f2_f3_non_opencl(family, link, b, y, x, mu, P, alpha, wt, progbar)
-}
-
-#' @rdname EnvelopeEval
-#' @export
-#' @usage f2_f3_opencl(family, link, b, y, x, mu, P, alpha, wt, progbar)
-
-f2_f3_opencl <- function(family, link, b, y, x, mu, P, alpha, wt, progbar = 0L) {
-  .f2_f3_opencl(family, link, b, y, x, mu, P, alpha, wt, progbar)
-}
-
 
 
 #' Builds Dispersion-Aware Envelope for Simulation

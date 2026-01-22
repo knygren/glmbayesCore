@@ -149,21 +149,6 @@
         use_opencl, verbose)
 }
 
-#' @noRd
-#' @keywords internal
-
-.f2_f3_non_opencl <- function(family, link, b, y, x, mu, P, alpha, wt, progbar) {
-  .Call(`_glmbayes_f2_f3_non_opencl`,
-        family, link, b, y, x, mu, P, alpha, wt, progbar)
-}
-
-#' @noRd
-#' @keywords internal
-
-.f2_f3_opencl <- function(family, link, b, y, x, mu, P, alpha, wt, progbar) {
-  .Call(`_glmbayes_f2_f3_opencl`,
-        family, link, b, y, x, mu, P, alpha, wt, progbar)
-}
 
 
 #' @noRd

@@ -2,17 +2,11 @@
 % Please edit documentation in R/simulationpipeline.R
 \name{EnvelopeEval}
 \alias{EnvelopeEval}
-\alias{f2_f3_non_opencl}
-\alias{f2_f3_opencl}
 \title{Evaluate Negative Log-Likelihood and Gradients}
 \usage{
 EnvelopeEval(G4, y, x, mu, P, alpha, wt,
                     family, link,
                     use_opencl = FALSE, verbose = FALSE)
-
-f2_f3_non_opencl(family, link, b, y, x, mu, P, alpha, wt, progbar)
-
-f2_f3_opencl(family, link, b, y, x, mu, P, alpha, wt, progbar)
 }
 \arguments{
 \item{G4}{Numeric matrix of parameter values (parameters * grid points).}
@@ -37,10 +31,6 @@ shifted into the likelihood.}
 \item{use_opencl}{Logical; if \code{TRUE}, attempt OpenCL acceleration.}
 
 \item{verbose}{Logical; if \code{TRUE}, print diagnostic output.}
-
-\item{b}{Numeric matrix of parameter values (parameters * grid points).}
-
-\item{progbar}{Integer flag for progress bar control (internal use).}
 }
 \value{
 \describe{

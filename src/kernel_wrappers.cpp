@@ -13,7 +13,7 @@ using namespace Rcpp;
 using namespace OpenCLHelper;
 
 
-// [[Rcpp::export]]
+
 Rcpp::List f2_f3_opencl(
     std::string family,
     std::string link,

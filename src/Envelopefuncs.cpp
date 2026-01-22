@@ -293,7 +293,6 @@ double run_opencl_pilot(const Rcpp::NumericMatrix& G4,
  */
 
 
-// [[Rcpp::export]]
 
 Rcpp::List f2_f3_non_opencl(
     std::string family,
