@@ -479,10 +479,6 @@ print.glmb<-function (x, digits = max(3, getOption("digits") - 3), ...)
 
 
 
-
-
-
-
 # Helpers --------------------------------------------------------------------
 #
 # 1) DIC_Info

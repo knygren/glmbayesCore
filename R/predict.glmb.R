@@ -135,6 +135,8 @@ predict.glmb<-function(object,newdata=NULL,type="link",
 }
 
 
+# Helpers --------------------------------------------------------------------
+
 
 #' Compare Model Frames
 #'
@@ -483,4 +485,5 @@ generate_predictions<-function(object,type="link",new_x,new_model_frame){
   
   return(pred=pred)  
 }
+
 

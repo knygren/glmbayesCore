@@ -210,6 +210,7 @@ simfunction.default <- function(object, ...) {
 #' @method print simfunction
 #' @rdname simfuncs
 #' @order 9
+ 
 print.simfunction <- function(x, ...) {
   cat("\nCall to Simulation Function:\n")
   if (!is.null(x$call)) {
@@ -1675,24 +1676,6 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
 
 
 ################################## Utility functions used by the above  #################
-
-# p_inv_gamma<-function(dispersion,shape,rate){
-#   1-pgamma(1/dispersion,shape=shape,rate=rate)
-# }
-# 
-# q_inv_gamma<-function(p,shape,rate,disp_upper,disp_lower){
-#   p_upp=p_inv_gamma(disp_upper,shape=shape,rate=rate)
-#   p_low=p_inv_gamma(disp_lower,shape=shape,rate=rate)
-#   p1=p_low+p*(p_upp-p_low)
-#   p2=1-p1
-#   1/qgamma(p2,shape,rate)
-# }
-# 
-# r_invgamma<-function(n,shape,rate,disp_upper,disp_lower){
-#   p=runif(n)
-#   q_inv_gamma(p=p,shape=shape,rate=rate,disp_upper=disp_upper,disp_lower)
-# }
-
 
 
 

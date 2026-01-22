@@ -2304,6 +2304,8 @@ rnnorm_reg_std<-function(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, 
 # Helpers --------------------------------------------------------------------
 
 
+#' @noRd
+
 dpois2<-function(x,lambda,log=TRUE){
   
   test=max(abs(round(x)-x))
