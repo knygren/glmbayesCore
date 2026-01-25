@@ -70,6 +70,9 @@ List EnvelopeBuild_Ind_Normal_Gamma(NumericVector bStar,
                                     bool use_opencl    = false,
                                     bool verbose       = false);
 
+
+NumericVector RSS(NumericVector y, NumericMatrix x,NumericMatrix b,NumericVector alpha,NumericVector wt);
+
 double UB2(double dispersion,
            Rcpp::List cache,
            Rcpp::NumericVector cbars_j,

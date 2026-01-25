@@ -174,7 +174,6 @@ arma::vec f2_gaussian_rmat_mat(const RcppParallel::RMatrix<double>& b,   // cand
                                int progbar);                             // progress toggle
 
 arma::mat  f3_gaussian(NumericMatrix b,NumericVector y, NumericMatrix x,NumericMatrix mu,NumericMatrix P,NumericVector alpha,NumericVector wt);
-NumericVector RSS(NumericVector y, NumericMatrix x,NumericMatrix b,NumericVector alpha,NumericVector wt);
 
 Rcpp::List Inv_f3_precompute_disp(NumericMatrix cbars,
                                   NumericVector y,
