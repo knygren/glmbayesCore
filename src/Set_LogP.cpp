@@ -36,70 +36,7 @@ void setlogP_C2(NumericMatrix logP,NumericVector NegLL,NumericMatrix cbars,Numer
     LLconst(i,0)=NegLL(i)-arma::as_scalar(G3row.t() * cbarrow);
   }
   
-  // double mn   = Rcpp::min(NegLL);
-  // double mx   = Rcpp::max(NegLL);
-  // double mean = Rcpp::mean(NegLL);
-  // 
-  // Rcpp::Rcout << "NegLL summary: min=" << mn
-  //             << " mean=" << mean
-  //             << " max=" << mx << "\n";
-  
-  // after filling logP(:,1) in the loop
-  // Rcpp::NumericVector lp1 = logP(_, 1);
-  
 
-  // find indices of min and max
-  // int idx_min = Rcpp::which_min(lp1);
-  // int idx_max = Rcpp::which_max(lp1);
-  // 
-  // // values
-  // double val_min = lp1[idx_min];
-  // double val_max = lp1[idx_max];
-  // double val_mean = Rcpp::mean(lp1);
-  // 
-  // print summary
-  // Rcpp::Rcout << "logP(.,1) summary: min=" << val_min
-  //             << " (row " << idx_min << ")"
-  //             << " mean=" << val_mean
-  //             << " max=" << val_max
-  //             << " (row " << idx_max << ")"
-  //             << std::endl;
-  
-  
-  // After filling logP(:,1)
-//  Rcpp::NumericVector lp1 = logP(_, 1);
-//  int idx_max = Rcpp::which_max(lp1);  // 0-based index
-  
-  // Print a window of rows around the max
-  // int start = std::max(0, idx_max - 2);
-  // int end   = std::min(n-1, idx_max + 2);
-  // 
-  // Rcpp::Rcout << "Inspecting rows " << (start+1) << " to " << (end+1)
-  //             << " (max at row " << (idx_max+1) << "):\n";
-  
-  // for (int i = start; i <= end; i++) {
-  //   Rcpp::NumericVector cbart = cbars(i, _);
-  //   Rcpp::NumericVector G3t   = G3(i, _);
-  //   
-  //   arma::colvec cbarrow(cbart.begin(), cbars.ncol(), false);
-  //   arma::colvec G3row(G3t.begin(),   G3.ncol(),     false);
-  //   
-  //   double quad = 0.5 * arma::as_scalar(cbarrow.t() * cbarrow);
-  //   double lin  = arma::as_scalar(G3row.t() * cbarrow);
-  //   
-  //   double rhs = logP(i,0) - NegLL[i] + quad + lin;
-  //   
-  //   Rcpp::Rcout << "Row " << (i+1)
-  //               << " lp0=" << logP(i,0)
-  //               << " NegLL=" << NegLL[i]
-  //               << " quad=" << quad
-  //               << " lin="  << lin
-  //               << " | lp1=" << logP(i,1)
-  //               << " rhs="  << rhs
-  //               << " diff=" << (logP(i,1) - rhs)
-  //               << "\n";
-  // }
-    
 }
 
 

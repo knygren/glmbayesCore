@@ -858,6 +858,77 @@ Rcpp::List minimize_ub2_over_dispersion(
 
 
 
+// ---------------------------------------------------------------------
+// Internal helper: Envelope geometry construction
+// Pure geometry: no mixture weights, no UB2, no packaging.
+// ---------------------------------------------------------------------
+Rcpp::List compute_envelope_geometry_cpp(
+    const Rcpp::NumericMatrix& cbars,
+    const Rcpp::NumericMatrix& thetabars,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericMatrix& P,      // FIXED
+    const Rcpp::NumericVector& alpha,
+    double low,
+    double upp,
+    double shape2,
+    double rate3
+) {
+  using namespace Rcpp;
+  
+  int gs = cbars.nrow();
+  
+  // Step 4: Base face constants
+  NumericVector thetabar_const_base =
+    thetabar_const_cpp(P, cbars, thetabars);
+  
+  // Step 5: initial anchor (posterior mean)
+  double dispstar = rate3 / (shape2 - 1.0);
+  
+  // Step 6: Face slopes at dispstar
+  NumericVector New_LL_Slope =
+    EnvBuildLinBound_cpp(thetabars, cbars, y, x, P, alpha, dispstar);
+  
+  // Step 7: Linear extrapolation to bounds
+  NumericVector thetabar_const_upp_apprx(gs), thetabar_const_low_apprx(gs);
+  for (int j = 0; j < gs; ++j) {
+    thetabar_const_upp_apprx[j] =
+      thetabar_const_base[j] + (upp - dispstar) * New_LL_Slope[j];
+    thetabar_const_low_apprx[j] =
+      thetabar_const_base[j] + (low - dispstar) * New_LL_Slope[j];
+  }
+  
+  // Step 8: Global upper line geometry
+  double max_low = max_vec(thetabar_const_low_apprx);
+  double max_upp = max_vec(thetabar_const_upp_apprx);
+  
+  // Mean-slope correction (parity with original)
+  double m_New_LL_Slope = Rcpp::mean(New_LL_Slope);
+  double max_low_mean   = max_upp - m_New_LL_Slope * (upp - low);
+  max_low = max_low_mean;
+  
+  double new_slope = (max_upp - max_low) / (upp - low);
+  double new_int   = max_low - new_slope * low;
+  
+  // Step 9a: Dispersion anchor (exact original formula)
+  double b1 = (upp - low);
+  double c1 = -std::log(upp / low);
+  dispstar  = b1 / (-c1);
+  
+  // Return all geometry objects
+  return List::create(
+    Named("thetabar_const_base")      = thetabar_const_base,
+    Named("New_LL_Slope")             = New_LL_Slope,
+    Named("thetabar_const_low_apprx") = thetabar_const_low_apprx,
+    Named("thetabar_const_upp_apprx") = thetabar_const_upp_apprx,
+    Named("max_low")                  = max_low,
+    Named("max_upp")                  = max_upp,
+    Named("new_slope")                = new_slope,
+    Named("new_int")                  = new_int,
+    Named("dispstar")                 = dispstar
+  );
+}
+
 
 
 // [[Rcpp::export]]
@@ -957,8 +1028,8 @@ List EnvelopeDispersionBuild_cpp(
   
   
   double rss_min_global       = rss_res["rss_min_global"];
-  double disp_min_global      = rss_res["disp_min_global"];
-  int    j_best               = rss_res["j_best"];
+//  double disp_min_global      = rss_res["disp_min_global"];
+//  int    j_best               = rss_res["j_best"];
   
   NumericVector rss_min_parallel  = rss_res["rss_min_parallel"];
   NumericVector disp_min_parallel = rss_res["disp_min_parallel"];
@@ -979,459 +1050,81 @@ List EnvelopeDispersionBuild_cpp(
   NumericVector disp_min_ub2 = ub2_res["disp_min_ub2"];
     
   
-//  Rcpp::Function optim("optim");
+  Rcpp::List geom = compute_envelope_geometry_cpp(
+    cbars,
+    thetabars,
+    y,
+    x,
+    P,
+    alpha,
+    low,
+    upp,
+    shape2,
+    rate3
+  );
   
-  // --- NEW: Call parallel helper and time it ---
-//  Rcpp::Environment ns3 = Rcpp::Environment::namespace_env("glmbayes");
-//  Rcpp::Function rss_fn = ns3["rss_face_at_disp"];
+  NumericVector thetabar_const_base      = geom["thetabar_const_base"];
+  NumericVector New_LL_Slope             = geom["New_LL_Slope"];
+  NumericVector thetabar_const_low_apprx = geom["thetabar_const_low_apprx"];
+  NumericVector thetabar_const_upp_apprx = geom["thetabar_const_upp_apprx"];
   
-//  Rcpp::Function grad_fn("drss_ddisp");   // exported gradient
-  
-  
-  
-//   // Optionally: keep the best across faces
-//    double rss_min_global = R_PosInf;
-//    [[maybe_unused]] double disp_min_global = NA_REAL;
-//    [[maybe_unused]] int j_best = -1;
-//   // Extract parallel results
-//   Rcpp::NumericVector disp_min_parallel(gs);
-//   Rcpp::NumericVector rss_min_parallel(gs); 
+  double max_low  = geom["max_low"];
+  double max_upp  = geom["max_upp"];
+  double new_slope = geom["new_slope"];
+  double new_int   = geom["new_int"];
+  double dispstar  = geom["dispstar"];
+
+//   // Step 4: Base face constants via R helper (keep R version for now)
+// //  Function thetabar_const_R("thetabar_const");
+// //  NumericVector thetabar_const_base =
+// //    thetabar_const_R(P, cbars, thetabars);   // length gs
+//   
+//   NumericVector thetabar_const_base =
+//     thetabar_const_cpp(P, cbars, thetabars);
 //   
 //     
-//   if(RSS_Min_Type==1){
-//   
-//   if (verbose) {
-//     // Print total number of faces before entering the loop
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] Total faces to process: "
-//                 << gs << "\n";
-//     
-//     Rcpp::Function fmt("format");
-//     Rcpp::Function systime("Sys.time");
-//     Rcpp::CharacterVector now = fmt(systime(), Rcpp::Named("format") = "%H:%M:%S");
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] >>> Starting RSS minimization loop at "
-//                 << Rcpp::as<std::string>(now[0]) << " <<<\n";
-//     
-//     
-//   }
-// 
-//   
-//   
-//   
-//     
-//   // --- NEW: Call parallel helper and time it ---
-// //  Rcpp::Function parallel_fn("EnvelopeDispersionBuild_parallel");
-// 
-//   // --- NEW: Call parallel helper and time it ---
-//   Rcpp::Environment ns = Rcpp::Environment::namespace_env("glmbayes");
-//   Rcpp::Function parallel_fn = ns["EnvelopeDispersionBuild_parallel"];
-//   
-//   double est_total = 0.0;  // declare before pilot block
-//   
-//     
-// 
-//   // --- Threshold for pilot runs ---
-//   const int pilot_threshold = static_cast<int>(std::pow(3, 14)); // 59,049 faces
-// 
-// 
-//   // --- Conditional run of pilot block ---
-//   if (gs >= pilot_threshold) {
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] Running RSS pilot block (faces="
-//                 << gs << " >= threshold=" << pilot_threshold << ").\n";
-// 
-//     Rcpp::List pilot_res = run_rss_pilot_block(parallel_fn, gs, l1,
-//                                                low, upp, cache, cbars,
-//                                                y, x, alpha, wt,
-//                                                use_parallel, verbose);
-//     est_total = pilot_res["est_total"];
-// 
-//     if (verbose) {
-//       Rcpp::Rcout << "[EnvelopeDispersionBuild] run_rss_pilot_block completed; "
-//                   << "est_total=" << est_total << " seconds.\n";
-//     }
-//   }
-//    else {
-//     if (verbose) {
-//       Rcpp::Rcout << "[EnvelopeDispersionBuild] Skipping RSS pilot block "
-//                   << "(faces=" << gs << " < threshold=" << pilot_threshold << ").\n";
-//     }
-//          
-// 
-//    }  
-//   
-//     // --- After computing est_total ---
-//      double est_total_sec = est_total;  // from pilot estimate
-//   
-//   // --- yes/no option if estimate exceeds 5 minutes ---
-//   if (est_total_sec > 300.0) {
-//     std::string prompt = "Estimated minimization exceeds 5 minutes. Continue? [y/N]: ";
-//     
-//     Rcpp::Function r_interactive("interactive");
-//     bool is_interactive = Rcpp::as<bool>(r_interactive());
-//     
-//     if (is_interactive) {
-//       Rcpp::Function readline("readline");
-//       while (true) {
-//         std::string ans = Rcpp::as<std::string>(readline(Rcpp::wrap(prompt)));
-//         // trim whitespace
-//         auto ltrim = [](std::string &s) {
-//           s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-//                           [](unsigned char ch){ return !std::isspace(ch); }));
-//         };
-//         auto rtrim = [](std::string &s) {
-//           s.erase(std::find_if(s.rbegin(), s.rend(),
-//                                [](unsigned char ch){ return !std::isspace(ch); }).base(), s.end());
-//         };
-//         ltrim(ans); rtrim(ans);
-//         
-//         if (ans == "y" || ans == "yes" || ans == "1" || ans == "continue") {
-//           Rcpp::Rcout << "[INFO] User chose to continue full run.\n";
-//           Rcpp::Rcout << ">>> Running Full parallel Minimization: "
-//                       << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
-//                       << "\n";
-//           break; // proceed to parallel Minimization
-//         } else if (ans == "n" || ans == "no" || ans == "2" || ans.empty()) {
-//           Rcpp::Rcout << "[INFO] User declined. Stopping Minimization.\n";
-//           Rcpp::stop("Minimization stopped by user after time estimate.");
-//         } else {
-//           Rcpp::Rcout << "Invalid input. Please enter y (continue) or N (stop).\n";
-//         }
-//       }
-//     } else {
-//       // Non-interactive session (e.g. CI/CRAN): auto-approve
-//       Rcpp::Rcout << "[NOTE] Non-interactive session: proceeding automatically.\n";
-//       Rcpp::Rcout << "[INFO] Proceeding with full run.\n";
-//       Rcpp::Rcout << ">>> Running Full parallel Minimization: "
-//                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
-//                   << "\n";
-//     }
-//   }  
-//     
-//     
-//     
-//   double start_time_parallel = Rcpp::as<double>(
-//     Rcpp::Function("as.numeric")(Rcpp::Function("Sys.time")())
-//   );
-//   
-//   
-//   Rcpp::List parallel_res = parallel_fn(
-//     Rcpp::Named("par0")   = 0.5 * (low + upp),
-//     Rcpp::Named("low")    = low,
-//     Rcpp::Named("upp")    = upp,
-//     Rcpp::Named("cache")  = cache,
-//     Rcpp::Named("cbars")  = cbars,
-//     Rcpp::Named("y")      = y,
-//     Rcpp::Named("x")      = x,
-//     Rcpp::Named("alpha")  = alpha,
-//     Rcpp::Named("wt")     = wt
-//   );
-//   
-//   double end_time_parallel = Rcpp::as<double>(
-//     Rcpp::Function("as.numeric")(Rcpp::Function("Sys.time")())
-//   );
-//   
-//   double elapsed_parallel = end_time_parallel - start_time_parallel;
-//   
-//   // Break elapsed into h/m/s
-//   int h_elapsed = static_cast<int>(elapsed_parallel / 3600);
-//   int m_elapsed = static_cast<int>((elapsed_parallel - h_elapsed*3600) / 60);
-//   int s_elapsed = static_cast<int>(elapsed_parallel - h_elapsed*3600 - m_elapsed*60);
-//   
-//   
-//   
-//     // Extract parallel results
-//      disp_min_parallel = parallel_res["disp_min"];
-//      rss_min_parallel  = parallel_res["rss_min"];
+//   // Step 5: initial anchor (posterior mean; optional)
+//   // Note: consistency with external rate2: here rate3=Rate+RSS_post/2 as in R function
+//   double dispstar = rate3 / (shape2 - 1.0);
 //   
 // 
-//   if (verbose) {
-//     Rcpp::Function fmt("format");
-//     Rcpp::Function systime("Sys.time");
-//     Rcpp::CharacterVector now = fmt(systime(), Rcpp::Named("format") = "%H:%M:%S");
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] >>> Exiting RSS minimization loop at "
-//                 << Rcpp::as<std::string>(now[0]) << " <<<\n";
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] RSS Parallel helper completed in "
-//                 << h_elapsed << "h " << m_elapsed << "m " << s_elapsed << "s.\n";  
-//     
-//     
-//       }
+//   // Step 6: Face slopes at dispstar via R helper
+// //  Function EnvBuildLinBound_R("EnvBuildLinBound");
+// //  NumericVector New_LL_Slope =
+// //    EnvBuildLinBound_R(thetabars, cbars, y, x, P, alpha, dispstar); // length gs
+//   
 // 
+//   NumericVector New_LL_Slope =
+//     EnvBuildLinBound_cpp(thetabars, cbars, y, x, P, alpha, dispstar);
+//   
+// 
+//   // Step 7: Linear extrapolation of face constants to bounds
+//   NumericVector thetabar_const_upp_apprx(gs), thetabar_const_low_apprx(gs);
 //   for (int j = 0; j < gs; ++j) {
-//     if (rss_min_parallel[j] < rss_min_global) {
-//       rss_min_global = rss_min_parallel[j];
-//       disp_min_global = disp_min_parallel[j];
-//       j_best = j;
-//     }
-//   }  
-//   if (verbose) {
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] RSS source = MIN (optimized)\n";
+//     thetabar_const_upp_apprx[j] = thetabar_const_base[j] + (upp - dispstar) * New_LL_Slope[j];
+//     thetabar_const_low_apprx[j] = thetabar_const_base[j] + (low - dispstar) * New_LL_Slope[j];
 //   }
 //   
+//   // Step 8: Global upper line geometry (match original mean-slope correction)
+//   double max_low = max_vec(thetabar_const_low_apprx);
+//   double max_upp = max_vec(thetabar_const_upp_apprx);
 //   
-//   }
-//   else { // RSS_Min_Type == 2
-//     rss_min_global = RSS_ML;
-//     disp_min_global = 0.5*(low+upp);
-//     j_best = -1;
-//     if (verbose) {
-//       Rcpp::Rcout << "[EnvelopeDispersionBuild] RSS source = ML (skip minimization)\n";
-//       Rcpp::Rcout << "[EnvelopeDispersionBuild] RSS_ML = " << RSS_ML << "\n";
-//     }
-//   }
+//   // No-op in original; keep for parity via mean slope correction
+//   double m_New_LL_Slope = Rcpp::mean(New_LL_Slope);
+//   double max_low_mean   = max_upp - m_New_LL_Slope * (upp - low);
+//   max_low = max_low_mean;
 //   
-  
-  
-  
-///   (1/low)*(rss_min_parallel[j]-rss_min_global))
-
-
-  //////////////////////////////////////
-
-//   if (verbose) {
-//     Rcpp::Function fmt("format");
-//     Rcpp::Function systime("Sys.time");
-//     Rcpp::CharacterVector now = fmt(systime(), Rcpp::Named("format") = "%H:%M:%S");
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] >>> Starting UB2 minimization loop at "
-//                 << Rcpp::as<std::string>(now[0]) << " <<<\n";
-//     
-//     
-//   }
+//   double new_slope = (max_upp - max_low) / (upp - low);
+//   double new_int   = max_low - new_slope * low;
 //   
-//   
-//   /// Switch to using namesspace
-//   
-// //  Rcpp::Environment ns = Rcpp::Environment::namespace_env("glmbayes");
-// //  Rcpp::Function ub2_fn = ns["UB2"];
-//   
-//   // Preallocate to gs faces
-//   Rcpp::NumericVector disp_min_ub2(gs);
-//   Rcpp::NumericVector ub2_min(gs);
-//   
-//   if(UB2_Min_Type==1){
-//     
-//   
-//   // --- NEW: Call UB2 parallel helper and time it ---
-//   Rcpp::Environment ns2 = Rcpp::Environment::namespace_env("glmbayes");
-//     
-//   Rcpp::Function ub2_parallel_fn = ns2["EnvelopeUB2_parallel"];
-//   
-//   double est_total_ub2 = 0.0;  // declare before pilot block
-//   
-//   // --- Threshold for UB2 pilot runs ---
-//   const int pilot_threshold_ub2 = static_cast<int>(std::pow(3, 14)); // 4,782,969 faces
-//   
-//   // --- Conditional run of UB2 pilot block ---
-//   if (gs >= pilot_threshold_ub2) {
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] Running UB2 pilot block (faces="
-//                 << gs << " >= threshold=" << pilot_threshold_ub2 << ").\n";
-//     
-//     Rcpp::List ub2_res = run_ub2_pilot_block(ub2_parallel_fn, gs, l1,
-//                                              low, upp, cache, cbars,
-//                                              y, x, alpha, wt,
-//                                              rss_min_global,
-//                                              verbose);
-//     est_total_ub2 = ub2_res["est_total"];
-//     
-//     if (verbose) {
-//       Rcpp::Rcout << "[EnvelopeDispersionBuild] run_ub2_pilot_block completed; "
-//                   << "est_total=" << est_total_ub2 << " seconds.\n";
-//     }
-//   } else {
-//     if (verbose) {
-//       Rcpp::Rcout << "[EnvelopeDispersionBuild] Skipping UB2 pilot block "
-//                   << "(faces=" << gs << " < threshold=" << pilot_threshold_ub2 << ").\n";
-//     }
-//   }
-//   
-//     if (est_total_ub2 > 300.0) {
-//     std::string prompt = "Estimated UB2 minimization exceeds 5 minutes. Continue? [y/N]: ";
-//     Rcpp::Function r_interactive("interactive");
-//     bool is_interactive = Rcpp::as<bool>(r_interactive());
-//     
-//     if (is_interactive) {
-//       Rcpp::Function readline("readline");
-//       while (true) {
-//         std::string ans = Rcpp::as<std::string>(readline(Rcpp::wrap(prompt)));
-//         // trim whitespace
-//         ans.erase(ans.begin(), std::find_if(ans.begin(), ans.end(),
-//                             [](unsigned char ch){ return !std::isspace(ch); }));
-//         ans.erase(std::find_if(ans.rbegin(), ans.rend(),
-//                                [](unsigned char ch){ return !std::isspace(ch); }).base(), ans.end());
-//         
-//         if (ans == "y" || ans == "yes" || ans == "1" || ans == "continue") {
-//           Rcpp::Rcout << "[INFO] User chose to continue UB2 minimization.\n";
-//           Rcpp::Rcout << ">>> Running Full UB2 parallel minimization: "
-//                       << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
-//                       << "\n";
-//           break;
-//         } else if (ans == "n" || ans == "no" || ans == "2" || ans.empty()) {
-//           Rcpp::Rcout << "[INFO] User declined. Stopping UB2 minimization.\n";
-//           Rcpp::stop("UB2 minimization stopped by user after time estimate.");
-//         } else {
-//           Rcpp::Rcout << "Invalid input. Please enter y (continue) or N (stop).\n";
-//         }
-//       }
-//     } else {
-//       Rcpp::Rcout << "[NOTE] Non-interactive session: proceeding automatically.\n";
-//       Rcpp::Rcout << "[INFO] Proceeding with full UB2 minimization.\n";
-//       Rcpp::Rcout << ">>> Running Full UB2 parallel minimization: "
-//                   << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")()))
-//                   << "\n";
-//     }
-//   }
-//   
-//   // --- Run full UB2 minimization ---
-//   double start_time_ub2 = Rcpp::as<double>(
-//     Rcpp::Function("as.numeric")(Rcpp::Function("Sys.time")())
-//   );
-//   
-//   
-//   // --- Print rss_min_global before UB2 minimization call ---
-//   if (verbose) {
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] rss_min_global_used in optimization is: "
-//                 << rss_min_global << "\n";
-//   }
-//   
-//   
-//   Rcpp::List ub2_parallel_res = ub2_parallel_fn(
-//     Rcpp::Named("par0")   = 0.5 * (low + upp),
-//     Rcpp::Named("low")    = low,
-//     Rcpp::Named("upp")    = upp,
-//     Rcpp::Named("cache")  = cache,
-//     Rcpp::Named("cbars")  = cbars,
-//     Rcpp::Named("y")      = y,
-//     Rcpp::Named("x")      = x,
-//     Rcpp::Named("alpha")  = alpha,
-//     Rcpp::Named("wt")     = wt,
-//     Rcpp::Named("rss_min_global") = rss_min_global
-//   );
-//   
-//   double end_time_ub2 = Rcpp::as<double>(
-//     Rcpp::Function("as.numeric")(Rcpp::Function("Sys.time")())
-//   );
-//   
-//   double elapsed_ub2 = end_time_ub2 - start_time_ub2;
-//   
-//   // Break elapsed into h/m/s
-//   int h_elapsed_ub2 = static_cast<int>(elapsed_ub2 / 3600);
-//   int m_elapsed_ub2 = static_cast<int>((elapsed_ub2 - h_elapsed_ub2*3600) / 60);
-//   int s_elapsed_ub2 = static_cast<int>(elapsed_ub2 - h_elapsed_ub2*3600 - m_elapsed_ub2*60);
-//   
-//   
-//   // Extract UB2 parallel results
-//    disp_min_ub2 = ub2_parallel_res["disp_min"];
-//    ub2_min      = ub2_parallel_res["ub2_min"];
-// 
-//    for (int j = 0; j < gs; ++j) {
-//      
-//    NumericVector cbars_j = cbars(j, _);
-//   
-//    }
-//   
-//   if (verbose) {
-//     Rcpp::Function fmt("format");
-//     Rcpp::Function systime("Sys.time");
-//     Rcpp::CharacterVector now = fmt(systime(), Rcpp::Named("format") = "%H:%M:%S");
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] >>> Exiting UB2 minimization loop at "
-//                 << Rcpp::as<std::string>(now[0]) << " <<<\n";
-//     Rcpp::Rcout << "[EnvelopeDispersionBuild] UB2 parallel helper completed in "
-//                 << h_elapsed_ub2 << "h " << m_elapsed_ub2 << "m " << s_elapsed_ub2 << "s.\n";
-//     
-//       }
-//   
-// 
-//   // Find global UB2 minimum
-//   [[maybe_unused]] double ub2_min_global = R_PosInf;
-//   [[maybe_unused]] double disp_min_global_ub2 = NA_REAL;
-//   [[maybe_unused]]  int j_best_ub2 = -1;
-// 
-//   
-//   for (int j = 0; j < gs; ++j) {
-// //    Rcpp::Rcout << "Index j: " << j << ", ub2_min[j]: " << ub2_min[j] << ", disp_min_ub2[j]: " << disp_min_ub2[j] << std::endl;
-//     if (ub2_min[j] < ub2_min_global) {
-//       ub2_min_global = ub2_min[j];
-//       disp_min_global_ub2 = disp_min_ub2[j];
-//       j_best_ub2 = j;
-//     }
-//   }
-//   
-//   
-// 
-//   }
-//   else { // UB2_Min_Type == 2
-//     if (RSS_Min_Type == 1) {
-//       // RSS minimized, UB2 skipped: derive ub2_min from rss_min_parallel
-//       for (int j = 0; j < gs; ++j) {
-//         ub2_min[j]      = (0.5 / upp) * (rss_min_parallel[j] - rss_min_global);
-//         disp_min_ub2[j] = upp;  // enforce upper bound anchor
-//       }
-//       if (verbose) {
-//         Rcpp::Rcout << "[EnvelopeDispersionBuild] UB2 source = derived from RSS_min (skip UB2)\n";
-//       }
-//       
-//     } else if (RSS_Min_Type == 2) {
-//       // RSS minimized, UB2 skipped: derive ub2_min from rss_min_parallel
-//       for (int j = 0; j < gs; ++j) {
-//         ub2_min[j]      = 0;
-//         disp_min_ub2[j] = upp;  // enforce upper bound anchor
-//       }
-//       if (verbose) {
-//         Rcpp::Rcout << "[EnvelopeDispersionBuild] UB2 source = Set to 0 (skip RSS_Min and UB2 Min)\n";
-//       }
-//       
-//     }
-//   }
-//   
-  
-  
-  // Step 4: Base face constants via R helper (keep R version for now)
-//  Function thetabar_const_R("thetabar_const");
-//  NumericVector thetabar_const_base =
-//    thetabar_const_R(P, cbars, thetabars);   // length gs
-  
-  NumericVector thetabar_const_base =
-    thetabar_const_cpp(P, cbars, thetabars);
-  
-    
-  // Step 5: initial anchor (posterior mean; optional)
-  // Note: consistency with external rate2: here rate3=Rate+RSS_post/2 as in R function
-  double dispstar = rate3 / (shape2 - 1.0);
+//   // Step 9a: Dispersion anchor (exactly as in original: b1/(-c1))
+//   double b1 = (upp - low);
+//   double c1 = -std::log(upp / low);
+//   dispstar  = b1 / (-c1);  // equivalently (upp - low)/log(upp/low)
   
 
-  // Step 6: Face slopes at dispstar via R helper
-//  Function EnvBuildLinBound_R("EnvBuildLinBound");
-//  NumericVector New_LL_Slope =
-//    EnvBuildLinBound_R(thetabars, cbars, y, x, P, alpha, dispstar); // length gs
+  ////////////////////////////////////////////////////////////
   
-
-  NumericVector New_LL_Slope =
-    EnvBuildLinBound_cpp(thetabars, cbars, y, x, P, alpha, dispstar);
-  
-
-  // Step 7: Linear extrapolation of face constants to bounds
-  NumericVector thetabar_const_upp_apprx(gs), thetabar_const_low_apprx(gs);
-  for (int j = 0; j < gs; ++j) {
-    thetabar_const_upp_apprx[j] = thetabar_const_base[j] + (upp - dispstar) * New_LL_Slope[j];
-    thetabar_const_low_apprx[j] = thetabar_const_base[j] + (low - dispstar) * New_LL_Slope[j];
-  }
-  
-  // Step 8: Global upper line geometry (match original mean-slope correction)
-  double max_low = max_vec(thetabar_const_low_apprx);
-  double max_upp = max_vec(thetabar_const_upp_apprx);
-  
-  // No-op in original; keep for parity via mean slope correction
-  double m_New_LL_Slope = Rcpp::mean(New_LL_Slope);
-  double max_low_mean   = max_upp - m_New_LL_Slope * (upp - low);
-  max_low = max_low_mean;
-  
-  double new_slope = (max_upp - max_low) / (upp - low);
-  double new_int   = max_low - new_slope * low;
-  
-  // Step 9a: Dispersion anchor (exactly as in original: b1/(-c1))
-  double b1 = (upp - low);
-  double c1 = -std::log(upp / low);
-  dispstar  = b1 / (-c1);  // equivalently (upp - low)/log(upp/low)
-  
-
   // Step 9: Mixture weights per face (match original)
   NumericVector New_logP2(gs);
   NumericVector prob_factor(gs);
