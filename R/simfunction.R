@@ -742,6 +742,8 @@ print.rGamma_reg<-function (x, digits = max(3, getOption("digits") - 3), ...)
 
 
 
+
+
 #' @family simfuncs 
 #' @example inst/examples/Ex_rindep_norm_gamma_reg.R
 #' @usage rindependent_norm_gamma_reg(n, y, x, prior_list, offset = NULL, weights = 1,
@@ -827,6 +829,8 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
 
   dispersion2=dispersion
   RSS_temp<-matrix(0,nrow=1000)
+  
+  ##########################  BEGIN *.CPP  MIGRATION   #########################################################
   
   ## Step 3: Iterative Dispersion Anchoring (Finds good value for the dispersion)
   
@@ -1115,6 +1119,8 @@ rindependent_norm_gamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,fam
     out[,i]=out[,i]+mu
   }
   
+  
+  ##############################  END *.CPP Migration ###########################################
   
   famfunc=glmbfamfunc(gaussian())  
   f1=famfunc$f1
@@ -1591,4 +1597,239 @@ logdiffexp <- function(a, b) {
 
 
 
+
+############################  Internally Called function - To be migrated to *.cpp ############################
+
+
+rindep_norm_gamma_reg_Rcore <- function(
+    n, y, x, mu, P, offset2, wt,
+    shape, rate, max_disp_perc,
+    disp_lower, disp_upper,
+    Gridtype, n_envopt,
+    use_parallel, use_opencl,
+    verbose, progbar = TRUE
+) {
+  
+  ##########################  BEGIN *.CPP MIGRATION   ##########################
+  
+  ## ---- Step 3: Iterative Dispersion Anchoring ----
+  
+  n_obs <- length(y)
+  dispersion2 <- rate / (shape - 1)   # initial guess
+  RSS_temp <- numeric(1000)
+  
+  
+  # Reconstruct Sigma from P
+  R <- chol(P)
+  Sigma <- chol2inv(R)
+  Sigma <- 0.5 * (Sigma + t(Sigma))
+  
+  if (verbose) {
+    start_anchor <- as.numeric(Sys.time())
+    cat("[DispersionAnchoring] >>> Entering iterative dispersion anchoring at",
+        format(Sys.time(), "%H:%M:%S"), "<<<\n")
+  }
+  
+  for (j in 1:10) {
+    
+    glmb_out1 <- glmb(
+      y ~ x - 1,
+      family = gaussian(),
+      dNormal(mu = mu, Sigma = Sigma, dispersion = dispersion2),
+      weights = wt,
+      offset = offset2
+    )
+    
+    res_temp <- residuals(glmb_out1)
+    
+    for (k in 1:1000) {
+      RSS_temp[k] <- sum(res_temp[k, ] * res_temp[k, ])
+    }
+    
+    RSS_Post2 <- mean(RSS_temp)
+    
+    b_old <- glmb_out1$coef.mode
+    xbetastar <- x %*% b_old
+    RSS2_post <- t(y - xbetastar) %*% (y - xbetastar)
+    
+    shape2 <- shape + n_obs / 2
+    rate2  <- rate + RSS_Post2 / 2
+    
+    dispersion2 <- rate2 / (shape2 - 1)
+  }
+  
+  if (verbose) {
+    end_anchor <- as.numeric(Sys.time())
+    elapsed <- end_anchor - start_anchor
+    h <- as.integer(elapsed / 3600)
+    m <- as.integer((elapsed - h * 3600) / 60)
+    s <- as.integer(elapsed - h * 3600 - m * 60)
+    
+    cat("[DispersionAnchoring] >>> Exiting iterative dispersion anchoring at",
+        format(Sys.time(), "%H:%M:%S"), "<<<\n")
+    cat("[DispersionAnchoring] Dispersion anchoring completed in:",
+        h, "h ", m, "m ", s, "s.\n")
+  }
+  
+  ## ---- Step 4: Standardized Model ----
+  
+  betastar <- glmb_out1$coef.mode
+  dispstar <- dispersion2
+  
+  famfunc <- glmbfamfunc(gaussian())
+  f2 <- famfunc$f2
+  f3 <- famfunc$f3
+  
+  if (is.null(offset2)) offset2 <- rep(0, length(y))
+  
+  wt2 <- wt / dispstar
+  
+  alpha <- x %*% as.vector(mu) + offset2
+  mu2 <- 0 * as.vector(mu)
+  P2 <- P
+  x2 <- x
+  
+  parin <- mu - mu   # start - mu, but start = mu
+  
+  ## ---- Posterior Mode Optimization ----
+  
+  if (verbose) {
+    start_optim <- as.numeric(Sys.time())
+    cat("[PosteriorMode] >>> Entering optim() call at",
+        format(Sys.time(), "%H:%M:%S"), "<<<\n")
+  }
+  
+  opt_out <- optim(
+    parin, f2, f3,
+    y = as.vector(y),
+    x = as.matrix(x2),
+    mu = as.vector(mu2),
+    P = as.matrix(P),
+    alpha = as.vector(alpha),
+    wt = as.vector(wt2),
+    method = "BFGS",
+    hessian = TRUE
+  )
+  
+  bstar <- opt_out$par
+  A1 <- opt_out$hessian
+  
+  if (verbose) {
+    end_optim <- as.numeric(Sys.time())
+    elapsed <- end_optim - start_optim
+    h <- as.integer(elapsed / 3600)
+    m <- as.integer((elapsed - h * 3600) / 60)
+    s <- as.integer(elapsed - h * 3600 - m * 60)
+    
+    cat("[PosteriorMode] >>> Exiting optim() call at",
+        format(Sys.time(), "%H:%M:%S"), "<<<\n")
+    cat("[PosteriorMode] optim() completed in:",
+        h, "h ", m, "m ", s, "s.\n")
+  }
+  
+  ## ---- Standardization ----
+  
+  Standard_Mod <- glmb_Standardize_Model(
+    y = as.vector(y),
+    x = as.matrix(x2),
+    P = as.matrix(P2),
+    bstar = as.matrix(bstar, ncol = 1),
+    A1 = as.matrix(A1)
+  )
+  
+  bstar2 <- Standard_Mod$bstar2
+  A      <- Standard_Mod$A
+  x2     <- Standard_Mod$x2
+  mu2    <- Standard_Mod$mu2
+  P2     <- Standard_Mod$P2
+  L2Inv  <- Standard_Mod$L2Inv
+  L3Inv  <- Standard_Mod$L3Inv
+  
+  ## ---- Step 5: Envelope ----
+  
+  env_out <- EnvelopeOrchestrator(
+    bstar2 = as.vector(bstar2),
+    A = as.matrix(A),
+    y = y,
+    x2 = x2,
+    mu2 = mu2,
+    P2 = P2,
+    alpha = as.vector(alpha),
+    wt = as.vector(wt),
+    n = n,
+    Gridtype = Gridtype,
+    n_envopt = n_envopt,
+    shape = shape,
+    rate = rate,
+    RSS_Post2 = RSS_Post2,
+    RSS_ML = NA,
+    max_disp_perc = max_disp_perc,
+    disp_lower = disp_lower,
+    disp_upper = disp_upper,
+    use_parallel = use_parallel,
+    use_opencl = use_opencl,
+    verbose = verbose
+  )
+  
+  Env3 <- env_out$Env
+  gamma_list_new <- env_out$gamma_list
+  UB_list_new <- env_out$UB_list
+  low <- env_out$low
+  upp <- env_out$upp
+  diagnostics <- env_out$diagnostics
+  
+  ## ---- Step 6: Simulation ----
+  
+  if (!use_parallel || n == 1) {
+    sim_temp <- .rindep_norm_gamma_reg_std_cpp(
+      n = n, y = y, x = x2,
+      mu = mu2, P = P2,
+      alpha = alpha, wt = wt,
+      f2 = f2, Envelope = Env3,
+      gamma_list = gamma_list_new,
+      UB_list = UB_list_new,
+      family = "gaussian", link = "identity",
+      progbar = progbar,
+      verbose = verbose
+    )
+  } else {
+    sim_temp <- .rindep_norm_gamma_reg_std_parallel_cpp(
+      n = n, y = y, x = x2,
+      mu = mu2, P = P2,
+      alpha = alpha, wt = wt,
+      f2 = f2, Envelope = Env3,
+      gamma_list = gamma_list_new,
+      UB_list = UB_list_new,
+      family = "gaussian", link = "identity",
+      progbar = progbar,
+      verbose = verbose
+    )
+  }
+  
+  ## ---- Step 7: Back-transform ----
+  
+  beta_out   <- sim_temp$beta_out
+  disp_out   <- sim_temp$disp_out
+  iters_out  <- sim_temp$iters_out
+  weight_out <- sim_temp$weight_out
+  
+  out <- L2Inv %*% L3Inv %*% t(beta_out)
+  for (i in 1:n) out[, i] <- out[, i] + mu
+  
+  ##########################  END *.CPP MIGRATION   ############################
+  
+  return(list(
+    out = out,
+    beta_out = beta_out,
+    disp_out = disp_out,
+    iters_out = iters_out,
+    weight_out = weight_out,
+    L2Inv = L2Inv,
+    L3Inv = L3Inv,
+    low = low,
+    upp = upp,
+    diagnostics = diagnostics,
+    bstar = bstar
+  ))
+}
 
