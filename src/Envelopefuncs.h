@@ -102,6 +102,34 @@ List EnvelopeDispersionBuild_cpp(
     bool use_parallel = true   // ← add flag here
   );
 
+Rcpp::List EnvelopeOrchestrator_cpp(
+    NumericVector bstar2,
+    NumericMatrix A,
+    NumericVector y,
+    NumericMatrix x2,
+    NumericMatrix mu2,
+    NumericMatrix P2,
+    NumericVector alpha,
+    NumericVector wt,
+    
+    int n,
+    int Gridtype,
+    Nullable<int> n_envopt,
+    
+    double shape,
+    double rate,
+    double RSS_Post2,
+    double RSS_ML,
+    
+    double max_disp_perc,
+    Nullable<double> disp_lower,
+    Nullable<double> disp_upper,
+    
+    bool use_parallel,
+    bool use_opencl,
+    bool verbose
+);
+
 
 List Set_Grid(Rcpp::NumericMatrix GIndex,  Rcpp::NumericMatrix cbars, Rcpp::NumericMatrix Lint);
 Rcpp::List Set_Grid_C(Rcpp::NumericMatrix GIndex,  Rcpp::NumericMatrix cbars, Rcpp::NumericMatrix Lint,Rcpp::NumericMatrix Down,Rcpp::NumericMatrix Up,Rcpp::NumericMatrix lglt,Rcpp::NumericMatrix lgrt,Rcpp::NumericMatrix lgct,Rcpp::NumericMatrix logU,Rcpp::NumericMatrix logP);

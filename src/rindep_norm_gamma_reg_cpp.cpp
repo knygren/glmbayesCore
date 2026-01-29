@@ -964,28 +964,372 @@ Rcpp::List rindep_norm_gamma_reg_cpp(
     bool progbar
 ){
   
+  // Base R functions
+  Rcpp::Function lm_wfit("lm.wfit");
+  Rcpp::Function optim("optim");
+  Rcpp::Function gaussian("gaussian");
   
-  // Temporary placeholder outputs
-  Rcpp::NumericMatrix beta_out(1, 1);
-  beta_out(0, 0) = NA_REAL;
   
-  Rcpp::NumericVector disp_out(1);
-  disp_out[0] = NA_REAL;
+  // glmbayes namespace function
+  Rcpp::Environment glmbayes_ns = Rcpp::Environment::namespace_env("glmbayes");
+  Rcpp::Function glmbfamfunc = glmbayes_ns["glmbfamfunc"];
   
-  Rcpp::NumericVector iters_out(1);
-  iters_out[0] = NA_REAL;
   
-  Rcpp::NumericVector weight_out(1);
-  weight_out[0] = NA_REAL;
+  // Build y* = y - offset
+  int n_obs = y.size();
+  Rcpp::NumericVector ystar(n_obs);
+  for (int i = 0; i < n_obs; i++) {
+    ystar[i] = y[i] - offset[i];
+  }
   
-  // Return trivial list (compiles and matches expected structure)
-  return Rcpp::List::create(
-    Rcpp::Named("beta_out")   = beta_out,
-    Rcpp::Named("disp_out")   = disp_out,
-    Rcpp::Named("iters_out")  = iters_out,
-    Rcpp::Named("weight_out") = weight_out
+  // Call lm.wfit(X, y*, w)
+  Rcpp::List fit = lm_wfit(
+    Rcpp::_["x"] = x,
+    Rcpp::_["y"] = ystar,
+    Rcpp::_["w"] = wt
   );
   
+  // Extract residuals
+  Rcpp::NumericVector res = fit["residuals"];
   
-}
+  // Compute RSS
+  double RSS = 0.0;
+  for (int i = 0; i < res.size(); i++) {
+    RSS += res[i] * res[i];
+  }
+  
+  // Extract rank
+  int p = Rcpp::as<int>(fit["rank"]);
+  
+  // Compute dispersion
+  double dispersion2 = RSS / (n_obs - p);
+  
+  
+  // Call glmbfamfunc(gaussian())
+  Rcpp::List famfunc = glmbfamfunc( gaussian() );
+  
+  // Extract f2 and f3
+  Rcpp::Function f2 = famfunc["f2"];
+  Rcpp::Function f3 = famfunc["f3"];
+  
+  
+  // Armadillo views
+  arma::mat X   = Rcpp::as<arma::mat>(x);          // n_obs × p
+  arma::vec Y   = Rcpp::as<arma::vec>(y);          // n_obs
+  arma::rowvec y_row = Y.t();                      // 1 × n_obs
+  arma::rowvec off_row = Rcpp::as<arma::rowvec>(offset); // 1 × n_obs
+  arma::rowvec wt_row  = Rcpp::as<arma::rowvec>(wt);     // 1 × n_obs
+  
+  Rcpp::List cpp_out;   // declare here so it survives the loop
+  double RSS_Post2 = NA_REAL;   // declare before the loop
+  
+  for (int j = 0; j < 10; ++j) {
+    
+    // --- Call rnorm_reg_cpp (C++ version of .rnorm_reg_cpp) ---
+    cpp_out = rnorm_reg_cpp(
+      10000,          // n
+      y,              // y
+      x,              // x
+      mu,             // mu
+      P,              // P
+      offset,         // offset
+      wt,             // wt
+      dispersion2,    // dispersion
+      f2,             // f2
+      f3,             // f3
+      mu,             // start
+      "gaussian",     // family
+      "identity",     // link
+      Gridtype        // Gridtype
+    );
+    
+    // Posterior draws: matrix (n_draws × p)
+    arma::mat beta_draws = Rcpp::as<arma::mat>(cpp_out["coefficients"]);
 
+    // lp_mat: n_draws × n_obs = beta_draws %*% t(x)
+    arma::mat lp_mat = beta_draws * X.t();
+    
+    // eta_mat = lp_mat + offset (broadcasted by row)
+    arma::mat eta_mat = lp_mat.each_row() + off_row;
+    
+    // For Gaussian identity link, mu_mat = eta_mat
+    arma::mat mu_mat = eta_mat;
+    
+    // diff = mu_mat - y (broadcast y by row)
+    arma::mat diff = mu_mat.each_row() - y_row;
+    
+    // elementwise square
+    arma::mat res_sq = diff % diff;
+    
+    // weight each column by wt
+    arma::mat res_sq_weighted = res_sq;
+    res_sq_weighted.each_row() %= wt_row;
+    
+    // RSS_k = sum_i w_i (y_i - mu_ik)^2  (per draw)
+    arma::vec RSS_temp = arma::sum(res_sq_weighted, 1);
+    
+    // Posterior mean of RSS
+    RSS_Post2 = arma::mean(RSS_temp);
+    
+    // Mode from cpp_out
+    arma::vec b_old = Rcpp::as<arma::vec>(cpp_out["coef.mode"]);
+    
+    // x %*% b_old
+    arma::vec xbetastar = X * b_old;
+    
+    // RSS2_post = (y - X b_old)' (y - X b_old)
+    arma::vec resid_ml = Y - xbetastar;
+    double RSS2_post = arma::dot(resid_ml, resid_ml);
+    
+    // Update shape, rate, dispersion
+    double shape2 = shape + static_cast<double>(n_obs) / 2.0;
+    double rate2  = rate  + RSS_Post2 / 2.0;
+    
+    dispersion2 = rate2 / (shape2 - 1.0);
+  }
+  
+  
+  // -------------------------------
+  // Posterior Mode + Hessian Block
+  // -------------------------------
+  
+  // Extract posterior mode from sampler
+  arma::vec betastar = Rcpp::as<arma::vec>(cpp_out["coef.mode"]);
+  double dispstar = dispersion2;
+  
+  // wt2 = wt / dispstar
+  Rcpp::NumericVector wt2(n_obs);
+  for (int i = 0; i < n_obs; ++i)
+    wt2[i] = wt[i] / dispstar;
+  
+  // alpha = X %*% mu + offset
+  arma::vec alpha_vec = X * Rcpp::as<arma::vec>(mu) + Rcpp::as<arma::vec>(offset);
+  Rcpp::NumericVector alpha = Rcpp::wrap(alpha_vec);
+  
+  // mu2 = 0 * mu
+  Rcpp::NumericVector mu2(mu.size());
+  for (int i = 0; i < mu.size(); ++i)
+    mu2[i] = 0.0;
+  
+  // parin = mu - mu  (zero vector)
+  Rcpp::NumericVector parin(mu.size());
+  for (int i = 0; i < mu.size(); ++i)
+    parin[i] = 0.0;
+  
+  // ---- Posterior Mode Optimization ----
+  if (verbose) {
+    Rcpp::Rcout << "[PosteriorMode] >>> Entering optim() call <<<\n";
+  }
+  
+  // Call R's optim() directly
+  Rcpp::List opt_out = optim(
+    Rcpp::_["par"] = parin,
+    Rcpp::_["fn"]  = f2,
+    Rcpp::_["gr"]  = f3,
+    Rcpp::_["y"]   = Rcpp::as<Rcpp::NumericVector>(y),
+    Rcpp::_["x"]   = Rcpp::as<Rcpp::NumericMatrix>(x),
+    Rcpp::_["mu"]  = mu2,
+    Rcpp::_["P"]   = Rcpp::as<Rcpp::NumericMatrix>(P),
+    Rcpp::_["alpha"] = alpha,
+    Rcpp::_["wt"]    = wt2,
+    Rcpp::_["method"] = "BFGS",
+    Rcpp::_["hessian"] = true
+  );
+  
+  // Extract posterior mode and Hessian
+  Rcpp::NumericVector bstar  = opt_out["par"];
+  Rcpp::NumericMatrix A1     = opt_out["hessian"];
+  
+  
+  // -------------------------------
+  // Step 4: Standardization (glmb_Standardize_Model)
+  // -------------------------------
+  
+  // bstar is a NumericVector from optim; turn it into a p×1 matrix
+  int p_dim = bstar.size();
+  Rcpp::NumericMatrix bstar_mat(p_dim, 1);
+  for (int i = 0; i < p_dim; ++i) {
+    bstar_mat(i, 0) = bstar[i];
+  }
+  
+  // A1 is already a p×p NumericMatrix from optim
+  Rcpp::NumericMatrix A1_mat = A1;
+  
+  // x2 <- x; P2 <- P; mu2 <- 0
+  Rcpp::NumericMatrix x2_mat = x;
+  Rcpp::NumericMatrix P2_mat = P;
+  Rcpp::NumericMatrix mu2_mat(p_dim, 1);
+  for (int i = 0; i < p_dim; ++i) {
+    mu2_mat(i, 0) = 0.0;
+  }
+  
+  // Call C++ standardization
+  Rcpp::List Standard_Mod = glmb_Standardize_Model(
+    Rcpp::as<Rcpp::NumericVector>(y),   // y
+    x2_mat,                             // x
+    P2_mat,                             // P
+    bstar_mat,                          // bstar
+    A1_mat                              // A1
+  );
+  
+  // Extract standardized components
+  Rcpp::NumericVector bstar2 = Standard_Mod["bstar2"];
+  Rcpp::NumericMatrix A      = Standard_Mod["A"];
+  Rcpp::NumericMatrix x2_std = Standard_Mod["x2"];
+  Rcpp::NumericMatrix mu2_std= Standard_Mod["mu2"];
+  Rcpp::NumericMatrix P2_std = Standard_Mod["P2"];
+  Rcpp::NumericMatrix L2Inv  = Standard_Mod["L2Inv"];
+  Rcpp::NumericMatrix L3Inv  = Standard_Mod["L3Inv"];
+  
+  // -------------------------------
+  // Step 5: Envelope (EnvelopeOrchestrator_cpp)
+  // -------------------------------
+  
+  // RSS_Post2 from your last dispersion loop iteration
+  double RSS_ML = NA_REAL;  // matches R: RSS_ML = NA
+  
+
+  
+  
+  
+  // Call C++ envelope orchestrator
+  Rcpp::List env_out = EnvelopeOrchestrator_cpp(
+    bstar2,
+    A,
+    Rcpp::as<Rcpp::NumericVector>(y),
+    x2_std,
+    mu2_std,
+    P2_std,
+    alpha,
+    wt,
+    n,
+    Gridtype,
+    
+    // n_envopt: treat negative as NULL
+    (n_envopt < 0 ? R_NilValue : Rcpp::wrap(n_envopt)),
+                
+    shape,
+    rate,
+    RSS_Post2,
+    RSS_ML,
+    max_disp_perc,
+                
+    // disp_lower: Nullable<NumericVector> -> Nullable<double>
+                (disp_lower.isNull()
+                   ? R_NilValue
+                   : Rcpp::wrap(Rcpp::as<Rcpp::NumericVector>(disp_lower)[0])),
+                     
+                     // disp_upper: same logic
+                     (disp_upper.isNull()
+                        ? R_NilValue
+                        : Rcpp::wrap(Rcpp::as<Rcpp::NumericVector>(disp_upper)[0])),
+                          
+      use_parallel,
+      use_opencl,
+      verbose
+  );  
+  
+  // Extract outputs (matching your R code)
+  Rcpp::List Env3          = env_out["Env"];
+  Rcpp::List gamma_list_new= env_out["gamma_list"];
+  Rcpp::List UB_list_new   = env_out["UB_list"];
+  double low               = env_out["low"];
+  double upp               = env_out["upp"];
+  Rcpp::List diagnostics   = env_out["diagnostics"];
+  
+  
+  // -------------------------------
+  // Step 6: Simulation (standardized space)
+  // -------------------------------
+  
+  // family / link as CharacterVector, matching R
+  Rcpp::CharacterVector family = Rcpp::CharacterVector::create("gaussian");
+  Rcpp::CharacterVector link   = Rcpp::CharacterVector::create("identity");
+  
+  // Choose serial vs parallel simulator
+  Rcpp::List sim_temp;
+  if (!use_parallel || n == 1) {
+    // serial version (assumes same signature)
+    sim_temp = rindep_norm_gamma_reg_std_cpp(
+      n,
+      Rcpp::as<Rcpp::NumericVector>(y),
+      x2_std,
+      mu2_std,
+      P2_std,
+      alpha,
+      wt,
+      f2,
+      Env3,
+      gamma_list_new,
+      UB_list_new,
+      family,
+      link,
+      progbar,
+      verbose
+    );
+  } else {
+    // parallel version (the one you pasted)
+    sim_temp = rindep_norm_gamma_reg_std_parallel_cpp(
+      n,
+      Rcpp::as<Rcpp::NumericVector>(y),
+      x2_std,
+      mu2_std,
+      P2_std,
+      alpha,
+      wt,
+      f2,
+      Env3,
+      gamma_list_new,
+      UB_list_new,
+      family,
+      link,
+      progbar,
+      verbose
+    );
+  }
+  
+  // -------------------------------
+  // Step 7: Back-transform
+  // -------------------------------
+  
+  Rcpp::NumericMatrix beta_out   = sim_temp["beta_out"];   // n × p
+  Rcpp::NumericVector disp_out   = sim_temp["disp_out"];
+  Rcpp::NumericVector iters_out  = sim_temp["iters_out"];
+  Rcpp::NumericVector weight_out = sim_temp["weight_out"];
+  
+  int n_draws = beta_out.nrow();
+
+  // Armadillo views
+  arma::mat L2Inv_arma(L2Inv.begin(), L2Inv.nrow(), L2Inv.ncol(), false);
+  arma::mat L3Inv_arma(L3Inv.begin(), L3Inv.nrow(), L3Inv.ncol(), false);
+  arma::mat beta_std(beta_out.begin(), n_draws, p_dim, false); // n × p
+  
+  // out = L2Inv %*% L3Inv %*% t(beta_out)  (p × n)
+  arma::mat out_arma = L2Inv_arma * L3Inv_arma * beta_std.t();
+  
+  // Add mu to each column: for (i in 1:n) out[, i] <- out[, i] + mu
+  arma::vec mu_vec(mu.begin(), mu.size(), false);
+  for (int i = 0; i < n_draws; ++i) {
+    out_arma.col(i) += mu_vec;
+  }
+  
+  // Convert back to NumericMatrix (p × n)
+  Rcpp::NumericMatrix out(p_dim, n_draws);
+  std::copy(out_arma.begin(), out_arma.end(), out.begin());
+  
+  // -------------------------------
+  // Final return (mirror R core)
+  // -------------------------------
+  
+  return Rcpp::List::create(
+    Rcpp::Named("out")        = out,
+    Rcpp::Named("betastar")   = bstar,       // posterior mode from optim()
+    Rcpp::Named("disp_out")   = disp_out,
+    Rcpp::Named("iters_out")  = iters_out,
+    Rcpp::Named("weight_out") = weight_out,
+    Rcpp::Named("low")        = low,
+    Rcpp::Named("upp")        = upp
+  );
+}  
+  
+ 
