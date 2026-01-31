@@ -14,7 +14,6 @@
 
 using namespace Rcpp;
 
-// [[Rcpp::export(".rnorm_reg_cpp")]]
 
 Rcpp::List rnorm_reg_cpp(int n,NumericVector y,NumericMatrix x, 
                          NumericVector mu,NumericMatrix P,

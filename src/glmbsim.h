@@ -18,25 +18,30 @@ Rcpp::List  rnnorm_reg_std_cpp(int n,
                                Rcpp::List  Envelope,
                                Rcpp::CharacterVector   family,
                                Rcpp::CharacterVector   link, 
-                               int progbar=1);
+                               int progbar=1,
+                               bool verbose = false                                 
+                                 );
 
-Rcpp::List rnnorm_reg_cpp(int n,
-                          NumericVector y,
-                          NumericMatrix x,
-                          NumericVector mu,
-                          NumericMatrix P,
-                          NumericVector offset2,
-                          NumericVector wt,
-                          double dispersion,
-                          Rcpp::List famfunc,
-                          Function f1,
-                          Function f2,
-                          Function f3,
-                          NumericVector start,
-                          std::string family="binomial",
-                          std::string link="logit",
-                          int Gridtype=2);
-
+Rcpp::List rnnorm_reg_cpp(
+    int n,
+    NumericVector y,
+    NumericMatrix x,
+    NumericVector mu,
+    NumericMatrix P,
+    NumericVector offset,
+    NumericVector wt,
+    double dispersion,
+    Function f2,
+    Function f3,
+    NumericVector start,
+    std::string family = "binomial",
+    std::string link = "logit",
+    int Gridtype = 2,
+    int n_envopt = -1,
+    bool use_parallel = true,
+    bool use_opencl = false,
+    bool verbose = false
+);
 
 Rcpp::List rnorm_reg_cpp(int n,NumericVector y,NumericMatrix x, 
                          NumericVector mu,NumericMatrix P,
@@ -80,6 +85,27 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
     bool verbose = false
 );
 
+
+Rcpp::List rindep_norm_gamma_reg_cpp(
+    int n,
+    Rcpp::NumericVector y,
+    Rcpp::NumericMatrix x,
+    Rcpp::NumericVector mu,
+    Rcpp::NumericMatrix P,
+    Rcpp::NumericVector offset,
+    Rcpp::NumericVector wt,
+    double shape,
+    double rate,
+    double max_disp_perc,
+    Rcpp::Nullable<Rcpp::NumericVector> disp_lower,
+    Rcpp::Nullable<Rcpp::NumericVector> disp_upper,
+    int Gridtype,
+    int n_envopt,
+    bool use_parallel,
+    bool use_opencl,
+    bool verbose,
+    bool progbar
+);
 
 Rcpp::List glmb_Standardize_Model(
     NumericVector y, 

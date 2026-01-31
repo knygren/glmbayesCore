@@ -66,7 +66,6 @@ void progress_bar2(double x, double N)
   
 }
 
-// [[Rcpp::export(".glmb_Standardize_Model_cpp")]]
 
 
 Rcpp::List glmb_Standardize_Model(
@@ -616,32 +615,14 @@ void rnnorm_reg_worker::operator()(std::size_t begin, std::size_t end) {
 }
 
 
-//-----------------------------------------------------------------------------
-// Forward-declare your serial sampler (no change)
-//-----------------------------------------------------------------------------
-Rcpp::List rnnorm_reg_std_cpp(
-    int                   n,
-    Rcpp::NumericVector   y,
-    Rcpp::NumericMatrix   x,
-    Rcpp::NumericMatrix   mu,
-    Rcpp::NumericMatrix   P,
-    Rcpp::NumericVector   alpha,
-    Rcpp::NumericVector   wt,
-    Rcpp::Function        f2,
-    Rcpp::List            Envelope,
-    Rcpp::CharacterVector family,
-    Rcpp::CharacterVector link,
-    int                   progbar 
-);
 
 
-
-// [[Rcpp::export(".rnnorm_reg_std_cpp")]]
 
 Rcpp::List  rnnorm_reg_std_cpp(int n,NumericVector y,NumericMatrix x,
 NumericMatrix mu,NumericMatrix P,NumericVector alpha,NumericVector wt,
-Function f2,Rcpp::List  Envelope,Rcpp::CharacterVector   family,Rcpp::CharacterVector   link, int progbar=1,
-                                 bool verbose = false                                 
+Function f2,Rcpp::List  Envelope,Rcpp::CharacterVector   family,Rcpp::CharacterVector   link, 
+int progbar,
+bool verbose                                  
                                  )
 {
   
@@ -1198,18 +1179,19 @@ List rnnorm_reg_std_cpp_parallel(
 ///////////////////////////////////////////////////////////////////////////
 
 
-// [[Rcpp::export(".rnnorm_reg_cpp")]]
 Rcpp::List rnnorm_reg_cpp(int n,NumericVector y,NumericMatrix x, 
                           NumericVector mu,NumericMatrix P,NumericVector offset,NumericVector wt,
                           double dispersion,
-                            Function f2,Function f3,NumericVector start,
-                            std::string family="binomial",
-                            std::string link="logit",
-                            int Gridtype=2,
-                            int n_envopt       = -1 ,  // NEW: envelope sizing proxy,
-                            bool use_parallel = true,       // Enables parallel simulation
-                            bool use_opencl = false,        // Enables OpenCL acceleration during envelope construction
-                            bool verbose = false
+                            Function f2,
+                            Function f3,
+                            NumericVector start,
+                            std::string family,
+                            std::string link,
+                            int Gridtype,
+                            int n_envopt       ,  // NEW: envelope sizing proxy,
+                            bool use_parallel ,       // Enables parallel simulation
+                            bool use_opencl ,        // Enables OpenCL acceleration during envelope construction
+                            bool verbose 
 
                             ) {
 

@@ -338,7 +338,6 @@ void rindep_norm_gamma_worker::operator()(std::size_t begin, std::size_t end) {
 
 
 
-// [[Rcpp::export(".rindep_norm_gamma_reg_std_cpp")]]
 
 Rcpp::List  rindep_norm_gamma_reg_std_cpp(int n,NumericVector y,NumericMatrix x,
                                              NumericMatrix mu, /// This is typically standardized to be a zero vector
@@ -689,7 +688,6 @@ Rcpp::List  rindep_norm_gamma_reg_std_cpp(int n,NumericVector y,NumericMatrix x,
 
 
 
-// [[Rcpp::export(".rindep_norm_gamma_reg_std_parallel_cpp")]]
 
 Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
     int n,
@@ -940,7 +938,6 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp(
 
 
 
-// [[Rcpp::export]]
 
 Rcpp::List rindep_norm_gamma_reg_cpp(
     int n,

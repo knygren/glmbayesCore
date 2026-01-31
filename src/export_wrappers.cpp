@@ -1,6 +1,7 @@
 #include "RcppArmadillo.h"
 #include "Envelopefuncs.h"
 #include "openclPort.h"
+#include "glmbsim.h"
 
 using namespace glmbayes::envelopefuncs;
 
@@ -311,6 +312,218 @@ Rcpp::CharacterVector gpu_names_export() {
 }
 
 
+// =====================================================================
+//  rnnorm_reg_std_cpp_export
+// =====================================================================
+
+// [[Rcpp::export]]
+Rcpp::List rnnorm_reg_std_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericMatrix& mu,
+    const Rcpp::NumericMatrix& P,
+    const Rcpp::NumericVector& alpha,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::Function& f2,
+    const Rcpp::List& Envelope,
+    const Rcpp::CharacterVector& family,
+    const Rcpp::CharacterVector& link,
+    int progbar = 1,
+    bool verbose = false
+) {
+  return rnnorm_reg_std_cpp(
+    n, y, x, mu, P, alpha, wt,
+    f2, Envelope, family, link,
+    progbar, verbose
+  );
+}
+
+// =====================================================================
+//  rnnorm_reg_cpp_export
+// =====================================================================
+
+
+// [[Rcpp::export]]
+Rcpp::List rnnorm_reg_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericVector& mu,
+    const Rcpp::NumericMatrix& P,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    double dispersion,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const Rcpp::NumericVector& start,
+    const std::string& family = "binomial",
+    const std::string& link   = "logit",
+    int Gridtype = 2,
+    int n_envopt = -1,
+    bool use_parallel = true,
+    bool use_opencl = false,
+    bool verbose = false
+) {
+  return rnnorm_reg_cpp(
+    n, y, x, mu, P, offset, wt,
+    dispersion,
+    f2, f3, start,
+    family, link, Gridtype,
+    n_envopt, use_parallel, use_opencl, verbose
+  );
+}
+
+// =====================================================================
+//  rnorm_reg_cpp_export
+// =====================================================================
+
+// [[Rcpp::export]]
+Rcpp::List rnorm_reg_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericVector& mu,
+    const Rcpp::NumericMatrix& P,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    double dispersion,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const Rcpp::NumericVector& start,
+    const std::string& family = "gaussian",
+    const std::string& link   = "identity",
+    int Gridtype = 2
+) {
+  return rnorm_reg_cpp(
+    n, y, x, mu, P, offset, wt,
+    dispersion, f2, f3, start,
+    family, link, Gridtype
+  );
+}
+
+
+// =====================================================================
+//  rindep_norm_gamma_reg_std_cpp_export
+// =====================================================================
+
+// [[Rcpp::export]]
+Rcpp::List rindep_norm_gamma_reg_std_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericMatrix& mu,
+    const Rcpp::NumericMatrix& P,
+    const Rcpp::NumericVector& alpha,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::Function& f2,
+    const Rcpp::List& Envelope,
+    const Rcpp::List& gamma_list,
+    const Rcpp::List& UB_list,
+    const Rcpp::CharacterVector& family,
+    const Rcpp::CharacterVector& link,
+    bool progbar = true,
+    bool verbose = false
+) {
+  return rindep_norm_gamma_reg_std_cpp(
+    n, y, x, mu, P, alpha, wt,
+    f2, Envelope, gamma_list, UB_list,
+    family, link, progbar, verbose
+  );
+}
+
+
+// =====================================================================
+//  rindep_norm_gamma_reg_std_parallel_cpp_export
+// =====================================================================
+
+// [[Rcpp::export]]
+Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericMatrix& mu,
+    const Rcpp::NumericMatrix& P,
+    const Rcpp::NumericVector& alpha,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::Function& f2,
+    const Rcpp::List& Envelope,
+    const Rcpp::List& gamma_list,
+    const Rcpp::List& UB_list,
+    const Rcpp::CharacterVector& family,
+    const Rcpp::CharacterVector& link,
+    bool progbar = true,
+    bool verbose = false
+) {
+  return rindep_norm_gamma_reg_std_parallel_cpp(
+    n, y, x, mu, P, alpha, wt,
+    f2, Envelope, gamma_list, UB_list,
+    family, link, progbar, verbose
+  );
+}
+
+
+// [[Rcpp::export]]
+Rcpp::List rindep_norm_gamma_reg_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericVector& mu,
+    const Rcpp::NumericMatrix& P,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    double shape,
+    double rate,
+    double max_disp_perc,
+    Rcpp::Nullable<Rcpp::NumericVector> disp_lower,
+    Rcpp::Nullable<Rcpp::NumericVector> disp_upper,
+    int Gridtype,
+    int n_envopt,
+    bool use_parallel,
+    bool use_opencl,
+    bool verbose,
+    bool progbar
+) {
+  return rindep_norm_gamma_reg_cpp(
+    n,
+    y,
+    x,
+    mu,
+    P,
+    offset,
+    wt,
+    shape,
+    rate,
+    max_disp_perc,
+    disp_lower,
+    disp_upper,
+    Gridtype,
+    n_envopt,
+    use_parallel,
+    use_opencl,
+    verbose,
+    progbar
+  );
+}
+
+// =====================================================================
+//  glmb_Standardize_Model_export
+// =====================================================================
+
+// [[Rcpp::export]]
+Rcpp::List glmb_Standardize_Model_export(
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericMatrix& P,
+    const Rcpp::NumericMatrix& bstar,
+    const Rcpp::NumericMatrix& A1
+) {
+  return glmb_Standardize_Model(
+    y, x, P, bstar, A1
+  );
+}
+
+
 
 
 // extern "C" SEXP _glmbayes_EnvelopeSize(SEXP aSEXP,
@@ -394,4 +607,6 @@ Rcpp::CharacterVector gpu_names_export() {
 // }
 // 
 // 
+
+
 
