@@ -11,9 +11,14 @@
 #include "famfuncs.h"
 #include "Envelopefuncs.h"
 #include <math.h>
+#include "simfuncs.h"
 
 using namespace Rcpp;
+using namespace glmbayes::sim;
 
+namespace glmbayes {
+
+namespace sim {
 
 Rcpp::List rnorm_reg_cpp(int n,NumericVector y,NumericMatrix x, 
                          NumericVector mu,NumericMatrix P,
@@ -21,9 +26,9 @@ Rcpp::List rnorm_reg_cpp(int n,NumericVector y,NumericMatrix x,
                          double dispersion,
                          Function f2,Function f3,
                            NumericVector start,
-                           std::string family="gaussian",
-                           std::string link="identity",
-                           int Gridtype=2      
+                           std::string family,
+                           std::string link,
+                           int Gridtype      
 ) {
 
   //                         Rcpp::List famfunc, 
@@ -207,5 +212,6 @@ Rcpp::List rnorm_reg_cpp(int n,NumericVector y,NumericMatrix x,
 }
 
 
-
+}
+}
 

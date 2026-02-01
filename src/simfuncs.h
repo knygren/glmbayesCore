@@ -6,6 +6,9 @@
 using namespace Rcpp;
 
 
+namespace glmbayes {
+
+namespace sim {
 
 Rcpp::List  rnnorm_reg_std_cpp(int n,
                                NumericVector y,
@@ -114,3 +117,7 @@ Rcpp::List glmb_Standardize_Model(
     NumericMatrix bstar, // Posterior Mode from optimization (to be adjusted)
     NumericMatrix A1  // Precision for Log-Posterior at posterior mode (to be adjusted)
 );
+
+
+}
+}

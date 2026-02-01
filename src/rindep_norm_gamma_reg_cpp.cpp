@@ -10,7 +10,7 @@
 
 #include "famfuncs.h"
 #include "Envelopefuncs.h"
-#include "glmbsim.h"
+#include "simfuncs.h"
 #include "miscfuncs.h"
 
 #include <cmath>         // for std::log or std::exp if used
@@ -36,7 +36,7 @@ static tbb::mutex f2_mutex;
 using namespace Rcpp;
 using namespace glmbayes::fam;
 using namespace glmbayes::env;
-
+using namespace glmbayes::sim;
 
 void progress_bar3(double x, double N)
 {
@@ -337,7 +337,9 @@ void rindep_norm_gamma_worker::operator()(std::size_t begin, std::size_t end) {
 
 
 
+namespace glmbayes {
 
+namespace sim {
 
 
 Rcpp::List  rindep_norm_gamma_reg_std_cpp(int n,NumericVector y,NumericMatrix x,
@@ -1076,7 +1078,7 @@ Rcpp::List rindep_norm_gamma_reg_cpp(
     
     // RSS2_post = (y - X b_old)' (y - X b_old)
     arma::vec resid_ml = Y - xbetastar;
-    double RSS2_post = arma::dot(resid_ml, resid_ml);
+    //double RSS2_post = arma::dot(resid_ml, resid_ml);
     
     // Update shape, rate, dispersion
     double shape2 = shape + static_cast<double>(n_obs) / 2.0;
@@ -1330,3 +1332,5 @@ Rcpp::List rindep_norm_gamma_reg_cpp(
 }  
   
  
+} //sim
+} //glmbayes
