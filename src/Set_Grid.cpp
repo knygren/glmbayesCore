@@ -9,7 +9,7 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 
 #include "famfuncs.h"
-#include "envelopefuncs.h"
+#include "Envelopefuncs.h"
 
 using namespace Rcpp;
 using namespace glmbayes::env;
