@@ -5,6 +5,14 @@
 #include <string>
 #include <vector>
 
+#ifdef USE_OPENCL
+
+// Ensure OpenCL types are available
+#define CL_TARGET_OPENCL_VERSION 300
+#include <CL/cl.h>
+#include <string>
+#endif 
+
 #ifdef __linux__
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,6 +78,12 @@ int get_opencl_core_count();
 // -------------------------------------------------------------------------
 #ifdef USE_OPENCL
 
+// Ensure OpenCL types are available
+#define CL_TARGET_OPENCL_VERSION 300
+#include <CL/cl.h>
+#include <string>
+
+
 // Load a single .cl kernel file from inst/cl/<relative_path>
 std::string load_kernel_source(
     const std::string& relative_path,
@@ -83,8 +97,18 @@ std::string load_kernel_library(
     bool verbose = false
 );
 
-#endif // USE_OPENCL
 
+struct OpenCLConfig {
+  bool have_expm1;
+  bool have_log1p;
+  std::string buildOptions;
+};
+
+// Probe OpenCL device capabilities and construct build options
+OpenCLConfig configureOpenCL(cl_context context,
+                             cl_device_id device);
+
+#endif // USE_OPENCL
 
 
 

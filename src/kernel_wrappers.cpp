@@ -2,14 +2,18 @@
 #include <vector>
 #include <string>
 #include "openclPort.h"
-#include "kernel_wrappers.h"
-#include "kernel_runners.h"
 #include <RcppArmadillo.h>
 #include "famfuncs.h"
+#include "opencl.h"
+
 using namespace Rcpp;
 
 using namespace openclPort;
+using namespace glmbayes::opencl;
 
+namespace glmbayes {
+
+namespace opencl {
 
 Rcpp::List f2_f3_opencl(
     std::string family,
@@ -173,5 +177,6 @@ Rcpp::List f2_f3_opencl(
   );
 }
 
-
+}
+}
 

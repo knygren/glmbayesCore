@@ -10,16 +10,16 @@
 
 #include "famfuncs.h"
 #include "Envelopefuncs.h"
-#include "kernel_wrappers.h"
 #include <RcppParallel.h>
 #include "openclPort.h"
 #include "utils_timing.h"
+#include "opencl.h"
 
 using namespace Rcpp;
 using namespace openclPort;
 using namespace glmbayes::fam;
 using namespace glmbayes::env;
-
+using namespace glmbayes::opencl;
 
 
 // Internal helper: run OpenCL pilot timing, print diagnostics, and prompt user.

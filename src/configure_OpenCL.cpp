@@ -1,6 +1,6 @@
 // configure_OpenCL.cpp
 #ifdef USE_OPENCL
-#include "configure_OpenCL.h"
+#include "openclPort.h"
 // #include <iostream>   // removed: no direct stdout/stderr
 #include <sstream>
 #include <R.h>          // for Rprintf and Rf_error
@@ -76,6 +76,8 @@ static bool probeFunction(cl_context        context,
   return (err == CL_SUCCESS);
 }
 
+namespace openclPort {
+
 OpenCLConfig configureOpenCL(cl_context   context,
                              cl_device_id device)
 {
@@ -109,5 +111,6 @@ OpenCLConfig configureOpenCL(cl_context   context,
   cfg.buildOptions = opts.str();
   
   return cfg;
+}
 }
 #endif // USE_OPENCL

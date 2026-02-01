@@ -10,7 +10,6 @@
 
 #include "famfuncs.h"
 #include "Envelopefuncs.h"
-#include "kernel_wrappers.h"
 #include <RcppParallel.h>
 #include "openclPort.h"
 
