@@ -7,15 +7,15 @@
 #include "nmath_local.h"
 #include "dpq_local.h"
 #include "famfuncs.h"
-
+#include "progress_utils.h"
 
 using namespace Rcpp;
 using namespace RcppParallel;
 using namespace glmbayes::fam;
+using namespace glmbayes::progress;
 
 
 
-void progress_bar2(double x, double N);
 
 namespace glmbayes{
 

@@ -14,6 +14,7 @@
 
 #include <Rmath.h>       // For R::qnorm
 
+
 // Don't add mutex if EMSCRIPTEN
 
 #if !defined(__EMSCRIPTEN__) && !defined(__wasm__)
@@ -23,6 +24,7 @@ tbb::mutex qnorm_mutex;  // Local mutex for this file
 
 
 using namespace Rcpp;
+using namespace glmbayes::rng;
 
 
 double safe_qnorm_logp(double logp, double mu, double sigma, bool lower_tail) {

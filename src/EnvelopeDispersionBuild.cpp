@@ -12,7 +12,7 @@
 #include "Envelopefuncs.h"
 #include <RcppParallel.h>
 #include "openclPort.h"
-#include "utils_timing.h"
+#include "progress_utils.h"
 
 using namespace Rcpp;
 using namespace openclPort;

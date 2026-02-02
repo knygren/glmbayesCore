@@ -37,6 +37,8 @@ using namespace Rcpp;
 using namespace glmbayes::fam;
 using namespace glmbayes::env;
 using namespace glmbayes::sim;
+using namespace glmbayes::rng;
+
 
 void progress_bar3(double x, double N)
 {

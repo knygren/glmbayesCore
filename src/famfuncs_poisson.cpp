@@ -4,15 +4,12 @@
 #include "RcppArmadillo.h"
 #include <RcppParallel.h>
 #include "famfuncs.h"
+#include "progress_utils.h"
 
 using namespace Rcpp;
 using namespace RcppParallel;
 using namespace glmbayes::fam;
-
-
-void progress_bar2(double x, double N);
-
-
+using namespace glmbayes::progress;
 
 
 

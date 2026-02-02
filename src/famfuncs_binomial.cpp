@@ -9,6 +9,7 @@
 #include "dpq_local.h"
 #include "openclPort.h"
 #include "famfuncs.h"
+#include "progress_utils.h"
 
 // Namespaces
 
@@ -16,9 +17,8 @@ using namespace Rcpp;
 using namespace RcppParallel;
 using namespace openclPort;
 using namespace glmbayes::fam;
+using namespace glmbayes::progress;
 
-
-void progress_bar2(double x, double N);
 
 
 /////////////////////////////////////////////////////////////

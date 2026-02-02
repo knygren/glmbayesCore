@@ -3,6 +3,10 @@
 #ifndef RNG_UTILS_H
 #define RNG_UTILS_H
 
+namespace glmbayes{
+
+namespace rng {
+
 // Thread-safe uniform RNG [0, 1)
 double safe_runif();
 
@@ -12,3 +16,6 @@ double r_invgamma_safe(double shape,
                        double disp_lower);
 
 #endif
+
+}
+}

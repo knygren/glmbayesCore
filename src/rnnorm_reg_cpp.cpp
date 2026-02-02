@@ -9,6 +9,8 @@
 #include "Envelopefuncs.h"
 #include "simfuncs.h"
 #include "miscfuncs.h"
+#include "progress_utils.h"
+
 
 #include <math.h>
 #include <cmath>         // for std::log or std::exp if used
@@ -35,37 +37,9 @@ using namespace RcppParallel;
 using namespace glmbayes::fam;
 using namespace glmbayes::env;
 using namespace glmbayes::sim;
+using namespace glmbayes::rng;
+using namespace glmbayes::progress;
 
-void progress_bar2(double x, double N)
-{
-  // how wide you want the progress meter to be
-  int totaldotz=40;
-  double fraction = x / N;
-  // part of the progressmeter that's already "full"
-  int dotz = round(fraction * totaldotz);
-  
-  Rcpp::Rcout.precision(3);
-  Rcout << "\r                                                                 " << std::flush ;
-  Rcout << "\r" << std::flush ;
-  Rcout << std::fixed << fraction*100 << std::flush ;
-  Rcout << "% [" << std::flush ;
-  int ii=0;
-  for ( ; ii < dotz;ii++) {
-    Rcout << "=" << std::flush ;
-  }
-  // remaining part (spaces)
-  for ( ; ii < totaldotz;ii++) {
-    Rcout << " " << std::flush ;
-  }
-  // and back to line begin 
-  
-  Rcout << "]" << std::flush ;
-  
-  // and back to line begin 
-  
-  Rcout << "\r" << std::flush ;
-  
-}
 
 namespace glmbayes {
 

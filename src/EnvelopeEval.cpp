@@ -12,7 +12,7 @@
 #include "Envelopefuncs.h"
 #include <RcppParallel.h>
 #include "openclPort.h"
-#include "utils_timing.h"
+#include "progress_utils.h"
 #include "opencl.h"
 
 using namespace Rcpp;
@@ -20,7 +20,7 @@ using namespace openclPort;
 using namespace glmbayes::fam;
 using namespace glmbayes::env;
 using namespace glmbayes::opencl;
-
+using namespace glmbayes::progress;
 
 // Internal helper: run OpenCL pilot timing, print diagnostics, and prompt user.
 // Not exported to R.

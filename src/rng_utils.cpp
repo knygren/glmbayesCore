@@ -13,11 +13,7 @@
 thread_local std::mt19937 safe_rng_engine(std::random_device{}());
 thread_local std::uniform_real_distribution<> safe_rng_dist(0.0, 1.0);
 
-// Core sampling function
-double safe_runif() {
-  return safe_rng_dist(safe_rng_engine);
-}
-
+using namespace glmbayes::rng;
 
 
 // Safe inverse-gamma CDF using nmath/rmath pgamma
@@ -55,6 +51,19 @@ double q_inv_gamma_safe(double p,
 
 
 
+
+
+
+namespace glmbayes {
+
+namespace rng {
+
+// Core sampling function
+double safe_runif() {
+  return safe_rng_dist(safe_rng_engine);
+}
+
+
 // 
 // // Declaration (e.g. in a header if needed)
 // // double r_invgamma_safe(double shape, double rate,
@@ -73,3 +82,5 @@ double r_invgamma_safe(double shape,
   return q_inv_gamma_safe(p, shape, rate, disp_upper, disp_lower);
 }
 
+}
+}
