@@ -11,7 +11,6 @@
 #include "famfuncs.h"
 #include "Envelopefuncs.h"
 #include "simfuncs.h"
-#include "miscfuncs.h"
 #include "progress_utils.h"
 
 #include <cmath>         // for std::log or std::exp if used

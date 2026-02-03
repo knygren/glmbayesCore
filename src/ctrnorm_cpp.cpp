@@ -34,7 +34,8 @@ double safe_qnorm_logp(double logp, double mu, double sigma, bool lower_tail) {
   return R::qnorm(logp, mu, sigma, lower_tail, true);  // log.p = TRUE
 }
 
-
+namespace glmbayes {
+namespace rng {
 
 double ctrnorm_cpp(double lgrt, double lglt, double mu, double sigma) {
   double U = 0;
@@ -68,4 +69,7 @@ double ctrnorm_cpp(double lgrt, double lglt, double mu, double sigma) {
   }
   
   return out;
+}
+
+}
 }

@@ -1,7 +1,6 @@
 #include <cmath>         // for std::log or std::exp if used
 #include <math.h>
 #include "rng_utils.h"  // for safe_runif()
-#include "miscfuncs.h"
 // Required headers
 #include <RcppArmadillo.h>
 
@@ -23,8 +22,13 @@ double  q_inv_gamma(double p,double shape,double rate,double disp_upper,double d
   return(1/ R::qgamma(p2,shape,1/rate,TRUE,FALSE));
 }
 
+namespace glmbayes {
+namespace rng {
+
 double r_invgamma(double shape,double rate,double disp_upper,double disp_lower){
   double p= R::runif(0,1);
   return(q_inv_gamma(p,shape,rate,disp_upper,disp_lower));
 }
 
+}
+}
