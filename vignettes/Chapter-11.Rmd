@@ -657,12 +657,14 @@ Insured=carinsca$Insured
 Merit=carinsca$Merit
 Class=carinsca$Class
 Cost=carinsca$Cost
+Claims_Adj<-Claims/1000
+
 ```
 
 
 
 ```{r Prior_Setup_gamma,results = "hide"}
-ps=Prior_Setup(Cost/Claims~Merit+Class,family=Gamma(link="log"),weights=Claims)
+ps=Prior_Setup(Cost/Claims~Merit+Class,family=Gamma(link="log"),weights=Claims_Adj)
 mu=ps$mu
 V=ps$Sigma
 shape    <- ps$shape
@@ -711,7 +713,7 @@ This posterior is **log‑concave in \(\tau\)**, enabling envelope‑based accep
 
 ```{r glm_call_gamma_prior2}
 ## Call to glm
-glm.carinsca <- glm(Cost/Claims~Merit+Class,family=Gamma(link="log"),weights=Claims,x=TRUE)
+glm.carinsca <- glm(Cost/Claims~Merit+Class,family=Gamma(link="log"),weights=Claims_Adj,x=TRUE)
 
 gamma.dispersion(glm.carinsca)
 
@@ -722,7 +724,7 @@ out2 <- rglmb(
     family  =Gamma(link="log"),
     pfamily = dGamma(shape = shape, rate = rate,
                      beta = glm.carinsca$coefficients),
-weights = Claims
+weights = Claims_Adj
   )
 
 mean(out2$dispersion)
@@ -803,7 +805,7 @@ for(i in 1:1000){
     n = 1, y = y, x = x,
     family  = Gamma(link="log"),
     pfamily = dNormal(mu = mu, Sigma = V, dispersion = dispersion2),
-    weights = Claims
+    weights = Claims_Adj
   )
 
   ## --- Block 2: Dispersion (quasi-likelihood sampler) ---
@@ -812,7 +814,7 @@ for(i in 1:1000){
     family  = Gamma(link="log"),
     pfamily = dGamma(shape = shape, rate = rate,
                      beta = out1$coefficients[1,]),
-    weights = Claims
+    weights = Claims_Adj
   )
 
   ## --- SCALE dispersion for the next beta update ---
@@ -827,6 +829,7 @@ for(i in 1:1000){
 ## Run 1000 additional iterations and store output
 beta_out <- matrix(0, nrow = 1000, ncol = 8)
 disp_out <- rep(0, 1000)
+iters_out <- rep(0, 1000)
 
 
 suppressWarnings(
@@ -836,18 +839,19 @@ suppressWarnings(
         n = 1, y = y, x = x,
         family = Gamma(link="log"),
         pfamily = dNormal(mu = mu, Sigma = V, dispersion = dispersion2),
-        weights = Claims
+        weights = Claims_Adj
       )
       out2 <- rglmb(
         n = 1, y = y, x = x,
         family = Gamma(link="log"),
         pfamily = dGamma(shape = shape, rate = rate,
                          beta = out1$coefficients[1,]),
-        weights = Claims
+        weights = Claims_Adj
       )
       dispersion2 <- out2$dispersion ##* ((m - p) / m)
       beta_out[i, 1:8] <- out1$coefficients[1, 1:8]
       disp_out[i] <- out2$dispersion ##* ((m - p) / m)
+      iters_out[i]<-out2$iters
     }
   )
 )
@@ -868,7 +872,7 @@ bayes_coef_table <- data.frame(
 bayes_coef_table
 
 mean(disp_out)
-
+mean(iters_out)
 
 ```
 
