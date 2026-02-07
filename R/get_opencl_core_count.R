@@ -6,5 +6,5 @@
 #' @return Integer count of compute units.
 #' @export
 get_opencl_core_count <- function() {
-  .get_opencl_core_count()
+  .get_opencl_core_count_cpp()
 }

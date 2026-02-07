@@ -443,7 +443,7 @@ load_kernel_source <- function(relative_path, package = "glmbayes") {
   if (!has_opencl()) {
     stop("OpenCL support is not available in this build of glmbayes.")
   }
-  .load_kernel_source_wrapper(relative_path, package)
+  .load_kernel_source_wrapper_cpp(relative_path, package)
 }
 
 #' @rdname load_kernel_source
@@ -452,5 +452,5 @@ load_kernel_library <- function(subdir, package = "glmbayes", verbose = FALSE) {
   if (!has_opencl()) {
     stop("OpenCL support is not available in this build of glmbayes.")
   }
-  .load_kernel_library_wrapper(subdir, package, verbose)
+  .load_kernel_library_wrapper_cpp(subdir, package, verbose)
 }

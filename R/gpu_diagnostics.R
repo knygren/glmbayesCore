@@ -417,7 +417,7 @@ detect_environment_and_gpus <- function() {
 #' @rdname gpu_diagnostics
 #' @order 3
 gpu_names <- function() {
-  .gpu_names()
+  .gpu_names_cpp()
 }
 
 
@@ -850,7 +850,7 @@ detect_compute_runtimes <- function(info) {
 #' @rdname gpu_diagnostics
 #' @order 6
 has_opencl <- function() {
-  .has_opencl()  # call the registered C++ routine directly
+  .has_opencl_cpp()  # call the registered C++ routine directly
 }
 
 

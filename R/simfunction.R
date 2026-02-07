@@ -399,14 +399,14 @@ rGamma_reg <- function(
   if (family$family == "gaussian") {
     
     
-    sim<-  rGammaGaussian_cpp_export(
+    sim<-  .rGammaGaussian_cpp(
       n, y, x, b, wt, alpha, shape, rate,
       disp_lower, disp_upper, verbose = verbose
     )
     
     # Validate output
     if (!is.list(sim) || is.null(sim$dispersion) || is.null(sim$draws)) {
-      stop("C++ rGammaGaussian_cpp_export returned an invalid structure.")
+      stop("C++ .rGammaGaussian_cpp returned an invalid structure.")
     }
     
     out  <- sim$dispersion
@@ -420,7 +420,7 @@ rGamma_reg <- function(
   if (family$family == "Gamma") {
     
     # Call C++ sampler — do NOT hide errors
-    sim <- rGammaGamma_cpp_export(
+    sim <- .rGammaGamma_cpp(
       n, y, x, b, wt, alpha, shape, rate,
       max_disp_perc, disp_lower, disp_upper,
       verbose = verbose
@@ -428,7 +428,7 @@ rGamma_reg <- function(
     
     # Validate output
     if (!is.list(sim) || is.null(sim$dispersion) || is.null(sim$draws)) {
-      stop("C++ rGammaGamma_cpp_export returned an invalid structure.")
+      stop("C++ .rGammaGamma_cpp returned an invalid structure.")
     }
     
     out  <- sim$dispersion
@@ -601,8 +601,9 @@ rindepNormalGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=ga
   if (is.null(n_envopt)) n_envopt <- n
   n_envopt <- as.integer(n_envopt)
 
+
   
-  core_out <- .rindep_norm_gamma_reg_cpp(
+  core_out <- .rIndepNormalGammaReg_cpp(
     n,
     y,
     x,
@@ -760,7 +761,7 @@ rNormalGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussia
 
   ## Add Call to new function here or after famfunc / f1 is set (not sure if f1 is actually used)
   
-  sim <- rNormalGammaReg_cpp_export(
+  sim <- .rNormalGammaReg_cpp(
     n          = n,
     y          = y,
     x          = x,
@@ -944,9 +945,11 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
          domain = NA)
   }
   
-  
+
+
+    
   if(family$family=="gaussian"){ 
-    outlist<-.rnorm_reg_cpp(n=n,y=y,x=x,mu=mu,P=P,offset=offset2,wt=wt,dispersion=dispersion,
+    outlist<-.rNormalReg_cpp(n=n,y=y,x=x,mu=mu,P=P,offset=offset2,wt=wt,dispersion=dispersion,
                             ##                      famfunc=famfunc,f1=f1,
                             f2=f2,f3=f3,start=mu)
     class(outlist$fit)="lm"
@@ -957,7 +960,7 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
     else{dispersion2=dispersion}
     
     #  stop("Inputs to function above")
-    outlist<-.rnnorm_reg_cpp(n=n,y=y,x=x,mu=mu,P=P,offset=offset2,wt=wt,
+    outlist<-.rNormalGLM_cpp(n=n,y=y,x=x,mu=mu,P=P,offset=offset2,wt=wt,
                              dispersion=dispersion2,
                              ##famfunc=famfunc,f1=f1,
                              f2=f2,f3=f3,
@@ -967,7 +970,7 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
                              use_opencl = use_opencl,
                              verbose = verbose)
     
-    
+
     betastar=outlist$coef.mode  # Posterior mode from optim
     x=outlist$x
     y=outlist$y
@@ -998,7 +1001,7 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
       #  stop("Inputs to function above")
       # Rerun model with updated dispersion    
       
-      outlist<-.rnnorm_reg_cpp(n=n,y=y,x=x,mu=mu,P=P,offset=offset2,
+      outlist<-.rNormalGLM_cpp(n=n,y=y,x=x,mu=mu,P=P,offset=offset2,
                                #                             wt=wt/mean(disp_temp),
                                wt=wt,
                                dispersion=mean(disp_temp),
@@ -1010,7 +1013,8 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
                                use_parallel = use_parallel,
                                use_opencl = use_opencl,
                                verbose = verbose)
-      
+
+            
       outlist$call <- match.call()  # overwrite with the rNormal_reg call
       outlist$dispersion=mean(disp_temp)
       
@@ -1064,3 +1068,9 @@ logdiffexp <- function(a, b) {
 
 
 
+# .rnnorm_reg_std_cpp -->rNormalGLM_std_cpp
+# .rnorm_reg_cpp --> rNormalReg_cpp
+# .rindep_norm_gamma_reg_cpp --> rIndepNormalGammaReg_cpp
+# .rindep_norm_gamma_reg_std_cpp -->rIndepNormalGammaReg_std_cpp
+# .rindep_norm_gamma_reg_std_parallel_cpp --> rIndepNormalGammaReg_std_parallel_cpp
+# .rnnorm_reg_cpp --> .rNormalGLM_cpp

@@ -16,6 +16,7 @@ NULL
 
 
 
+
 #' Return family functions used during simulation and post processing
 #'
 #' This function takes as input a \code{\link{family}} object and returns a 
@@ -632,7 +633,7 @@ EnvelopeSize <- function(a,
                          n_envopt   = -1,
                          use_opencl = FALSE,
                          verbose    = FALSE) {
-  .EnvelopeSize(a, G1, Gridtype, n, n_envopt, use_opencl, verbose)
+  .EnvelopeSize_cpp(a, G1, Gridtype, n, n_envopt, use_opencl, verbose)
 }
 
 
@@ -1724,7 +1725,7 @@ EnvelopeBuild <- function(
   n_envopt <- as.integer(n_envopt)
   
   if (family == "gaussian") {
-    return(.EnvelopeBuild_Ind_Normal_Gamma(
+    return(.EnvelopeBuild_Ind_Normal_Gamma_cpp(
       bStar, A, y, x, mu, P, alpha, wt,
       family = family, link = link,
       Gridtype = Gridtype, n = n,    
@@ -1754,7 +1755,7 @@ EnvelopeBuild <- function(
 #' @rdname EnvelopeBuild
 #' @export
 EnvelopeSetGrid <- function(GridIndex, cbars, Lint) {
-  .Set_Grid_cpp(GridIndex, cbars, Lint)
+  .EnvelopeSet_Grid_cpp(GridIndex, cbars, Lint)
 }
 
 
@@ -1763,7 +1764,7 @@ EnvelopeSetGrid <- function(GridIndex, cbars, Lint) {
 #' @rdname EnvelopeBuild
 #' @export
 EnvelopeSetLogP <- function(logP, NegLL, cbars, G3) {
-  .setlogP_cpp(logP, NegLL, cbars, G3)
+  .EnvelopeSet_LogP_cpp(logP, NegLL, cbars, G3)
 }
 
 
@@ -1931,7 +1932,7 @@ EnvelopeEval <- function(G4, y, x, mu, P, alpha, wt,
   if (!is.character(link) || length(link) != 1L) stop("link must be a string")
   
   
-  .EnvelopeEval(G4, y, x, mu, P, alpha, wt,
+  .EnvelopeEval_cpp(G4, y, x, mu, P, alpha, wt,
                family, link,
                use_opencl, verbose)
 }
@@ -2292,7 +2293,7 @@ EnvelopeSort <- function(l1, l2,
 
 rnnorm_reg_std<-function(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar = 1L){
   
-  return(.rnnorm_reg_std_cpp(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar = progbar))
+  return(.rNormalGLM_std_cpp(n, y, x, mu, P, alpha, wt, f2, Envelope, family, link, progbar = progbar))
   
 }
 
@@ -2340,7 +2341,7 @@ EnvelopeDispersionBuild_parallel_internal <- function(par0, low, upp,
   worker_fun <- function(j) {
     cbars_j <- cbars[j, ]
     optim(par0,
-          fn     = .rss_face_at_disp,
+          fn     = .rss_face_at_disp_cpp,
           method = "L-BFGS-B",
           lower  = low,
           upper  = upp,
@@ -2411,7 +2412,7 @@ EnvelopeUB2_parallel_internal <- function(par0, low, upp,
   worker_fun <- function(j) {
     cbars_j <- cbars[j, ]
     optim(par0,
-          fn     = .UB2,                 # UB2 objective function
+          fn     = .UB2_cpp,                 # UB2 objective function
           method = "L-BFGS-B",
           lower  = low,
           upper  = upp,
