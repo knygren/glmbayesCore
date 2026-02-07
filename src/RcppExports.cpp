@@ -430,7 +430,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // rGammaGaussian_cpp_export
-Rcpp::List rGammaGaussian_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& beta, const Rcpp::NumericVector& wt, const Rcpp::NumericVector& alpha, double shape, double rate, Rcpp::Nullable<Rcpp::NumericVector> disp_lower, Rcpp::Nullable<Rcpp::NumericVector> disp_upper, bool verbose);
+Rcpp::List rGammaGaussian_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& beta, const Rcpp::NumericVector& wt, const Rcpp::NumericVector& alpha, double shape, double rate, Rcpp::Nullable<double> disp_lower, Rcpp::Nullable<double> disp_upper, bool verbose);
 RcppExport SEXP _glmbayes_rGammaGaussian_cpp_export(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP betaSEXP, SEXP wtSEXP, SEXP alphaSEXP, SEXP shapeSEXP, SEXP rateSEXP, SEXP disp_lowerSEXP, SEXP disp_upperSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -443,8 +443,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type shape(shapeSEXP);
     Rcpp::traits::input_parameter< double >::type rate(rateSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type disp_lower(disp_lowerSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type disp_upper(disp_upperSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<double> >::type disp_lower(disp_lowerSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<double> >::type disp_upper(disp_upperSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     rcpp_result_gen = Rcpp::wrap(rGammaGaussian_cpp_export(n, y, x, beta, wt, alpha, shape, rate, disp_lower, disp_upper, verbose));
     return rcpp_result_gen;

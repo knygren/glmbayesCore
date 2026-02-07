@@ -119,8 +119,8 @@ Rcpp::List rGammaGaussian(
     Rcpp::NumericVector alpha,
     double shape,
     double rate,
-    Rcpp::Nullable<Rcpp::NumericVector> disp_lower,
-    Rcpp::Nullable<Rcpp::NumericVector> disp_upper,
+    Rcpp::Nullable<double> disp_lower,
+    Rcpp::Nullable<double> disp_upper,
     bool verbose = false
 );
 

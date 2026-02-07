@@ -528,8 +528,8 @@ Rcpp::List rGammaGaussian_cpp_export(
     const Rcpp::NumericVector& alpha,
     double shape,
     double rate,
-    Rcpp::Nullable<Rcpp::NumericVector> disp_lower = R_NilValue,
-    Rcpp::Nullable<Rcpp::NumericVector> disp_upper = R_NilValue,
+    Rcpp::Nullable<double> disp_lower = R_NilValue,
+    Rcpp::Nullable<double> disp_upper = R_NilValue,
     bool verbose = false
 ) {
   return glmbayes::sim::rGammaGaussian(

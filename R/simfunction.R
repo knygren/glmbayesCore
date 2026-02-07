@@ -399,21 +399,35 @@ rGamma_reg <- function(
   if (family$family == "gaussian") {
     
     
-    sim <- rGammaGaussian(
-      n       = n,
-      y       = y,
-      x       = x,
-      beta    = b,
-      wt      = wt,
-      alpha   = alpha,
-      shape   = shape,
-      rate    = rate,
-      disp_lower = disp_lower,
-      disp_upper = disp_upper
+    sim<-  rGammaGaussian_cpp_export(
+      n, y, x, b, wt, alpha, shape, rate,
+      disp_lower, disp_upper, verbose = verbose
     )
     
-    out   <- sim$dispersion
+    # Validate output
+    if (!is.list(sim) || is.null(sim$dispersion) || is.null(sim$draws)) {
+      stop("C++ rGammaGamma_cpp_export returned an invalid structure.")
+    }
+    
+    out  <- sim$dispersion
     draws <- sim$draws
+    
+    
+    # sim <- rGammaGaussian(
+    #   n       = n,
+    #   y       = y,
+    #   x       = x,
+    #   beta    = b,
+    #   wt      = wt,
+    #   alpha   = alpha,
+    #   shape   = shape,
+    #   rate    = rate,
+    #   disp_lower = disp_lower,
+    #   disp_upper = disp_upper
+    # )
+    # 
+    # out   <- sim$dispersion
+    # draws <- sim$draws
     
     
   }
@@ -1094,13 +1108,6 @@ rGammaGaussian <- function(
 ) {
   
   # Temporary: call C++ version but ignore output
-  tmp <- try(
-    rGammaGaussian_cpp_export(
-      n, y, x, beta, wt, alpha, shape, rate,
-      disp_lower, disp_upper, verbose = FALSE
-    ),
-    silent = TRUE
-  )
   
   n1 <- length(y)
   y1 <- as.numeric(y) - alpha
