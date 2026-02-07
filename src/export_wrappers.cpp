@@ -13,7 +13,7 @@ using namespace glmbayes::sim;
 
 
 // [[Rcpp::export]]
-std::string load_kernel_source_wrapper_export(
+std::string load_kernel_source_wrapper_cpp_export(
     const std::string& relative_path,
     const std::string& package = "glmbayes"
 ) {
@@ -22,7 +22,7 @@ std::string load_kernel_source_wrapper_export(
 
 
 // [[Rcpp::export]]
-std::string load_kernel_library_wrapper_export(
+std::string load_kernel_library_wrapper_cpp_export(
     const std::string& subdir,
     const std::string& package = "glmbayes",
     bool verbose = false
@@ -32,25 +32,25 @@ std::string load_kernel_library_wrapper_export(
 
 
 // [[Rcpp::export]]
-bool has_opencl_export() {
+bool has_opencl_cpp_export() {
   return has_opencl();
 }
 
 // [[Rcpp::export]]
-int get_opencl_core_count_export() {
+int get_opencl_core_count_cpp_export() {
   return get_opencl_core_count();
 }
 
 
 // [[Rcpp::export]]
-Rcpp::CharacterVector gpu_names_export() {
+Rcpp::CharacterVector gpu_names_cpp_export() {
   return gpu_names();
 }
 
 ////////////// glmbayes::env namespace ////////////////
 
 // [[Rcpp::export]]
-Rcpp::List EnvelopeSize_export(
+Rcpp::List EnvelopeSize_cpp_export(
     const arma::vec& a,
     const Rcpp::NumericMatrix& G1,
     int Gridtype,
@@ -93,7 +93,7 @@ Rcpp::List EnvelopeBuild_cpp_export(
 
 
 // [[Rcpp::export]]
-Rcpp::List EnvelopeEval_export(
+Rcpp::List EnvelopeEval_cpp_export(
     const Rcpp::NumericMatrix& G4,      // grid (parameters × grid points)
     const Rcpp::NumericVector& y,
     const Rcpp::NumericMatrix& x,
@@ -115,7 +115,7 @@ Rcpp::List EnvelopeEval_export(
 
 
 // [[Rcpp::export]]
-Rcpp::List EnvelopeBuild_Ind_Normal_Gamma_export(
+Rcpp::List EnvelopeBuild_Ind_Normal_Gamma_cpp_export(
     const Rcpp::NumericVector& bStar,
     const Rcpp::NumericMatrix& A,
     const Rcpp::NumericVector& y,
@@ -243,7 +243,7 @@ Rcpp::List EnvelopeOrchestrator_cpp_export(
 
 
 // [[Rcpp::export]]
-Rcpp::List setlogP_export(
+Rcpp::List EnvelopeSet_LogP_cpp_export(
     const Rcpp::NumericMatrix& logP,
     const Rcpp::NumericVector& NegLL,
     const Rcpp::NumericMatrix& cbars,
@@ -258,7 +258,7 @@ Rcpp::List setlogP_export(
 }
 
 // [[Rcpp::export]]
-Rcpp::List Set_Grid_export(
+Rcpp::List EnvelopeSet_Grid_cpp_export(
     const Rcpp::NumericMatrix& GIndex,
     const Rcpp::NumericMatrix& cbars,
     const Rcpp::NumericMatrix& Lint
@@ -272,7 +272,7 @@ Rcpp::List Set_Grid_export(
 
 
 // [[Rcpp::export]]
-double rss_face_at_disp_export(
+double rss_face_at_disp_cpp_export(
     double dispersion,
     const Rcpp::List& cache,
     const Rcpp::NumericVector& cbars_j,
@@ -293,7 +293,7 @@ double rss_face_at_disp_export(
 }
 
 // [[Rcpp::export]]
-double UB2_export(
+double UB2_cpp_export(
     double dispersion,
     const Rcpp::List& cache,
     const Rcpp::NumericVector& cbars_j,
@@ -324,7 +324,7 @@ double UB2_export(
 // =====================================================================
 
 // [[Rcpp::export]]
-Rcpp::List rnnorm_reg_std_cpp_export(
+Rcpp::List rNormalGLM_std_cpp_export(
     int n,
     const Rcpp::NumericVector& y,
     const Rcpp::NumericMatrix& x,
@@ -352,7 +352,7 @@ Rcpp::List rnnorm_reg_std_cpp_export(
 
 
 // [[Rcpp::export]]
-Rcpp::List rnnorm_reg_cpp_export(
+Rcpp::List rNormalGLM_cpp_export(
     int n,
     const Rcpp::NumericVector& y,
     const Rcpp::NumericMatrix& x,
@@ -386,7 +386,7 @@ Rcpp::List rnnorm_reg_cpp_export(
 // =====================================================================
 
 // [[Rcpp::export]]
-Rcpp::List rnorm_reg_cpp_export(
+Rcpp::List rNormalReg_cpp_export(
     int n,
     const Rcpp::NumericVector& y,
     const Rcpp::NumericMatrix& x,
@@ -452,7 +452,7 @@ Rcpp::List rNormalGammaReg_cpp_export(
 // =====================================================================
 
 // [[Rcpp::export]]
-Rcpp::List rindep_norm_gamma_reg_std_cpp_export(
+Rcpp::List rIndepNormalGammaReg_std_cpp_export(
     int n,
     const Rcpp::NumericVector& y,
     const Rcpp::NumericMatrix& x,
@@ -482,7 +482,7 @@ Rcpp::List rindep_norm_gamma_reg_std_cpp_export(
 // =====================================================================
 
 // [[Rcpp::export]]
-Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp_export(
+Rcpp::List rIndepNormalGammaReg_std_parallel_cpp_export(
     int n,
     const Rcpp::NumericVector& y,
     const Rcpp::NumericMatrix& x,
@@ -508,7 +508,7 @@ Rcpp::List rindep_norm_gamma_reg_std_parallel_cpp_export(
 
 
 // [[Rcpp::export]]
-Rcpp::List rindep_norm_gamma_reg_cpp_export(
+Rcpp::List rIndepNormalGammaReg_cpp_export(
     int n,
     const Rcpp::NumericVector& y,
     const Rcpp::NumericMatrix& x,
@@ -610,7 +610,7 @@ Rcpp::List rGammaGamma_cpp_export(
 // =====================================================================
 
 // [[Rcpp::export]]
-Rcpp::List glmb_Standardize_Model_export(
+Rcpp::List glmb_Standardize_Model_cpp_export(
     const Rcpp::NumericVector& y,
     const Rcpp::NumericMatrix& x,
     const Rcpp::NumericMatrix& P,
@@ -621,91 +621,6 @@ Rcpp::List glmb_Standardize_Model_export(
     y, x, P, bstar, A1
   );
 }
-
-
-
-
-// extern "C" SEXP _glmbayes_EnvelopeSize(SEXP aSEXP,
-//                                       SEXP G1SEXP,
-//                                       SEXP GridtypeSEXP,
-//                                       SEXP nSEXP,
-//                                       SEXP n_envoptSEXP,
-//                                       SEXP use_openclSEXP,
-//                                       SEXP verboseSEXP)
-// {
-//   try {
-//     // Convert inputs
-//     arma::vec a = Rcpp::as<arma::vec>(aSEXP);
-//     Rcpp::NumericMatrix G1 = Rcpp::as<Rcpp::NumericMatrix>(G1SEXP);
-//     
-//     int Gridtype   = Rcpp::as<int>(GridtypeSEXP);
-//     int n          = Rcpp::as<int>(nSEXP);
-//     int n_envopt   = Rcpp::as<int>(n_envoptSEXP);
-//     bool use_opencl = Rcpp::as<bool>(use_openclSEXP);
-//     bool verbose    = Rcpp::as<bool>(verboseSEXP);
-//     
-//     // Call the implementation (namespaced or not)
-//     Rcpp::List out = glmbayes::envelopefuncs::EnvelopeSize(
-//       a, G1, Gridtype, n, n_envopt, use_opencl, verbose
-//     );
-// 
-//     return out;
-//   }
-//   catch (std::exception &ex) {
-//     forward_exception_to_r(ex);
-//   }
-//   catch (...) {
-//     Rcpp::stop("Unknown C++ exception in _glmbayes_EnvelopeSize");
-//   }
-//   
-//   return R_NilValue; // never reached
-// }
-// 
-
-
-// extern "C" SEXP _glmbayes_EnvelopeBuild_cpp(
-//     SEXP bStarSEXP, SEXP ASEXP, SEXP ySEXP, SEXP xSEXP,
-//     SEXP muSEXP, SEXP PSEXP, SEXP alphaSEXP, SEXP wtSEXP,
-//     SEXP familySEXP, SEXP linkSEXP,
-//     SEXP GridtypeSEXP, SEXP nSEXP, SEXP n_envoptSEXP,
-//     SEXP sortgridSEXP, SEXP use_openclSEXP, SEXP verboseSEXP)
-// {
-//   try {
-//     Rcpp::NumericVector bStar = Rcpp::as<Rcpp::NumericVector>(bStarSEXP);
-//     Rcpp::NumericMatrix A     = Rcpp::as<Rcpp::NumericMatrix>(ASEXP);
-//     Rcpp::NumericVector y     = Rcpp::as<Rcpp::NumericVector>(ySEXP);
-//     Rcpp::NumericMatrix x     = Rcpp::as<Rcpp::NumericMatrix>(xSEXP);
-//     Rcpp::NumericMatrix mu    = Rcpp::as<Rcpp::NumericMatrix>(muSEXP);
-//     Rcpp::NumericMatrix P     = Rcpp::as<Rcpp::NumericMatrix>(PSEXP);
-//     Rcpp::NumericVector alpha = Rcpp::as<Rcpp::NumericVector>(alphaSEXP);
-//     Rcpp::NumericVector wt    = Rcpp::as<Rcpp::NumericVector>(wtSEXP);
-//     
-//     std::string family = Rcpp::as<std::string>(familySEXP);
-//     std::string link   = Rcpp::as<std::string>(linkSEXP);
-//     
-//     int Gridtype = Rcpp::as<int>(GridtypeSEXP);
-//     int n        = Rcpp::as<int>(nSEXP);
-//     int n_envopt = Rcpp::as<int>(n_envoptSEXP);
-//     
-//     bool sortgrid   = Rcpp::as<bool>(sortgridSEXP);
-//     bool use_opencl = Rcpp::as<bool>(use_openclSEXP);
-//     bool verbose    = Rcpp::as<bool>(verboseSEXP);
-//     
-//     Rcpp::List out = glmbayes::envelopefuncs::EnvelopeBuild_cpp(
-//       bStar, A, y, x, mu, P, alpha, wt,
-//       family, link, Gridtype, n, n_envopt,
-//       sortgrid, use_opencl, verbose
-//     );
-//     
-//     return out;
-//   }
-//   catch (std::exception &ex) { forward_exception_to_r(ex); }
-//   catch (...) { Rcpp::stop("Unknown C++ exception in _glmbayes_EnvelopeBuild_cpp"); }
-//   
-//   return R_NilValue;
-// }
-// 
-// 
 
 
 
