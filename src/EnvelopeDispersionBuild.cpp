@@ -874,18 +874,46 @@ Rcpp::List compute_envelope_geometry_cpp(
 ) {
   using namespace Rcpp;
   
-  int gs = cbars.nrow();
+   int gs = cbars.nrow();
+  
+  // ------------------------------------------------------------
+  // DEBUG: Print cbars and thetabars as received by compute_envelope_geometry_cpp
+  // ------------------------------------------------------------
+  // Rcpp::Rcout << "\n[DEBUG] cbars received by compute_envelope_geometry_cpp:\n";
+  // for (int j = 0; j < cbars.nrow(); ++j) {
+  //   Rcpp::Rcout << "  j=" << j << "  ";
+  //   for (int k = 0; k < cbars.ncol(); ++k) {
+  //     Rcpp::Rcout << cbars(j, k);
+  //     if (k + 1 < cbars.ncol()) Rcpp::Rcout << " ";
+  //   }
+  //   Rcpp::Rcout << "\n";
+  // }
+  // 
+  // Rcpp::Rcout << "\n[DEBUG] thetabars received by compute_envelope_geometry_cpp:\n";
+  // for (int j = 0; j < thetabars.nrow(); ++j) {
+  //   Rcpp::Rcout << "  j=" << j << "  ";
+  //   for (int k = 0; k < thetabars.ncol(); ++k) {
+  //     Rcpp::Rcout << thetabars(j, k);
+  //     if (k + 1 < thetabars.ncol()) Rcpp::Rcout << " ";
+  //   }
+  //   Rcpp::Rcout << "\n";
+  // }
+  // Rcpp::Rcout << "[END DEBUG cbars/thetabars]\n\n";
+  // 
+  
   
   // Step 4: Base face constants
-  NumericVector thetabar_const_base =
-    thetabar_const_cpp(P, cbars, thetabars);
+  NumericVector thetabar_const_base =thetabar_const_cpp(P, cbars, thetabars);
   
   // Step 5: initial anchor (posterior mean)
   double dispstar = rate3 / (shape2 - 1.0);
   
+  double d1_star = rate3 / (shape2 - 1.0);   // posterior-mode anchor
+  
+  // Rcpp::Rcout << "compute_envelope_geometry_cpp: dispstar = " << dispstar << "\n";
+  
   // Step 6: Face slopes at dispstar
-  NumericVector New_LL_Slope =
-    EnvBuildLinBound_cpp(thetabars, cbars, y, x, P, alpha, dispstar);
+  NumericVector New_LL_Slope = EnvBuildLinBound_cpp(thetabars, cbars, y, x, P, alpha, dispstar);
   
   // // DEBUG: print all face-specific slopes
   // Rcout << "\n[DEBUG] New_LL_Slope values at dispstar:\n";
@@ -908,6 +936,13 @@ Rcpp::List compute_envelope_geometry_cpp(
   // Step 8: Global upper line geometry
   double max_low = max_vec(thetabar_const_low_apprx);
   double max_upp = max_vec(thetabar_const_upp_apprx);
+  
+  // We later compute
+  // 1) double pf_upp = thetabar_const_upp_apprx[j] - max_upp;
+  // 2) double pf_low = thetabar_const_low_apprx[j] - max_low;
+  // 3) prob_factor[j]  = (pf_upp > pf_low ? pf_upp : pf_low);
+  
+  //  And add the result to UB3A--->We subtract the most allowed to keep the global line above the face specific line
   
   //////////////////////////////////////////
   // ---------------------------------------------------------------------------
@@ -998,13 +1033,28 @@ Rcpp::List compute_envelope_geometry_cpp(
   
   double new_slope = (max_upp - max_low) / (upp - low);
   double new_int   = max_low - new_slope * low;
+
+  NumericVector new_slope_face(gs);
+  NumericVector new_int_face(gs);
   
+  for (int j = 0; j < gs; ++j) {  
+  // For each face j:
+  new_slope_face[j] =
+    (thetabar_const_upp_apprx[j] - thetabar_const_low_apprx[j]) / (upp - low);
+  
+  new_int_face[j] =
+    thetabar_const_low_apprx[j] - new_slope_face[j] * low;
+  
+  }
   
   // Step 9a: Dispersion anchor (exact original formula)
   double b1 = (upp - low);
   double c1 = -std::log(upp / low);
   dispstar  = b1 / (-c1);
+
+  double d2_star = (upp - low) / (std::log(upp / low));   // log-tilt anchor
   
+    
   // Return all geometry objects
   return List::create(
     Named("thetabar_const_base")      = thetabar_const_base,
@@ -1016,7 +1066,12 @@ Rcpp::List compute_envelope_geometry_cpp(
         Named("max_upp")                  = max_upp,
     Named("new_slope")                = new_slope,
     Named("new_int")                  = new_int,
-    Named("dispstar")                 = dispstar
+    
+    Named("new_slope_face")                = new_slope_face,
+    Named("new_int_face")                  = new_int_face,
+    Named("dispstar")                 = dispstar,
+    Named("d1_star")                 = d1_star,
+    Named("d2_star")                 = d2_star
   );
 }
 
@@ -1237,22 +1292,53 @@ Rcpp::List compute_envelope_geometry_cpp(
 
 Rcpp::List compute_mixture_and_outputs_cpp(
     Rcpp::List Env,   // existing envelope (must contain "cbars")
+    
+    // NEW: true face constants at anchor dispersion
+    const Rcpp::NumericVector& thetabar_const_base,
+    
+    // Existing extrapolated constants
     const Rcpp::NumericVector& thetabar_const_low_apprx,
     const Rcpp::NumericVector& thetabar_const_upp_apprx,
+    
+    // Face slopes at dispstar
     const Rcpp::NumericVector& New_LL_Slope,
+    
+    // UB2 minima
     const Rcpp::NumericVector& ub2_min,
+    
+    // Mixture log-weights
     const Rcpp::NumericVector& logP1,
+    
+    // Global UB3A geometry (still used for legacy UB3A)
     double max_low,
     double max_upp,
     double new_slope,
     double new_int,
+
+    // NEW: true face constants at anchor dispersion
+    const Rcpp::NumericVector& new_slope_face,
+    const Rcpp::NumericVector& new_int_face,
+    
+        
+    // Anchor dispersion
     double dispstar,
+    // Anchor dispersion
+    double d1_star,
+    // Anchor dispersion
+    double d2_star,
+    
+    // Gamma proposal parameters
     double shape2,
-    double Rate,              // ← prior rate (as in old code)
+    double Rate,
+    
+    // Dispersion bounds
     double low,
     double upp,
+    
+    // RSS bounds
     double RSS_ML,
     double rss_min_global,
+    
     bool verbose
 ) {
   int gs = logP1.size();
@@ -1264,6 +1350,8 @@ Rcpp::List compute_mixture_and_outputs_cpp(
   NumericVector New_logP2(gs);
   NumericVector prob_factor(gs);
   NumericVector prob_factor2(gs);
+
+  NumericVector prob_factor_face(gs);
   
   // --- Step 9: Mixture weights per face (match original) ---
   for (int j = 0; j < gs; ++j) {
@@ -1274,7 +1362,13 @@ Rcpp::List compute_mixture_and_outputs_cpp(
     
     prob_factor[j]  = (pf_upp > pf_low ? pf_upp : pf_low);
     prob_factor2[j] = prob_factor[j] - ub2_min[j];
-    
+
+    /////////////////////////////////////////////////////////
+  
+  
+  
+    /////////////////////////////////////////////////////////
+        
     double norm2 = 0.0;
     for (int k = 0; k < l1; ++k) {
       double cjk = cbars(j, k);
@@ -1313,11 +1407,15 @@ Rcpp::List compute_mixture_and_outputs_cpp(
   Env["PLSD"] = prob_factor_exp2;
   
   // --- Existing global tilt (unchanged behavior) ---
-  double lm_log2 = new_slope * dispstar;
-  double lm_log1 = new_int + new_slope * dispstar - new_slope * std::log(dispstar);
+  // double lm_log2 = new_slope * dispstar;
+  // double lm_log1 = new_int + new_slope * dispstar - new_slope * std::log(dispstar);
+  // double shape3  = shape2 - lm_log2;
+  
+  double lm_log2 = new_slope * d2_star;
+  double lm_log1 = new_int + new_slope * d2_star - new_slope * std::log(d2_star);
   double shape3  = shape2 - lm_log2;
   
-
+  
   // --- A7 geometry constant d2 ---
   double log_low   = std::log(low);
   double log_upp   = std::log(upp);
@@ -1350,7 +1448,9 @@ Rcpp::List compute_mixture_and_outputs_cpp(
     // 1. UB3A slope (face-specific affine slope in d)
     //--------------------------------------------------------
     double slope_j = New_LL_Slope[j];
-    lmc2_face[j] = slope_j;
+    
+    
+    lmc2_face[j] = new_slope_face[j];
     
     //--------------------------------------------------------
     // 2. Reconstruct face constant at dispstar
@@ -1362,14 +1462,36 @@ Rcpp::List compute_mixture_and_outputs_cpp(
     //    ⇒ theta_base_j = thetabar_const_upp_apprx[j]
     //                      - (upp - dispstar) * slope_j
     //--------------------------------------------------------
-    double theta_base_j =
-      thetabar_const_upp_apprx[j] - (upp - dispstar) * slope_j;
+
+    // 2. Face-specific intercept: tangent at d_j
+    //    thetabarconst[j] is the face energy at the anchor dispersion d_j
+    //double d_j = dispstar;   // if dispstar IS the anchor; otherwise use the true d_j
+    double theta_base_j = thetabar_const_base[j];
+    
     
     //--------------------------------------------------------
     // 3. UB3A intercept: tangent at d = dispstar
     //--------------------------------------------------------
-    double lmc1_j = theta_base_j - slope_j * dispstar;
-    lmc1_face[j] = lmc1_j;
+    //double lmc1_j = theta_base_j - slope_j * dispstar;
+    double lmc1_j = theta_base_j - slope_j * d1_star;
+    
+    lmc1_face[j] = new_int_face[j];
+//    lmc1_face[j] = theta_base_j;
+    
+    
+    // DEBUG: compare old vs new
+    // Rcpp::Rcout
+    // << "[DEBUG UB3A_face] j=" << j
+    // << "  old_slope=" << slope_j
+    // << "  new_slope=" << lmc2_face[j]
+    // << "  old_lmc1="  << lmc1_j
+    // << "  new_lmc1="  << lmc1_face[j]
+    // << "  theta_base_j="  << theta_base_j
+    // << "  thetabar_const_low_apprx="  << thetabar_const_low_apprx[j]
+    // << "  thetabar_const_upp_apprx="  << thetabar_const_upp_apprx[j]
+    // << "\n";
+    // 
+    // 
     
     //--------------------------------------------------------
     // 4. UB3B slope (log-tilt slope)
@@ -1427,14 +1549,10 @@ Rcpp::List compute_mixture_and_outputs_cpp(
     Rcpp::Named("disp_lower")   = low,
     
     // New: face-specific UB3A/UB3B geometry
-    Rcpp::Named("lmc1_face")    = lmc1_face,     // UB3A intercepts
-    Rcpp::Named("lmc2_face")    = lmc2_face,     // UB3A slopes
-    Rcpp::Named("lm_log1_face") = lm_log1_face,  // UB3B intercepts
-    Rcpp::Named("lm_log2_face") = lm_log2_face,  // UB3B slopes
     Rcpp::Named("shape3_face")  = shape3_face    // per-face Gamma shapes
   );
   
-  
+
   List UB_list = List::create(
     Named("RSS_ML")          = RSS_ML,
     Named("RSS_Min")         = rss_min_global,
@@ -1445,11 +1563,28 @@ Rcpp::List compute_mixture_and_outputs_cpp(
     Named("lg_prob_factor")  = lg_prob_factor,
     Named("lmc1")            = new_int,
     Named("lmc2")            = new_slope,
-    Named("UB2min")          = ub2_min
+    Named("UB2min")          = ub2_min,
+    Rcpp::Named("lmc1_face")    = lmc1_face,     // UB3A intercepts
+    Rcpp::Named("lmc2_face")    = lmc2_face,     // UB3A slopes
+    Rcpp::Named("lm_log1_face") = lm_log1_face,  // UB3B intercepts
+    Rcpp::Named("lm_log2_face") = lm_log2_face,  // UB3B slopes
+    Rcpp::Named("thetabar_const_upp_apprx") = thetabar_const_upp_apprx,  // UB3B intercepts
+    Rcpp::Named("thetabar_const_low_apprx") = thetabar_const_low_apprx,  // UB3B slopes
+  // NEW: pass anchor geometry downstream
+    Named("dispstar")            = dispstar,
+    Named("d1_star")            = d1_star,
+    Named("d2_star")            = d2_star,
+    Named("thetabar_const_base") = thetabar_const_base,
+    Named("New_LL_Slope")        = New_LL_Slope
+  
   );
+  
+  
   
   List diagnostics = List::create(
     Named("dispstar")        = dispstar,
+    Named("d1_star")            = d1_star,
+    Named("d2_star")            = d2_star,
     Named("New_LL_Slope")    = New_LL_Slope,
     Named("shape2")          = shape2,
     Named("rate3")           = Rate,
@@ -1717,8 +1852,13 @@ List EnvelopeDispersionBuild(
   double new_slope = geom["new_slope"];
   double new_int   = geom["new_int"];
   double dispstar  = geom["dispstar"];
-
-
+  // NEW: extract both dispersion anchors
+  double d1_star = geom["d1_star"];   // posterior‑mode anchor (face geometry)
+  double d2_star = geom["d2_star"];   // log‑tilt anchor (UB3B geometry)
+  
+  NumericVector  new_slope_face=geom["new_slope_face"];
+  NumericVector  new_int_face=geom["new_int_face"];
+  
 
   ////////////////////////////////////////////////////////////
   
@@ -1730,9 +1870,17 @@ List EnvelopeDispersionBuild(
                   << "\n";
   }
   
-    
+    // Rcpp::Rcout 
+    // << "[EnvelopeDispersionBuild] About to call compute_mixture_and_outputs_cpp\n"
+    // << "  dispstar  = " << dispstar  << "\n"
+    // << "  d1_star   = " << d1_star   << "\n"
+    // << "  d2_star   = " << d2_star   << "\n"
+    // << "  new_slope = " << new_slope << "\n"
+    // << "  new_int   = " << new_int   << "\n";
+
   Rcpp::List mix = compute_mixture_and_outputs_cpp(
     Env,                              // ← pass existing envelope
+    thetabar_const_base,
     thetabar_const_low_apprx,
     thetabar_const_upp_apprx,
     New_LL_Slope,
@@ -1742,7 +1890,11 @@ List EnvelopeDispersionBuild(
     max_upp,
     new_slope,
     new_int,
+    new_slope_face,
+    new_int_face,
     dispstar,
+    d1_star,
+    d2_star,
     shape2,
     Rate,
     low,
@@ -1767,10 +1919,6 @@ List EnvelopeDispersionBuild(
   List UB_list     = mix["UB_list"];
   List diagnostics = mix["diagnostics"];
 
-  
-
-  
-  
   return List::create(
     Named("Env_out")    = Env,
     Named("gamma_list") = gamma_list,

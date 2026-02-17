@@ -45,6 +45,23 @@ Rcpp::List EnvelopeOrchestrator(
     bool verbose
 ) {
   
+  
+  int n_obs=y.size();
+  
+  // Step 1: Posterior Gamma parameters (precision prior)
+  double shape2 = shape + static_cast<double>(n_obs) / 2.0;
+  double rate3  = rate  + RSS_Post2 / 2.0;
+  
+  double d1_star = rate3 / (shape2 - 1.0);
+  
+  
+  // Rcpp::Rcout << "d1_star - Envelopeorchestrator= " << d1_star << "\n";
+  
+  Rcpp::NumericVector wt2(n_obs);
+  for (int i = 0; i < n_obs; ++i)    wt2[i] = wt[i] / d1_star;
+  
+  
+  
 // --- Step 1: EnvelopeBuild (direct C++ call) ---
 Rcpp::List Env2 = EnvelopeBuild(
     bstar2,                      // NumericVector
@@ -54,7 +71,7 @@ Rcpp::List Env2 = EnvelopeBuild(
     mu2,                         // NumericMatrix (p x 1)
     P2,                          // NumericMatrix
     alpha,                       // NumericVector
-    wt,                          // NumericVector
+    wt2,                          // NumericVector
     "gaussian",                  // family
     "identity",                  // link
     Gridtype,                    // int

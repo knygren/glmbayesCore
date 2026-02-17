@@ -74,8 +74,58 @@ using namespace glmbayes::progress;
 
 
 
+// ------------------------------------------------------------
+// g1_face_at_disp
+// ------------------------------------------------------------
+// Computes the quadratic–linear face energy:
+//
+//   g1_j(d) = -0.5 * θ_j(d)^T P θ_j(d) + c_j^T θ_j(d)
+//
+// where θ_j(d) is obtained exactly the same way as in the main
+// code, i.e. via:
+//
+//   arma::mat theta2 = Inv_f3_with_disp(cache, dispersion, transpose(cbars_small));
+//
+// with cbars_small being a 1 × p NumericMatrix slice of cbars.
+// ------------------------------------------------------------
 
-
+double g1_face_at_disp(
+    double dispersion,
+    int j,
+    const Rcpp::List& cache,
+    const arma::mat& P2,
+    const Rcpp::NumericMatrix& cbars
+) {
+  // ---- 1) Build cbars_small exactly as in the main code: 1 × p ----
+  int p = cbars.ncol();
+  Rcpp::NumericMatrix cbars_small(1, p);
+  for (int k = 0; k < p; ++k) {
+    cbars_small(0, k) = cbars(j, k);
+  }
+  
+  // ---- 2) Call Inv_f3_with_disp with transpose(cbars_small), as in main ----
+  Rcpp::NumericMatrix cbars_small_t = Rcpp::transpose(cbars_small);
+  arma::mat theta_mat = Inv_f3_with_disp(cache, dispersion, cbars_small_t);
+  // theta_mat is 1 × p (Out.t() in Inv_f3_with_disp)
+  
+  // Convert 1 × p → p × 1, matching main logic
+  arma::rowvec theta_row = theta_mat.row(0);
+  arma::vec theta = theta_row.t();
+  
+  // ---- 3) Build c_j as arma::vec (p × 1) ----
+  arma::vec c_j(p);
+  for (int k = 0; k < p; ++k) {
+    c_j(k) = cbars(j, k);
+  }
+  
+  // ---- 4) Quadratic–linear face energy g1_j(d) ----
+  double g1 = arma::as_scalar(
+    -0.5 * theta.t() * P2 * theta
+  +       c_j.t()  * theta
+  );
+  
+  return g1;
+}
 
 //-----------------------------------------------------------------------------
 // rIndepNormalGammaReg_worker: parallel Normal–Gamma simulation with envelope
@@ -247,6 +297,8 @@ void rIndepNormalGammaReg_worker::operator()(std::size_t begin, std::size_t end)
       //   Inv_f3_with_disp_rmat(Pmat_r, Pmu_r, base_B0_r, base_A_r,
       //                         dispersion, cbars_small_col);
 
+      
+      
       arma::mat theta_sol = Inv_f3_with_disp_rmat(Pmat_r, Pmu_r, base_B0_r, base_A_r,
                                                      dispersion, cbars_small_col);
 
@@ -429,10 +481,21 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
   NumericMatrix cbars=Envelope["cbars"];
   
   // --- New: face-specific UB3A/UB3B and Gamma proposal geometry ---
-  NumericVector lmc1_face    = gamma_list["lmc1_face"];     // UB3A intercepts
-  NumericVector lmc2_face    = gamma_list["lmc2_face"];     // UB3A slopes
-  NumericVector lm_log1_face = gamma_list["lm_log1_face"];  // UB3B intercepts
-  NumericVector lm_log2_face = gamma_list["lm_log2_face"];  // UB3B slopes
+  // NumericVector lmc1_face    = UB_list["lmc1_face"];     // UB3A intercepts
+  // NumericVector lmc2_face    = UB_list["lmc2_face"];     // UB3A slopes
+  // NumericVector lm_log1_face = UB_list["lm_log1_face"];  // UB3B intercepts
+  // NumericVector lm_log2_face = UB_list["lm_log2_face"];  // UB3B slopes
+  // NumericVector thetabar_const_upp_apprx = UB_list["thetabar_const_upp_apprx"];  // UB3B intercepts
+  // NumericVector thetabar_const_low_apprx = UB_list["thetabar_const_low_apprx"];  // UB3B slopes
+  
+  
+  // NEW: extract anchor geometry
+  double d1_star = UB_list["d1_star"];        // UB3A anchor
+  double d2_star = UB_list["d2_star"];        // UB3B anchor
+  NumericVector thetabar_const_base = UB_list["thetabar_const_base"];  // should be g1(d1*)
+  NumericVector New_LL_Slope       = UB_list["New_LL_Slope"];          // should g1'(d1*)
+  
+  
   NumericVector shape3_face  = gamma_list["shape3_face"];   // per-face Gamma shapes
   
   
@@ -473,7 +536,10 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
   double UB3A;
   double UB3B;
   double New_LL_log_disp;
+
+  double UB3A_face;
   
+    
   int a1=0;
   double test1=0;
   double test=0;
@@ -515,8 +581,74 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
                   << "\n";
   }
   
-  
-  
+  // ------------------------------------------------------------
+  // Diagnostic: verify g1_face_at_disp(d1_star, j) == thetabar_const_base[j]
+  // ------------------------------------------------------------
+    // int gs = cbars.nrow();
+    // if (gs <= 27) {
+    //   Rcpp::Rcout << "\n[CHECK g1(d1_star) vs thetabar_const_base]\n";
+    //   Rcpp::Rcout << "d1_star = " << d1_star << "\n";
+    //   
+    //   for (int j = 0; j < gs; ++j) {
+    //     // Compute g1_j(d1_star)
+    //     double g1_at_d1 = g1_face_at_disp(
+    //       d1_star,
+    //       j,
+    //       cache,   // same cache used in main loop
+    //       P2,      // precision matrix
+    //       cbars    // cbars matrix
+    //     );
+    //     
+    //     double base_j = thetabar_const_base[j];
+    //     double diff   = g1_at_d1 - base_j;
+    //     
+    //     Rcpp::Rcout
+    //     << "  j=" << j
+    //     << "  g1(d1*)=" << g1_at_d1
+    //     << "  thetabar_const_base=" << base_j
+    //     << "  diff=" << diff
+    //     << "\n";
+    //   }
+    //   
+    //   Rcpp::Rcout << "[END CHECK g1(d1_star)]\n\n";
+    // }
+    // 
+    // 
+    // Rcpp::Rcout << "\n[CHECK theta(d1_star) vs computed thetabars]\n";
+    // Rcpp::Rcout << "d1_star = " << d1_star << "\n";
+    // 
+    // for (int j = 0; j < gs; ++j) {
+    //   
+    //   // ---- Print cbars[j, ] ----
+    //   Rcpp::Rcout << "j=" << j << "\n";
+    //   Rcpp::Rcout << "  cbars : ";
+    //   for (int k = 0; k < cbars.ncol(); ++k) {
+    //     Rcpp::Rcout << cbars(j, k);
+    //     if (k + 1 < cbars.ncol()) Rcpp::Rcout << " ";
+    //   }
+    //   Rcpp::Rcout << "\n";
+    //   
+    //   // ---- Build cbars_small ----
+    //   Rcpp::NumericMatrix cbars_small(1, cbars.ncol());
+    //   for (int k = 0; k < cbars.ncol(); ++k)
+    //     cbars_small(0, k) = cbars(j, k);
+    //   
+    //   // ---- Compute theta_inv(d1_star) ----
+    //   arma::mat theta_mat =        Inv_f3_with_disp(cache, d1_star, Rcpp::transpose(cbars_small));
+    //   arma::rowvec theta_inv = theta_mat.row(0);
+    //   
+    //   // ---- Print computed thetabars (theta_inv) ----
+    //   int p = static_cast<int>(theta_inv.n_elem);
+    //   Rcpp::Rcout << "  theta_inv : ";
+    //   for (int k = 0; k < p; ++k) {
+    //     Rcpp::Rcout << theta_inv(k);
+    //     if (k + 1 < p) Rcpp::Rcout << " ";
+    //   }
+    //   Rcpp::Rcout << "\n";
+    // }
+    // 
+    // Rcpp::Rcout << "[END CHECK theta(d1_star)]\n\n";
+    // 
   for(int i=0;i<n;i++){
 
     Rcpp::checkUserInterrupt();
@@ -664,24 +796,42 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
       
 
       
-      for(int j=J_out(0);j<(J_out(0)+1);j++){
-        thetabars_temp=thetabars_new(0,_); // Changed
-        
-        
-        cbars_temp=cbars(j,_);
-        arma::vec  thetabars_temp2(thetabars_temp.begin(), l1);
-        arma::vec  cbars_temp2(cbars_temp.begin(), l1);
-        
-        New_LL(j)=arma::as_scalar(-0.5*trans(thetabars_temp2)*P2*thetabars_temp2
-                                    +trans(cbars_temp2)*thetabars_temp2);
-        
-      }
+      // for(int j=J_out(0);j<(J_out(0)+1);j++){
+      //   thetabars_temp=thetabars_new(0,_); // Changed
+      //   
+      //   
+      //   cbars_temp=cbars(j,_);
+      //   arma::vec  thetabars_temp2(thetabars_temp.begin(), l1);
+      //   arma::vec  cbars_temp2(cbars_temp.begin(), l1);
+      //   
+      //   New_LL(j)=arma::as_scalar(-0.5*trans(thetabars_temp2)*P2*thetabars_temp2
+      //                               +trans(cbars_temp2)*thetabars_temp2);
+      //   
+      // }
+      
+      // Compute g1_j(d) for the chosen face j = J_out(0)
+      int j = J_out(0);
+      double g1j = g1_face_at_disp(
+        dispersion,   // current dispersion draw
+        j,            // face index
+        cache,        // cached matrices for Inv_f3_with_disp
+        P2,           // precision matrix
+        cbars         // matrix of c_j rows
+      );
+      
+      // Store it exactly where New_LL(j) was previously used
+     New_LL(j) = g1j;
+      
+
+      
       
 
       // Modified UB3A 
       
       UB3A= lg_prob_factor(J_out(0))+lmc1+lmc2*dispersion-New_LL(J_out(0));
       
+      
+      // UB3A_face =thetabar_const_upp_apprx[J_out(0)]+ lmc1_face[J_out(0)] + lmc2_face[J_out(0)] * dispersion - New_LL(J_out(0));
       //double UB3A = lg_prob_factor_r[J_idx] + lmc1 + lmc2 * dispersion - New_LL_J;
       
       
@@ -739,6 +889,12 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
         bad = true;
         msg << "Sign violation: UB3A = " << UB3A << " < 0\n";
       }
+      // if (UB3A_face < 0.0) {
+      //   bad = true;
+      //   msg << "Sign violation: UB3A_face = " << UB3A_face << " < 0\n";
+      // }
+      
+      
       if (UB3B < 0.0) {
         bad = true;
         msg << "Sign violation: UB3B = " << UB3B << " < 0\n";
@@ -751,8 +907,16 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
             << " UB1=" << UB1
             << " UB2=" << UB2
             << " UB3A=" << UB3A
+            // << " UB3A_face=" << UB3A_face
             << " UB3B=" << UB3B
+            // << " thetabar_const_upp_apprx=" << thetabar_const_upp_apprx[J_out(0)]
+            // << " thetabar_const_low_apprx=" << thetabar_const_low_apprx[J_out(0)]
+            << " lg_prob_factor[]=" << lg_prob_factor[J_out(0)]
+            << " lg_prob_factor()=" << lg_prob_factor(J_out(0))
+            << " New_LL(j)=" << New_LL(j)
+            << " g1j=" << g1j
             << " test=" << test;
+        
         // Stop execution with informative error
         throw std::runtime_error(msg.str());
         
@@ -833,11 +997,11 @@ Rcpp::List rIndepNormalGammaReg_std_parallel(
   double lmc2            = UB_list["lmc2"];
 
   // --- New: face-specific UB3A/UB3B and Gamma proposal geometry ---
-  NumericVector lmc1_face    = gamma_list["lmc1_face"];     // UB3A intercepts
-  NumericVector lmc2_face    = gamma_list["lmc2_face"];     // UB3A slopes
-  NumericVector lm_log1_face = gamma_list["lm_log1_face"];  // UB3B intercepts
-  NumericVector lm_log2_face = gamma_list["lm_log2_face"];  // UB3B slopes
-  NumericVector shape3_face  = gamma_list["shape3_face"];   // per-face Gamma shapes
+  // NumericVector lmc1_face    = gamma_list["lmc1_face"];     // UB3A intercepts
+  // NumericVector lmc2_face    = gamma_list["lmc2_face"];     // UB3A slopes
+  // NumericVector lm_log1_face = gamma_list["lm_log1_face"];  // UB3B intercepts
+  // NumericVector lm_log2_face = gamma_list["lm_log2_face"];  // UB3B slopes
+  // NumericVector shape3_face  = gamma_list["shape3_face"];   // per-face Gamma shapes
   
   Rcpp::NumericVector lg_prob_factor = UB_list["lg_prob_factor"];
   Rcpp::NumericMatrix cbars          = Envelope["cbars"];
@@ -1253,6 +1417,8 @@ Rcpp::List rIndepNormalGammaReg(
   
   
   
+  // Rcpp::Rcout << "dispersion2 = " << dispersion2 << "\n";
+  
   
   // -------------------------------
   // Posterior Mode + Hessian Block
@@ -1392,6 +1558,7 @@ Rcpp::List rIndepNormalGammaReg(
                   << "\n";
   }
   
+  // Pass wt-Compute wt2 internally  
     
   // Call C++ envelope orchestrator
   Rcpp::List env_out = EnvelopeOrchestrator(
@@ -1403,6 +1570,7 @@ Rcpp::List rIndepNormalGammaReg(
     P2_std,
     alpha,
     wt,
+    // wt2,
     n,
     Gridtype,
     
