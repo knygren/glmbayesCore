@@ -83,14 +83,6 @@ Rcpp::List Env2 = EnvelopeBuild(
 );
 
   
-// {
-//   Rcpp::NumericVector PLSD0 = Env2["PLSD"];
-//   Rcpp::Rcout << "[CHECK] PLSD0[0:8] = ";
-//   for (int i = 0; i < 9 && i < PLSD0.size(); ++i)
-//     Rcpp::Rcout << PLSD0[i] << " ";
-//   Rcpp::Rcout << "\n";
-// }  
-  
   
 // --- Step 2: EnvelopeDispersionBuild (direct C++ call) ---
 Rcpp::List disp_env_out = EnvelopeDispersionBuild(
@@ -123,14 +115,6 @@ Rcpp::List UB_list_new = disp_env_out["UB_list"];
 
 
 
-// {
-//   Rcpp::NumericVector PLSD1 = Env3_raw["PLSD"];
-//   Rcpp::Rcout << "[CHECK] PLSD1[0:8] = ";
-//   for (int i = 0; i < 9 && i < PLSD1.size(); ++i)
-//     Rcpp::Rcout << PLSD1[i] << " ";
-//   Rcpp::Rcout << "\n";
-// }
-// 
 
 // Extract cbars and its dimensions
 Rcpp::NumericMatrix cbars = Env3_raw["cbars"];
@@ -220,8 +204,6 @@ return Rcpp::List::create(
   Rcpp::_["upp"]        = upp
 );
 
-// TEMPORARY: return dummy until final assembly
-//return 12345;
 }
 
 }

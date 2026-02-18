@@ -41,37 +41,6 @@ using namespace glmbayes::rng;
 using namespace glmbayes::progress;
 
 
-// void progress_bar3(double x, double N)
-// {
-//   // how wide you want the progress meter to be
-//   int totaldotz=40;
-//   double fraction = x / N;
-//   // part of the progressmeter that's already "full"
-//   int dotz = round(fraction * totaldotz);
-//   
-//   Rcpp::Rcout.precision(3);
-//   Rcout << "\r                                                                 " << std::flush ;
-//   Rcout << "\r" << std::flush ;
-//   Rcout << std::fixed << fraction*100 << std::flush ;
-//   Rcout << "% [" << std::flush ;
-//   int ii=0;
-//   for ( ; ii < dotz;ii++) {
-//     Rcout << "=" << std::flush ;
-//   }
-//   // remaining part (spaces)
-//   for ( ; ii < totaldotz;ii++) {
-//     Rcout << " " << std::flush ;
-//   }
-//   // and back to line begin 
-//   
-//   Rcout << "]" << std::flush ;
-//   
-//   // and back to line begin 
-//   
-//   Rcout << "\r" << std::flush ;
-//   
-// }
-
 
 
 // ------------------------------------------------------------
@@ -272,19 +241,12 @@ void rIndepNormalGammaReg_worker::operator()(std::size_t begin, std::size_t end)
 
       // 3) Draw dispersion
       
-      // DEBUG: print inputs to rinvgamma_ct_safe
-      // Rcpp::Rcout << "[DEBUG] rinvgamma_ct_safe inputs:\n";
-      // Rcpp::Rcout << "  shape3     = " << shape3     << "\n";
-      // Rcpp::Rcout << "  rate2      = " << rate2      << "\n";
-      // Rcpp::Rcout << "  disp_lower = " << disp_lower << "\n";
-      // Rcpp::Rcout << "  disp_upper = " << disp_upper << "\n";
-      
+
       // Now call the sampler
       double dispersion = rinvgamma_ct_safe(shape3, rate2, disp_upper, disp_lower);
       
       // DEBUG: print the result
-       // Rcpp::Rcout << "[DEBUG] rinvgamma_ct_safe draw = " << dispersion << "\n";
-      
+
       // Guard
       if (!std::isfinite(dispersion)) {
         Rcpp::stop("Error: rinvgamma_ct_safe returned non-finite dispersion.");
@@ -292,18 +254,11 @@ void rIndepNormalGammaReg_worker::operator()(std::size_t begin, std::size_t end)
       // 4) Solve theta (strict row-only)
       for (int j = 0; j < l1; ++j) cbars_small_col(j, 0) = cbars_r(J_idx, j);
 
-      
-      // RcppParallel::RMatrix<double> theta_sol_r =
-      //   Inv_f3_with_disp_rmat(Pmat_r, Pmu_r, base_B0_r, base_A_r,
-      //                         dispersion, cbars_small_col);
 
-      
-      
       arma::mat theta_sol = Inv_f3_with_disp_rmat(Pmat_r, Pmu_r, base_B0_r, base_A_r,
                                                      dispersion, cbars_small_col);
 
 
-      //for (int j = 0; j < l1; ++j) theta_row(0, j) = theta_sol_r(0, j);
 
       for (int j = 0; j < l1; ++j) {
         theta_row(0, j) = theta_sol(0, j);
@@ -324,8 +279,6 @@ void rIndepNormalGammaReg_worker::operator()(std::size_t begin, std::size_t end)
 
       // 6) Likelihood calls (column views, pre-scaled weights)
       double LL_New2_scalar =-f2_gaussian_rmat_mat(theta_col, y_r, x_r, mu_r, P_r, alpha_r, wt2_r, 0)[0];
-
-        // Rcout << "Entering f2_gaussian_rmat_mat 2"  << std::endl;
 
 
         double LL_Test_scalar =-f2_gaussian_rmat_mat(out_col,   y_r, x_r, mu_r, P_r, alpha_r, wt2_r, 0)[0];
@@ -481,17 +434,11 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
   NumericMatrix cbars=Envelope["cbars"];
   
   // --- New: face-specific UB3A/UB3B and Gamma proposal geometry ---
-  // NumericVector lmc1_face    = UB_list["lmc1_face"];     // UB3A intercepts
-  // NumericVector lmc2_face    = UB_list["lmc2_face"];     // UB3A slopes
-  // NumericVector lm_log1_face = UB_list["lm_log1_face"];  // UB3B intercepts
-  // NumericVector lm_log2_face = UB_list["lm_log2_face"];  // UB3B slopes
-  // NumericVector thetabar_const_upp_apprx = UB_list["thetabar_const_upp_apprx"];  // UB3B intercepts
-  // NumericVector thetabar_const_low_apprx = UB_list["thetabar_const_low_apprx"];  // UB3B slopes
-  
+
   
   // NEW: extract anchor geometry
-  double d1_star = UB_list["d1_star"];        // UB3A anchor
-  double d2_star = UB_list["d2_star"];        // UB3B anchor
+//  double d1_star = UB_list["d1_star"];        // UB3A anchor
+//  double d2_star = UB_list["d2_star"];        // UB3B anchor
   NumericVector thetabar_const_base = UB_list["thetabar_const_base"];  // should be g1(d1*)
   NumericVector New_LL_Slope       = UB_list["New_LL_Slope"];          // should g1'(d1*)
   
@@ -537,7 +484,7 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
   double UB3B;
   double New_LL_log_disp;
 
-  double UB3A_face;
+//  double UB3A_face;
   
     
   int a1=0;
@@ -562,7 +509,6 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
   
   if (verbose) {
     Rcpp::Rcout << "[rIndepNormalGammaReg_std:Inv_f3_precompute_disp] Entering: "
-    //            << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                   << glmbayes::progress::timestamp_cpp()
                   << "\n";
   }
@@ -581,74 +527,6 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
                   << "\n";
   }
   
-  // ------------------------------------------------------------
-  // Diagnostic: verify g1_face_at_disp(d1_star, j) == thetabar_const_base[j]
-  // ------------------------------------------------------------
-    // int gs = cbars.nrow();
-    // if (gs <= 27) {
-    //   Rcpp::Rcout << "\n[CHECK g1(d1_star) vs thetabar_const_base]\n";
-    //   Rcpp::Rcout << "d1_star = " << d1_star << "\n";
-    //   
-    //   for (int j = 0; j < gs; ++j) {
-    //     // Compute g1_j(d1_star)
-    //     double g1_at_d1 = g1_face_at_disp(
-    //       d1_star,
-    //       j,
-    //       cache,   // same cache used in main loop
-    //       P2,      // precision matrix
-    //       cbars    // cbars matrix
-    //     );
-    //     
-    //     double base_j = thetabar_const_base[j];
-    //     double diff   = g1_at_d1 - base_j;
-    //     
-    //     Rcpp::Rcout
-    //     << "  j=" << j
-    //     << "  g1(d1*)=" << g1_at_d1
-    //     << "  thetabar_const_base=" << base_j
-    //     << "  diff=" << diff
-    //     << "\n";
-    //   }
-    //   
-    //   Rcpp::Rcout << "[END CHECK g1(d1_star)]\n\n";
-    // }
-    // 
-    // 
-    // Rcpp::Rcout << "\n[CHECK theta(d1_star) vs computed thetabars]\n";
-    // Rcpp::Rcout << "d1_star = " << d1_star << "\n";
-    // 
-    // for (int j = 0; j < gs; ++j) {
-    //   
-    //   // ---- Print cbars[j, ] ----
-    //   Rcpp::Rcout << "j=" << j << "\n";
-    //   Rcpp::Rcout << "  cbars : ";
-    //   for (int k = 0; k < cbars.ncol(); ++k) {
-    //     Rcpp::Rcout << cbars(j, k);
-    //     if (k + 1 < cbars.ncol()) Rcpp::Rcout << " ";
-    //   }
-    //   Rcpp::Rcout << "\n";
-    //   
-    //   // ---- Build cbars_small ----
-    //   Rcpp::NumericMatrix cbars_small(1, cbars.ncol());
-    //   for (int k = 0; k < cbars.ncol(); ++k)
-    //     cbars_small(0, k) = cbars(j, k);
-    //   
-    //   // ---- Compute theta_inv(d1_star) ----
-    //   arma::mat theta_mat =        Inv_f3_with_disp(cache, d1_star, Rcpp::transpose(cbars_small));
-    //   arma::rowvec theta_inv = theta_mat.row(0);
-    //   
-    //   // ---- Print computed thetabars (theta_inv) ----
-    //   int p = static_cast<int>(theta_inv.n_elem);
-    //   Rcpp::Rcout << "  theta_inv : ";
-    //   for (int k = 0; k < p; ++k) {
-    //     Rcpp::Rcout << theta_inv(k);
-    //     if (k + 1 < p) Rcpp::Rcout << " ";
-    //   }
-    //   Rcpp::Rcout << "\n";
-    // }
-    // 
-    // Rcpp::Rcout << "[END CHECK theta(d1_star)]\n\n";
-    // 
   for(int i=0;i<n;i++){
 
     Rcpp::checkUserInterrupt();
@@ -795,20 +673,6 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
       // This is likely time consuming part
       
 
-      
-      // for(int j=J_out(0);j<(J_out(0)+1);j++){
-      //   thetabars_temp=thetabars_new(0,_); // Changed
-      //   
-      //   
-      //   cbars_temp=cbars(j,_);
-      //   arma::vec  thetabars_temp2(thetabars_temp.begin(), l1);
-      //   arma::vec  cbars_temp2(cbars_temp.begin(), l1);
-      //   
-      //   New_LL(j)=arma::as_scalar(-0.5*trans(thetabars_temp2)*P2*thetabars_temp2
-      //                               +trans(cbars_temp2)*thetabars_temp2);
-      //   
-      // }
-      
       // Compute g1_j(d) for the chosen face j = J_out(0)
       int j = J_out(0);
       double g1j = g1_face_at_disp(
@@ -821,10 +685,6 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
       
       // Store it exactly where New_LL(j) was previously used
      New_LL(j) = g1j;
-      
-
-      
-      
 
       // Modified UB3A 
       
@@ -863,16 +723,7 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
       test = test - log_U2;
 
       
-      // Rcpp::Rcout
-      // << "J = "     << J_out(0)
-      // << "  test1 = " << test1
-      // << "  UB2 = "   << UB2
-      // << "  UB3A = "  << UB3A
-      // << "  UB3B = "  << UB3B
-      // << "  test = "  << test
-      // << "\n";
-            
-      
+
       // Sanity checks: all must satisfy their sign constraints
       bool bad = false;
       std::ostringstream msg;
@@ -1328,18 +1179,6 @@ Rcpp::List rIndepNormalGammaReg(
                   << glmbayes::progress::timestamp_cpp()
                   << "\n";
   }
-  
-  // // Debug: inspect first few weights
-  // Rcpp::Rcout << "[DEBUG] wt[0:9] = ";
-  // int n_print = std::min<int>(wt.size(), 10);
-  // for (int i = 0; i < n_print; ++i) {
-  //   Rcpp::Rcout << wt[i];
-  //   if (i < n_print - 1) Rcpp::Rcout << ", ";
-  // }
-  // Rcpp::Rcout << "\n";
-  // 
-  
-  
   
   for (int j = 0; j < 10; ++j) {
     

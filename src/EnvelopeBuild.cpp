@@ -244,15 +244,7 @@ List EnvelopeBuild(NumericVector bStar,
   NumericMatrix G3=asMat(expGrid(G2));
   NumericMatrix G4(G3.ncol(),G3.nrow());
   
-  
-  // // print grid size if requested
-  // if (verbose) {
-  //   Rcpp::Rcout 
-  //   << ">>> EnvelopeBuild: grid size (l2) = " 
-  //   << l2 
-  //   << "\n";
-  // }
-  
+
   if (verbose) {
   Rcpp::Rcout << "[EnvelopeBuild] Grid size (l2) = "
               << glmbayes::progress::format_int_with_commas(l2)
@@ -293,9 +285,7 @@ List EnvelopeBuild(NumericVector bStar,
   
   // Call EnvelopeEval to compute negative log-likelihood and gradients
   // at each grid point
-  
-  
-  
+
   if (verbose) {
     
     Rcpp::Rcout << "[EnvelopeBuild:EnvelopeEval] Entering: "
@@ -312,7 +302,6 @@ List EnvelopeBuild(NumericVector bStar,
   if (verbose) {
     
     Rcpp::Rcout << "[EnvelopeBuild:EnvelopeEval] Exiting: "
-//                << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                 << glmbayes::progress::timestamp_cpp()
                 << "\n";
   }
@@ -332,20 +321,17 @@ List EnvelopeBuild(NumericVector bStar,
   if (verbose) {
     
     Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSet_Grid] Entering: "
-   //             << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                 << glmbayes::progress::timestamp_cpp()
                 << "\n";
   }
   
   // Set Grid
   
-  //  EnvelopeSet_Grid_C2(GIndex, cbars, Lint1,Down,Up,loglt,logrt,logct,logU,logP);
   EnvelopeSet_Grid_C2_pointwise(GIndex, cbars, Lint1,Down,Up,loglt,logrt,logct,logU,logP);
   
   if (verbose) {
     
     Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSet_Grid] Exiting: "
-    //             << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                    << glmbayes::progress::timestamp_cpp()
                    << "\n";
   }
@@ -357,7 +343,6 @@ List EnvelopeBuild(NumericVector bStar,
   if (verbose) {
     
     Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSet_LogP] Entering: "
-        //        << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
                 << glmbayes::progress::timestamp_cpp()
                 << "\n";
   }
@@ -368,7 +353,6 @@ List EnvelopeBuild(NumericVector bStar,
   if (verbose) {
     
     Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSet_LogP] Exiting: "
-    //        << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
               << glmbayes::progress::timestamp_cpp()
               << "\n";
   }
