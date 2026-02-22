@@ -45,7 +45,12 @@ Rcpp::List EnvelopeOrchestrator(
     bool verbose
 ) {
   
+  int disp_grid_type=2;
   
+  if(use_parallel) disp_grid_type=2;
+  
+  
+    
   int n_obs=y.size();
   
   // Step 1: Posterior Gamma parameters (precision prior)
@@ -82,7 +87,8 @@ Rcpp::List Env2 = EnvelopeBuild(
     verbose                      // bool
 );
 
-  
+
+
   
 // --- Step 2: EnvelopeDispersionBuild (direct C++ call) ---
 Rcpp::List disp_env_out = EnvelopeDispersionBuild(
@@ -106,12 +112,17 @@ Rcpp::List disp_env_out = EnvelopeDispersionBuild(
 );
 
 
+Rcpp::Rcout << "[EnvelopeDipsersionBuild] Exiting: \n";
 
 // --- Step 3: Call R's EnvelopeSort ---
 
 // Extract Env_out and UB_list as proper Lists
 Rcpp::List Env3_raw    = disp_env_out["Env_out"];
 Rcpp::List UB_list_new = disp_env_out["UB_list"];
+//Rcpp::List UB_list_new = disp_env_out["UB_list"];
+Rcpp::List gamma_list_new = disp_env_out["gamma_list"];
+
+
 
 
 
@@ -163,8 +174,38 @@ Rcpp::Function EnvelopeSort = pkg["EnvelopeSort"];
 
 //Rcpp::stop("DEBUG STOP: halting before EnvelopeSort");
 
+Rcpp::List Env3;
+
 // Call EnvelopeSort with the same arguments as the R orchestrator
-Rcpp::List Env3 = EnvelopeSort(
+
+Rcpp::Rcout << "[EnvelopeSort] Entering: \n";
+
+
+if(disp_grid_type==1){
+Env3 = EnvelopeSort(
+    Rcpp::_["l1"]      = l1,
+    Rcpp::_["l2"]      = l2,
+    Rcpp::_["GIndex"]  = Env3_raw["GridIndex"],
+    Rcpp::_["G3"]      = Env3_raw["thetabars"],
+    Rcpp::_["cbars"]   = cbars,
+    Rcpp::_["logU"]    = Env3_raw["logU"],
+    Rcpp::_["logrt"]   = Env3_raw["logrt"],
+    Rcpp::_["loglt"]   = Env3_raw["loglt"],
+    Rcpp::_["logP"]    = logP_mat,   // <-- correct shape, untouched values
+    Rcpp::_["LLconst"] = Env3_raw["LLconst"],
+    Rcpp::_["PLSD"]    = Env3_raw["PLSD"],
+    Rcpp::_["a1"]      = Env3_raw["a1"],
+    Rcpp::_["E_draws"] = Env3_raw["E_draws"],
+    Rcpp::_["lg_prob_factor"] = UB_list_new["lg_prob_factor"],
+    Rcpp::_["UB2min"]         = UB_list_new["UB2min"],
+    Rcpp::_["thetabar_const_base"] = UB_list_new["thetabar_const_base"],
+    Rcpp::_["New_LL_Slope"]= UB_list_new["New_LL_Slope"],
+    Rcpp::_["shape3_face"]= gamma_list_new["shape3_face"]
+);
+}
+
+if(disp_grid_type==2){
+ Env3 = EnvelopeSort(
     Rcpp::_["l1"]      = l1,
     Rcpp::_["l2"]      = l2,
     Rcpp::_["GIndex"]  = Env3_raw["GridIndex"],
@@ -180,7 +221,14 @@ Rcpp::List Env3 = EnvelopeSort(
     Rcpp::_["E_draws"] = Env3_raw["E_draws"],
     Rcpp::_["lg_prob_factor"] = UB_list_new["lg_prob_factor"],
     Rcpp::_["UB2min"]         = UB_list_new["UB2min"]
+  // ,Rcpp::_["thetabar_const_base"] = UB_list_new["thetabar_const_base"],
+  //   Rcpp::_["New_LL_Slope"]= UB_list_new["New_LL_Slope"],
+  //   Rcpp::_["shape3_face"]= gamma_list_new["shape3_face"]
 );
+}
+
+Rcpp::Rcout << "[EnvelopeSort] Exiting: \n";
+
 
 
 // --- Step 4: Update UB_list_new with reordered values from Env3 ---
@@ -188,8 +236,15 @@ Rcpp::List Env3 = EnvelopeSort(
 UB_list_new["lg_prob_factor"] = Env3["lg_prob_factor"];
 UB_list_new["UB2min"]         = Env3["UB2min"];
 
+if(disp_grid_type==1){
+  UB_list_new["thetabar_const_base"] = Env3["thetabar_const_base"];
+UB_list_new["New_LL_Slope"]         = Env3["New_LL_Slope"];
+gamma_list_new["shape3_face"]         = Env3["shape3_face"];
+}
+
+
+
 // Extract gamma_list, diagnostics, low, upp from disp_env_out
-Rcpp::List gamma_list_new = disp_env_out["gamma_list"];
 Rcpp::List diagnostics    = disp_env_out["diagnostics"];
 double low = gamma_list_new["disp_lower"];
 double upp = gamma_list_new["disp_upper"];

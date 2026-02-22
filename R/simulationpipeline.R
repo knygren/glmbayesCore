@@ -2181,7 +2181,11 @@ EnvelopeSort <- function(l1, l2,
                          GIndex, G3, cbars, logU, logrt, loglt,
                          logP, LLconst, PLSD, a1, E_draws,
                          lg_prob_factor = NULL,
-                         UB2min=NULL) {   # <-- new optional arg
+                         UB2min=NULL,
+                         thetabar_const_base = NULL,
+                         New_LL_Slope=NULL,
+                         shape3_face=NULL
+                         ) {   # <-- new optional arg
   # Order indices by decreasing PLSD
   ord <- order(PLSD, decreasing = TRUE)
   sel <- ord[seq_len(l2)]  # top l2 rows
@@ -2208,7 +2212,25 @@ EnvelopeSort <- function(l1, l2,
     UB2min <- UB2min[sel]
   }
   
+
+  if (!is.null(thetabar_const_base)) {
+    stopifnot(length(thetabar_const_base) == l2)
+    thetabar_const_base <- thetabar_const_base[sel]
+  }
   
+  if (!is.null(New_LL_Slope)) {
+    stopifnot(length(New_LL_Slope) == l2)
+    New_LL_Slope <- New_LL_Slope[sel]
+  }
+  
+  if (!is.null(shape3_face)) {
+    stopifnot(length(shape3_face) == l2)
+    shape3_face <- shape3_face[sel]
+  }
+  
+  
+  
+    
   # Build output list
   outlist <- list(
     GridIndex = GIndex,
@@ -2228,6 +2250,19 @@ EnvelopeSort <- function(l1, l2,
   }
   if (!is.null(UB2min)) {
     outlist$UB2min <- UB2min
+  }
+  
+  ## Adding to enable face specific dispersion bounds
+  if (!is.null(thetabar_const_base)) {
+    outlist$thetabar_const_base <- thetabar_const_base
+  }
+  
+  if (!is.null(New_LL_Slope)) {
+    outlist$New_LL_Slope <- New_LL_Slope
+  }
+    
+  if (!is.null(shape3_face)) {
+    outlist$shape3_face <- shape3_face
   }
   
   outlist
