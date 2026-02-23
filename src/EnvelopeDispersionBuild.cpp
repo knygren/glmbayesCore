@@ -850,7 +850,8 @@ Rcpp::List compute_envelope_geometry_cpp(
     double low,
     double upp,
     double shape2,
-    double rate3
+    double rate3,
+    double n_w
 ) {
   using namespace Rcpp;
   
@@ -939,7 +940,6 @@ Rcpp::List compute_envelope_geometry_cpp(
   // shape3 > 0 for the Gamma proposal.
   // ---------------------------------------------------------------------------
   
-  double n_w = static_cast<double>(y.size());
   double lmc2_max = (n_w / 2.0) * (std::log(upp) - std::log(low)) / (upp - low);
   
   // Mean-slope correction (parity with original)
@@ -995,7 +995,8 @@ Rcpp::List compute_envelope_geometry_face_cpp(
     double low,
     double upp,
     double shape2,
-    double rate3
+    double rate3,
+    double n_w
 ) {
   using namespace Rcpp;
   
@@ -1085,7 +1086,6 @@ Rcpp::List compute_envelope_geometry_face_cpp(
   // shape3 > 0 for the Gamma proposal.
   // ---------------------------------------------------------------------------
   
-  double n_w = static_cast<double>(y.size());
   double lmc2_max = (n_w / 2.0) * (std::log(upp) - std::log(low)) / (upp - low);
   
   // Mean-slope correction (parity with original)
@@ -1690,9 +1690,11 @@ List EnvelopeDispersionBuild(
   int RSS_Min_Type = 1;  // change manually for testing
   int UB2_Min_Type = 1;  // change manually for testing
   
+  double n_w = 0.0;
+  for (int i = 0; i < wt.size(); ++i)    n_w += wt[i];
   
   // Step 1: Posterior Gamma parameters (precision prior)
-  double shape2 = Shape + static_cast<double>(n_obs) / 2.0;
+  double shape2 = Shape + n_w / 2.0;
   double rate3  = Rate  + RSS_post / 2.0;
   
   // Step 2: Dispersion bounds (on sigma^2)
@@ -1852,7 +1854,8 @@ List EnvelopeDispersionBuild(
     low,
     upp,
     shape2,
-    rate3
+    rate3,
+    n_w
   );
     }
   
@@ -1868,7 +1871,8 @@ List EnvelopeDispersionBuild(
       low,
       upp,
       shape2,
-      rate3
+      rate3,
+      n_w
     );
   }
   

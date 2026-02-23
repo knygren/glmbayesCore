@@ -1473,6 +1473,10 @@ Rcpp::List rIndepNormalGammaReg(
     ystar[i] = y[i] - offset[i];
   }
   
+  double n_w = 0.0;
+  for (int i = 0; i < wt.size(); ++i)   n_w += wt[i];
+  
+  
   // Call lm.wfit(X, y*, w)
   Rcpp::List fit = lm_wfit(
     Rcpp::_["x"] = x,
@@ -1581,8 +1585,10 @@ Rcpp::List rIndepNormalGammaReg(
     arma::vec resid_ml = Y - xbetastar;
     //double RSS2_post = arma::dot(resid_ml, resid_ml);
     
-    // Update shape, rate, dispersion
-    double shape2 = shape + static_cast<double>(n_obs) / 2.0;
+
+    
+        // Update shape, rate, dispersion
+    double shape2 = shape + n_w / 2.0;
     double rate2  = rate  + RSS_Post2 / 2.0;
     
     dispersion2 = rate2 / (shape2 - 1.0);

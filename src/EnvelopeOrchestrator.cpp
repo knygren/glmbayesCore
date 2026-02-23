@@ -53,8 +53,11 @@ Rcpp::List EnvelopeOrchestrator(
     
   int n_obs=y.size();
   
+  double n_w = 0.0;
+  for (int i = 0; i < wt.size(); ++i) n_w += wt[i];
+  
   // Step 1: Posterior Gamma parameters (precision prior)
-  double shape2 = shape + static_cast<double>(n_obs) / 2.0;
+  double shape2 = shape + n_w / 2.0;
   double rate3  = rate  + RSS_Post2 / 2.0;
   
   double d1_star = rate3 / (shape2 - 1.0);
