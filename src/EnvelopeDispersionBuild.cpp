@@ -988,176 +988,176 @@ Rcpp::List compute_envelope_geometry_cpp(
 }
 
 
-Rcpp::List compute_envelope_geometry_face_cpp(
-    const Rcpp::NumericMatrix& cbars,
-    const Rcpp::NumericMatrix& thetabars,
-    const Rcpp::NumericVector& y,
-    const Rcpp::NumericMatrix& x,
-    const Rcpp::NumericMatrix& P,      // FIXED
-    const Rcpp::NumericVector& alpha,
-    double low,
-    double upp,
-    double shape2,
-    double rate3,
-    double n_w
-) {
-  using namespace Rcpp;
-  
-  int gs = cbars.nrow();
-  
-  // Step 4: Base face constants
-  NumericVector thetabar_const_base =thetabar_const_cpp(P, cbars, thetabars);
-  
-  // Step 5: initial anchor (posterior mean)
-  double dispstar = rate3 / (shape2 - 1.0);
-  
-  double d1_star = rate3 / (shape2 - 1.0);   // posterior-mode anchor
-  
-  // Rcpp::Rcout << "compute_envelope_geometry_cpp: dispstar = " << dispstar << "\n";
-  
-  // Step 6: Face slopes at dispstar
-  NumericVector New_LL_Slope = EnvBuildLinBound_cpp(thetabars, cbars, y, x, P, alpha, dispstar);
-  
-  
-  // Step 7: Linear extrapolation to bounds
-  NumericVector thetabar_const_upp_apprx(gs), thetabar_const_low_apprx(gs);
-  for (int j = 0; j < gs; ++j) {
-    thetabar_const_upp_apprx[j] =
-      thetabar_const_base[j] + (upp - dispstar) * New_LL_Slope[j];
-    thetabar_const_low_apprx[j] =
-      thetabar_const_base[j] + (low - dispstar) * New_LL_Slope[j];
-  }
-  
-  // Step 8: Global upper line geometry
-  double max_low = max_vec(thetabar_const_low_apprx);
-  double max_upp = max_vec(thetabar_const_upp_apprx);
-  
-  // We later compute
-  // 1) double pf_upp = thetabar_const_upp_apprx[j] - max_upp;
-  // 2) double pf_low = thetabar_const_low_apprx[j] - max_low;
-  // 3) prob_factor[j]  = (pf_upp > pf_low ? pf_upp : pf_low);
-  
-  //  And add the result to UB3A--->We subtract the most allowed to keep the global line above the face specific line
-  
-  //////////////////////////////////////////
-  // ---------------------------------------------------------------------------
-  // UB3A/UB3B COMPATIBLE SLOPE GEOMETRY
-  //
-  // UB3A introduces a global linear upper bound in d:
-  //
-  //      UB3A_line(d) = lmc1 + lmc2 * d
-  //
-  // where lmc2 is constructed as an "average" (or weighted average) of the
-  // face-specific slopes New_LL_Slope[j].  Once lmc2 is chosen, lmc1 is the
-  // smallest intercept such that UB3A_line(d) dominates all face lines on
-  // [low, upp].  Thus lmc1 depends on lmc2, but the slope is the primary driver.
-  //
-  // UB3B must then wrap this same UB3A line inside a log-linear bounding term:
-  //
-  //      UB3B_bound(d) = C + lm_log1 + lm_log2 * log(d)
-  //
-  // and UB3B(d) = UB3B_bound(d) - UB3A_line(d) must be >= 0 on [low, upp].
-  //
-  // To ensure consistency between UB3A and UB3B, we force the two lines to match
-  // at two anchor points d_a and d_b.  Subtracting the two matching equations
-  // gives the exact slope relation:
-  //
-  //      lm_log2 = lmc2 * (d_b - d_a) / (log(d_b) - log(d_a))
-  //
-  // This is the "compatible UB3A slope" formula: the UB3B log-tilt coefficient
-  // lm_log2 is determined entirely by the UB3A slope lmc2 and the chosen anchors.
-  // The intercept lmc1 cancels out and plays no role in this slope relation.
-  //
-  // The Gamma proposal uses:
-  //
-  //      shape3 = shape2 - lm_log2
-  //
-  // so lm_log2 must satisfy lm_log2 <= shape2 to keep shape3 > 0.  We impose the
-  // stronger condition lm_log2 <= n_w / 2 (the data contribution to shape2).
-  //
-  // Therefore, before constructing UB3A, we cap the global slope so that the
-  // implied lm_log2 remains feasible:
-  //
-  //      new_slope <= (n_w / 2) * (log(d_b) - log(d_a)) / (d_b - d_a)
-  //
-  // In practice, we compute the mean (or weighted mean) of New_LL_Slope[j], then
-  // replace it by the smaller of:
-  //      (i) that mean, and
-  //      (ii) the maximum slope compatible with lm_log2 <= n_w/2.
-  //
-  // This ensures UB3A and UB3B remain algebraically consistent and guarantees
-  // shape3 > 0 for the Gamma proposal.
-  // ---------------------------------------------------------------------------
-  
-  double lmc2_max = (n_w / 2.0) * (std::log(upp) - std::log(low)) / (upp - low);
-  
-  // Mean-slope correction (parity with original)
-  //  double m_New_LL_Slope = Rcpp::mean(New_LL_Slope);
-  
-  
-  double mean_slope = static_cast<double>(Rcpp::mean(New_LL_Slope));
-  
-  // Issue a warning if the UB3A mean slope exceeds the UB3B-compatible maximum
-  if (mean_slope > lmc2_max) {
-    Rcpp::Rcout
-    << "[WARNING] UB3A mean slope (" << mean_slope
-    << ") exceeds UB3B-compatible maximum (" << lmc2_max << ").\n"
-    << "          Capping global slope to preserve lm_log2 <= n_w/2 "
-    << "and ensure shape3 > 0.\n";
-  }
-  
-  // Update the formular to cap m_New_LL_slope
-  double m_New_LL_Slope = std::min(mean_slope, lmc2_max);
-  
-  // Compute the three quantities
-  double max_low_mean      = max_upp - m_New_LL_Slope * (upp - low);
-  double max_low_mean_old  = max_upp - mean_slope      * (upp - low);
-  
-  max_low = max_low_mean;
-  
-  double new_slope = (max_upp - max_low) / (upp - low);
-  double new_int   = max_low - new_slope * low;
-  
-  NumericVector new_slope_face(gs);
-  NumericVector new_int_face(gs);
-  
-  for (int j = 0; j < gs; ++j) {  
-    // For each face j:
-    new_slope_face[j] =
-      (thetabar_const_upp_apprx[j] - thetabar_const_low_apprx[j]) / (upp - low);
-    
-    new_int_face[j] =
-      thetabar_const_low_apprx[j] - new_slope_face[j] * low;
-    
-  }
-  
-  // Step 9a: Dispersion anchor (exact original formula)
-  double b1 = (upp - low);
-  double c1 = -std::log(upp / low);
-  dispstar  = b1 / (-c1);
-  
-  double d2_star = (upp - low) / (std::log(upp / low));   // log-tilt anchor
-  
-  
-  // Return all geometry objects
-  return List::create(
-    Named("thetabar_const_base")      = thetabar_const_base,
-    Named("New_LL_Slope")             = New_LL_Slope,
-    Named("thetabar_const_low_apprx") = thetabar_const_low_apprx,
-    Named("thetabar_const_upp_apprx") = thetabar_const_upp_apprx,
-    // Named("max_low")                  = max_low,
-    Named("max_low")                  = max_low_mean_old,
-    Named("max_upp")                  = max_upp,
-    Named("new_slope")                = new_slope,
-    Named("new_int")                  = new_int,
-    
-    Named("new_slope_face")                = new_slope_face,
-    Named("new_int_face")                  = new_int_face,
-    Named("dispstar")                 = dispstar,
-    Named("d1_star")                 = d1_star,
-    Named("d2_star")                 = d2_star
-  );
-}
+// Rcpp::List compute_envelope_geometry_face_cpp(
+//     const Rcpp::NumericMatrix& cbars,
+//     const Rcpp::NumericMatrix& thetabars,
+//     const Rcpp::NumericVector& y,
+//     const Rcpp::NumericMatrix& x,
+//     const Rcpp::NumericMatrix& P,      // FIXED
+//     const Rcpp::NumericVector& alpha,
+//     double low,
+//     double upp,
+//     double shape2,
+//     double rate3,
+//     double n_w
+// ) {
+//   using namespace Rcpp;
+//   
+//   int gs = cbars.nrow();
+//   
+//   // Step 4: Base face constants
+//   NumericVector thetabar_const_base =thetabar_const_cpp(P, cbars, thetabars);
+//   
+//   // Step 5: initial anchor (posterior mean)
+//   double dispstar = rate3 / (shape2 - 1.0);
+//   
+//   double d1_star = rate3 / (shape2 - 1.0);   // posterior-mode anchor
+//   
+//   // Rcpp::Rcout << "compute_envelope_geometry_cpp: dispstar = " << dispstar << "\n";
+//   
+//   // Step 6: Face slopes at dispstar
+//   NumericVector New_LL_Slope = EnvBuildLinBound_cpp(thetabars, cbars, y, x, P, alpha, dispstar);
+//   
+//   
+//   // Step 7: Linear extrapolation to bounds
+//   NumericVector thetabar_const_upp_apprx(gs), thetabar_const_low_apprx(gs);
+//   for (int j = 0; j < gs; ++j) {
+//     thetabar_const_upp_apprx[j] =
+//       thetabar_const_base[j] + (upp - dispstar) * New_LL_Slope[j];
+//     thetabar_const_low_apprx[j] =
+//       thetabar_const_base[j] + (low - dispstar) * New_LL_Slope[j];
+//   }
+//   
+//   // Step 8: Global upper line geometry
+//   double max_low = max_vec(thetabar_const_low_apprx);
+//   double max_upp = max_vec(thetabar_const_upp_apprx);
+//   
+//   // We later compute
+//   // 1) double pf_upp = thetabar_const_upp_apprx[j] - max_upp;
+//   // 2) double pf_low = thetabar_const_low_apprx[j] - max_low;
+//   // 3) prob_factor[j]  = (pf_upp > pf_low ? pf_upp : pf_low);
+//   
+//   //  And add the result to UB3A--->We subtract the most allowed to keep the global line above the face specific line
+//   
+//   //////////////////////////////////////////
+//   // ---------------------------------------------------------------------------
+//   // UB3A/UB3B COMPATIBLE SLOPE GEOMETRY
+//   //
+//   // UB3A introduces a global linear upper bound in d:
+//   //
+//   //      UB3A_line(d) = lmc1 + lmc2 * d
+//   //
+//   // where lmc2 is constructed as an "average" (or weighted average) of the
+//   // face-specific slopes New_LL_Slope[j].  Once lmc2 is chosen, lmc1 is the
+//   // smallest intercept such that UB3A_line(d) dominates all face lines on
+//   // [low, upp].  Thus lmc1 depends on lmc2, but the slope is the primary driver.
+//   //
+//   // UB3B must then wrap this same UB3A line inside a log-linear bounding term:
+//   //
+//   //      UB3B_bound(d) = C + lm_log1 + lm_log2 * log(d)
+//   //
+//   // and UB3B(d) = UB3B_bound(d) - UB3A_line(d) must be >= 0 on [low, upp].
+//   //
+//   // To ensure consistency between UB3A and UB3B, we force the two lines to match
+//   // at two anchor points d_a and d_b.  Subtracting the two matching equations
+//   // gives the exact slope relation:
+//   //
+//   //      lm_log2 = lmc2 * (d_b - d_a) / (log(d_b) - log(d_a))
+//   //
+//   // This is the "compatible UB3A slope" formula: the UB3B log-tilt coefficient
+//   // lm_log2 is determined entirely by the UB3A slope lmc2 and the chosen anchors.
+//   // The intercept lmc1 cancels out and plays no role in this slope relation.
+//   //
+//   // The Gamma proposal uses:
+//   //
+//   //      shape3 = shape2 - lm_log2
+//   //
+//   // so lm_log2 must satisfy lm_log2 <= shape2 to keep shape3 > 0.  We impose the
+//   // stronger condition lm_log2 <= n_w / 2 (the data contribution to shape2).
+//   //
+//   // Therefore, before constructing UB3A, we cap the global slope so that the
+//   // implied lm_log2 remains feasible:
+//   //
+//   //      new_slope <= (n_w / 2) * (log(d_b) - log(d_a)) / (d_b - d_a)
+//   //
+//   // In practice, we compute the mean (or weighted mean) of New_LL_Slope[j], then
+//   // replace it by the smaller of:
+//   //      (i) that mean, and
+//   //      (ii) the maximum slope compatible with lm_log2 <= n_w/2.
+//   //
+//   // This ensures UB3A and UB3B remain algebraically consistent and guarantees
+//   // shape3 > 0 for the Gamma proposal.
+//   // ---------------------------------------------------------------------------
+//   
+//   double lmc2_max = (n_w / 2.0) * (std::log(upp) - std::log(low)) / (upp - low);
+//   
+//   // Mean-slope correction (parity with original)
+//   //  double m_New_LL_Slope = Rcpp::mean(New_LL_Slope);
+//   
+//   
+//   double mean_slope = static_cast<double>(Rcpp::mean(New_LL_Slope));
+//   
+//   // Issue a warning if the UB3A mean slope exceeds the UB3B-compatible maximum
+//   if (mean_slope > lmc2_max) {
+//     Rcpp::Rcout
+//     << "[WARNING] UB3A mean slope (" << mean_slope
+//     << ") exceeds UB3B-compatible maximum (" << lmc2_max << ").\n"
+//     << "          Capping global slope to preserve lm_log2 <= n_w/2 "
+//     << "and ensure shape3 > 0.\n";
+//   }
+//   
+//   // Update the formular to cap m_New_LL_slope
+//   double m_New_LL_Slope = std::min(mean_slope, lmc2_max);
+//   
+//   // Compute the three quantities
+//   double max_low_mean      = max_upp - m_New_LL_Slope * (upp - low);
+//   double max_low_mean_old  = max_upp - mean_slope      * (upp - low);
+//   
+//   max_low = max_low_mean;
+//   
+//   double new_slope = (max_upp - max_low) / (upp - low);
+//   double new_int   = max_low - new_slope * low;
+//   
+//   NumericVector new_slope_face(gs);
+//   NumericVector new_int_face(gs);
+//   
+//   for (int j = 0; j < gs; ++j) {  
+//     // For each face j:
+//     new_slope_face[j] =
+//       (thetabar_const_upp_apprx[j] - thetabar_const_low_apprx[j]) / (upp - low);
+//     
+//     new_int_face[j] =
+//       thetabar_const_low_apprx[j] - new_slope_face[j] * low;
+//     
+//   }
+//   
+//   // Step 9a: Dispersion anchor (exact original formula)
+//   double b1 = (upp - low);
+//   double c1 = -std::log(upp / low);
+//   dispstar  = b1 / (-c1);
+//   
+//   double d2_star = (upp - low) / (std::log(upp / low));   // log-tilt anchor
+//   
+//   
+//   // Return all geometry objects
+//   return List::create(
+//     Named("thetabar_const_base")      = thetabar_const_base,
+//     Named("New_LL_Slope")             = New_LL_Slope,
+//     Named("thetabar_const_low_apprx") = thetabar_const_low_apprx,
+//     Named("thetabar_const_upp_apprx") = thetabar_const_upp_apprx,
+//     // Named("max_low")                  = max_low,
+//     Named("max_low")                  = max_low_mean_old,
+//     Named("max_upp")                  = max_upp,
+//     Named("new_slope")                = new_slope,
+//     Named("new_int")                  = new_int,
+//     
+//     Named("new_slope_face")                = new_slope_face,
+//     Named("new_int_face")                  = new_int_face,
+//     Named("dispstar")                 = dispstar,
+//     Named("d1_star")                 = d1_star,
+//     Named("d2_star")                 = d2_star
+//   );
+// }
 
 
 // ---------------------------------------------------------------------
@@ -1753,9 +1753,9 @@ List EnvelopeDispersionBuild(
   {
   
   
-  int disp_grid_type=2;
-  
-  if(use_parallel) disp_grid_type=2;
+  // int disp_grid_type=2;
+  // 
+  // if(use_parallel) disp_grid_type=2;
   
   
   
@@ -1917,7 +1917,7 @@ List EnvelopeDispersionBuild(
     
 
     Rcpp::List geom;
-      if(disp_grid_type==2){
+      // if(disp_grid_type==2){
       
   geom = compute_envelope_geometry_cpp(
     cbars,
@@ -1932,24 +1932,24 @@ List EnvelopeDispersionBuild(
     rate3,
     n_w
   );
-    }
+    // }
   
-  if(disp_grid_type==1){
-    
-    geom = compute_envelope_geometry_face_cpp(
-      cbars,
-      thetabars,
-      y,
-      x,
-      P,
-      alpha,
-      low,
-      upp,
-      shape2,
-      rate3,
-      n_w
-    );
-  }
+  // if(disp_grid_type==1){
+  //   
+  //   geom = compute_envelope_geometry_face_cpp(
+  //     cbars,
+  //     thetabars,
+  //     y,
+  //     x,
+  //     P,
+  //     alpha,
+  //     low,
+  //     upp,
+  //     shape2,
+  //     rate3,
+  //     n_w
+  //   );
+  // }
   
       
     if (verbose) {
@@ -1986,7 +1986,7 @@ List EnvelopeDispersionBuild(
   
   Rcpp::List mix;
   
-  if(disp_grid_type==2){
+  // if(disp_grid_type==2){
   
   mix = compute_mixture_and_outputs_cpp(
     Env,                              // ← pass existing envelope
@@ -2008,45 +2008,45 @@ List EnvelopeDispersionBuild(
     verbose
   );
   
-  }
+  // }
   
   
-  if(disp_grid_type==1){
-    
-    NumericVector thetabar_const_base      = geom["thetabar_const_base"];
-    NumericVector New_LL_Slope             = geom["New_LL_Slope"];
-    NumericVector  new_slope_face=geom["new_slope_face"];
-    NumericVector  new_int_face=geom["new_int_face"];
-    double d1_star = geom["d1_star"];   // posterior‑mode anchor (face geometry)
-    double dispstar  = geom["dispstar"];
-    
-      mix = compute_mixture_and_outputs_face_cpp(
-    Env,                              // ← pass existing envelope
-    thetabar_const_base,
-    thetabar_const_low_apprx,
-    thetabar_const_upp_apprx,
-    New_LL_Slope,
-    ub2_min,
-    logP1,
-    max_low,
-    max_upp,
-    new_slope,
-    new_int,
-    new_slope_face,
-    new_int_face,
-    dispstar,
-    d1_star,
-    d2_star,
-    shape2,
-    Rate,
-    low,
-    upp,
-    RSS_ML,
-    rss_min_global,
-    verbose
-  );
-
-  }
+  // if(disp_grid_type==1){
+  //   
+  //   NumericVector thetabar_const_base      = geom["thetabar_const_base"];
+  //   NumericVector New_LL_Slope             = geom["New_LL_Slope"];
+  //   NumericVector  new_slope_face=geom["new_slope_face"];
+  //   NumericVector  new_int_face=geom["new_int_face"];
+  //   double d1_star = geom["d1_star"];   // posterior‑mode anchor (face geometry)
+  //   double dispstar  = geom["dispstar"];
+  //   
+  //     mix = compute_mixture_and_outputs_face_cpp(
+  //   Env,                              // ← pass existing envelope
+  //   thetabar_const_base,
+  //   thetabar_const_low_apprx,
+  //   thetabar_const_upp_apprx,
+  //   New_LL_Slope,
+  //   ub2_min,
+  //   logP1,
+  //   max_low,
+  //   max_upp,
+  //   new_slope,
+  //   new_int,
+  //   new_slope_face,
+  //   new_int_face,
+  //   dispstar,
+  //   d1_star,
+  //   d2_star,
+  //   shape2,
+  //   Rate,
+  //   low,
+  //   upp,
+  //   RSS_ML,
+  //   rss_min_global,
+  //   verbose
+  // );
+  // 
+  // }
 
   if (verbose) {
     
