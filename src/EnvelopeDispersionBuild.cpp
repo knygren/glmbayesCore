@@ -1338,393 +1338,393 @@ Rcpp::List compute_mixture_and_outputs_cpp(
 
 
 
-Rcpp::List compute_mixture_and_outputs_face_cpp(
-    Rcpp::List Env,   // existing envelope (must contain "cbars")
-    
-    // NEW: true face constants at anchor dispersion
-    const Rcpp::NumericVector& thetabar_const_base,
-    
-    // Existing extrapolated constants
-    const Rcpp::NumericVector& thetabar_const_low_apprx,
-    const Rcpp::NumericVector& thetabar_const_upp_apprx,
-    
-    // Face slopes at dispstar
-    const Rcpp::NumericVector& New_LL_Slope,
-    
-    // UB2 minima
-    const Rcpp::NumericVector& ub2_min,
-    
-    // Mixture log-weights
-    const Rcpp::NumericVector& logP1,
-    
-    // Global UB3A geometry (still used for legacy UB3A)
-    double max_low,
-    double max_upp,
-    double new_slope,
-    double new_int,
-    
-    // NEW: true face constants at anchor dispersion
-    const Rcpp::NumericVector& new_slope_face,
-    const Rcpp::NumericVector& new_int_face,
-    
-    
-    // Anchor dispersion
-    double dispstar,
-    // Anchor dispersion
-    double d1_star,
-    // Anchor dispersion
-    double d2_star,
-    
-    // Gamma proposal parameters
-    double shape2,
-    double Rate,
-    
-    // Dispersion bounds
-    double low,
-    double upp,
-    
-    // RSS bounds
-    double RSS_ML,
-    double rss_min_global,
-    
-    bool verbose
-) {
-  int gs = logP1.size();
-  
-  // cbars from Env (needed for 0.5 * ||c_j||^2 term)
-  NumericMatrix cbars = Env["cbars"];
-  int l1 = cbars.ncol();
-  
-
-  //------------------------------------------------------------
-  // Face-specific UB3A and UB3B geometry
-  //------------------------------------------------------------
-
-  // --- A7 geometry constant d2 ---
-  double log_low   = std::log(low);
-  double log_upp   = std::log(upp);
-  double denom_log = log_upp - log_low;
-  double d2        = (upp - low) / denom_log;
-  
-  
-  NumericVector lmc2_face(gs);
-  NumericVector lmc1_face(gs);
-  NumericVector lm_log2_face(gs);
-  NumericVector lm_log1_face(gs);
-  NumericVector shape3_face(gs);
-  
-  NumericVector New_logP2(gs);
-  NumericVector prob_factor(gs);
-  NumericVector prob_factor2(gs);
-  NumericVector prob_factor_face(gs);
-  
-  
-    
-  double min_shape3_face = R_PosInf;
-  double max_shape3_face = R_NegInf;
-  
-  for (int j = 0; j < gs; ++j) {
-    
-    //--------------------------------------------------------
-    // 1. UB3A slope (face-specific affine slope in d)
-    //--------------------------------------------------------
-    double slope_j = New_LL_Slope[j];
-    
-    
-    lmc2_face[j] = new_slope_face[j];
-    
-    
-    // 2. Face-specific intercept: tangent at d_j
-    //    thetabarconst[j] is the face energy at the anchor dispersion d_j
-    //double d_j = dispstar;   // if dispstar IS the anchor; otherwise use the true d_j
-    double theta_base_j = thetabar_const_base[j];
-    
-    
-    //--------------------------------------------------------
-    // 3. UB3A intercept: tangent at d = dispstar
-    //--------------------------------------------------------
-    //double lmc1_j = theta_base_j - slope_j * dispstar;
-    double lmc1_j = theta_base_j - slope_j * d1_star;
-    
-    lmc1_face[j] = new_int_face[j];
-    //    lmc1_face[j] = theta_base_j;
-    
-    
-    
-    //--------------------------------------------------------
-    // 4. UB3B slope (log-tilt slope)
-    //    A7-compatible slope relation:
-    //        lm_log2_j = slope_j * d2
-    //--------------------------------------------------------
-    double lm_log2_j = slope_j * d2;
-    lm_log2_face[j] = lm_log2_j;
-    
-    //--------------------------------------------------------
-    // 5. UB3B intercept: match UB3A at d = low
-    //
-    //    lm_log1_j + lm_log2_j * log(low)
-    //        = lmc1_j + slope_j * low
-    //
-    //    ⇒ lm_log1_j = lmc1_j + slope_j * low
-    //                   - lm_log2_j * log(low)
-    //
-    //     lm_log1_j = theta_base_j - slope_j * d1_star + slope_j * low - lm_log2_j * log(low)
-    //
-    //     lm_log1_j = theta_base_j + slope_j *(low-d1_star ) - slope_j ((upp - low) / (log(upp)-log(low))) *log(low)  
-    //
-    //--------------------------------------------------------
-    double lm_log1_j =
-      lmc1_j
-      + slope_j * low
-    - lm_log2_j * std::log(low);
-    
-    lm_log1_face[j] = lm_log1_j;
-    
-    
-    
-    //--------------------------------------------------------
-    // 6. Three-term decomposition of lm_log1_j
-    //
-    // lm_log1_j =
-    //   (1) theta_base_j
-    // + (2) { [lm_log1_j + lm_log2_j * log(d1_star)] - theta_base_j }
-    // + (3) { - lm_log2_j * log(d1_star) }
-    //--------------------------------------------------------
-    double term1 = theta_base_j;
-    
-    double term2 =
-      (lm_log1_j + lm_log2_j * std::log(d1_star))
-      - theta_base_j;
-    
-    double term3 =
-    -lm_log2_j * std::log(d1_star);
-    
-    // Optional diagnostic print
-    if (verbose && j < 20) {
-      Rcpp::Rcout
-      << "[face " << j << "] "
-      << "term1=" << term1
-      << "  term2=" << term2
-      << "  term3=" << term3
-      << "  lm_log1_j=" << lm_log1_j
-      << "  recon=" << (term1 + term2 + term3)
-      << "\n";
-    }
-    
-    
-    //--------------------------------------------------------
-    // 6. Face-specific Gamma shape (diagnostic only)
-    //--------------------------------------------------------
-    shape3_face[j] = shape2 - lm_log2_j;
-    
-    // if (j < 27) {
-    //   Rcpp::Rcout << "j=" << j
-    //               << "  shape3_face=" << std::setprecision(12) << shape3_face[j]
-    //               << "\n";
-    // }
-    
-    
-    if (shape3_face[j] < min_shape3_face) min_shape3_face = shape3_face[j];
-    if (shape3_face[j] > max_shape3_face) max_shape3_face = shape3_face[j];
-  }
-  
-  
-  
-  ////////////////////////////////////////////////////////////////////////
-  
-  // if (!R_finite(shape3) || shape3 <= 0.0) {
-  //   Rcpp::stop("EnvelopeDispersionBuild: implied shape3 <= 0; tilted inverse-gamma is invalid.");
-  // }
-  
-  double rate2 = Rate + rss_min_global / 2.0;
-  if (!R_finite(rate2) || rate2 <= 0.0) {
-    Rcpp::stop("EnvelopeDispersionBuild: implied rate2 <= 0; tilted inverse-gamma is invalid.");
-  }
-  
-  
-  
-  // --- Step 9: Mixture weights per face (match original) ---
-  for (int j = 0; j < gs; ++j) {
-    Rcpp::checkUserInterrupt();
-    
-    double pf_upp = thetabar_const_upp_apprx[j] - max_upp;
-    double pf_low = thetabar_const_low_apprx[j] - max_low;
-    
-//    prob_factor[j]  = (pf_upp > pf_low ? pf_upp : pf_low);
-
-//  Modified shift accounting for need to bound (need to determine )
-
-    double lgp_j=log_p_inv_gamma_ct_safe(low, upp,shape3_face[j],rate2);
-
-
-    prob_factor[j]  = lm_log1_face[j];
-//    prob_factor[j]  = thetabar_const_base[j];
-    prob_factor2[j] = prob_factor[j] - ub2_min[j]+lgp_j;
-    
-    
-    
-    /////////////////////////////////////////////////////////
-    
-    
-    
-    /////////////////////////////////////////////////////////
-    
-    double norm2 = 0.0;
-    for (int k = 0; k < l1; ++k) {
-      double cjk = cbars(j, k);
-      norm2 += cjk * cjk;
-    }
-    New_logP2[j] = logP1[j] + 0.5 * norm2;
-
-    
-    }
-  
-  NumericVector lg_prob_factor  = clone(prob_factor);
-  NumericVector lg_prob_factor2 = clone(prob_factor2);
-  
-  // --- Stable PLSD computation (prob_factor_exp2 only) ---
-  NumericVector prob_factor_exp(gs);   // kept for diagnostics
-  NumericVector prob_factor_exp2(gs);
-  
-  NumericVector logw2(gs);
-  for (int j = 0; j < gs; ++j) {
-    logw2[j] = New_logP2[j] + prob_factor2[j];
-  }
-  
-  double max_logw2 = Rcpp::max(logw2);
-  double sumP2 = 0.0;
-  for (int j = 0; j < gs; ++j) {
-    prob_factor_exp2[j] = std::exp(logw2[j] - max_logw2);
-    sumP2 += prob_factor_exp2[j];
-    
-    
-    //------------------------------------------------------------
-    // Diagnostic: total PLSD shift contribution for face j
-    //------------------------------------------------------------
-    if (verbose && j < 20) {
-      double term1 = thetabar_const_base[j];
-      double term2 = (lm_log1_face[j] + lm_log2_face[j] * std::log(d1_star))
-        - thetabar_const_base[j];
-      double term3 = -lm_log2_face[j] * std::log(d1_star);
-      
-      double lm_total = lm_log1_face[j];
-      double total_with_New_logP2 = lm_total + New_logP2[j];
-      
-      Rcpp::Rcout
-      << "[face " << j << "] "
-      << "term1=" << term1
-      << "  term2=" << term2
-      << "  term3=" << term3
-      << "  lm_log1_j=" << lm_total
-      << "  New_logP2=" << New_logP2[j]
-      << "  total(lm_log1_j + New_logP2)=" << total_with_New_logP2
-      << "\n";
-    }
-    
-  }
-  
-  if (sumP2 <= 0.0 || !R_finite(sumP2)) {
-    Rcpp::stop("PLSD normalization failed: sumP2 non-finite or non-positive");
-  }
-  
-  for (int j = 0; j < gs; ++j) {
-    prob_factor_exp2[j] /= sumP2;
-    
-    if (j < 27) {
-      Rcpp::Rcout << "j=" << j
-                  << "  prob_factor_exp2=" << std::setprecision(12) << prob_factor_exp2[j]
-                  << "\n";
-    }
-    
-  }
-  
-  stop("Stop after PLSD derivation");
-  
-  
-  Env["PLSD"] = prob_factor_exp2;
-  
-  double lm_log2 = new_slope * d2_star;
-  double lm_log1 = new_int + new_slope * d2_star - new_slope * std::log(d2_star);
-  double shape3  = shape2 - lm_log2;
-  
-  // --- Sanity checks on the tilted gamma parameters (global) ---
-  if (!R_finite(lm_log1) || !R_finite(lm_log2)) {
-    Rcpp::stop("EnvelopeDispersionBuild: lm_log1/lm_log2 non-finite; envelope tilt is undefined.");
-  }
-  
-  
-  
-  Rcpp::List gamma_list = Rcpp::List::create(
-    // Global proposal parameters (unchanged)
-    Rcpp::Named("shape3")       = shape3,
-    Rcpp::Named("rate2")        = rate2,
-    Rcpp::Named("disp_upper")   = upp,
-    Rcpp::Named("disp_lower")   = low,
-    
-    // New: face-specific UB3A/UB3B geometry
-    Rcpp::Named("shape3_face")  = shape3_face    // per-face Gamma shapes
-  );
-  
-  
-  List UB_list = List::create(
-    Named("RSS_ML")          = RSS_ML,
-    Named("RSS_Min")         = rss_min_global,
-    Named("max_New_LL_UB")   = max_upp,
-    Named("max_LL_log_disp") = lm_log1 + lm_log2 * std::log(upp),
-    Named("lm_log1")         = lm_log1,
-    Named("lm_log2")         = lm_log2,
-    Named("lg_prob_factor")  = lg_prob_factor,
-    Named("lmc1")            = new_int,
-    Named("lmc2")            = new_slope,
-    Named("UB2min")          = ub2_min,
-    Rcpp::Named("lmc1_face")    = lmc1_face,     // UB3A intercepts
-    Rcpp::Named("lmc2_face")    = lmc2_face,     // UB3A slopes
-    Rcpp::Named("lm_log1_face") = lm_log1_face,  // UB3B intercepts
-    Rcpp::Named("lm_log2_face") = lm_log2_face,  // UB3B slopes
-    Rcpp::Named("thetabar_const_upp_apprx") = thetabar_const_upp_apprx,  // UB3B intercepts
-    Rcpp::Named("thetabar_const_low_apprx") = thetabar_const_low_apprx,  // UB3B slopes
-    // NEW: pass anchor geometry downstream
-    Named("dispstar")            = dispstar,
-    Named("d1_star")            = d1_star,
-    Named("d2_star")            = d2_star,
-    Named("thetabar_const_base") = thetabar_const_base,
-    Named("New_LL_Slope")        = New_LL_Slope
-  
-  );
-  
-  
-  
-  List diagnostics = List::create(
-    Named("dispstar")        = dispstar,
-    Named("d1_star")            = d1_star,
-    Named("d2_star")            = d2_star,
-    Named("New_LL_Slope")    = New_LL_Slope,
-    Named("shape2")          = shape2,
-    Named("rate3")           = Rate,
-    Named("shape3")          = shape3,
-    Named("max_low")         = max_low,
-    Named("max_upp")         = max_upp,
-    Named("new_slope")       = new_slope,
-    Named("new_int")         = new_int,
-    Named("prob_factor")     = prob_factor_exp,
-    Named("UB2min")          = ub2_min,
-    // new diagnostics:
-    Named("lm_log2_face")    = lm_log2_face,
-    Named("shape3_face")     = shape3_face
-  );
-  
-  if (!R_finite(shape3) || shape3 <= 0.0) {
-    Rcpp::stop("EnvelopeDispersionBuild: implied shape3 <= 0; tilted inverse-gamma is invalid.");
-  }
-  
-  
-  return List::create(
-    Named("Env")         = Env,
-    Named("gamma_list")  = gamma_list,
-    Named("UB_list")     = UB_list,
-    Named("diagnostics") = diagnostics
-  );
-}
+// Rcpp::List compute_mixture_and_outputs_face_cpp(
+//     Rcpp::List Env,   // existing envelope (must contain "cbars")
+//     
+//     // NEW: true face constants at anchor dispersion
+//     const Rcpp::NumericVector& thetabar_const_base,
+//     
+//     // Existing extrapolated constants
+//     const Rcpp::NumericVector& thetabar_const_low_apprx,
+//     const Rcpp::NumericVector& thetabar_const_upp_apprx,
+//     
+//     // Face slopes at dispstar
+//     const Rcpp::NumericVector& New_LL_Slope,
+//     
+//     // UB2 minima
+//     const Rcpp::NumericVector& ub2_min,
+//     
+//     // Mixture log-weights
+//     const Rcpp::NumericVector& logP1,
+//     
+//     // Global UB3A geometry (still used for legacy UB3A)
+//     double max_low,
+//     double max_upp,
+//     double new_slope,
+//     double new_int,
+//     
+//     // NEW: true face constants at anchor dispersion
+//     const Rcpp::NumericVector& new_slope_face,
+//     const Rcpp::NumericVector& new_int_face,
+//     
+//     
+//     // Anchor dispersion
+//     double dispstar,
+//     // Anchor dispersion
+//     double d1_star,
+//     // Anchor dispersion
+//     double d2_star,
+//     
+//     // Gamma proposal parameters
+//     double shape2,
+//     double Rate,
+//     
+//     // Dispersion bounds
+//     double low,
+//     double upp,
+//     
+//     // RSS bounds
+//     double RSS_ML,
+//     double rss_min_global,
+//     
+//     bool verbose
+// ) {
+//   int gs = logP1.size();
+//   
+//   // cbars from Env (needed for 0.5 * ||c_j||^2 term)
+//   NumericMatrix cbars = Env["cbars"];
+//   int l1 = cbars.ncol();
+//   
+// 
+//   //------------------------------------------------------------
+//   // Face-specific UB3A and UB3B geometry
+//   //------------------------------------------------------------
+// 
+//   // --- A7 geometry constant d2 ---
+//   double log_low   = std::log(low);
+//   double log_upp   = std::log(upp);
+//   double denom_log = log_upp - log_low;
+//   double d2        = (upp - low) / denom_log;
+//   
+//   
+//   NumericVector lmc2_face(gs);
+//   NumericVector lmc1_face(gs);
+//   NumericVector lm_log2_face(gs);
+//   NumericVector lm_log1_face(gs);
+//   NumericVector shape3_face(gs);
+//   
+//   NumericVector New_logP2(gs);
+//   NumericVector prob_factor(gs);
+//   NumericVector prob_factor2(gs);
+//   NumericVector prob_factor_face(gs);
+//   
+//   
+//     
+//   double min_shape3_face = R_PosInf;
+//   double max_shape3_face = R_NegInf;
+//   
+//   for (int j = 0; j < gs; ++j) {
+//     
+//     //--------------------------------------------------------
+//     // 1. UB3A slope (face-specific affine slope in d)
+//     //--------------------------------------------------------
+//     double slope_j = New_LL_Slope[j];
+//     
+//     
+//     lmc2_face[j] = new_slope_face[j];
+//     
+//     
+//     // 2. Face-specific intercept: tangent at d_j
+//     //    thetabarconst[j] is the face energy at the anchor dispersion d_j
+//     //double d_j = dispstar;   // if dispstar IS the anchor; otherwise use the true d_j
+//     double theta_base_j = thetabar_const_base[j];
+//     
+//     
+//     //--------------------------------------------------------
+//     // 3. UB3A intercept: tangent at d = dispstar
+//     //--------------------------------------------------------
+//     //double lmc1_j = theta_base_j - slope_j * dispstar;
+//     double lmc1_j = theta_base_j - slope_j * d1_star;
+//     
+//     lmc1_face[j] = new_int_face[j];
+//     //    lmc1_face[j] = theta_base_j;
+//     
+//     
+//     
+//     //--------------------------------------------------------
+//     // 4. UB3B slope (log-tilt slope)
+//     //    A7-compatible slope relation:
+//     //        lm_log2_j = slope_j * d2
+//     //--------------------------------------------------------
+//     double lm_log2_j = slope_j * d2;
+//     lm_log2_face[j] = lm_log2_j;
+//     
+//     //--------------------------------------------------------
+//     // 5. UB3B intercept: match UB3A at d = low
+//     //
+//     //    lm_log1_j + lm_log2_j * log(low)
+//     //        = lmc1_j + slope_j * low
+//     //
+//     //    ⇒ lm_log1_j = lmc1_j + slope_j * low
+//     //                   - lm_log2_j * log(low)
+//     //
+//     //     lm_log1_j = theta_base_j - slope_j * d1_star + slope_j * low - lm_log2_j * log(low)
+//     //
+//     //     lm_log1_j = theta_base_j + slope_j *(low-d1_star ) - slope_j ((upp - low) / (log(upp)-log(low))) *log(low)  
+//     //
+//     //--------------------------------------------------------
+//     double lm_log1_j =
+//       lmc1_j
+//       + slope_j * low
+//     - lm_log2_j * std::log(low);
+//     
+//     lm_log1_face[j] = lm_log1_j;
+//     
+//     
+//     
+//     //--------------------------------------------------------
+//     // 6. Three-term decomposition of lm_log1_j
+//     //
+//     // lm_log1_j =
+//     //   (1) theta_base_j
+//     // + (2) { [lm_log1_j + lm_log2_j * log(d1_star)] - theta_base_j }
+//     // + (3) { - lm_log2_j * log(d1_star) }
+//     //--------------------------------------------------------
+//     double term1 = theta_base_j;
+//     
+//     double term2 =
+//       (lm_log1_j + lm_log2_j * std::log(d1_star))
+//       - theta_base_j;
+//     
+//     double term3 =
+//     -lm_log2_j * std::log(d1_star);
+//     
+//     // Optional diagnostic print
+//     if (verbose && j < 20) {
+//       Rcpp::Rcout
+//       << "[face " << j << "] "
+//       << "term1=" << term1
+//       << "  term2=" << term2
+//       << "  term3=" << term3
+//       << "  lm_log1_j=" << lm_log1_j
+//       << "  recon=" << (term1 + term2 + term3)
+//       << "\n";
+//     }
+//     
+//     
+//     //--------------------------------------------------------
+//     // 6. Face-specific Gamma shape (diagnostic only)
+//     //--------------------------------------------------------
+//     shape3_face[j] = shape2 - lm_log2_j;
+//     
+//     // if (j < 27) {
+//     //   Rcpp::Rcout << "j=" << j
+//     //               << "  shape3_face=" << std::setprecision(12) << shape3_face[j]
+//     //               << "\n";
+//     // }
+//     
+//     
+//     if (shape3_face[j] < min_shape3_face) min_shape3_face = shape3_face[j];
+//     if (shape3_face[j] > max_shape3_face) max_shape3_face = shape3_face[j];
+//   }
+//   
+//   
+//   
+//   ////////////////////////////////////////////////////////////////////////
+//   
+//   // if (!R_finite(shape3) || shape3 <= 0.0) {
+//   //   Rcpp::stop("EnvelopeDispersionBuild: implied shape3 <= 0; tilted inverse-gamma is invalid.");
+//   // }
+//   
+//   double rate2 = Rate + rss_min_global / 2.0;
+//   if (!R_finite(rate2) || rate2 <= 0.0) {
+//     Rcpp::stop("EnvelopeDispersionBuild: implied rate2 <= 0; tilted inverse-gamma is invalid.");
+//   }
+//   
+//   
+//   
+//   // --- Step 9: Mixture weights per face (match original) ---
+//   for (int j = 0; j < gs; ++j) {
+//     Rcpp::checkUserInterrupt();
+//     
+//     double pf_upp = thetabar_const_upp_apprx[j] - max_upp;
+//     double pf_low = thetabar_const_low_apprx[j] - max_low;
+//     
+// //    prob_factor[j]  = (pf_upp > pf_low ? pf_upp : pf_low);
+// 
+// //  Modified shift accounting for need to bound (need to determine )
+// 
+//     double lgp_j=log_p_inv_gamma_ct_safe(low, upp,shape3_face[j],rate2);
+// 
+// 
+//     prob_factor[j]  = lm_log1_face[j];
+// //    prob_factor[j]  = thetabar_const_base[j];
+//     prob_factor2[j] = prob_factor[j] - ub2_min[j]+lgp_j;
+//     
+//     
+//     
+//     /////////////////////////////////////////////////////////
+//     
+//     
+//     
+//     /////////////////////////////////////////////////////////
+//     
+//     double norm2 = 0.0;
+//     for (int k = 0; k < l1; ++k) {
+//       double cjk = cbars(j, k);
+//       norm2 += cjk * cjk;
+//     }
+//     New_logP2[j] = logP1[j] + 0.5 * norm2;
+// 
+//     
+//     }
+//   
+//   NumericVector lg_prob_factor  = clone(prob_factor);
+//   NumericVector lg_prob_factor2 = clone(prob_factor2);
+//   
+//   // --- Stable PLSD computation (prob_factor_exp2 only) ---
+//   NumericVector prob_factor_exp(gs);   // kept for diagnostics
+//   NumericVector prob_factor_exp2(gs);
+//   
+//   NumericVector logw2(gs);
+//   for (int j = 0; j < gs; ++j) {
+//     logw2[j] = New_logP2[j] + prob_factor2[j];
+//   }
+//   
+//   double max_logw2 = Rcpp::max(logw2);
+//   double sumP2 = 0.0;
+//   for (int j = 0; j < gs; ++j) {
+//     prob_factor_exp2[j] = std::exp(logw2[j] - max_logw2);
+//     sumP2 += prob_factor_exp2[j];
+//     
+//     
+//     //------------------------------------------------------------
+//     // Diagnostic: total PLSD shift contribution for face j
+//     //------------------------------------------------------------
+//     if (verbose && j < 20) {
+//       double term1 = thetabar_const_base[j];
+//       double term2 = (lm_log1_face[j] + lm_log2_face[j] * std::log(d1_star))
+//         - thetabar_const_base[j];
+//       double term3 = -lm_log2_face[j] * std::log(d1_star);
+//       
+//       double lm_total = lm_log1_face[j];
+//       double total_with_New_logP2 = lm_total + New_logP2[j];
+//       
+//       Rcpp::Rcout
+//       << "[face " << j << "] "
+//       << "term1=" << term1
+//       << "  term2=" << term2
+//       << "  term3=" << term3
+//       << "  lm_log1_j=" << lm_total
+//       << "  New_logP2=" << New_logP2[j]
+//       << "  total(lm_log1_j + New_logP2)=" << total_with_New_logP2
+//       << "\n";
+//     }
+//     
+//   }
+//   
+//   if (sumP2 <= 0.0 || !R_finite(sumP2)) {
+//     Rcpp::stop("PLSD normalization failed: sumP2 non-finite or non-positive");
+//   }
+//   
+//   for (int j = 0; j < gs; ++j) {
+//     prob_factor_exp2[j] /= sumP2;
+//     
+//     if (j < 27) {
+//       Rcpp::Rcout << "j=" << j
+//                   << "  prob_factor_exp2=" << std::setprecision(12) << prob_factor_exp2[j]
+//                   << "\n";
+//     }
+//     
+//   }
+//   
+//   stop("Stop after PLSD derivation");
+//   
+//   
+//   Env["PLSD"] = prob_factor_exp2;
+//   
+//   double lm_log2 = new_slope * d2_star;
+//   double lm_log1 = new_int + new_slope * d2_star - new_slope * std::log(d2_star);
+//   double shape3  = shape2 - lm_log2;
+//   
+//   // --- Sanity checks on the tilted gamma parameters (global) ---
+//   if (!R_finite(lm_log1) || !R_finite(lm_log2)) {
+//     Rcpp::stop("EnvelopeDispersionBuild: lm_log1/lm_log2 non-finite; envelope tilt is undefined.");
+//   }
+//   
+//   
+//   
+//   Rcpp::List gamma_list = Rcpp::List::create(
+//     // Global proposal parameters (unchanged)
+//     Rcpp::Named("shape3")       = shape3,
+//     Rcpp::Named("rate2")        = rate2,
+//     Rcpp::Named("disp_upper")   = upp,
+//     Rcpp::Named("disp_lower")   = low,
+//     
+//     // New: face-specific UB3A/UB3B geometry
+//     Rcpp::Named("shape3_face")  = shape3_face    // per-face Gamma shapes
+//   );
+//   
+//   
+//   List UB_list = List::create(
+//     Named("RSS_ML")          = RSS_ML,
+//     Named("RSS_Min")         = rss_min_global,
+//     Named("max_New_LL_UB")   = max_upp,
+//     Named("max_LL_log_disp") = lm_log1 + lm_log2 * std::log(upp),
+//     Named("lm_log1")         = lm_log1,
+//     Named("lm_log2")         = lm_log2,
+//     Named("lg_prob_factor")  = lg_prob_factor,
+//     Named("lmc1")            = new_int,
+//     Named("lmc2")            = new_slope,
+//     Named("UB2min")          = ub2_min,
+//     Rcpp::Named("lmc1_face")    = lmc1_face,     // UB3A intercepts
+//     Rcpp::Named("lmc2_face")    = lmc2_face,     // UB3A slopes
+//     Rcpp::Named("lm_log1_face") = lm_log1_face,  // UB3B intercepts
+//     Rcpp::Named("lm_log2_face") = lm_log2_face,  // UB3B slopes
+//     Rcpp::Named("thetabar_const_upp_apprx") = thetabar_const_upp_apprx,  // UB3B intercepts
+//     Rcpp::Named("thetabar_const_low_apprx") = thetabar_const_low_apprx,  // UB3B slopes
+//     // NEW: pass anchor geometry downstream
+//     Named("dispstar")            = dispstar,
+//     Named("d1_star")            = d1_star,
+//     Named("d2_star")            = d2_star,
+//     Named("thetabar_const_base") = thetabar_const_base,
+//     Named("New_LL_Slope")        = New_LL_Slope
+//   
+//   );
+//   
+//   
+//   
+//   List diagnostics = List::create(
+//     Named("dispstar")        = dispstar,
+//     Named("d1_star")            = d1_star,
+//     Named("d2_star")            = d2_star,
+//     Named("New_LL_Slope")    = New_LL_Slope,
+//     Named("shape2")          = shape2,
+//     Named("rate3")           = Rate,
+//     Named("shape3")          = shape3,
+//     Named("max_low")         = max_low,
+//     Named("max_upp")         = max_upp,
+//     Named("new_slope")       = new_slope,
+//     Named("new_int")         = new_int,
+//     Named("prob_factor")     = prob_factor_exp,
+//     Named("UB2min")          = ub2_min,
+//     // new diagnostics:
+//     Named("lm_log2_face")    = lm_log2_face,
+//     Named("shape3_face")     = shape3_face
+//   );
+//   
+//   if (!R_finite(shape3) || shape3 <= 0.0) {
+//     Rcpp::stop("EnvelopeDispersionBuild: implied shape3 <= 0; tilted inverse-gamma is invalid.");
+//   }
+//   
+//   
+//   return List::create(
+//     Named("Env")         = Env,
+//     Named("gamma_list")  = gamma_list,
+//     Named("UB_list")     = UB_list,
+//     Named("diagnostics") = diagnostics
+//   );
+// }
 
 
 namespace glmbayes {

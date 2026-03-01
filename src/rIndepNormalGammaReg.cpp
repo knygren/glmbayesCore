@@ -710,437 +710,437 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
 
 
 
-Rcpp::List  rIndepNormalGammaReg_std_face(int n,NumericVector y,NumericMatrix x,
-                                     NumericMatrix mu, /// This is typically standardized to be a zero vector
-                                     NumericMatrix P, /// Part of prior precision shifted to the likelihood
-                                     NumericVector alpha,NumericVector wt,
-                                     Function f2,Rcpp::List  Envelope,
-                                     Rcpp::List  gamma_list,
-                                     Rcpp::List  UB_list,
-                                     Rcpp::CharacterVector   family,Rcpp::CharacterVector   link,
-                                     bool progbar,
-                                     bool verbose
-)
-{
-
-  Rcpp::Rcout << "[rIndepNormalGammaReg_std] Face version: \n";
-  
-  // 1. Grab the base environment
-  Rcpp::Environment base = Rcpp::Environment::base_env();
-  
-  // 2. Pull out the 'interactive' function
-  Rcpp::Function interactive = base["interactive"];
-  
-  
-  int l1 = mu.nrow();
-  int l2 = x.nrow();
-  
-  
-  // Get various inputs frm the provided lists
-  
-  double shape3 =gamma_list["shape3"];
-  double rate2 =gamma_list["rate2"];
-  double disp_upper =gamma_list["disp_upper"];
-  double disp_lower =gamma_list["disp_lower"];
-  // double RSS_ML =UB_list["RSS_ML"];
-  double max_New_LL_UB =UB_list["max_New_LL_UB"];
-  double max_LL_log_disp =UB_list["max_LL_log_disp"];
-  double lm_log1 =UB_list["lm_log1"];
-  double lm_log2 =UB_list["lm_log2"];
-  double lmc1 =UB_list["lmc1"];
-  double lmc2 =UB_list["lmc2"];
-  NumericVector lg_prob_factor =UB_list["lg_prob_factor"];
-  NumericMatrix cbars=Envelope["cbars"];
-  
- 
-  
-  // --- New: face-specific UB3A/UB3B and Gamma proposal geometry ---
-  
-  
-  // NEW: extract anchor geometry
-  double d1_star = UB_list["d1_star"];        // UB3A anchor
-  //  double d2_star = UB_list["d2_star"];        // UB3B anchor
-  // NumericVector thetabar_const_base = UB_list["thetabar_const_base"];  // should be g1(d1*)
-  // NumericVector New_LL_Slope       = UB_list["New_LL_Slope"];          // should g1'(d1*)
-  
-  
-  NumericVector shape3_face  = gamma_list["shape3_face"];   // per-face Gamma shapes
-  
-  
-  NumericVector iters_out(n);
-  NumericVector disp_out(n);
-  NumericVector weight_out(n);
-  NumericMatrix beta_out(n,l1);
-  double dispersion;
-  NumericVector wt2(l1);
-  
-  
-  arma::vec wt1b(wt.begin(), x.nrow());
-  
-  
-  NumericMatrix cbarst(cbars.ncol(),cbars.nrow());
-  NumericMatrix thetabars(cbars.nrow(),cbars.ncol());
-  NumericMatrix thetabars_new(1,cbars.ncol());
-  
-  NumericVector New_LL(cbars.nrow());
-  
-  
-  
-  
-  arma::mat cbarsb(cbars.begin(), cbars.nrow(), cbars.ncol(), false);
-  arma::mat cbarstb(cbarst.begin(), cbarst.nrow(), cbarst.ncol(), false);
-  
-  arma::mat thetabarsb(thetabars.begin(), thetabars.nrow(), thetabars.ncol(), false);
-  arma::mat thetabarsb_new(thetabars_new.begin(), thetabars_new.nrow(), thetabars_new.ncol(), false);
-  cbarstb=trans(cbarsb);
-  
-  arma::vec y2(y.begin(),l2);
-  arma::vec alpha2(alpha.begin(),l2);
-  arma::mat x2(x.begin(),l2,l1);
-  arma::mat P2(P.begin(),l1,l1);
-  
-  double UB1;
-  double UB2;
-  double UB3A;
-  double UB3B;
-  double New_LL_log_disp;
-  
-  double UB3A_face;
-  
-  
-  int a1=0;
-  double test1=0;
-  double test=0;
-  NumericVector J(n);
-  // NumericVector draws(n);
-  NumericMatrix out(1,l1);
-  double a2=0;
-  double U=0;
-  double U2=0;
-  
-  NumericVector PLSD=Envelope["PLSD"];
-  NumericMatrix loglt=Envelope["loglt"];
-  NumericMatrix logrt=Envelope["logrt"];
-  
-  double RSS_Min=UB_list["RSS_Min"];
-  NumericVector UB2min=UB_list["UB2min"];
-  
-  // Adding to enable face specific dispersion bounds
-  
-  NumericVector thetabar_const_base=UB_list["thetabar_const_base"];
-  NumericVector New_LL_Slope=UB_list["New_LL_Slope"];
-  
-  
-  //  NumericVector ub2_min=;
-  
-  
-  if (verbose) {
-    Rcpp::Rcout << "[rIndepNormalGammaReg_std:Inv_f3_precompute_disp] Entering: "
-                << glmbayes::progress::timestamp_cpp()
-                << "\n";
-  }
-  
-  
-  
-  
-  // Build cache once outside the loop
-  Rcpp::List cache = Inv_f3_precompute_disp(cbars, y, x, mu, P, alpha, wt);
-  
-  
-  if (verbose) {
-    Rcpp::Rcout << "[rIndepNormalGammaReg_std:Inv_f3_precompute_disp] Exiting: "
-    //            << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << glmbayes::progress::timestamp_cpp()
-                  << "\n";
-  }
-  
-  
-  
-  for(int i=0;i<n;i++){
-    
-    Rcpp::checkUserInterrupt();
-    
-    if(progbar==1){
-      // progress_bar3(i, n-1);
-      progress_bar(i, n-1);
-      
-      if(i==n-1) {Rcpp::Rcout << "" << std::endl;}
-    }
-    
-    // 3. Test progbar *and* interactive()
-    
-    
-    // Rcpp::Rcout << "[rIndepNormalGammaReg_std] Entering accept/reject: \n";
-    
-    
-    a1=0;
-    iters_out[i]=1;  
-    while(a1==0){
-      
-      // Simulate from discrete distribution
-      
-      U=R::runif(0.0, 1.0);
-      a2=0;
-      J(0)=0;    
-      while(a2==0){
-        if(U<=PLSD(J(0))) a2=1;
-        if(U>PLSD(J(0))){ 
-          U=U-PLSD(J(0));
-          J(0)=J(0)+1;
-          
-        }
-      }
-      
-      
-      
-      // Simulate for beta
-      
-      for(int j=0;j<l1;j++){  out(0,j)=rnorm_ct(logrt(J(0),j),loglt(J(0),j),-cbars(J(0),j),1.0);          }
-      
-      
-      
-      // Update this to make distribution contingent on component of the grid
-      
-      //      dispersion=rinvgamma_ct(shape3,rate2,disp_upper,disp_lower);
-//      dispersion=rinvgamma_ct_safe(shape3,rate2,disp_upper,disp_lower);
-      dispersion=rinvgamma_ct_safe(shape3_face[J(0)],rate2,disp_upper,disp_lower);
-      
-      
-      wt2=wt/dispersion;
-      NumericMatrix cbars_small = cbars( Range(J(0),J(0)) , Range(0,cbars.ncol()-1) );
-      
-      // Compute Adjusted theta (accounting for changed dispersion) - New tangency points
-      
-      arma::mat theta2 = Inv_f3_with_disp(cache, dispersion, transpose(cbars_small));
-      thetabarsb_new = theta2;
-      
-      
-      // Recompoute LL at the new gradient point
-      NumericVector LL_New2=-f2_gaussian(transpose(thetabars_new),  y, x, mu, P, alpha, wt2);  
-      
-      
-      
-      U2=R::runif(0.0, 1.0);
-      
-      double log_U2=log(U2);
-      NumericVector J_out=J;
-      NumericVector b_out=out(0,_);
-      arma::rowvec b_out2(b_out.begin(),l1,false);
-      NumericVector thetabars_temp=thetabars_new(0,_); // Changed
-      
-      arma::vec  thetabars_temp2(thetabars_temp.begin(), l1);
-      NumericVector cbars_temp=cbars(J_out(0),_);
-      arma::vec  cbars_temp2(cbars_temp.begin(), l1);
-      
-      
-      
-      NumericVector LL_Test=-f2_gaussian(transpose(out),  y, x, mu, P, alpha, wt2);
-      
-      
-      
-      // Block 1: UB1 
-      //   Same form as in fixed dispersion case but thetabar is a function of the dispersion
-      //   So all components that include thetabar must now be bounded as well
-      
-      arma::colvec betadiff=trans(b_out2)-thetabars_temp2;
-      UB1=LL_New2(0) -arma::as_scalar(trans(cbars_temp2)*betadiff);
-      
-      //Block 2: UB2 [RSS Term bounded by shifting it to the gamma candidate]
-      
-      
-      arma::colvec yxbeta=(y2-alpha2-x2*thetabars_temp2)%sqrt(wt1b); 
-      
-      
-      // Extract the current cbars row as a NumericVector
-      // NumericVector cbars_j = cbars(J_out(0), _);
-      
-      
-      
-      // Continue with existing UB2 calculation without modification
-      UB2=0.5*(1.0/dispersion)*(arma::as_scalar(trans(yxbeta)*yxbeta)-RSS_Min);
-      
-      // Subtract UB2min --> Should improve acceptance
-      
-      UB2=UB2-UB2min[J_out(0)];
-      
-      
-      // Block 3: UB3A (adjusts because probabilities of components in grid are different from original grid)
-      // Investigate whether changing probabilities of grid components for proposal
-      // allows us to do away with this term and to thereby improve the acceptance rate
-      
-      // This is likely time consuming part
-      
-      
-      // Compute g1_j(d) for the chosen face j = J_out(0)
-      
-      
-      
-      int j = J_out(0);
-      double g1j = g1_face_at_disp(
-        dispersion,   // current dispersion draw
-        j,            // face index
-        cache,        // cached matrices for Inv_f3_with_disp
-        P2,           // precision matrix
-        cbars         // matrix of c_j rows
-      );
-      
-      
-      double g2j=g2_face_at_disp(
-        dispersion,   // current dispersion draw
-        j,            // face index
-        cache,        // cached matrices for Inv_f3_with_disp
-        P2,           // precision matrix
-        cbars,         // matrix of c_j rows
-        d1_star,
-        New_LL_Slope
-      );
-      
-      // Store it exactly where New_LL(j) was previously used
-      New_LL(j) = g1j;
-      
-      // Modified UB3A 
-      
-//      UB3A= lg_prob_factor(J_out(0))+lmc1+lmc2*dispersion-New_LL(J_out(0));
-      UB3A= lg_prob_factor(J_out(0))+lmc1+lmc2*dispersion-New_LL(J_out(0));
-      
-      
-      // UB3A_face =thetabar_const_upp_apprx[J_out(0)]+ lmc1_face[J_out(0)] + lmc2_face[J_out(0)] * dispersion - New_LL(J_out(0));
-      //double UB3A = lg_prob_factor_r[J_idx] + lmc1 + lmc2 * dispersion - New_LL_J;
-      
-      UB3A_face=g2j-g1j;
-      
-      // Block 4: UB3B  
-      
-      //--------------------------------------------------------
-      // 4. UB3B slope (log-tilt slope)
-      //    A7-compatible slope relation:
-      //        lm_log2_j = slope_j * d2
-      
-      // where d2 = (upp - low) / log(upp/low)
-      
-      double lmc1_j = g1j - New_LL_Slope[j] * d1_star;
-      double lmc2_j=New_LL_Slope[j];
-      
-      double lm_log2_j = New_LL_Slope[j] *(disp_upper-disp_lower)/log(disp_upper/disp_lower);
-      
-      double lm_log1_j =lmc1_j + New_LL_Slope[j] *disp_lower-lm_log2_j*(log(disp_lower)) ;
-      
-      //    ⇒ lm_log1_j = lmc1_j + slope_j * low
-      //                   - lm_log2_j * log(low)
-      
-      
-      double UB3B_face=lm_log1_j+lm_log2_j*log(dispersion)-(lmc1_j+lmc2_j*dispersion);
-      
-      
-      
-      // Old UB3B definition
-      
-      
-      
-      New_LL_log_disp=lm_log1+lm_log2*log(dispersion);
-      
-      UB3B=(max_New_LL_UB-max_LL_log_disp+New_LL_log_disp)-(lmc1+lmc2*dispersion);
-      
-      
-      
-      test1=LL_Test[0]-UB1;
-      
-      test= test1-(UB2+UB3A+UB3B);  // Should be all negative 
-      
-      
-      test = test - log_U2;
-      
-      
-      double test_face=test1-(UB2+UB3A_face+UB3B_face)- log_U2;
-      
-      
-      // Sanity checks: all must satisfy their sign constraints
-      bool bad = false;
-      std::ostringstream msg;
-      
-      if (test1 > 0.0) {
-        bad = true;
-        msg << "Sign violation: test1 = " << test1 << " > 0\n";
-      }
-      if (UB2 < 0.0) {
-        bad = true;
-        msg << "Sign violation: UB2 = " << UB2 << " < 0\n";
-      }
-      if (UB3A < 0.0) {
-        bad = true;
-        msg << "Sign violation: UB3A = " << UB3A << " < 0\n";
-      }
-      if (UB3A_face < 0.0) {
-        bad = true;
-        msg << "Sign violation: UB3A_face = " << UB3A_face << " < 0\n";
-      }
-      
-      
-      if (UB3B < 0.0) {
-        bad = true;
-        msg << "Sign violation: UB3B = " << UB3B << " < 0\n";
-      }
-      
-      if (UB3B_face < 0.0) {
-        bad = true;
-        msg << "Sign violation: UB3B_face = " << UB3B_face << " < 0\n";
-      }
-      
-      
-      if (bad) {
-        // Provide context for debugging
-        msg << "Dispersion=" << dispersion
-            << " LL_Test=" << LL_Test[0]
-            << " UB1=" << UB1
-            << " UB2=" << UB2
-            << " UB3A=" << UB3A
-            << " UB3A_face=" << UB3A_face
-            << " UB3B=" << UB3B
-            << " UB3B_face=" << UB3B_face
-        // << " thetabar_const_upp_apprx=" << thetabar_const_upp_apprx[J_out(0)]
-        // << " thetabar_const_low_apprx=" << thetabar_const_low_apprx[J_out(0)]
-           << " lg_prob_factor[]=" << lg_prob_factor[J_out(0)]
-           << " lg_prob_factor()=" << lg_prob_factor(J_out(0))
-           << " New_LL(j)=" << New_LL(j)
-           << " g1j=" << g1j
-           << " test=" << test;
-        
-        // Stop execution with informative error
-        throw std::runtime_error(msg.str());
-        
-      }
-      
-      
-      
-      disp_out[i] = dispersion;
-      beta_out(i, _) = out(0, _);
-      
-      
-      //      if(test>=0){
-      if(test_face>0){  
-        
-        
-        a1=1;
-        
-      }
-      else{
-        iters_out[i]=iters_out[i]+1;
-      }    
-      
-      
-    }  
-    
-    
-  }
-  
-  // Temporarily just return non-sense constants equal to all 1
-  
-  return Rcpp::List::create(Rcpp::Named("beta_out")=beta_out,Rcpp::Named("disp_out")=disp_out,
-                            Rcpp::Named("iters_out")=iters_out,Rcpp::Named("weight_out")=weight_out);  
-  
-  
-  
-}
+// Rcpp::List  rIndepNormalGammaReg_std_face(int n,NumericVector y,NumericMatrix x,
+//                                      NumericMatrix mu, /// This is typically standardized to be a zero vector
+//                                      NumericMatrix P, /// Part of prior precision shifted to the likelihood
+//                                      NumericVector alpha,NumericVector wt,
+//                                      Function f2,Rcpp::List  Envelope,
+//                                      Rcpp::List  gamma_list,
+//                                      Rcpp::List  UB_list,
+//                                      Rcpp::CharacterVector   family,Rcpp::CharacterVector   link,
+//                                      bool progbar,
+//                                      bool verbose
+// )
+// {
+// 
+//   Rcpp::Rcout << "[rIndepNormalGammaReg_std] Face version: \n";
+//   
+//   // 1. Grab the base environment
+//   Rcpp::Environment base = Rcpp::Environment::base_env();
+//   
+//   // 2. Pull out the 'interactive' function
+//   Rcpp::Function interactive = base["interactive"];
+//   
+//   
+//   int l1 = mu.nrow();
+//   int l2 = x.nrow();
+//   
+//   
+//   // Get various inputs frm the provided lists
+//   
+//   double shape3 =gamma_list["shape3"];
+//   double rate2 =gamma_list["rate2"];
+//   double disp_upper =gamma_list["disp_upper"];
+//   double disp_lower =gamma_list["disp_lower"];
+//   // double RSS_ML =UB_list["RSS_ML"];
+//   double max_New_LL_UB =UB_list["max_New_LL_UB"];
+//   double max_LL_log_disp =UB_list["max_LL_log_disp"];
+//   double lm_log1 =UB_list["lm_log1"];
+//   double lm_log2 =UB_list["lm_log2"];
+//   double lmc1 =UB_list["lmc1"];
+//   double lmc2 =UB_list["lmc2"];
+//   NumericVector lg_prob_factor =UB_list["lg_prob_factor"];
+//   NumericMatrix cbars=Envelope["cbars"];
+//   
+//  
+//   
+//   // --- New: face-specific UB3A/UB3B and Gamma proposal geometry ---
+//   
+//   
+//   // NEW: extract anchor geometry
+//   double d1_star = UB_list["d1_star"];        // UB3A anchor
+//   //  double d2_star = UB_list["d2_star"];        // UB3B anchor
+//   // NumericVector thetabar_const_base = UB_list["thetabar_const_base"];  // should be g1(d1*)
+//   // NumericVector New_LL_Slope       = UB_list["New_LL_Slope"];          // should g1'(d1*)
+//   
+//   
+//   NumericVector shape3_face  = gamma_list["shape3_face"];   // per-face Gamma shapes
+//   
+//   
+//   NumericVector iters_out(n);
+//   NumericVector disp_out(n);
+//   NumericVector weight_out(n);
+//   NumericMatrix beta_out(n,l1);
+//   double dispersion;
+//   NumericVector wt2(l1);
+//   
+//   
+//   arma::vec wt1b(wt.begin(), x.nrow());
+//   
+//   
+//   NumericMatrix cbarst(cbars.ncol(),cbars.nrow());
+//   NumericMatrix thetabars(cbars.nrow(),cbars.ncol());
+//   NumericMatrix thetabars_new(1,cbars.ncol());
+//   
+//   NumericVector New_LL(cbars.nrow());
+//   
+//   
+//   
+//   
+//   arma::mat cbarsb(cbars.begin(), cbars.nrow(), cbars.ncol(), false);
+//   arma::mat cbarstb(cbarst.begin(), cbarst.nrow(), cbarst.ncol(), false);
+//   
+//   arma::mat thetabarsb(thetabars.begin(), thetabars.nrow(), thetabars.ncol(), false);
+//   arma::mat thetabarsb_new(thetabars_new.begin(), thetabars_new.nrow(), thetabars_new.ncol(), false);
+//   cbarstb=trans(cbarsb);
+//   
+//   arma::vec y2(y.begin(),l2);
+//   arma::vec alpha2(alpha.begin(),l2);
+//   arma::mat x2(x.begin(),l2,l1);
+//   arma::mat P2(P.begin(),l1,l1);
+//   
+//   double UB1;
+//   double UB2;
+//   double UB3A;
+//   double UB3B;
+//   double New_LL_log_disp;
+//   
+//   double UB3A_face;
+//   
+//   
+//   int a1=0;
+//   double test1=0;
+//   double test=0;
+//   NumericVector J(n);
+//   // NumericVector draws(n);
+//   NumericMatrix out(1,l1);
+//   double a2=0;
+//   double U=0;
+//   double U2=0;
+//   
+//   NumericVector PLSD=Envelope["PLSD"];
+//   NumericMatrix loglt=Envelope["loglt"];
+//   NumericMatrix logrt=Envelope["logrt"];
+//   
+//   double RSS_Min=UB_list["RSS_Min"];
+//   NumericVector UB2min=UB_list["UB2min"];
+//   
+//   // Adding to enable face specific dispersion bounds
+//   
+//   NumericVector thetabar_const_base=UB_list["thetabar_const_base"];
+//   NumericVector New_LL_Slope=UB_list["New_LL_Slope"];
+//   
+//   
+//   //  NumericVector ub2_min=;
+//   
+//   
+//   if (verbose) {
+//     Rcpp::Rcout << "[rIndepNormalGammaReg_std:Inv_f3_precompute_disp] Entering: "
+//                 << glmbayes::progress::timestamp_cpp()
+//                 << "\n";
+//   }
+//   
+//   
+//   
+//   
+//   // Build cache once outside the loop
+//   Rcpp::List cache = Inv_f3_precompute_disp(cbars, y, x, mu, P, alpha, wt);
+//   
+//   
+//   if (verbose) {
+//     Rcpp::Rcout << "[rIndepNormalGammaReg_std:Inv_f3_precompute_disp] Exiting: "
+//     //            << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
+//                   << glmbayes::progress::timestamp_cpp()
+//                   << "\n";
+//   }
+//   
+//   
+//   
+//   for(int i=0;i<n;i++){
+//     
+//     Rcpp::checkUserInterrupt();
+//     
+//     if(progbar==1){
+//       // progress_bar3(i, n-1);
+//       progress_bar(i, n-1);
+//       
+//       if(i==n-1) {Rcpp::Rcout << "" << std::endl;}
+//     }
+//     
+//     // 3. Test progbar *and* interactive()
+//     
+//     
+//     // Rcpp::Rcout << "[rIndepNormalGammaReg_std] Entering accept/reject: \n";
+//     
+//     
+//     a1=0;
+//     iters_out[i]=1;  
+//     while(a1==0){
+//       
+//       // Simulate from discrete distribution
+//       
+//       U=R::runif(0.0, 1.0);
+//       a2=0;
+//       J(0)=0;    
+//       while(a2==0){
+//         if(U<=PLSD(J(0))) a2=1;
+//         if(U>PLSD(J(0))){ 
+//           U=U-PLSD(J(0));
+//           J(0)=J(0)+1;
+//           
+//         }
+//       }
+//       
+//       
+//       
+//       // Simulate for beta
+//       
+//       for(int j=0;j<l1;j++){  out(0,j)=rnorm_ct(logrt(J(0),j),loglt(J(0),j),-cbars(J(0),j),1.0);          }
+//       
+//       
+//       
+//       // Update this to make distribution contingent on component of the grid
+//       
+//       //      dispersion=rinvgamma_ct(shape3,rate2,disp_upper,disp_lower);
+// //      dispersion=rinvgamma_ct_safe(shape3,rate2,disp_upper,disp_lower);
+//       dispersion=rinvgamma_ct_safe(shape3_face[J(0)],rate2,disp_upper,disp_lower);
+//       
+//       
+//       wt2=wt/dispersion;
+//       NumericMatrix cbars_small = cbars( Range(J(0),J(0)) , Range(0,cbars.ncol()-1) );
+//       
+//       // Compute Adjusted theta (accounting for changed dispersion) - New tangency points
+//       
+//       arma::mat theta2 = Inv_f3_with_disp(cache, dispersion, transpose(cbars_small));
+//       thetabarsb_new = theta2;
+//       
+//       
+//       // Recompoute LL at the new gradient point
+//       NumericVector LL_New2=-f2_gaussian(transpose(thetabars_new),  y, x, mu, P, alpha, wt2);  
+//       
+//       
+//       
+//       U2=R::runif(0.0, 1.0);
+//       
+//       double log_U2=log(U2);
+//       NumericVector J_out=J;
+//       NumericVector b_out=out(0,_);
+//       arma::rowvec b_out2(b_out.begin(),l1,false);
+//       NumericVector thetabars_temp=thetabars_new(0,_); // Changed
+//       
+//       arma::vec  thetabars_temp2(thetabars_temp.begin(), l1);
+//       NumericVector cbars_temp=cbars(J_out(0),_);
+//       arma::vec  cbars_temp2(cbars_temp.begin(), l1);
+//       
+//       
+//       
+//       NumericVector LL_Test=-f2_gaussian(transpose(out),  y, x, mu, P, alpha, wt2);
+//       
+//       
+//       
+//       // Block 1: UB1 
+//       //   Same form as in fixed dispersion case but thetabar is a function of the dispersion
+//       //   So all components that include thetabar must now be bounded as well
+//       
+//       arma::colvec betadiff=trans(b_out2)-thetabars_temp2;
+//       UB1=LL_New2(0) -arma::as_scalar(trans(cbars_temp2)*betadiff);
+//       
+//       //Block 2: UB2 [RSS Term bounded by shifting it to the gamma candidate]
+//       
+//       
+//       arma::colvec yxbeta=(y2-alpha2-x2*thetabars_temp2)%sqrt(wt1b); 
+//       
+//       
+//       // Extract the current cbars row as a NumericVector
+//       // NumericVector cbars_j = cbars(J_out(0), _);
+//       
+//       
+//       
+//       // Continue with existing UB2 calculation without modification
+//       UB2=0.5*(1.0/dispersion)*(arma::as_scalar(trans(yxbeta)*yxbeta)-RSS_Min);
+//       
+//       // Subtract UB2min --> Should improve acceptance
+//       
+//       UB2=UB2-UB2min[J_out(0)];
+//       
+//       
+//       // Block 3: UB3A (adjusts because probabilities of components in grid are different from original grid)
+//       // Investigate whether changing probabilities of grid components for proposal
+//       // allows us to do away with this term and to thereby improve the acceptance rate
+//       
+//       // This is likely time consuming part
+//       
+//       
+//       // Compute g1_j(d) for the chosen face j = J_out(0)
+//       
+//       
+//       
+//       int j = J_out(0);
+//       double g1j = g1_face_at_disp(
+//         dispersion,   // current dispersion draw
+//         j,            // face index
+//         cache,        // cached matrices for Inv_f3_with_disp
+//         P2,           // precision matrix
+//         cbars         // matrix of c_j rows
+//       );
+//       
+//       
+//       double g2j=g2_face_at_disp(
+//         dispersion,   // current dispersion draw
+//         j,            // face index
+//         cache,        // cached matrices for Inv_f3_with_disp
+//         P2,           // precision matrix
+//         cbars,         // matrix of c_j rows
+//         d1_star,
+//         New_LL_Slope
+//       );
+//       
+//       // Store it exactly where New_LL(j) was previously used
+//       New_LL(j) = g1j;
+//       
+//       // Modified UB3A 
+//       
+// //      UB3A= lg_prob_factor(J_out(0))+lmc1+lmc2*dispersion-New_LL(J_out(0));
+//       UB3A= lg_prob_factor(J_out(0))+lmc1+lmc2*dispersion-New_LL(J_out(0));
+//       
+//       
+//       // UB3A_face =thetabar_const_upp_apprx[J_out(0)]+ lmc1_face[J_out(0)] + lmc2_face[J_out(0)] * dispersion - New_LL(J_out(0));
+//       //double UB3A = lg_prob_factor_r[J_idx] + lmc1 + lmc2 * dispersion - New_LL_J;
+//       
+//       UB3A_face=g2j-g1j;
+//       
+//       // Block 4: UB3B  
+//       
+//       //--------------------------------------------------------
+//       // 4. UB3B slope (log-tilt slope)
+//       //    A7-compatible slope relation:
+//       //        lm_log2_j = slope_j * d2
+//       
+//       // where d2 = (upp - low) / log(upp/low)
+//       
+//       double lmc1_j = g1j - New_LL_Slope[j] * d1_star;
+//       double lmc2_j=New_LL_Slope[j];
+//       
+//       double lm_log2_j = New_LL_Slope[j] *(disp_upper-disp_lower)/log(disp_upper/disp_lower);
+//       
+//       double lm_log1_j =lmc1_j + New_LL_Slope[j] *disp_lower-lm_log2_j*(log(disp_lower)) ;
+//       
+//       //    ⇒ lm_log1_j = lmc1_j + slope_j * low
+//       //                   - lm_log2_j * log(low)
+//       
+//       
+//       double UB3B_face=lm_log1_j+lm_log2_j*log(dispersion)-(lmc1_j+lmc2_j*dispersion);
+//       
+//       
+//       
+//       // Old UB3B definition
+//       
+//       
+//       
+//       New_LL_log_disp=lm_log1+lm_log2*log(dispersion);
+//       
+//       UB3B=(max_New_LL_UB-max_LL_log_disp+New_LL_log_disp)-(lmc1+lmc2*dispersion);
+//       
+//       
+//       
+//       test1=LL_Test[0]-UB1;
+//       
+//       test= test1-(UB2+UB3A+UB3B);  // Should be all negative 
+//       
+//       
+//       test = test - log_U2;
+//       
+//       
+//       double test_face=test1-(UB2+UB3A_face+UB3B_face)- log_U2;
+//       
+//       
+//       // Sanity checks: all must satisfy their sign constraints
+//       bool bad = false;
+//       std::ostringstream msg;
+//       
+//       if (test1 > 0.0) {
+//         bad = true;
+//         msg << "Sign violation: test1 = " << test1 << " > 0\n";
+//       }
+//       if (UB2 < 0.0) {
+//         bad = true;
+//         msg << "Sign violation: UB2 = " << UB2 << " < 0\n";
+//       }
+//       if (UB3A < 0.0) {
+//         bad = true;
+//         msg << "Sign violation: UB3A = " << UB3A << " < 0\n";
+//       }
+//       if (UB3A_face < 0.0) {
+//         bad = true;
+//         msg << "Sign violation: UB3A_face = " << UB3A_face << " < 0\n";
+//       }
+//       
+//       
+//       if (UB3B < 0.0) {
+//         bad = true;
+//         msg << "Sign violation: UB3B = " << UB3B << " < 0\n";
+//       }
+//       
+//       if (UB3B_face < 0.0) {
+//         bad = true;
+//         msg << "Sign violation: UB3B_face = " << UB3B_face << " < 0\n";
+//       }
+//       
+//       
+//       if (bad) {
+//         // Provide context for debugging
+//         msg << "Dispersion=" << dispersion
+//             << " LL_Test=" << LL_Test[0]
+//             << " UB1=" << UB1
+//             << " UB2=" << UB2
+//             << " UB3A=" << UB3A
+//             << " UB3A_face=" << UB3A_face
+//             << " UB3B=" << UB3B
+//             << " UB3B_face=" << UB3B_face
+//         // << " thetabar_const_upp_apprx=" << thetabar_const_upp_apprx[J_out(0)]
+//         // << " thetabar_const_low_apprx=" << thetabar_const_low_apprx[J_out(0)]
+//            << " lg_prob_factor[]=" << lg_prob_factor[J_out(0)]
+//            << " lg_prob_factor()=" << lg_prob_factor(J_out(0))
+//            << " New_LL(j)=" << New_LL(j)
+//            << " g1j=" << g1j
+//            << " test=" << test;
+//         
+//         // Stop execution with informative error
+//         throw std::runtime_error(msg.str());
+//         
+//       }
+//       
+//       
+//       
+//       disp_out[i] = dispersion;
+//       beta_out(i, _) = out(0, _);
+//       
+//       
+//       //      if(test>=0){
+//       if(test_face>0){  
+//         
+//         
+//         a1=1;
+//         
+//       }
+//       else{
+//         iters_out[i]=iters_out[i]+1;
+//       }    
+//       
+//       
+//     }  
+//     
+//     
+//   }
+//   
+//   // Temporarily just return non-sense constants equal to all 1
+//   
+//   return Rcpp::List::create(Rcpp::Named("beta_out")=beta_out,Rcpp::Named("disp_out")=disp_out,
+//                             Rcpp::Named("iters_out")=iters_out,Rcpp::Named("weight_out")=weight_out);  
+//   
+//   
+//   
+// }
 
 
 
@@ -1450,9 +1450,9 @@ Rcpp::List rIndepNormalGammaReg(
 ){
   
   
-  int disp_grid_type=2;
-  
-  if(use_parallel) disp_grid_type=2;
+  // int disp_grid_type=2;
+  // 
+  // if(use_parallel) disp_grid_type=2;
   
   
   // Base R functions
@@ -1828,7 +1828,7 @@ Rcpp::List rIndepNormalGammaReg(
     }
     
     
-    if(disp_grid_type==2){
+    // if(disp_grid_type==2){
         
         // serial version (assumes same signature)
     sim_temp = rIndepNormalGammaReg_std(
@@ -1849,30 +1849,30 @@ Rcpp::List rIndepNormalGammaReg(
       verbose
     );
     
-    }
+    // }
     
-    if(disp_grid_type==1){
-      
-    // serial version (assumes same signature)
-    sim_temp = rIndepNormalGammaReg_std_face(
-      n,
-      Rcpp::as<Rcpp::NumericVector>(y),
-      x2_std,
-      mu2_std,
-      P2_std,
-      alpha,
-      wt,
-      f2,
-      Env3,
-      gamma_list_new,
-      UB_list_new,
-      family,
-      link,
-      progbar,
-      verbose
-    );
-    
-    }
+    // if(disp_grid_type==1){
+    //   
+    // // serial version (assumes same signature)
+    // sim_temp = rIndepNormalGammaReg_std_face(
+    //   n,
+    //   Rcpp::as<Rcpp::NumericVector>(y),
+    //   x2_std,
+    //   mu2_std,
+    //   P2_std,
+    //   alpha,
+    //   wt,
+    //   f2,
+    //   Env3,
+    //   gamma_list_new,
+    //   UB_list_new,
+    //   family,
+    //   link,
+    //   progbar,
+    //   verbose
+    // );
+    // 
+    // }
     
     
     if (verbose) {
