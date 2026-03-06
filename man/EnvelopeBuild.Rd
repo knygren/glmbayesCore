@@ -413,9 +413,9 @@ point \eqn{\theta = \bar{\theta}}, where
 \section{Use of the envelope during sampling}{
 
 
-The functions \code{rnnorm_reg_std_cpp()} and \code{rnnorm_reg_std_cpp_parallel()}
-use the envelope to generate posterior samples via rejection sampling. Although not exported,
-these functions are called internally by \code{rnnorm_reg_cpp()}, which in turn is invoked by
+The standardized sampler called through \code{.rNormalGLM_std_cpp()}
+uses the envelope to generate posterior samples via rejection sampling. Although not exported,
+this routine is called internally by \code{.rNormalGLM_cpp()}, which in turn is invoked by
 the user-facing function \code{rNormal_reg()}. Together, these routines implement
 envelope-based sampling for generalized linear models with log-concave likelihood functions
 and multivariate normal priors.

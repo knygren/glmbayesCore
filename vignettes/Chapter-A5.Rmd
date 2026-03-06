@@ -30,7 +30,7 @@ Many of the key models implemented in the `glmbayes` package make use of indepen
 
 The objective of this vignette is to provide a detailed overview of the implementation of these simulation methods. To that end, this vignette contains the following:
 
-(i) An overview of the structure of the main `.cpp` function (`.rnnorm_reg_cpp`) that serves as the "director of traffic" for the simulation pipeline and its connection to the underlying theory.
+(i) An overview of the structure of the main `.cpp` function (`.rNormalGLM_cpp`) that serves as the "director of traffic" for the simulation pipeline and its connection to the underlying theory.
 
 (ii) A detailed discussion of input validation and preprocessing steps, including dimension checks, dispersion adjustment, and offset transformation.
 
@@ -49,9 +49,9 @@ The objective of this vignette is to provide a detailed overview of the implemen
 This structure is designed to guide users through both the theoretical foundations and practical implementation of the simulation routines in `glmbayes`.
 
 
-## 2. Overview of the Main Simulation Function: `.rnnorm_reg_cpp`
+## 2. Overview of the Main Simulation Function: `.rNormalGLM_cpp`
 
-The core simulation engine in the `glmbayes` package is the `.rnnorm_reg_cpp` function, implemented in C++ via Rcpp. This function orchestrates the entire simulation pipeline, from preprocessing inputs to generating posterior samples. It serves as the "director of traffic," coordinating optimization, standardization, envelope sizing, envelope construction, and sampling. Below is a breakdown of its key components:
+The core simulation engine in the `glmbayes` package is the `.rNormalGLM_cpp` function, implemented in C++ via Rcpp. This function orchestrates the entire simulation pipeline, from preprocessing inputs to generating posterior samples. It serves as the "director of traffic," coordinating optimization, standardization, envelope sizing, envelope construction, and sampling. Below is a breakdown of its key components:
 
 (i) **Input Validation and Preprocessing**  
 Ensures consistency in dimensions across inputs (`x`, `y`, `mu`, `P`, `offset`, `wt`).  
@@ -79,7 +79,7 @@ Supports OpenCL acceleration for large models and grid sorting for small sample 
 
 (vi) **Simulation Execution**  
 Chooses between serial and parallel sampling based on `use_parallel` and sample size `n`.  
-Executes either `rnnorm_reg_std_cpp()` or `rnnorm_reg_std_cpp_parallel()` to generate samples.  
+Executes the standardized sampler via `.rNormalGLM_std_cpp()` to generate samples.
 Verbose mode provides diagnostic timestamps.
 
 (vii) **Post-Processing and Output**  
@@ -473,7 +473,7 @@ Normalization ensures the mixture of restricted densities forms a valid dominati
 
 ## 7. Simulation Execution
 
-The functions `rnnorm_reg_std_cpp()` and `rnnorm_reg_std_cpp_parallel()` use the envelope to generate posterior samples via rejection sampling. Although not exported, these functions are called internally by `rnnorm_reg_cpp()`, which in turn is invoked by the user-facing function `rNormal_reg()`. Together, these routines implement envelope-based sampling for generalized linear models with log-concave likelihood functions and multivariate normal priors.
+The standardized sampler called through `.rNormalGLM_std_cpp()` uses the envelope to generate posterior samples via rejection sampling. This routine is called internally by `.rNormalGLM_cpp()`, which in turn is invoked by the user-facing function `rNormal_reg()`. Together, these routines implement envelope-based sampling for generalized linear models with log-concave likelihood functions and multivariate normal priors.
 
 The envelope provides a mixture of restricted likelihood–subgradient densities, each defined over a region \( A_i \), with associated mixture weights \( \tilde{p}_i \) stored in `PLSD`. The sampling proceeds as follows:
 
@@ -522,7 +522,7 @@ The components returned by `EnvelopeBuild()` are used in specific steps of the s
 
 ## 8. Post-Processing and Output
 
-This section documents the exact reverse transformations applied to sampled draws and the structure of the object returned by `.rnnorm_reg_cpp`.
+This section documents the exact reverse transformations applied to sampled draws and the structure of the object returned by `.rNormalGLM_cpp`.
 
 ### 8.1 Reverse-transformation pipeline
 - **Undo L3 transform**: left-multiply the matrix of standardized draws by `L3Inv`.  

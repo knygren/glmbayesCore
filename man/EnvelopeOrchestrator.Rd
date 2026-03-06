@@ -124,8 +124,8 @@ reduces the number of exported C++ functions required by the package.
 
 The function does \strong{not} perform simulation.
 Simulation should be carried out afterward using either
-\code{.rindep_norm_gamma_reg_std_cpp()} or
-\code{.rindep_norm_gamma_reg_std_parallel_cpp()}, depending on the
+\code{.rIndepNormalGammaReg_std_cpp()} or
+\code{.rIndepNormalGammaReg_std_parallel_cpp()}, depending on the
 \code{use_parallel} flag.
 }
 \examples{

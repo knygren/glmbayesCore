@@ -277,7 +277,7 @@ y<-lm.D9$y
 b_old=lm.D9$coefficients
 v_old=lm_summary$sigma^2
 
-#### Set up for rglmb_dispersion
+#### Set up for rGamma_reg
 
 n0=0.1
 shape=n0/2
@@ -385,9 +385,9 @@ In this section, we cover additional functions included in the package that most
 
 One of the key items returned by the *pfamily* functions is an assigned simulation function to be called during the estimation process (one for each pfamily).  These functions can also be called directly (though we don't recommend it). The Function documentation for each of these underlying functions contains information on the type of algorihm used to generate the sample. We refer the reader to the documentation for each of these functions but note the following relationship:
 
-* The *rglmb_norm_reg* function is used for the *dNormal* *pfamily*
-* The *rglmb_dispersion* function is used for the *dGamma* *pfamily*
-* The *rnorm_gamma_reg* function is used for the *dNormal_Gamma* *pfamily*
+* The *rNormal_reg* function is used for the *dNormal* *pfamily*
+* The *rGamma_reg* function is used for the *dGamma* *pfamily*
+* The *rNormalGamma_reg* function is used for the *dNormal_Gamma* *pfamily*
 
 ## Normal_ct Functions
 
@@ -402,8 +402,8 @@ For estimation of Bayesian generalized linear models with Normal Priors but with
 * *EnvelopeBuild* builds the enveloping function used during the simulation 
 * *EnvelopeOpt* selects an "optimal" size for the Grid used during Envelope construction
 * *EnvelopeSort* sorts the envelope after construction to increade efficiency of the simulation
-* *Set_Grid*  calculates log-densities associated with the restricted normals used to generate candidated
-* *set_logP* calculates constans used during sampling from the constructed envelope
+* *EnvelopeSetGrid* calculates log-densities associated with the restricted normals used to generate candidates
+* *EnvelopeSetLogP* calculates constants used during sampling from the constructed envelope
 * *rnnorm_reg_std* simulates from a standardized Bayesian Generalized linear model using an Enveloping function
 * *Neg_logLik*  returns the Negative log-likelihood for a Generalized Linear Model
 * *Neg_logPost* returns the negative log-posterior for a Bayesian Generalized Linear Model

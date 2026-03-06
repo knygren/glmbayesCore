@@ -30,7 +30,7 @@ x<-as.matrix(lmb.D9$x)
 
 prior_list=list(mu=mu,Sigma=V/disp_ML,shape=shape,rate=rate)
 
-ng.D9=rnorm_gamma_reg(n=1000,y=y,x=x,
+ng.D9=rNormalGamma_reg(n=1000,y=y,x=x,
   prior_list=prior_list)
 
 print(ng.D9)
@@ -42,7 +42,7 @@ summary(ng.D9$coefficients)
 b_old=lm.D9$coefficients
 v_old=lm_summary$sigma^2
 
-#### Set up for rglmb_dispersion
+#### Set up for rGamma_reg
 
 n0=0.1
 shape=n0/2
@@ -76,7 +76,7 @@ rate/shape ## Should match v_prior (currently also v_old)
 ## We see that this currently matches 
 ### (test different v_prior with various prior observations below) 
 prior_list=list(shape=shape,rate=rate,beta=b_old)
-dispout<-rglmb_dispersion(n=n,y,x,prior_list=prior_list,
+dispout<-rGamma_reg(n=n,y,x,prior_list=prior_list,
 offset= rep(0, length(y)),family=gaussian())
 
 mean(dispout$dispersion) 

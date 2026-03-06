@@ -985,9 +985,9 @@ EnvelopeOpt<-function(a1,n,core_cnt=1L){
 #' }
 #' @section Use of the envelope during sampling:
 #'
-#' The functions \code{rnnorm_reg_std_cpp()} and \code{rnnorm_reg_std_cpp_parallel()}
-#' use the envelope to generate posterior samples via rejection sampling. Although not exported,
-#' these functions are called internally by \code{rnnorm_reg_cpp()}, which in turn is invoked by
+#' The standardized sampler called through \code{.rNormalGLM_std_cpp()}
+#' uses the envelope to generate posterior samples via rejection sampling. Although not exported,
+#' this routine is called internally by \code{.rNormalGLM_cpp()}, which in turn is invoked by
 #' the user-facing function \code{rNormal_reg()}. Together, these routines implement
 #' envelope-based sampling for generalized linear models with log-concave likelihood functions
 #' and multivariate normal priors.
@@ -1858,8 +1858,8 @@ EnvelopeSetLogP <- function(logP, NegLL, cbars, G3) {
 #'   (`NegLL`) and the gradient matrix (`cbars`) - are not endpoints in
 #'   themselves. They form the *envelope* used in the rejection sampler
 #'   implemented by internal functions such as
-#'   `rnnorm_reg_std_cpp()` and `rnnorm_reg_std_cpp_parallel()`.
-#' * These routines are called by `rnnorm_reg_cpp()`, which underlies the
+#'   `.rNormalGLM_std_cpp()`.
+#' * This routine is called by `.rNormalGLM_cpp()`, which underlies the
 #'   user-facing function `rNormal_reg()`. Together they implement
 #'   envelope-based posterior sampling for GLMs with log-concave likelihoods
 #'   and multivariate normal priors.

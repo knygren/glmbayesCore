@@ -147,8 +147,8 @@ These pfamilies determine which simfunction is used. For example:
 
 - dNormal selects rNormal_reg
 - dGamma selects rGamma_reg
-- dNormal_Gamma selects rNormal_Gamma_reg
-- dIndependent_Normal_Gamma selects rindependent_norm_gamma_reg
+- dNormal_Gamma selects rNormalGamma_reg
+- dIndependent_Normal_Gamma selects rindepNormalGamma_reg
 
 Because each pfamily embeds its own simulation function, `rglmb()` and `rlmb()` do not need to
 contain any special-case logic. Once the user supplies a pfamily object, the correct simfunction
@@ -200,8 +200,8 @@ accept-reject methods.
 The pfamily system dispatches to one of four simfunctions:
 
 - `rNormal_reg`
-- `rNormal_Gamma_reg`
-- `rindependent_norm_gamma_reg`
+- `rNormalGamma_reg`
+- `rindepNormalGamma_reg`
 - `rGamma_reg`
 
 These functions implement the sampling algorithms described in Appendices A2, A5, A6, and A7. The next
@@ -273,10 +273,10 @@ envelope-based.
 +----------------------+----------------------+------------------------------+------------------------------+---------------------------+
 | Gaussian             | identity             | dGamma                       | rGamma_reg                   | Conjugate Gamma [R]       |
 +----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Gaussian             | identity             | dNormal_Gamma                | rNormal_Gamma_reg            | Conjugate Normal-Gamma [R]|
+| Gaussian             | identity             | dNormal_Gamma                | rNormalGamma_reg             | Conjugate Normal-Gamma [R]|
 +----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Gaussian             | identity             | dIndependent                 | rindependent                 | Envelope-based joint      |
-|                      |                      | _Normal_Gamma                | _norm_gamma_reg              | sampler [C++]             |
+| Gaussian             | identity             | dIndependent_Normal_Gamma    | rindepNormalGamma_reg        | Envelope-based joint      |
+|                      |                      |                              |                              | sampler [C++]             |
 +----------------------+----------------------+------------------------------+------------------------------+---------------------------+
 | Poisson              | log                  | dNormal                      | rNormal_reg                  | Envelope-based [C++]      |
 +----------------------+----------------------+------------------------------+------------------------------+---------------------------+
@@ -305,12 +305,12 @@ Appendices A5, A6, and A7.
 +----------------------+----------------------+----------------------+-------------------------------------------+
 | **Simfunction**      | **Family**           | **C++ File**         | **C++ Function(s) Called**                |
 +----------------------+----------------------+----------------------+-------------------------------------------+
-| rNormal_reg          | Gaussian             | rnorm_reg_cpp.cpp    | rnorm_reg_cpp                             |
+| rNormal_reg          | Gaussian             | rNormalReg.cpp       | rNormalReg_cpp_export                     |
 +----------------------+----------------------+----------------------+-------------------------------------------+
-| rNormal_reg          | All non-Gaussian     | rnnorm_reg_cpp.cpp   | rnnorm_reg_cpp                            |
+| rNormal_reg          | All non-Gaussian     | rNormalGLM.cpp       | rNormalGLM_cpp_export                     |
 +----------------------+----------------------+----------------------+-------------------------------------------+
-| rindependent         | Gaussian             | rindep_norm_gamma    | rindep_norm_gamma_reg_std_cpp             |
-| _norm_gamma_reg      |                      | _reg_cpp.cpp         | rindep_norm_gamma_reg_std_parallel_cpp    |
+| rindepNormalGamma_reg| Gaussian             | rIndepNormalGammaReg.cpp | rIndepNormalGammaReg_std_cpp_export   |
+|                      |                      |                      | rIndepNormalGammaReg_std_parallel_cpp_export |
 +----------------------+----------------------+----------------------+-------------------------------------------+
 | rGamma_reg           | Gaussian             | (none)               | (uses R-level rgamma or ctrgamma)         |
 +----------------------+----------------------+----------------------+-------------------------------------------+
@@ -319,7 +319,7 @@ Appendices A5, A6, and A7.
 
 Notes:
 - `rNormal_reg` uses different C++ backends depending on whether the likelihood is Gaussian or non-Gaussian.
-- `rindependent_norm_gamma_reg` always uses C++ for the joint sampler.
+- `rindepNormalGamma_reg` always uses C++ for the joint sampler.
 - `rGamma_reg` does not call a dedicated C++ simulation routine, but it does use the R-level `ctrgamma`
   function for truncated Gamma proposals.
 - Envelope construction routines (`EnvelopeBuild`, `EnvelopeDispersionBuild_cpp`, etc.) are documented
@@ -373,7 +373,7 @@ The simulation functions are grounded in the following theoretical results:
   Provides the theory behind the dispersion sampler used in `rGamma_reg`.
 
 - Appendix A7: Accept-reject sampling for Gaussian regression with independent Normal-Gamma priors.
-  Provides the theory behind the joint sampler used in `rindependent_norm_gamma_reg`.
+  Provides the theory behind the joint sampler used in `rindepNormalGamma_reg`.
 
 These references provide the mathematical justification for the envelope-based methods implemented in the simfunctions.
 
@@ -393,9 +393,9 @@ rNormal_reg                 gaussian(identity)
                             quasibinomial(logit, probit, cloglog)
                             Gamma(log)
 
-rNormal_Gamma_reg           gaussian(identity)
+rNormalGamma_reg            gaussian(identity)
 
-rindependent_norm_gamma_reg gaussian(identity)
+rindepNormalGamma_reg       gaussian(identity)
 
 rGamma_reg                  gaussian(identity)
                             Gamma(log)
@@ -422,11 +422,11 @@ Required prior_list components (from dNormal):
 
 **Conjugate case:**  
 Gaussian likelihood with Normal prior.  
-Sampling uses direct multivariate normal draws via `.rnorm_reg_cpp`.
+Sampling uses direct multivariate normal draws via `.rNormalReg_cpp`.
 
 **Envelope-based case:**  
 All non-Gaussian GLMs.  
-Uses `.rnnorm_reg_cpp` and `EnvelopeBuild` to construct a likelihood-subgradient envelope.
+Uses `.rNormalGLM_cpp` and `EnvelopeBuild` to construct a likelihood-subgradient envelope.
 
 **Implementation sketch:**  
 1. Compute posterior mode using `optim` (non-Gaussian) or `lm.fit` (Gaussian).  
@@ -438,13 +438,13 @@ Uses `.rnnorm_reg_cpp` and `EnvelopeBuild` to construct a likelihood-subgradient
 JASA 2006, Appendix A5.
 
 
-### 5.2 rNormal_Gamma_reg
+### 5.2 rNormalGamma_reg
 
 **Purpose:**  
 Conjugate Normal-Gamma regression for Gaussian likelihoods.
 
 Function signature:
-rNormal_Gamma_reg(n, y, x, prior_list,
+rNormalGamma_reg(n, y, x, prior_list,
                   offset = NULL, weights = 1,
                   family = gaussian(),
                   Gridtype = 2, n_envopt = NULL,
@@ -470,13 +470,13 @@ Draw tau from Gamma, then draw beta from conditional Normal.
 Classical Normal-Gamma theory.
 
 
-### 5.3 rindependent_norm_gamma_reg
+### 5.3 rindepNormalGamma_reg
 
 **Purpose:**  
 Joint sampling of (beta, phi) for Gaussian regression with independent Normal-Gamma priors.
 
 Function signature:
-rindependent_norm_gamma_reg(n, y, x, prior_list,
+rindepNormalGamma_reg(n, y, x, prior_list,
                             offset = NULL, weights = 1,
                             family = gaussian(),
                             Gridtype = 2, n_envopt = NULL,
@@ -495,7 +495,7 @@ Required prior_list components (from dIndependent_Normal_Gamma):
 Envelope-based joint sampler using a shared envelope over beta and dispersion bounds.
 
 **Backend:**  
-- `.rindep_norm_gamma_reg_std_cpp`  
+- `.rIndepNormalGammaReg_std_cpp`  
 - `EnvelopeDispersionBuild_cpp`  
 - `EnvelopeBuild`
 
@@ -582,8 +582,8 @@ The core simulation routines are implemented in:
 
 - `simfunctions.R`
 
-This file contains the four primary simfunctions (`rNormal_reg`, `rNormal_Gamma_reg`,
-`rindependent_norm_gamma_reg`, `rGamma_reg`) and the R-level logic that interfaces with the
+This file contains the four primary simfunctions (`rNormal_reg`, `rNormalGamma_reg`,
+`rindepNormalGamma_reg`, `rGamma_reg`) and the R-level logic that interfaces with the
 C/C++ backends.
 
 ### 7.1 C and C++ Backends Used by the Simfunctions
@@ -592,15 +592,15 @@ Several simfunctions rely on optimized C/C++ routines for envelope construction,
 evaluation, and sampling. These routines are located in the following source files:
 
 **Coefficient samplers (Normal priors):**
-- `rnorm_reg_cpp.cpp`  
+- `rNormalReg.cpp`  
   Backend for Gaussian–Normal conjugate sampling.
-- `rnnorm_reg_cpp.cpp`  
+- `rNormalGLM.cpp`  
   Backend for non-Gaussian Normal-prior envelope sampling.
 
 **Joint Normal–Gamma samplers:**
-- `rindep_norm_gamma_reg_std_cpp.cpp`  
+- `rIndepNormalGammaReg.cpp`  
   Standard joint sampler for independent Normal–Gamma priors.
-- `rindep_norm_gamma_reg_std_parallel_cpp.cpp`  
+- `rIndepNormalGammaReg.cpp`  
   Parallelized version of the joint sampler.
 
 **Envelope construction routines:**

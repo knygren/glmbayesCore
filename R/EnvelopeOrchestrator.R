@@ -74,8 +74,8 @@
 #'
 #' The function does **not** perform simulation.  
 #' Simulation should be carried out afterward using either
-#' `.rindep_norm_gamma_reg_std_cpp()` or
-#' `.rindep_norm_gamma_reg_std_parallel_cpp()`, depending on the
+#' `.rIndepNormalGammaReg_std_cpp()` or
+#' `.rIndepNormalGammaReg_std_parallel_cpp()`, depending on the
 #' \code{use_parallel} flag.
 #'
 #' @seealso

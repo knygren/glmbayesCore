@@ -135,8 +135,8 @@ whether OpenCL acceleration is likely to be beneficial.
 (\code{NegLL}) and the gradient matrix (\code{cbars}) - are not endpoints in
 themselves. They form the \emph{envelope} used in the rejection sampler
 implemented by internal functions such as
-\code{rnnorm_reg_std_cpp()} and \code{rnnorm_reg_std_cpp_parallel()}.
-\item These routines are called by \code{rnnorm_reg_cpp()}, which underlies the
+\code{.rNormalGLM_std_cpp()}.
+\item This routine is called by \code{.rNormalGLM_cpp()}, which underlies the
 user-facing function \code{rNormal_reg()}. Together they implement
 envelope-based posterior sampling for GLMs with log-concave likelihoods
 and multivariate normal priors.
