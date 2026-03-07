@@ -1,6 +1,7 @@
 #' Simulate Responses
 #'
-#' Simulate responses from the distribution corresponding to a fitted \code{glmb} object.
+#' Simulate responses from the posterior predictive distribution corresponding to a
+#' fitted \code{glmb} object \insertCite{Gelman2013}{glmbayes}.
 #' @param object An object of class \code{glmb}, typically the result of a call to the 
 #' function \code{glmb}.
 #' @param nsim Defunct (see below).
@@ -10,8 +11,12 @@
 #' frequently include a matrix pred of simulated predictions from
 #' the predict function, the family (e.g., binomial) and an optional
 #' vector of weights specifying prior.weights for the simulated values (default is 1)
-#' @return Simulated values for data corresponding to simulated model predictions that correspond either 
-#' to the original data or to a \code{newdata} data frame provided to the predict function. 
+#' @return Simulated values for data corresponding to simulated model predictions that correspond either
+#' to the original data or to a \code{newdata} data frame provided to the predict function.
+#' @seealso \code{\link{predict.glmb}}, \code{\link{glmb}}; see \insertCite{glmbayesChapter04}{glmbayes} for model statistics.
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_residuals.glmb.R
 #' @export
 #' @method  simulate glmb

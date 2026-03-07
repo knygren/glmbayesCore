@@ -654,13 +654,19 @@ print.PriorSetup <- function(x, ...) {
 
 #' Checks for Prior-data conflicts
 #'
-#' Checks if the credible intervals for the prior overlaps with the implied confidence intervals from 
-#' the classical model that comes from a call to the glm function 
+#' Checks if the credible intervals for the prior overlap with the implied confidence intervals
+#' from the classical model (obtained via \code{\link[stats]{glm}}). The approach relates to
+#' prior-data conflict checks \insertCite{EvansMoshonov2006}{glmbayes}.
+#'
 #' @param level the confidence level at which the Prior-data conflict should be checked.
 #' @inheritParams glmb
 #' @return A vector where each item provided the ratio of the absolue value for the difference between the 
 #' prior and maximum likelihood estimate divided by the length of the sum of half of the two intervals 
 #' (where normality is assumed)
+#' @seealso \code{\link{Prior_Setup}}, \code{\link{glmb}}; see \insertCite{glmbayesChapter03}{glmbayes} for prior tailoring.
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @family prior
 #' @example inst/examples/Ex_Prior_Check.R
 #' @export

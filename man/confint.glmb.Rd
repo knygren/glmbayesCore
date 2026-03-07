@@ -22,7 +22,9 @@ upper credible limits for each parameter. These will be labeled
 (1-level)/2 and 1-(1-level)/2 in \\% (by default 2.5\\% and 97.5\\%).
 }
 \description{
-Computes credible intervals for Model Parameters
+Computes Bayesian credible intervals for model parameters from posterior draws.
+Intervals are constructed as quantiles of the posterior distribution, following
+the standard approach for posterior summaries \insertCite{Gelman2013}{glmbayes}.
 }
 \examples{
 
@@ -43,4 +45,11 @@ glmb.D93<-glmb(n=1000,counts ~ outcome + treatment,
                family = poisson(),pfamily=dNormal(mu=mu,Sigma=V))
 ## ----glmb confint-------------------------------------------------------------
 confint(glmb.D93)
+}
+\references{
+\insertAllCited{}
+}
+\seealso{
+\code{\link{summary.glmb}}, \code{\link{vcov.glmb}}, \code{\link{glmb}},
+\code{\link[stats]{confint}} for classical confidence intervals
 }

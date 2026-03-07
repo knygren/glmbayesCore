@@ -2,12 +2,12 @@
 % Please edit documentation in R/vcov.glmb.R
 \name{vcov.glmb}
 \alias{vcov.glmb}
-\title{Calculate Variance-Covariance Matrux for a Fitted Model Object}
+\title{Calculate Variance-Covariance Matrix for a Fitted Model Object}
 \usage{
 \method{vcov}{glmb}(object, ...)
 }
 \arguments{
-\item{object}{fitted model object, typically the result of a call to \code{"glmb"}.}
+\item{object}{fitted model object, typically the result of a call to \code{\link{glmb}}.}
 
 \item{\ldots}{additional arguments for method functions.}
 }
@@ -18,8 +18,8 @@ row and column names corresponding to the parameter names given by the
 \code{\link{coef}} method.
 }
 \description{
-Returns the variance-covariance matrix of the main parameters of
-a fitted model object.
+Returns the posterior variance-covariance matrix of the regression coefficients
+from a fitted Bayesian GLM object \insertCite{Gelman2013}{glmbayes}.
 }
 \examples{
 ## ----dobson-------------------------------------------------------------------
@@ -41,4 +41,11 @@ glmb.D93<-glmb(n=1000,counts ~ outcome + treatment,
 ## ----glmb vcov----------------------------------------------------------------
 vcov(glmb.D93)
 
+}
+\references{
+\insertAllCited{}
+}
+\seealso{
+\code{\link{confint.glmb}}, \code{\link{summary.glmb}}, \code{\link{glmb}},
+\code{\link[stats]{vcov}}
 }

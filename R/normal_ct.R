@@ -32,10 +32,15 @@
 #' The sum of the exponentiated values for the two (exp(lgrt)+exp(lglt)) must 
 #' sum to more than 1.
 #' 
-#' These functions are mainly used to handle cases where the differences 
+#' These functions are mainly used to handle cases where the differences
 #' between the upper and lower bounds \code{b-a} are small. In such cases,
-#' using \code{pnorm(b)-pnorm(a)} may result in 0 being returned even when the 
-#' difference is supposed to be positive.
+#' using \code{pnorm(b)-pnorm(a)} may result in 0 being returned even when the
+#' difference is supposed to be positive. They are used in envelope-based
+#' accept-reject sampling for Bayesian GLMs \insertCite{Nygren2006}{glmbayes}.
+#' @seealso \code{\link{Gamma_ct}}, \code{\link{EnvelopeBuild}}
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_Normal_ct.R
 #' @rdname Normal_ct
 #' @order 1

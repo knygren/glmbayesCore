@@ -55,9 +55,14 @@
 #'
 #' These functions are primarily intended for use in hierarchical Bayesian
 #' models where precision parameters are updated under tight truncation
-#' constraints, and where numerical stability is essential for reliable MCMC
-#' performance.
+#' constraints, and where numerical stability is essential for reliable sampling
+#' performance. They are used in envelope-based dispersion sampling
+#' \insertCite{Nygren2006}{glmbayes}.
 #'
+#' @seealso \code{\link{Normal_ct}}, \code{\link{InvGamma_ct}}, \code{\link{EnvelopeDispersionBuild}}
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @rdname Gamma_ct
 #' @order 1
 #' @export

@@ -1,9 +1,23 @@
 #' Bayesian Regression Diagnostics
 #'
 #' This function provides the basic quantities which are used in forming a wide variety of diagnostics for checking
-#' the quality of Bayesian regression fits.
+#' the quality of Bayesian regression fits. These methods delegate to \code{\link[stats]{influence}},
+#' \code{\link[stats]{cooks.distance}}, \code{\link[stats]{dfbetas}}, and related functions in the \pkg{stats}
+#' package, applied to the fitted GLM component stored in the model object.
+#'
 #' @inheritParams stats::lm.influence
-#' @return a \code{\link{list}} wih components:
+#' @return a \code{\link{list}} with components as returned by \code{\link[stats]{influence}}.
+#' @details
+#' Cook's distance was introduced by \insertCite{Cook1977}{glmbayes}. The dfbetas, dffits, and covratio
+#' diagnostics follow the framework of \insertCite{BelsleyKuhWelsch1980}{glmbayes}. Because \code{glmb}
+#' and \code{lmb} store coefficient draws rather than a single mode, these methods use the fitted
+#' \code{fit} component (from the underlying \code{glm}/\code{lm} fit at the posterior mode) for
+#' influence calculations.
+#' @seealso \code{\link[stats]{influence}}, \code{\link[stats]{influence.measures}},
+#' \code{\link[stats]{cooks.distance}}, \code{\link[stats]{dfbetas}}, \code{\link{summary.glmb}}
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_glmb.wfit.R
 #' @method influence glmb
 #' @export 
@@ -22,12 +36,13 @@ influence.glmb<-function(model,...){
 
 #' Bayesian Regression Diagnostics
 #'
-#' This function provides the basic quantities which are used in forming a wide variety of diagnostics for checking
-#' the quality of Bayesian regression fits.
-#' @param infl influence structure as returned by \code{influence.glmb} 
+#' These functions compute Cook's distance, dfbetas, dffits, covratio, and standardized/studentized
+#' residuals for fitted Bayesian GLM objects. They delegate to the corresponding \pkg{stats} functions
+#' applied to the fitted GLM component.
+#' @param infl influence structure as returned by \code{influence.glmb}
 #' (the latter only for the glm method of \code{rstudent} and \code{cooks.distance}).
 #' @inheritParams stats::influence.measures
-#' @return a \code{\link{list}} wih components:
+#' @return a \code{\link{list}} with components as returned by the underlying \pkg{stats} functions.
 #' @example inst/examples/Ex_glmb.wfit.R
 #' @export 
 

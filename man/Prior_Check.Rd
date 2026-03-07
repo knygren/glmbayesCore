@@ -117,8 +117,9 @@ prior and maximum likelihood estimate divided by the length of the sum of half o
 (where normality is assumed)
 }
 \description{
-Checks if the credible intervals for the prior overlaps with the implied confidence intervals from
-the classical model that comes from a call to the glm function
+Checks if the credible intervals for the prior overlap with the implied confidence intervals
+from the classical model (obtained via \code{\link[stats]{glm}}). The approach relates to
+prior-data conflict checks \insertCite{EvansMoshonov2006}{glmbayes}.
 }
 \examples{
 ## Dobson (1990) Page 93: Randomized Controlled Trial :
@@ -138,7 +139,12 @@ mu[1,1]=log(mean(counts))
 Prior_Check(counts ~ outcome + treatment,family = poisson(),
             pfamily=dNormal(mu=mu,Sigma=V))
 }
+\references{
+\insertAllCited{}
+}
 \seealso{
+\code{\link{Prior_Setup}}, \code{\link{glmb}}; see \insertCite{glmbayesChapter03}{glmbayes} for prior tailoring.
+
 Other prior: 
 \code{\link{Prior_Setup}()}
 }

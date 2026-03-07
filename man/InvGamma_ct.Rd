@@ -63,5 +63,12 @@ These functions are primarily intended for hierarchical Bayesian models in
 which dispersion parameters are updated under tight truncation constraints.
 They provide a stable alternative to direct manipulation of the Gamma
 distribution when working on the dispersion scale is more natural or more
-numerically robust.
+numerically robust. They are used in envelope-based dispersion sampling
+\insertCite{Nygren2006}{glmbayes}.
+}
+\references{
+\insertAllCited{}
+}
+\seealso{
+\code{\link{Gamma_ct}}, \code{\link{Normal_ct}}, \code{\link{EnvelopeDispersionBuild}}
 }

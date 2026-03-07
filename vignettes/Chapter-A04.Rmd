@@ -1,12 +1,12 @@
 Yaml
 
 ---
-title: "Chapter A04: t-statistics for Bayesian Linear models with normal-gamma priors"
+title: "Chapter A04: Directional Tail Diagnostics for Prior-Posterior Disagreement"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter A04: t-statistics for Bayesian Linear models with normal-gamma priors}
+  %\VignetteIndexEntry{Chapter A04: Directional Tail Diagnostics for Prior-Posterior Disagreement}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,6 +21,451 @@ knitr::opts_chunk$set(
 ```{r setup,echo = FALSE}
 library(glmbayes)
 ```
+
+## Directional tail diagnostic (current implementation)
+
+This appendix documents the current `directional_tail()` diagnostic, how to call it directly,
+and how it is used inside `summary.glmb()`.
+
+The diagnostic measures prior-posterior disagreement in a multivariate direction rather than
+coefficient-by-coefficient only. It reports:
+
+- `mahalanobis_shift`: the standardized prior-posterior shift magnitude in whitened space
+- `p_directional`: directional tail probability, `P(delta^T Z <= 0)`
+- `delta`: posterior mean shift vector in whitened coordinates
+
+### Theoretical interpretation and relation to t and F
+
+Let `mu0` denote the reference vector (prior mean by default, or a null/reference mode), and let
+\(\beta^{(m)}\) be posterior draws. `directional_tail()` computes a whitening map from posterior precision
+so that
+
+\[
+Z^{(m)} = W\left(\beta^{(m)} - \mu_0\right),
+\]
+
+with \(W^\top W = \text{Prec}_{post}\). In this scale, Euclidean distance corresponds to
+Mahalanobis distance in the original coefficient space.
+
+Define
+
+\[
+\delta = E[Z \mid y], \qquad d = \|\delta\|_2.
+\]
+
+The function returns \(d\) as `mahalanobis_shift`, and the directional-tail probability
+
+\[
+p_{\text{dir}} = P\!\left(\delta^\top Z \le 0 \mid y\right),
+\]
+
+estimated by posterior draws.
+
+Intuition: \(\delta\) is the posterior mean shift away from the reference in whitened space.
+The event \(\delta^\top Z \le 0\) is the half-space opposite the direction of disagreement, so
+\(p_{\text{dir}}\) quantifies how much posterior mass lies "against" that shift.
+
+Under a Gaussian approximation in whitened space,
+\[
+Z \mid y \approx N(\delta, I_p),
+\]
+then with \(u = \delta/\|\delta\|\),
+\[
+u^\top Z \sim N(d, 1), \qquad
+p_{\text{dir}} = P(u^\top Z \le 0) = \Phi(-d).
+\]
+So the directional tail is a one-dimensional tail probability driven entirely by the standardized
+distance \(d\).
+
+#### Relation to univariate t statistics
+
+For \(p=1\), whitening reduces to scalar standardization and
+\[
+d = \frac{\mu_{post} - \mu_0}{\sigma_{post}},
+\]
+so \(d\) is the posterior z/t-type contrast against \(\mu_0\). In this case:
+
+- two-sided t/z-style tail: \(2\Phi(-|d|)\) (or Student-t analogue with df)
+- directional tail used here: \(\Phi(-|d|)\) when the direction is set by \(\delta\)
+
+Thus `directional_tail()` plays the same role as a one-sided standardized test in the univariate case,
+while still extending naturally to multivariate models.
+
+#### Relation to multivariate Wald/F-style tests
+
+The squared shift
+\[
+d^2 = \delta^\top \delta
+\]
+is the whitened quadratic distance from the reference. This is the same geometric core as
+multivariate Wald statistics (and, after scaling, Hotelling/F forms): larger \(d^2\) means stronger
+global departure from the reference.
+
+Difference in emphasis:
+
+- Wald/Hotelling/F use **radial** evidence (any direction).
+- `directional_tail()` uses **directional half-space** evidence along \(\delta\).
+
+Under the Gaussian approximation, both are monotone in \(d\): as \(d\) increases,
+quadratic-test evidence strengthens and \(p_{\text{dir}}=\Phi(-d)\) decreases.
+
+In this sense, `directional_tail()` is a directional companion to multivariate Wald/F-style testing:
+it retains the same Mahalanobis geometry but reports evidence on an interpretable one-sided directional
+probability scale.
+
+### Interpretation: what probability is being assessed?
+
+This is the key conceptual difference from classical p-values.
+
+In a classical t-test, the p-value is a **sampling probability under the null**:
+\[
+P_{H_0}\!\left(T(Y^{rep}) \ge T(y_{obs})\right),
+\]
+that is, how extreme the observed statistic would be in repeated samples if \(H_0\) were true.
+
+By contrast, the directional-tail quantity here is a **posterior probability conditional on the observed data**:
+\[
+p_{\text{dir}} = P\!\left(\delta^\top Z \le 0 \mid y,\ \text{model},\ \text{prior},\ \mu_0\right).
+\]
+
+So the probability being assessed is not a prior probability and not a frequentist repeated-sampling
+probability. It is posterior mass, after updating by the data.
+
+Practical interpretation:
+
+- Small `p_directional`: posterior mass is concentrated in the direction away from the reference \(\mu_0\),
+  indicating stronger directional disagreement.
+- Large `p_directional` (near 0.5): weak directional separation from the reference.
+- Very large values (close to 1) can occur when the sign of \(\delta\) is reversed by construction or when
+  the chosen reference is on the opposite side of most posterior mass.
+
+For `summary.glmb()`, this means:
+
+- `dir_tail` (vs prior): posterior directional disagreement with the prior mean.
+- `dir_tail_null` (vs null): posterior directional disagreement with the null/intercept-only reference used in
+  the summary routine.
+
+#### Univariate connection to known Bayesian tail/sign summaries
+
+In the one-parameter case, directional tail reduces to a one-sided posterior tail area relative to \(\mu_0\):
+
+- if posterior shift is positive: \(p_{\text{dir}} = P(\beta \le \mu_0 \mid y)\)
+- if posterior shift is negative: \(p_{\text{dir}} = P(\beta \ge \mu_0 \mid y)\)
+
+This is closely related to well-known Bayesian sign/tail summaries (including posterior sign probability /
+"probability of direction" style summaries in applied Bayesian reporting). In that language, for a scalar
+parameter, `p_directional` is essentially the opposite-side posterior mass, and the sign probability is
+approximately \(1 - p_{\text{dir}}\).
+
+The main contribution of `directional_tail()` is the **multivariate extension**: it uses whitening plus
+projection onto the posterior shift direction to provide a single coherent directional-tail probability even
+when coefficients are correlated and inference is genuinely multivariate.
+
+### How magnitude compares to classical tests
+
+Because the targets differ (posterior mass vs repeated-sampling extremeness), `p_directional` is not
+numerically identical to a classical p-value. Still, the two are often comparable through the standardized
+shift magnitude \(d\).
+
+In the scalar Gaussian approximation:
+\[
+p_{\text{dir}} \approx \Phi(-|d|), \qquad
+p_{\text{post,2s}} \approx 2\Phi(-|d|),
+\]
+while a classical two-sided p-value is typically
+\[
+p_{\text{classical,2s}} \approx 2\{1-F_t(|t|;\nu)\}
+\]
+(or \(2\Phi(-|z|)\) asymptotically).
+
+#### Strong-prior regime
+
+When the prior is strong relative to the likelihood, two effects dominate:
+
+1. **Centering effect**: posterior mean is pulled toward the prior/reference.
+2. **Precision effect**: posterior covariance contracts along prior-informed directions.
+
+Consequences for `p_directional` vs classical p-values:
+
+- If prior and null/reference are aligned with each other (and with little data contradiction), the posterior
+  shift from \(\mu_0\) is usually smaller, so \(d\) is smaller and `p_directional` tends to be larger
+  (weaker apparent evidence against the reference) than classical p-values.
+- If the prior is strong but centered away from the classical null in the same direction as the data, \(d\)
+  can increase and `p_directional` can be smaller (stronger evidence in that direction) than classical tails.
+- In multivariate settings, this divergence is often anisotropic: prior strength can increase/decrease evidence
+  differently across directions, and `directional_tail()` summarizes the net directional result along \(\delta\).
+
+#### Weak-prior (data-dominant) limit
+
+As prior precision becomes small relative to information in the data:
+
+- posterior mean approaches the MLE (or quasi-MLE),
+- posterior covariance approaches the inverse observed information,
+- \(d\) approaches the usual standardized likelihood-based contrast.
+
+Hence in the univariate case, `p_directional` approaches a one-sided likelihood-based tail measure, and
+\(2\,p_{\text{dir}}\) approaches the familiar two-sided z/t-style tail (asymptotically).
+
+In the multivariate case, \(d^2\) approaches the corresponding Wald quadratic form (and its Hotelling/F
+scaling in finite samples), so Bayesian directional and classical quadratic tests tend to agree more closely
+in large-sample/weak-prior regimes.
+
+#### Scalar decomposition (normal-gamma heuristic)
+
+For one coefficient, the posterior-vs-classical comparison can be decomposed into a center effect and a
+scale effect. Write
+\[
+t_{\text{post}} = \frac{\hat\beta_{\text{post}}-\mu_0}{\text{SE}_{\text{post}}}, \qquad
+t_{\text{class}} = \frac{\hat\beta_{\text{MLE}}-\mu_0}{\text{SE}_{\text{class}}}.
+\]
+Then
+\[
+t_{\text{post}}
+= t_{\text{class}}
+\times
+\underbrace{\frac{\hat\beta_{\text{post}}-\mu_0}{\hat\beta_{\text{MLE}}-\mu_0}}_{\text{center/shrinkage factor } \kappa}
+\times
+\underbrace{\frac{\text{SE}_{\text{class}}}{\text{SE}_{\text{post}}}}_{\text{scale factor}}.
+\]
+
+In conjugate normal-gamma style parameterizations, a common heuristic is
+\[
+\text{SE}_{\text{post}}
+\approx
+\text{SE}_{\text{class}}
+\sqrt{\frac{n-p}{n+n_{\text{prior}}}},
+\]
+so
+\[
+\frac{\text{SE}_{\text{class}}}{\text{SE}_{\text{post}}}
+\approx
+\sqrt{\frac{n+n_{\text{prior}}}{n-p}}.
+\]
+If one also uses a simple shrinkage approximation \(\kappa \approx \frac{n}{n+n_{\text{prior}}}\), then
+\[
+t_{\text{post}}
+\approx
+t_{\text{class}}
+\cdot
+\frac{n}{n+n_{\text{prior}}}
+\cdot
+\sqrt{\frac{n+n_{\text{prior}}}{n-p}}.
+\]
+
+Using \(n_{\text{prior}} = n\,\frac{\text{pwt}}{1-\text{pwt}}\), this can be rewritten as
+\[
+t_{\text{post}}
+\approx
+t_{\text{class}}
+\cdot
+\sqrt{1-\text{pwt}}
+\cdot
+\sqrt{\frac{n}{n-p}}.
+\]
+
+This expression shows why posterior directional tails can be either larger or smaller than classical tails:
+
+- **centering/shrinkage (\(\kappa\))** tends to pull \(t_{\text{post}}\) toward 0,
+- **scale correction** can push \(|t_{\text{post}}|\) upward,
+- the net result depends on their product.
+
+A useful threshold from this heuristic is:
+\[
+\sqrt{\frac{n+n_{\text{prior}}}{n-p}} > 1
+\;\;\Longleftrightarrow\;\;
+n_{\text{prior}} > p,
+\]
+so once prior pseudo-sample size is large relative to dimension, scale effects can dominate unless center
+shrinkage is also strong.
+
+This is the scalar analogue of the multivariate directional-tail story: center and scale are both active,
+and the final probability is driven by the standardized shift magnitude after whitening.
+
+### Incorporating the package example (`Ex_directional_tail.R`)
+
+The package example already demonstrates the intended workflow and interpretation. In particular, it shows:
+
+- fitting a model (`lmb`/`glmb`),
+- calling `directional_tail(fit)`,
+- extracting `mahalanobis_shift`, `p_directional`, and the draw-level objects,
+- visualizing tail vs non-tail draws in whitened and raw coefficient spaces.
+
+A compact usage sketch from that example is:
+
+```{r directional-tail-example-sketched, eval=FALSE}
+example("directional_tail", package = "glmbayes")
+
+# Core objects used in interpretation:
+dt <- directional_tail(fit)
+dt$mahalanobis_shift
+dt$p_directional
+
+# Same quantities are also surfaced in summary output:
+s <- summary(fit)
+s$dir_tail
+s$dir_tail_null
+```
+
+#### Illustrative plots from `Ex_directional_tail.R`
+
+The example script also includes two useful diagnostic visualizations:
+
+1. **Whitened space plot**: tail vs non-tail draws, directional boundary, and shift radius.
+2. **Raw coefficient space plot**: tail vs non-tail draws with prior and posterior centers.
+
+```{r directional-tail-plot-setup, include=FALSE}
+set.seed(360)
+
+ctl <- c(4.17, 5.58, 5.18, 6.11, 4.50, 4.61, 5.17, 4.53, 5.33, 5.14)
+trt <- c(4.81, 4.17, 4.41, 3.59, 5.87, 3.83, 6.03, 4.89, 4.32, 4.69)
+group <- gl(2, 10, 20, labels = c("Ctl", "Trt"))
+weight <- c(ctl, trt)
+dat2 <- data.frame(weight, group)
+
+ps <- Prior_Setup(
+  weight ~ group,
+  family = gaussian(),
+  pwt = 0.01,
+  intercept_source = "null_model",
+  effects_source = "null_effects",
+  data = dat2
+)
+
+fit <- lmb(
+  weight ~ group,
+  dNormal(ps$mu, ps$Sigma, dispersion = ps$dispersion),
+  data = dat2,
+  n = 3000
+)
+```
+
+```{r directional-tail-plot-whitened, eval=TRUE, fig.width=7, fig.height=5}
+dt <- directional_tail(fit)
+
+Z     <- dt$draws$Z
+flag  <- dt$draws$is_tail
+delta <- dt$delta
+w     <- delta
+
+plot(
+  Z,
+  col = ifelse(flag, "red", "blue"),
+  pch = 19,
+  xlab = "Z1",
+  ylab = "Z2",
+  main = "Directional Tail Diagnostic (Whitened Space)"
+)
+
+# Decision boundary orthogonal to direction vector
+abline(a = 0, b = -w[1] / w[2], col = "darkgreen", lty = 2)
+
+# Radius corresponding to Mahalanobis shift
+r <- sqrt(sum(delta^2))
+symbols(
+  delta[1], delta[2],
+  circles = r,
+  inches  = FALSE,
+  add     = TRUE,
+  lwd     = 2,
+  border  = "gray"
+)
+
+points(0, 0, pch = 4, col = "black", lwd = 2)          # reference center in whitened space
+points(delta[1], delta[2], pch = 3, col = "purple", lwd = 2) # posterior shift
+```
+
+```{r directional-tail-plot-raw, eval=TRUE, fig.width=7, fig.height=5}
+B       <- dt$draws$B
+flag    <- dt$draws$is_tail
+mu0     <- as.numeric(fit$Prior$mean)
+mu_post <- colMeans(B)
+
+plot(
+  B,
+  col  = ifelse(flag, "red", "blue"),
+  pch  = 19,
+  xlab = "Coefficient 1",
+  ylab = "Coefficient 2",
+  main = "Directional Tail Diagnostic (Raw Coefficient Space)"
+)
+
+points(mu0[1], mu0[2], pch = 4, col = "black", cex = 1.5)       # reference center
+points(mu_post[1], mu_post[2], pch = 3, col = "darkgreen", cex = 1.5)  # posterior center
+
+legend(
+  "topright",
+  legend = c("Tail draws", "Non-tail draws", "Reference", "Posterior"),
+  col    = c("red", "blue", "black", "darkgreen"),
+  pch    = c(19, 19, 4, 3),
+  bty    = "n"
+)
+```
+
+### How `directional_tail()` is called
+
+The function is exported and can be called directly on a fitted object (`glmb` or `lmb`):
+
+```{r directional-tail-direct, eval=FALSE}
+fit <- glmb(
+  counts ~ outcome + treatment,
+  family = poisson(),
+  pfamily = dNormal(mu = mu, Sigma = V)
+)
+
+dt_prior <- directional_tail(fit)      # reference = prior mean
+dt_prior
+print(dt_prior)
+```
+
+To compare against a user-specified reference (for example a null/intercept-only mode), pass
+`mu0` explicitly:
+
+```{r directional-tail-null, eval=FALSE}
+mu0 <- rep(0, length(fit$Prior$mean))
+names(mu0) <- names(fit$Prior$mean)
+mu0["(Intercept)"] <- coef(glm(counts ~ 1, family = poisson(), data = fit$data))[1]
+
+dt_null <- directional_tail(fit, mu0 = mu0)
+dt_null
+```
+
+### How `summary.glmb()` uses directional tail
+
+`summary.glmb()` computes two directional diagnostics internally:
+
+1. `directional_tail(object)` : posterior vs prior mean
+2. `directional_tail(object, mu0 = null_est_full)` : posterior vs null reference
+
+These are returned in the summary object:
+
+```{r directional-tail-summary, eval=FALSE}
+s <- summary(fit)
+
+s$dir_tail        # vs prior
+s$dir_tail_null   # vs null
+```
+
+The print method displays a compact "Directional Tail Summaries" table with:
+
+- Mahalanobis Distance (`vs Null`, `vs Prior`)
+- Tail Probability (`vs Null`, `vs Prior`)
+
+### Minimal reproducible workflow
+
+The package example `inst/examples/Ex_directional_tail.R` provides a full reproducible script.
+A minimal call pattern is:
+
+```{r directional-tail-minimal, eval=FALSE}
+ps <- Prior_Setup(weight ~ group, family = gaussian(), data = dat2)
+fit <- lmb(weight ~ group, dNormal(ps$mu, ps$Sigma, dispersion = ps$dispersion), data = dat2, n = 10000)
+
+dt <- directional_tail(fit)
+print(dt)
+```
+
+---
+
+## Legacy draft material (kept for now)
 
 ** 1.0  Why the Bayesian tail can be smaller
 
@@ -157,274 +602,3 @@ t_{\text{adj},i}
 
 
 
-
-
-The **glmb** function and related *method functions* that handle the output are designed to be Bayesian versions of the **glm** function and many of its *method functions*. This vignette shows how the basic setup/calling of the functions compare and then walks through how the method functions for glmb can be called to generate similar outputs to those from the glm functions.
-
-**Dobson Randomized Control Data**
-
-To understand how the outputs of the glmb function mirrors those for the glm function, it is useful to take a look at the first portion of the example that is provided with the glm function. The data is based on Randomized Controlled Trial data from Dobson (1990). Here is a view of the data:
-
-```{r dobson}
-## Dobson (1990) Page 93: Randomized Controlled Trial :
-counts <- c(18,17,15,20,10,20,25,13,12)
-outcome <- gl(3,1,9)
-treatment <- gl(3,3)
-print(d.AD <- data.frame(treatment, outcome, counts))
-```
-
-**Calling the two functions**
-
-The example code for the glm function specifies a Poisson regression model for this data. The below code chunks shows how the glmb function can be used in much the same fashion but with some extra requirements. In particular, we need to provide a prior distribution (in this case a Multivariate Normal prior) and related constants (in this case, a prior Mean and and a prior Variance-Covariance matrix) for the coefficients of interest. Optionally, we can also tell the function how many draws to make from the posterior distribution (the default used here generates 1000 iid draws). 
-
-Here is the call to the classical *glm* function:
-
-```{r glm_call,results = "hide"}
-## Call to glm
-glm.D93 <- glm(counts ~ outcome + treatment, 
-              family = poisson())
-```
-
-To use the *glmb* function, we first use a call to a function *Prior_Setup" to initialize the prior and to get the variable names needed. We use the default prior from the Prior_Setup function (discussed further in a separate vignette).
-
-```{r Prior_Setup,results = "hide"}
-## Using glmb
-## Step 1: Set up Default Prior 
-ps=Prior_Setup(counts ~ outcome + treatment,family=poisson())
-mu=ps$mu
-V=ps$Sigma
-```
-
-We now call the *glmb* function and include the default prior
-distribution in addition to the two required arguments for the *glm* function.
-
-```{r Call_glmb,results = "hide"}
-# Step 3: Call the glmb function
-glmb.D93<-glmb(counts ~ outcome + treatment, family=poisson(), pfamily=dNormal(mu=mu,Sigma=V))
-```
-
-
-In the above, it is worth noting the additional step that we went through when specifying the prior. We used a call to the function *Prior_Setup* to get the correct dimensions for the mean and variance-covariance matrices and to initialize the constants. The *Prior_Setup* function also provided information on the Variable names in the design matrix (which also corresponds to the names of the coefficients eventually estimated) so we can make informed changes to the prior if so desired.
-
-The next couple of vignette's will discuss the prior specification in more details. Here we instead focus on reviewing the output from the function and how it can be used.
-
-**Printing the output**
-
-Taking a look at the basic printed output, we can see that the two closely mirror each other with the glmb posterior means replacing the glm maximum likelihood estimates.
-
-
-```{r Printed_Views}
-## Printed view of the output from the glm function 
-print(glm.D93)
-## Printed view of the output from the glmb function 
-print(glmb.D93)
-```
-
-In addition to the posterior means, the *glmb* printed output also returned three pieces of information that are similar to (but not quite the same) as the classical output. The "Effective Number of Parameters" should in general be close to (but not exactly the same) as the number of parameters estimated while the Expected Residual Deviance in general will be higher than the corresponding maximum likelihood estimate for the Residual Deviance (since the latter is designed to minimize it). Finally, the DIC is essentially a Bayesian version of the AIC. These measures will be discussed in greater detail in one of our later vignettes.
-
-**Methods Available**
-
-In addition to the basic print function output, the glmb function returns an object with an assigned class "glmb" for which a number of generic functions (or methods) are available. The class "glmb" inherits from "glm" and "lm" and as such many functions for those classes work directly for "glmb". For some of the instances where the inherited methods fail and/or could produce incorrect results, we have implemented methods specifically for the *glmb* class. The methods for classes *lm*, *glm*, and *glmb* are listed below. We will use many of these later in this vignette.
-
-```{r lm_Methods}
-## Methods for class "lm"
-methods(class="lm")
-```
-
-```{r glm_Methods}
-## Methods for class "glm"
-methods(class="glm")
-```
-
-```{r glmb_Methods}
-## Methods for class "glmb"
-methods(class="glmb")
-```
-
-**The summary functions**
-
-Let's take a closer look at the outputs of the summary functions.
-
-*glm summary output*
-
-In turn, we see the Call, a list of Deviance residuals, and the estimated coefficients. The coefficients are then followed by some additional model related information. 
-
-```{r glm_summary}
-## summary output for the "glm" class
-summary(glm.D93)
-```
-
-*glmb summary output*
-
-The summary for the glmb function follow a similar structure but adds a table containing information related to the prior and the maximum likelihood above the table with the means for the estimated Bayesian coefficients. The output below the main table with coefficients is also modified to contain similar (but slightly different) pieces of information (the details of which are discussed elsewhere).
-
-```{r glmb_summary}
-## summary output for the "glm" class
-summary(glmb.D93)
-```
-
-**Model Fit, Predictions, Deviance Residuals, Covariance Matrices, and Confidence/Credible Intervals**
-
-Let's next take a look at the outputs from these additional methods to see how they compare. Note that the Bayesian version of these contain random draws tied to the underlying distributions so the column means are mostly used in these comparisons.
-
-*Fitted values*
-
-```{r glm fitted outputs}
-## fitted outputs for the glm function
-fitted(glm.D93)
-```
-
-
-```{r glmb fitted outputs}
-## mean of fitted outputs for the glm function
-## works without a "glmb" class specific generic function
-colMeans(fitted(glmb.D93))
-```
-
-*Predictions(linear predictors)*
-
-```{r glm predictions}
-## predictions for the glm function
-predict(glm.D93)
-```
-
-```{r glmb predictions}
-## predictions for the glmb function
-colMeans(glmb.D93$linear.predictors) # no current predict function
-colMeans(predict(glmb.D93)) 
-```
-
-*Residuals*
-
-```{r glm residuals}
-## residuals for the glm function
-residuals(glm.D93)
-```
-
-```{r glmb residuals}
-## residuals for the glmb function
-colMeans(residuals(glmb.D93))
-```
-
-*vcov*
-
-```{r glm vcov}
-## vcov for the glm function
-vcov(glm.D93)
-```
-
-```{r glmb vcov}
-## vcov for the glmb function
-vcov(glmb.D93)
-```
-
-*confint*
-
-Confidence intervals
-```{r glm confint}
-## confint for the glm function
-confint(glm.D93)
-```
-
-```{r glmb confint}
-## confint for the glmb function
-confint(glmb.D93)
-```
-
-
-**AIC/DIC, Deviance, and the Log-Likelihood**
-
-These model statistics are useful when comparing different model specifications. The Bayesian versions of these will be discussed in greater detail in a separate Vignette.
-
-*AIC/DIC*
-
-```{r glm AIC}
-## AIC for the glm function (equivalent degrees of freedom and the AIC)
-extractAIC(glm.D93)
-```
-
-```{r glmb DIC}
-## DIC for the glmb function (estimated effective number of parameters and the DIC)
-extractAIC(glmb.D93)
-```
-
-*Deviance*
-
-```{r glm Deviance}
-## Deviance for the glm function
-deviance(glm.D93)
-```
-
-```{r glmb Deviance}
-## Deviance for the glmb function
-## works without a "glmb" class specific generic function
-mean(deviance(glmb.D93))
-```
-
-*Log-Likelihoods*
-
-```{r glm logLik}
-## Deviance for the glm function
-logLik(glm.D93)
-```
-
-```{r glmb logLik}
-## Deviance for the glmb function
-mean(logLik(glmb.D93))
-```
-
-**Model Frame, formula, family, nobs, and show**
-
-These are mostly useful for understanding various aspects of the model.
-
-*Model Frames*
-
-```{r glm Model Frame}
-## Model Frame for the glm function
-model.frame(glm.D93)
-```
-
-```{r glmb Model Frame}
-## Model Frame for the glmb function
-model.frame(glmb.D93$glm)
-```
-
-*formula*
-
-```{r glm formula}
-## formula for the glm function
-formula(glm.D93)
-```
-
-```{r glmb formula}
-## formula for the glmb function
-formula(glmb.D93)
-```
-*family*
-
-```{r glm family}
-## family for the glm function
-family(glm.D93)
-```
-
-
-```{r glmb family}
-## family for the glmb function
-family(glmb.D93$glm)
-```
-*nobs*
-
-```{r glm nobs}
-## nobs for the glm function
-nobs(glm.D93)
-```
-
-```{r glmb nobs}
-## nobs for the glmb function
-nobs(glmb.D93)
-```
-
-
-*show*
-
-The show method returns the same output as the print function

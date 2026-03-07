@@ -43,7 +43,9 @@ These functions are all \code{\link{methods}} for class \code{glmb} or \code{sum
 The \code{summary.glmb} function summarizes the output from the \code{glmb} function.
 Key output includes mean residuals, information related to the prior, mean coefficients
 with associated stats, percentiles for the coefficients, as well as the effective number of
-parameters and the DIC statistic.
+parameters and the DIC statistic. The \code{dir_tail} component reports the directional tail
+diagnostic; see \code{\link{directional_tail}} and \insertCite{glmbayesChapterA04}{glmbayes}
+for interpretation.
 }
 \examples{
 ###########################  Example for glmb function:
@@ -92,5 +94,6 @@ summary(lmb.D9)
 \insertAllCited{}
 }
 \seealso{
-\code{\link{lmb}}, \code{\link{glmb}}, \code{\link{summary}}, \code{[stats]\link{summary.lm}},\code{[stats]\link{summary.glm}}.
+\code{\link{directional_tail}}, \code{\link{lmb}}, \code{\link{glmb}}, \code{\link{summary}},
+\code{[stats]\link{summary.lm}},\code{[stats]\link{summary.glm}}
 }

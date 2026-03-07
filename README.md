@@ -209,6 +209,9 @@ https://knygren.r-universe.dev/articles/glmbayes/Chapter-A02.html
 - **Chapter A03 — Methods Available in glmbayes**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-A03.html
 
+- **Chapter A04 — Directional Tail Diagnostics for Prior-Posterior Disagreement**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-A04.html
+
 - **Chapter A05 — Simulation Methods - Likelihood Subgradient Densities**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-A05.html
 

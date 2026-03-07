@@ -56,8 +56,10 @@ A matrix of predictions where the rows correspond to the draws from the estimate
 the columns to the observations in the newdata dataset (or the original data if newdata is missing).
 }
 \description{
-Obtains predictions and optionally estimates standard errors of those
-predictions from a fitted Bayesian generalized linear model object.
+Obtains predictions from a fitted Bayesian generalized linear model object.
+Predictions are computed on the link scale or response scale following the GLM
+framework \insertCite{McCullagh1989}{glmbayes}, with posterior draws used to
+produce a matrix of predictions.
 }
 \details{
 If \code{newdata} is omitted the predictions are based on the data
@@ -146,4 +148,11 @@ lines(Age_New, quant2_m,lty=2)
 lines(Age_New, quant1_m_y,lty=2)
 lines(Age_New, quant2_m_y,lty=2)
 
+}
+\references{
+\insertAllCited{}
+}
+\seealso{
+\code{\link{simulate.glmb}}, \code{\link{residuals.glmb}}, \code{\link{glmb}};
+see \insertCite{glmbayesChapter04}{glmbayes} for predictions and model statistics.
 }

@@ -54,7 +54,8 @@ sum to more than 1.
 These functions are mainly used to handle cases where the differences
 between the upper and lower bounds \code{b-a} are small. In such cases,
 using \code{pnorm(b)-pnorm(a)} may result in 0 being returned even when the
-difference is supposed to be positive.
+difference is supposed to be positive. They are used in envelope-based
+accept-reject sampling for Bayesian GLMs \insertCite{Nygren2006}{glmbayes}.
 }
 \examples{
 pnorm_ct(0.2,0.4)
@@ -65,4 +66,10 @@ log(pnorm_ct(0.2,0.4,log.p=FALSE))
 ## but call to pnorm_ct works
 pnorm(0.5)-pnorm(0.4999999999999999)
 pnorm_ct(0.4999999999999999,0.5,log.p=FALSE)
+}
+\references{
+\insertAllCited{}
+}
+\seealso{
+\code{\link{Gamma_ct}}, \code{\link{EnvelopeBuild}}
 }

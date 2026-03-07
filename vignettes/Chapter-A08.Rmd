@@ -1,7 +1,7 @@
-Yaml
-
 ---
 title: "Chapter A08: Overview of Envelope Related Functions"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Chapter A08: Overview of Envelope Related Functions}
@@ -19,3 +19,151 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(glmbayes)
 ```
+
+# Chapter A08: Overview of Envelope Related Functions
+
+## 1. Introduction and Purpose
+
+The `glmbayes` package produces **independent and identically distributed (iid)** posterior samples for Bayesian generalized linear models. When the posterior is not available in closed form (e.g., Poisson or binomial regression with Normal priors, Gaussian regression with independent Normal–Gamma priors), the package uses **accept–reject sampling** based on tight **enveloping functions**. These envelopes are constructed using the **likelihood subgradient** approach of Nygren & Nygren (2006).
+
+This chapter provides a central overview of the envelope-related functions in the package. It consolidates the theoretical foundations, the function map, and the workflow so that users and developers can see how the pieces fit together. For implementation details of the full simulation pipeline, see Chapter A05. For envelope theory in specialized settings, see Chapter A06 (dispersion envelopes) and Chapter A07 (joint envelopes for independent Normal–Gamma priors).
+
+### 1.1 Why Envelopes?
+
+Accept–reject sampling requires a proposal density \(q(\theta)\) and a constant \(a\) such that \(a \cdot q(\theta) \geq \pi(\theta \mid y)\) for all \(\theta\). The posterior \(\pi(\theta \mid y)\) is then sampled by: draw \(\theta \sim q\), accept with probability \(\pi(\theta \mid y) / (a \cdot q(\theta))\). The constant \(a\) controls efficiency: smaller \(a\) means fewer candidates per acceptance. The likelihood subgradient approach constructs **tight** envelopes, with \(a\) bounded above by \((2/\sqrt{\pi})^k\) for \(k\)-dimensional models when the likelihood is approximately normal (Nygren & Nygren 2006, Theorems 2 and 3). This ensures efficient iid sampling even in high dimensions.
+
+### 1.2 High-Level Flow
+
+The envelope-based pipeline follows this sequence:
+
+1. **Optimize** – Find the posterior mode.
+2. **Standardize** – Reparameterize into standard form (prior precision = identity, posterior precision diagonal at the mode).
+3. **Size** – Choose the number of tangency points per dimension (`EnvelopeSize`, `EnvelopeOpt`).
+4. **Build** – Construct the envelope (`EnvelopeBuild`).
+5. **Sort** – Order envelope components for sampling efficiency (`EnvelopeSort`).
+6. **Sample** – Generate candidates from the mixture envelope and accept/reject (`rnnorm_reg_std` or C++ equivalents).
+
+For models with unknown dispersion, an additional **dispersion envelope** step (`EnvelopeDispersionBuild`) extends the coefficient envelope to a joint envelope over \((\beta, \phi)\). This is orchestrated by `EnvelopeOrchestrator` for the independent Normal–Gamma case.
+
+
+## 2. Theoretical Foundation
+
+The envelope construction is grounded in Nygren & Nygren (2006), "Likelihood Subgradient Densities," *Journal of the American Statistical Association*. Below is a concise summary; the paper should be consulted for proofs and full detail.
+
+### 2.1 Likelihood-Subgradient Densities (Paper Section 2)
+
+For a posterior \(\pi(\theta \mid y) \propto f(y \mid \theta) \pi(\theta)\), a **generalized likelihood-subgradient density** \(q_{\bar{\theta}}(\theta)\) is defined at a tangency point \(\bar{\theta}\) using a subgradient \(c(\bar{\theta})\) of the negative log-likelihood. Under a Normal prior, \(q_{\bar{\theta}}\) is itself Normal and can be sampled directly.
+
+**Theorem 1** (Nygren & Nygren 2006) states that the posterior factors as
+\[
+\pi(\theta \mid y) = a(\bar{\theta}) \, h_{\bar{\theta}}(\theta) \, q_{\bar{\theta}}(\theta),
+\]
+where \(0 \leq h_{\bar{\theta}}(\theta) \leq 1\), \(h_{\bar{\theta}}(\bar{\theta}) = 1\) when \(f(y \mid \bar{\theta}) = g(\bar{\theta})\), and \(a(\bar{\theta}) q_{\bar{\theta}}(\theta)\) is an envelope for the posterior. The constant \(a(\bar{\theta})\) governs the acceptance rate: \(1/a(\bar{\theta})\) is the probability of acceptance in the accept–reject step.
+
+A single tangency point yields an envelope whose tightness deteriorates as the sample size grows. The mixture approach (Section 2.2) addresses this.
+
+### 2.2 Mixture Envelopes (Paper Section 3.1)
+
+The parameter space is **partitioned** into subsets \(A_1, \ldots, A_m\), each with its own restricted likelihood-subgradient density. **Claim 2** shows that the posterior can be written as a mixture of these restricted densities, and the combined constant \(\tilde{a} = \sum_j \tilde{a}_j\) yields a valid envelope. **Remark 5** and **Remark 6** give the formulas for the restricted densities and mixture weights.
+
+For Normal priors, the integrals over rectangular sets factorize across dimensions (Example 2 in the paper), making the mixture tractable. Sampling from the mixture proceeds by first choosing a component, then sampling from the restricted Normal on that component.
+
+### 2.3 Positioning and Bounds (Paper Sections 3.2 and 3.3)
+
+For **univariate** models, a three-interval partition around the posterior mode, with tangency points at \(\theta^* - \omega\), \(\theta^*\), and \(\theta^* + \omega\) (where \(\omega\) depends on the posterior precision), yields **Theorem 2**: \(\tilde{a} \to 2/\sqrt{\pi}\) as \(N \to \infty\) for Normal data.
+
+For **multivariate** models, the paper introduces **standard form**: prior precision = identity, posterior precision diagonal at the mode. Under this reparameterization, the univariate construction extends dimension by dimension. **Theorem 3** states that for \(k\)-dimensional Normal data in standard form, \(\tilde{a} \leq (2/\sqrt{\pi})^k\). For general log-concave likelihoods, the Bayesian central limit theorem implies that the posterior is approximately Normal for large \(n\), so similar tightness holds in practice.
+
+
+## 3. Function Map and Workflow
+
+### 3.1 Where Envelopes Are Used
+
+| Simfunction | When | Envelope role |
+|-------------|------|---------------|
+| `rNormal_reg` | Non-Gaussian families (Poisson, binomial, Gamma, etc.) with Normal prior | `EnvelopeBuild` for coefficients |
+| `rindepNormalGamma_reg` | Gaussian with independent Normal–Gamma prior | `EnvelopeOrchestrator` → `EnvelopeBuild` + `EnvelopeDispersionBuild` |
+| `rGamma_reg` | Gamma family with Gamma prior on dispersion | Dispersion envelope (see Chapter A06) |
+
+For conjugate cases (e.g., Gaussian likelihood with Normal or Normal–Gamma prior), no envelope is constructed; direct sampling is used.
+
+### 3.2 Pipeline Order
+
+The following functions are invoked in sequence during envelope-based sampling:
+
+1. **`glmb_Standardize_Model`** – Transforms the model into standard form. Required before `EnvelopeBuild`.
+
+2. **`EnvelopeSize`** – Determines the grid structure (number of tangency points per dimension). Calls `EnvelopeOpt` when `Gridtype = 2`.
+
+3. **`EnvelopeBuild`** – Constructs the envelope: tangency points, gradients, mixture weights, and sampling constants. This is the main envelope construction function.
+
+4. **`EnvelopeSort`** – Reorders envelope components by probability mass to improve sampling efficiency.
+
+5. **`EnvelopeSetGrid`**, **`EnvelopeSetLogP`** – Low-level helpers that compute log-densities and constants for the envelope. Typically called internally by `EnvelopeBuild` or the C++ routines.
+
+6. **`rnnorm_reg_std`** – Samples from the posterior using the constructed envelope via accept–reject. Used for non-Gaussian GLMs.
+
+7. **`EnvelopeDispersionBuild`** – For Gaussian regression with independent Normal–Gamma priors, refines the coefficient envelope to a joint envelope over \((\beta, \phi)\). Called by `EnvelopeOrchestrator`.
+
+8. **`EnvelopeOrchestrator`** – High-level coordinator that runs `EnvelopeBuild`, `EnvelopeDispersionBuild`, and `EnvelopeSort` for the independent Normal–Gamma case. Used inside the C++ sampler.
+
+
+## 4. Envelope Functions Reference
+
+| Function | Purpose | Typically called by | Theory chapter |
+|----------|---------|---------------------|----------------|
+| `glmb_Standardize_Model` | Reparameterize to standard form | `.rNormalGLM_cpp`, C++ routines | A05 |
+| `EnvelopeSize` | Choose grid size per dimension | `EnvelopeBuild` (or C++ equivalent) | A05, A08 |
+| `EnvelopeOpt` | Adaptive grid optimization (Gridtype 2) | `EnvelopeSize` | A05 |
+| `EnvelopeBuild` | Build coefficient envelope | `rNormal_reg`, `EnvelopeOrchestrator` | A05, A08 |
+| `EnvelopeSort` | Sort envelope components | `EnvelopeBuild`, `EnvelopeOrchestrator` | A08 |
+| `EnvelopeSetGrid` | Compute grid log-densities | `EnvelopeBuild` (internal) | — |
+| `EnvelopeSetLogP` | Compute mixture constants | `EnvelopeBuild` (internal) | — |
+| `EnvelopeDispersionBuild` | Joint envelope for \((\beta, \phi)\) | `EnvelopeOrchestrator` | A07 |
+| `EnvelopeOrchestrator` | Coordinate build + dispersion + sort | `rindepNormalGamma_reg` C++ | A07, A08 |
+| `rnnorm_reg_std` | Sample from standardized model | `rNormal_reg` (non-Gaussian path) | A05 |
+| `EnvelopeEval` | Evaluate envelope at points | Diagnostics, validation | — |
+
+Users typically do not call these functions directly; they are invoked by `glmb()`, `lmb()`, `rglmb()`, or `rlmb()` through the simfunctions. The `Envelope` component of the returned object (when applicable) contains the constructed envelope and can be inspected for diagnostics.
+
+
+## 5. Gridtype and Envelope Sizing
+
+The `Gridtype` argument (passed via `glmb()`, `rglmb()`, etc.) controls how many tangency points are used per dimension. This trades off **envelope build cost** against **sampling efficiency**.
+
+| Gridtype | Behavior | Expected candidates per draw |
+|----------|----------|------------------------------|
+| 1 | Static threshold: use single-point envelope if \(\sqrt{1+a_i} \leq 2/\sqrt{\pi}\) | \(\prod_i \sqrt{1+a_i}\) or \((2/\sqrt{\pi})^k\) |
+| 2 | **Adaptive** via `EnvelopeOpt`: choose per dimension | Optimized blend |
+| 3 | Always three-point envelope in every dimension | \((2/\sqrt{\pi})^k\) |
+| 4 | Always single-point at posterior mode | \(\prod_i \sqrt{1+a_i}\) |
+
+**Gridtype 2** is the default. It uses `EnvelopeOpt` to balance build time (more tangents = more cost) against acceptance rate (more tangents = tighter envelope = fewer candidates). The `n_envopt` argument influences the effective sample size used in this optimization; larger values encourage tighter envelopes.
+
+For large models, `use_opencl = TRUE` can accelerate `EnvelopeBuild` by evaluating gradients on the GPU. See Chapter A10 for OpenCL usage.
+
+
+## 6. Central Distributions: Normal_ct, Gamma_ct, InvGamma_ct
+
+The envelope-based samplers rely on **restricted** (truncated) distributions. Candidates are drawn from normals restricted to intervals (e.g., left tail, center, right tail) and from truncated Gamma distributions.
+
+- **`Normal_ct`** (`pnorm_ct`, `rnorm_ct`): Restricted Normal CDF and random generation. Used when sampling from mixture components that correspond to intervals on each coordinate. Critical when the truncation interval is narrow, where naive evaluation can underflow.
+
+- **`Gamma_ct`** (`pgamma_ct`, `rgamma_ct`, `ctrgamma`): Restricted Gamma distribution. Used in `rGamma_reg` and in dispersion sampling. Provides numerically stable evaluation and sampling under truncation.
+
+- **`InvGamma_ct`** (`pinvgamma_ct`, `qinvgamma_ct`, `rinvgamma_ct`): Restricted inverse-Gamma on the dispersion scale. Used when dispersion is bounded for envelope construction.
+
+These functions support the envelope construction and accept–reject steps; see their help pages for details.
+
+
+## 7. Cross-References
+
+- **Chapter A02** – Overview of estimation procedures, mapping of families/pfamilies to simfunctions.
+- **Chapter A05** – Full simulation pipeline: optimization, standardization, sizing, building, sampling. Deep dive into `EnvelopeBuild` and `EnvelopeOpt`.
+- **Chapter A06** – Accept–reject sampling for dispersion in Gamma regression.
+- **Chapter A07** – Accept–reject sampling for Gaussian regression with independent Normal–Gamma priors. Joint envelope construction.
+- **Chapter A09** – Parallel sampling implementation (RcppParallel).
+- **Chapter A10** – OpenCL acceleration for `EnvelopeBuild`.
+- **Nygren & Nygren (2006)** – Original paper: "Likelihood Subgradient Densities," *JASA*.
+
+For help on individual functions, use `?EnvelopeBuild`, `?EnvelopeSize`, `?EnvelopeOrchestrator`, etc.

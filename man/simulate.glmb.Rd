@@ -25,7 +25,8 @@ Simulated values for data corresponding to simulated model predictions that corr
 to the original data or to a \code{newdata} data frame provided to the predict function.
 }
 \description{
-Simulate responses from the distribution corresponding to a fitted \code{glmb} object.
+Simulate responses from the posterior predictive distribution corresponding to a
+fitted \code{glmb} object \insertCite{Gelman2013}{glmbayes}.
 }
 \examples{
 data(menarche,package="MASS")
@@ -87,4 +88,10 @@ lines(Age, res_high,lty=1)
 lines(Age, res_low1,lty=2)
 lines(Age, res_high1,lty=2)
 
+}
+\references{
+\insertAllCited{}
+}
+\seealso{
+\code{\link{predict.glmb}}, \code{\link{glmb}}; see \insertCite{glmbayesChapter04}{glmbayes} for model statistics.
 }

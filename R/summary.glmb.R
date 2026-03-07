@@ -26,11 +26,14 @@
 #' \item{DIC}{Estimated DIC statistic}
 #' \item{iters}{Average number of candidates per generated draws}
 #' @details The \code{summary.glmb} function summarizes the output from the \code{glmb} function.
-#' Key output includes mean residuals, information related to the prior, mean coefficients 
+#' Key output includes mean residuals, information related to the prior, mean coefficients
 #' with associated stats, percentiles for the coefficients, as well as the effective number of
-#' parameters and the DIC statistic. 
-#' 
-#' @seealso \code{\link{lmb}}, \code{\link{glmb}}, \code{\link{summary}}, \code{[stats]\link{summary.lm}},\code{[stats]\link{summary.glm}}. 
+#' parameters and the DIC statistic. The \code{dir_tail} component reports the directional tail
+#' diagnostic; see \code{\link{directional_tail}} and \insertCite{glmbayesChapterA04}{glmbayes}
+#' for interpretation.
+#'
+#' @seealso \code{\link{directional_tail}}, \code{\link{lmb}}, \code{\link{glmb}}, \code{\link{summary}},
+#' \code{[stats]\link{summary.lm}},\code{[stats]\link{summary.glm}} 
 #' @references
 #' \insertAllCited{}
 #' @importFrom Rdpack reprompt

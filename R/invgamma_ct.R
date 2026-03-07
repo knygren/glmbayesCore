@@ -49,8 +49,13 @@
 #' which dispersion parameters are updated under tight truncation constraints.
 #' They provide a stable alternative to direct manipulation of the Gamma
 #' distribution when working on the dispersion scale is more natural or more
-#' numerically robust.
+#' numerically robust. They are used in envelope-based dispersion sampling
+#' \insertCite{Nygren2006}{glmbayes}.
 #'
+#' @seealso \code{\link{Gamma_ct}}, \code{\link{Normal_ct}}, \code{\link{EnvelopeDispersionBuild}}
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @rdname InvGamma_ct
 #' @export
 pinvgamma_ct <- function(dispersion, shape, rate) {

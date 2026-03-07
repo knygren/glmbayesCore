@@ -1,20 +1,25 @@
 #' Extract Coefficients in Original Coding
 #'
-#' This extracts coefficients in terms of the original levels of the coefficients
-#' rather than the coded variable
-#' 
+#' Extracts coefficients in terms of the original factor levels rather than the
+#' coded variables. The logic mirrors \code{\link[stats]{dummy.coef}} for \code{lm}
+#' objects \insertCite{Chambers1992,VenablesRipley2002}{glmbayes}.
+#'
 #' @param object a \code{glmb} model fit
-#' @param use.na logical flag for coefficients in a singular model. If use.na is true, 
+#' @param use.na logical flag for coefficients in a singular model. If use.na is true,
 #' undetermined coefficients will be missing; if false they will get one possible value.
 #' @param x object to be printed
 #' @param \ldots arguments passed to or from other methods
-#' @details A fitted linear model has coefficients for the contrasts of the factor terms, 
-#' usually one less in number than the number of levels. This function re-expresses the 
-#' coefficients in the original coding; as the coefficients will have been fitted in the 
-#' reduced basis, any implied constraints (e.g., zero sum for contr.helmert or contr.sum) 
-#' will be respected. There will be little point in using dummy.coef for contr.treatment 
-#' contrasts, as the missing coefficients are by definition zero. 
-#' @return A list giving for each term the draws for the coefficients. 
+#' @details A fitted linear model has coefficients for the contrasts of the factor terms,
+#' usually one less in number than the number of levels. This function re-expresses the
+#' coefficients in the original coding; as the coefficients will have been fitted in the
+#' reduced basis, any implied constraints (e.g., zero sum for contr.helmert or contr.sum)
+#' will be respected. There will be little point in using dummy.coef for contr.treatment
+#' contrasts, as the missing coefficients are by definition zero.
+#' @return A list giving for each term the draws for the coefficients.
+#' @seealso \code{\link{summary.glmb}}, \code{\link{glmb}}, \code{\link[stats]{dummy.coef}}
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_dummy.coef.glmb.R
 # #' @exportClass  dummy.coef.glmb # temporarily disabled -no current exportclass
 #' @method dummy.coef glmb

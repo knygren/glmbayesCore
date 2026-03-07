@@ -23,8 +23,9 @@ undetermined coefficients will be missing; if false they will get one possible v
 A list giving for each term the draws for the coefficients.
 }
 \description{
-This extracts coefficients in terms of the original levels of the coefficients
-rather than the coded variable
+Extracts coefficients in terms of the original factor levels rather than the
+coded variables. The logic mirrors \code{\link[stats]{dummy.coef}} for \code{lm}
+objects \insertCite{Chambers1992,VenablesRipley2002}{glmbayes}.
 }
 \details{
 A fitted linear model has coefficients for the contrasts of the factor terms,
@@ -51,4 +52,10 @@ summary(glmb.D93)
 
 myd=dummy.coef(glmb.D93)
 print(myd)
+}
+\references{
+\insertAllCited{}
+}
+\seealso{
+\code{\link{summary.glmb}}, \code{\link{glmb}}, \code{\link[stats]{dummy.coef}}
 }

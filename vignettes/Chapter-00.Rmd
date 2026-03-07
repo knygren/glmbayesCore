@@ -108,29 +108,33 @@ These chapters explore more complex modeling scenarios and computational strateg
 
 The appendices document the mathematical and algorithmic foundations of the samplers used in **glmbayes**, including likelihood subgradient methods, envelope construction, and accept–reject schemes for both regression and dispersion parameters.
 
-- **Chapter A01 — Overview of Estimation Procedures**  
+- **Chapter A01: A detailed overview of the glmbayes package**  
   Present the mathematical foundations behind each sampler, including derivations of the posterior, the structure of enveloping functions, and bounds on expected draws per acceptance.  
-  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A1.html>
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A01.html>
 
-- **Chapter A02 — Simulation Methods – Likelihood Subgradient Densities**  
-  Detail the likelihood-subgradient approach for non-Gaussian families. Show how subgradients define tangent envelopes and explain why this yields valid accept–reject sampling for log-concave likelihoods.  
-  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A2.html>
+- **Chapter A02: Overview of Estimation Procedures**  
+  Present the mathematical foundations behind each sampler, including derivations of the posterior, the structure of enveloping functions, and bounds on expected draws per acceptance. 
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A02.html>
 
 - **Chapter A03 — Methods Available in glmbayes**  
   Summarize the key functions, samplers, and diagnostics implemented in the package, with a focus on how they relate to the underlying estimation framework.  
-  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A3.html>
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A03.html>
 
-- **Chapter A05 — Technical Report for Likelihood Subgradient-Based Samplers**  
-  Provide a more formal technical report on the construction and properties of likelihood subgradient-based samplers, including assumptions, convergence properties, and implementation notes.  
-  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A5.html>
+- **Chapter A04 — Directional Tail Diagnostics for Prior-Posterior Disagreement**  
+  Document the directional tail diagnostic, its theoretical interpretation as a Bayesian analogue to t- and F-style evidence, scalar and multivariate decompositions, and its use in summary output.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A04.html>
+
+- **Chapter A05: Simulation Methods - Likelihood Subgradient Densities**  
+  Detail the likelihood-subgradient approach for non-Gaussian families. Show how subgradients define tangent envelopes and explain why this yields valid accept–reject sampling for log-concave likelihoods.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A05.html>
 
 - **Chapter A06 — Accept–Reject Sampling for Dispersion in Gamma Regression**  
   Describe the specialized accept–reject scheme for dispersion parameters in Gamma regression, including envelope design, proposal choices, and efficiency considerations.  
-  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A6.html>
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A06.html>
 
 - **Chapter A07 — Accept–Reject Sampling for Gaussian Regression Models with Independent Normal–Gamma Priors**  
   Detail the accept–reject-based approach for Gaussian regression with independent normal–gamma priors, including the structure of the joint prior, conditional distributions, and sampler efficiency.  
-  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A7.html>
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A07.html>
 
 ---
 

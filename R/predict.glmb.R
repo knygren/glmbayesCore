@@ -1,7 +1,9 @@
 #' Predict Method for Bayesian GLM Fits
 #'
-#' Obtains predictions and optionally estimates standard errors of those
-#' predictions from a fitted Bayesian generalized linear model object.
+#' Obtains predictions from a fitted Bayesian generalized linear model object.
+#' Predictions are computed on the link scale or response scale following the GLM
+#' framework \insertCite{McCullagh1989}{glmbayes}, with posterior draws used to
+#' produce a matrix of predictions.
 #' 
 #' @param object a fitted object of class inheriting from \code{"glmb"}.
 #' @param newdata optionally, a data frame in which to look for variables
@@ -38,10 +40,15 @@
 #' appear (in predictions and standard errors), with residual value
 #' \code{NA}.  See also \code{\link{napredict}}.
 #' @note Variables are first looked for in \code{newdata} and then searched for
-#' in the usual way (which will include the environment of the formula 
-#' used in the fit).  A warning will be given if the 
+#' in the usual way (which will include the environment of the formula
+#' used in the fit).  A warning will be given if the
 #' variables found are not of the same length as those in \code{newdata}
 #' if it was supplied.
+#' @seealso \code{\link{simulate.glmb}}, \code{\link{residuals.glmb}}, \code{\link{glmb}};
+#' see \insertCite{glmbayesChapter04}{glmbayes} for predictions and model statistics.
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_predict.glmb.R
 #' @export
 #' @method predict glmb

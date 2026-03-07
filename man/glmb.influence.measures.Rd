@@ -34,11 +34,12 @@ glmb.covratio(model, infl = influence(model))
 \item{...}{further arguments passed to or from other methods.}
 }
 \value{
-a \code{\link{list}} wih components:
+a \code{\link{list}} with components as returned by the underlying \pkg{stats} functions.
 }
 \description{
-This function provides the basic quantities which are used in forming a wide variety of diagnostics for checking
-the quality of Bayesian regression fits.
+These functions compute Cook's distance, dfbetas, dffits, covratio, and standardized/studentized
+residuals for fitted Bayesian GLM objects. They delegate to the corresponding \pkg{stats} functions
+applied to the fitted GLM component.
 }
 \examples{
 set.seed(333)

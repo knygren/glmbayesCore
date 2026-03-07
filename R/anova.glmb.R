@@ -1,14 +1,24 @@
 #' Analysis of Deviance for Bayesian Generalized Linear Model Fits
 #'
 #' Compute an analysis of deviance table for one (current implementation) or more (future)
-#' Bayesian generalized linear model fits,
+#' Bayesian generalized linear model fits. The structure follows the sequential analysis
+#' of deviance \insertCite{McCullagh1989}{glmbayes}, with Bayesian extensions for DIC, pD,
+#' Mahalanobis shift, and directional tail probability \insertCite{Spiegelhalter2002}{glmbayes}.
+#'
 #' @param object an object of class \code{glmb}, typically the result of a call to \link{glmb}
-#' @param \ldots Other arguments passed to or from other methods. 
+#' @param \ldots Other arguments passed to or from other methods.
 #' @return An object of class \code{"anova"} inheriting from class \code{"data.frame"}.
-#' @details Specifying a single object (currently only implementation) gives a sequential 
-#' analysis of deviance table for that fit. That is the reductions in residual deviance as each
-#' term of the formula is addded in turn are given as the rows of a table, plus the residual deviances
-#' themselves.  
+#' @details Specifying a single object (currently only implementation) gives a sequential
+#' analysis of deviance table for that fit. The reductions in residual deviance as each
+#' term of the formula is added in turn are given as the rows of a table, plus the residual
+#' deviances themselves. The Mahalanobis shift and pDirectional columns report prior-posterior
+#' disagreement diagnostics; see \code{\link{directional_tail}} and
+#' \insertCite{glmbayesChapterA04}{glmbayes}.
+#' @seealso \code{\link{directional_tail}}, \code{\link{summary.glmb}}, \code{\link{glmb}},
+#' \code{\link[stats]{anova.glm}}
+#' @references
+#' \insertAllCited{}
+#' @importFrom Rdpack reprompt
 #' @example inst/examples/Ex_residuals.glmb.R
 #' @export
 #' @method anova glmb
