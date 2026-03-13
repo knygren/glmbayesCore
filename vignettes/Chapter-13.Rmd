@@ -184,10 +184,10 @@ The same hierarchical model can be fit with **`dIndependent_Normal_Gamma`**, whi
 1. **Population block:** Draw \((\mu, \sigma_\theta^2) \mid \theta\) using **`rlmb`** with **`dIndependent_Normal_Gamma(mu_mu, sigma_mu, shape, rate)`**.
 2. **School block:** Same as above—draw \(\theta_j \mid \mu, \sigma_\theta^2, y_j\) using **`dNormal(...)`**.
 
-```{r schools-indep-setup, eval = FALSE}
+```{r schools-indep-setup, eval = TRUE}
 theta <- estimate
-n_burn_schools <- 2000
-n_sim_schools  <- 20000
+n_burn_schools <- 1000
+n_sim_schools  <- 1000
 theta_out <- matrix(0, nrow = n_sim_schools, ncol = J)
 mu_out    <- numeric(n_sim_schools)
 sigma_theta_out <- numeric(n_sim_schools)
@@ -195,7 +195,7 @@ iters_out1 <- numeric(n_burn_schools)
 iters_out2 <- numeric(n_sim_schools)
 ```
 
-```{r schools-burnin, eval = FALSE}
+```{r schools-burnin, eval = TRUE}
 set.seed(102)
 x_one <- as.matrix(rep(1, J), nrow = J, ncol = 1)
 
@@ -212,13 +212,13 @@ for (k in seq_len(n_burn_schools)) {
 }
 ```
 
-```{r schools-iters-burnin, eval = FALSE}
+```{r schools-iters-burnin, eval = TRUE}
 ## Mean draws per acceptance (population block) after burn-in
 ## Lower = better. In demo Ex_07_Schools.R this was ~6.01; compare to check for regression.
 mean(iters_out1)
 ```
 
-```{r schools-gibbs, eval = FALSE}
+```{r schools-gibbs, eval = TRUE}
 for (k in seq_len(n_sim_schools)) {
   out_pop <- rlmb(1, y = theta, x = x_one,
                   pfamily = dIndependent_Normal_Gamma(mu_mu, sigma_mu, shape = shape, rate = rate))
@@ -235,12 +235,12 @@ for (k in seq_len(n_sim_schools)) {
 }
 ```
 
-```{r schools-iters-main, eval = FALSE}
+```{r schools-iters-main, eval = TRUE}
 ## Mean draws per acceptance (population block) during main run
 mean(iters_out2)
 ```
 
-```{r schools-summary, eval = FALSE}
+```{r schools-summary, eval = TRUE}
 colMeans(theta_out)
 mean(mu_out)
 mean(sigma_theta_out)

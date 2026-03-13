@@ -184,7 +184,12 @@ Rcpp::List glmb_Standardize_Model(
     }
 
 
+    
       // Setup prior to Eigenvalue decomposition
+
+      // NOTE: Epsilon is a diagonal part of the prior
+      // At this point, the Posterior is the identity matrix
+      // We keep only a diagnonal subset (epsilon) of the Prior in the prior and shift the rest P3-Epsilon to the likelihood
 
       arma::mat A3=ident-epsilon;	// This should be a diagonal matrix and represents "data" precision in transformed model
 
@@ -217,7 +222,7 @@ Rcpp::List glmb_Standardize_Model(
     
     return Rcpp::List::create(
       Rcpp::Named("bstar2")=b5,       // Transformed posterior mode (untransposed also used)
-      Rcpp::Named("A")=A4_1,                 // Precision for Standardized data precision
+      Rcpp::Named("A")=A4_1,                 // Precision for Standardized data precision 
       Rcpp::Named("x2")=x4_1,                // Transformed Design matrix
       Rcpp::Named("mu2")=mu5_1,               // Transformed prior mean (should really always be 0)
       Rcpp::Named("P2")=P5_1,               // Precision matrix for Normal component shifted to Log-Likelihood
@@ -1454,10 +1459,10 @@ Rcpp::List rNormalGLM(int n,NumericVector y,NumericMatrix x,
   // Advantage of allocating may be due to clarity of code in below
   
   NumericVector bstar2_temp=Standard_Mod[0];
-  NumericMatrix A_temp=Standard_Mod[1];
+  NumericMatrix A_temp=Standard_Mod[1];   //This should be the precision for the Data
   NumericMatrix x2_temp=Standard_Mod[2];
   NumericMatrix mu2_temp=Standard_Mod[3];
-  NumericMatrix P2_temp=Standard_Mod[4];
+  NumericMatrix P2_temp=Standard_Mod[4];   /// This should be the part of prior being shifted to the log-likelihood
   arma::mat L2Inv_temp=Standard_Mod[5];
   arma::mat L3Inv_temp=Standard_Mod[6];
   

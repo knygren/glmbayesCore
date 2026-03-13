@@ -259,7 +259,7 @@ where:
     + \tfrac{\mathrm{RSS\_Min}}{2}
 \]       
        where:
-       - \(\tfrac{\text{RSS\_Min}}{2}\) is the classical residual sum of squares,  
+       - \(\tfrac{\text{RSS_Min}}{2}\) is the classical residual sum of squares,  
        - used as a conservative bound on the residual term that varies across tangency points.  
    - Construct the **Per-Face Subgradient Selection Probabilities (PLSD)** for each grid component \(j\) as follows:  
      \[
@@ -568,9 +568,9 @@ For dispersion \(d \in [\,\text{low},\,\text{upp}\,]\), define the truncated inv
    - \frac{\text{Rate} + \tfrac{\mathrm{RSS_Min}}{2}}{d} \\[6pt]
 &\quad - \log\!\Bigg(
 F_\Gamma\!\Big(\tfrac{1}{\text{low}};\,\text{Shape} + \tfrac{n_{w}}{2} - \mathrm{lm\_log2},\,
-\text{Rate} + \tfrac{\text{RSS\_Min}}{2}\Big) \\[6pt]
+\text{Rate} + \tfrac{\text{RSS_Min}}{2}\Big) \\[6pt]
 &\quad  -\;  F_\Gamma\!\Big(\tfrac{1}{\text{upp}};\,\text{Shape} + \tfrac{n_{w}}{2} - \mathrm{lm\_log2},\,
-\text{Rate} + \tfrac{\text{RSS\_Min}}{2}\Big)
+\text{Rate} + \tfrac{\text{RSS_Min}}{2}\Big)
 \Bigg),
 \end{aligned}
 \]
@@ -1943,12 +1943,20 @@ computed with the same weights \(w_i\) used in the definition of
 
 ## 2. Structure of the tangency point beta_j(d)
 
+Let \(X\) be the \(n \times p\) design matrix, \(W = \operatorname{diag}(w_1,\ldots,w_n)\) the weight matrix, and \(\alpha\) the offset vector. Define
+
+\[
+\text{base_A} \;=\; X^{T} W\, X \;=\; Q,
+\qquad
+\text{base_B0} \;=\; X^{T} W\,(\alpha - y).
+\]
+
 From the implementation:
 
 \[
-A(d) \;=\; P \;+\; \frac{\text{base\_A}}{d},
+A(d) \;=\; P \;+\; \frac{\text{base_A}}{d},
 \qquad
-B_0(d) \;=\; \frac{\text{base\_B0}}{d} \;+\; P\mu,
+B_0(d) \;=\; \frac{\text{base_B0}}{d} \;+\; P\mu,
 \]
 
 and
@@ -1956,7 +1964,7 @@ and
 \[
 \beta_j(d)
 \;=\;
-A(d)^{-1}\,\bigl(B_0(d) - \bar{c}_j\bigr).
+A(d)^{-1}\,\bigl(\bar{c}_j - B_0(d)\bigr).
 \]
 
 Introduce the variable
@@ -1970,15 +1978,17 @@ t \in [t_{\min},\,t_{\max}] \;=\; [1/upp,\;1/low].
 Define the vectors
 
 \[
-a_j \;=\; \text{base\_B0} \;-\; \text{base\_A}\,\hat{\beta},
+a_j \;=\; -\bigl(\text{base_B0} \;+\; \text{base_A}\,\hat{\beta}\bigr),
 \qquad
-b_j \;=\; P\mu \;-\; P\hat{\beta} \;-\; \bar{c}_j.
+b_j \;=\; \bar{c}_j \;-\; P\mu \;-\; P\hat{\beta}.
 \]
 
 Then
 
 \[
-B_0(d) - \bar{c}_j - A(d)\hat{\beta}
+r_j(d)
+\;=\;
+\bar{c}_j \;-\; B_0(d) \;-\; A(d)\hat{\beta}
 \;=\;
 a_j\,t \;+\; b_j.
 \]
@@ -2007,57 +2017,49 @@ We want a lower bound on
 (\beta_j(d) - \hat{\beta})^{T} Q (\beta_j(d) - \hat{\beta}).
 \]
 
-Using eigenvalue bounds:
+Using \(r_j(d) = \bar{c}_j - B_0(d) - A(d)\hat{\beta}\) and
+\(\beta_j(d) - \hat{\beta} = A(d)^{-1} r_j(d)\), the quadratic form is
 
 \[
 (\beta_j(d) - \hat{\beta})^{T} Q (\beta_j(d) - \hat{\beta})
-\;\ge\;
-\lambda_{\min}(Q)\,\|\beta_j(d) - \hat{\beta}\|_2^2.
-\]
-
-Also,
-
-\[
-\|\beta_j(d) - \hat{\beta}\|_2
 \;=\;
-\|A(d)^{-1} r_j(d)\|_2
+r_j(d)^{T}\, A(d)^{-1} Q\, A(d)^{-1}\, r_j(d)
+\;=\;
+r_j(d)^{T}\, M(d)\, r_j(d),
+\]
+
+where \(M(d) = A(d)^{-1} Q\, A(d)^{-1}\). For any symmetric positive
+semi-definite \(M(d)\),
+
+\[
+r^{T} M(d)\, r
 \;\ge\;
-\frac{\|r_j(d)\|_2}{\|A(d)\|_{\text{op}}}.
+\lambda_{\min}\bigl(M(d)\bigr)\,\|r\|_2^2.
 \]
 
-Since
+Define
 
 \[
-A(d) \;=\; P + \frac{\text{base\_A}}{d}
+A_{\max} \;=\; P + \frac{\text{base_A}}{low}.
 \]
 
-is monotone in \(1/d\) when base\_A is positive semidefinite, the largest
-operator norm occurs at \(d = low\). Define
+Then \(A_{\max}\) is the maximum of \(A(d)\) over \(d \in [low,\,upp]\) in
+the Loewner order (since \(A(d)\) increases as \(1/d\) increases). The
+minimum eigenvalue \(\lambda_{\min}(M(d))\) over \(d \in [low,\,upp]\) is
+attained at \(d = low\). Define
 
 \[
-A_{\max} \;=\; P + \frac{\text{base\_A}}{low}.
+M_{\min} \;=\; A_{\max}^{-1} Q\, A_{\max}^{-1},
+\qquad
+C \;=\; \lambda_{\min}(M_{\min}).
 \]
 
-Then
-
-\[
-\|A(d)\|_{\text{op}} \;\le\; \lambda_{\max}(A_{\max})
-\quad\text{for all } d \in [low,\,upp].
-\]
-
-Thus
+Then \(C\) is valid for all \(d \in [low,\,upp]\):
 
 \[
 (\beta_j(d) - \hat{\beta})^{T} Q (\beta_j(d) - \hat{\beta})
 \;\ge\;
-\frac{\lambda_{\min}(Q)}{\lambda_{\max}(A_{\max})^2}
-\;\|r_j(d)\|_2^2.
-\]
-
-Define the constant
-
-\[
-C \;=\; \frac{\lambda_{\min}(Q)}{\lambda_{\max}(A_{\max})^2}.
+C\,\|r_j(d)\|_2^2.
 \]
 
 Then
@@ -2141,14 +2143,509 @@ RSS_{\min,j}
 RSS_{ML} \;+\; C\,m_j^2.
 \]
 
-Where:
+Where (\(P\) denotes \(P_2\), the prior contribution to the modified
+log-likelihood):
 
-- \(C = \lambda_{\min}(Q) / \lambda_{\max}(A_{\max})^2\)
-- \(A_{\max} = P + \text{base\_A}/low\)
-- \(a_j = \text{base\_B0} - \text{base\_A}\,\hat{\beta}\)
-- \(b_j = P\mu - P\hat{\beta} - \bar{c}_j\)
+- \(C = \lambda_{\min}(M_{\min})\) with \(M_{\min} = A_{\max}^{-1} Q\, A_{\max}^{-1}\)
+- \(A_{\max} = P + \text{base_A}/low\)
+- \(a_j = -(\text{base_B0} + \text{base_A}\,\hat{\beta})\)
+- \(b_j = \bar{c}_j - P\mu - P\hat{\beta}\)
 - \(\tilde{t}_j\) is the projection of \(t^{*}\) onto \([1/upp,\,1/low]\)
 - \(m_j^2 = \|a_j\,\tilde{t}_j + b_j\|_2^2\)
 
 This bound is closed form, fast, and valid for all dispersion values in
 the allowed interval.
+
+---------------------------------------------------------------------
+
+## 6. Remarks on the prior, standardization, and the matrix \(M(d)\)
+
+**Prior and default specification.**  
+`Prior_Setup()` (default) uses a Zellner-type \(g\)-prior: prior covariance
+\(\Sigma = (1-\mathrm{pwt})/\mathrm{pwt} \cdot V_{\mathrm{MLE}}\), so prior
+precision \(P = \mathrm{pwt}/(1-\mathrm{pwt}) \cdot Q\), with \(Q = X^{T} W X\).
+Thus \(P\) is proportional to \(X^{T} W X\). The default \(\mathrm{pwt}\) is
+\(0.01\) for models with fewer than 14 coefficients and \(0.05\) otherwise.
+
+**Standardization.**  
+The envelope build may first standardize the model (e.g. via
+`glmb_Standardize_Model`). In the pre-standardized model, \(A_1 = P +
+X^{T} W X\) (or \(P + Q/d\) at the dispersion mode). The first step
+diagonalizes the posterior precision and transforms the design and prior
+accordingly; the transformed \(P\) is no longer the original \(P\). The
+second step splits the transformed prior into (i) \(\varepsilon\), a scaled
+version of its diagonal part, which **remains with the prior**, and (ii)
+\(P_3 - \varepsilon\), which is **shifted to the log-likelihood**. The
+shifted part is returned as \(P_2\) and passed to
+`EnvelopeOrchestrator`, `EnvelopeBuild`, and `EnvelopeDispersionBuild`.
+The part that remains in the prior is not used in envelope construction
+and is not passed. Then \(A(d) = P_2 + \text{base_A}/d\) is the precision
+of the modified log-likelihood, with \(\text{base_A} = X_2^{T} W X_2 =
+Q\) in the standardized space.
+
+**Which \(P\) is used in the bound.**  
+\(P_2\) is the **prior contribution to the modified log-likelihood** (the
+shifted part). The cache holds \(\text{Pmat} = P_2\),
+\(\text{base_A} = X_2^{T} W X_2\), and
+\(\text{base_B0} = X_2^{T} W (\alpha - y)\). The bound
+\(A(d) = P_2 + \text{base_A}/d\) and
+\(M_{\min} = A_{\max}^{-1} Q\, A_{\max}^{-1}\) use this \(P_2\). The gradient
+vectors \(\bar{c}_j\) defining the envelope faces are computed from the
+negative log-posterior of the standardized model, i.e. the modified
+log-likelihood (true likelihood plus \(P_2\)) and the remaining prior; they
+thus reflect the full effective likelihood.
+
+**Structure of \(Q\) under standardization.**  
+**General case:** After the first step, the transformed \(P\) need not be
+diagonal. The second step uses \(\varepsilon = \text{scaled}\times
+\text{diag}(\text{transformed } P)\) and shifts \(P_3 - \varepsilon\) to the
+likelihood. There is no guarantee that the transformed \(P\) is diagonal or
+that \(Q \propto I\).
+
+**Zellner g-prior–like case:** When the original \(P \propto Q\), \(P\) and
+\(Q\) share the same eigenvectors. The first step diagonalizes both, and in
+the intermediate space the transformed \(P\) is not only diagonal but has
+**equal values along the diagonal** (proportional to \(I\)). The
+second step can then choose \(\varepsilon\) large, keeping most of the prior
+with the prior; only a small part \(P_3 - \varepsilon\) is shifted to the
+likelihood. Hence \(P_2\) is typically **small relative to**
+\(X_2^{T} W X_2 = Q\). The structure is preserved: \(Q \propto I\),
+\(P_2 \propto I\), and \(M(d) = A(d)^{-1} Q\, A(d)^{-1}\) is proportional to
+\(I\), so the bound \(C = \lambda_{\min}(M_{\min})\) simplifies accordingly.
+
+**Scale choice and impact on \(P_2\).**  
+The implementation uses a halving search to find \(\varepsilon\) (divide the
+diagonal of the transformed prior by 2 until \(P_3 - \varepsilon\) is positive
+definite), without the additive refinement phase described in @Nygren2006.
+This tends to shift more of the prior into the likelihood
+and thus yields a larger \(P_2\). That choice favors numerical stability when
+the data precision \(Q = X^{T} W X\) is rank deficient: adding meaningful
+prior precision to the modified likelihood improves conditioning and
+regularizes the model. Even so, with the default prior
+(\(\mathrm{pwt} = 0.01\) or \(0.05\)), the original \(P\) is only 1–5% of
+\(Q\), so \(P_2\) remains **small relative to** \(X^{T} W X\) in typical use.
+
+**Tightness of the bound.**  
+When \(Q \propto I\) and \(P \propto I\), the exact quadratic term equals
+\((q/a(d)^2)\,\|r_j(d)\|^2\) with \(a(d) = p + q/d\). The constant
+\(C = \lambda_{\min}(M_{\min})\) equals \(q/a(low)^2\), the minimum of
+\(q/a(d)^2\) over \(d \in [low,\,upp]\). Hence the inequality
+\((\beta_j(d) - \hat{\beta})^{T} Q (\beta_j(d) - \hat{\beta}) \ge C\,\|r_j(d)\|^2\)
+holds with **equality at \(d = low\)**; the bound is tight at the lower
+endpoint. For \(d > low\), the true quadratic is strictly larger than
+\(C\,\|r_j\|^2\), so the bound remains valid but is conservative.
+
+**Anchor \(d^*_1\).**  
+The dispersion anchor \(d^*_1 = \mathrm{rate}_3 / (\mathrm{shape}_2 - 1)\) is
+the posterior mode of the inverse-gamma for dispersion. The interval
+\([low,\,upp]\) is typically chosen so that \(low < d^*_1 < upp\), centering
+the bounds around the posterior mode.
+
+**Examples: how \(M(d)\) behaves.**  
+With \(M(d) = A(d)^{-1} Q\, A(d)^{-1}\) and
+\(A(d) = P + Q/d\) (where \(P\) denotes \(P_2\)):
+
+1. **Strong prior (\(P\) large):** \(A(d) \approx P\) for moderate \(d\),
+   so \(M(d) \approx P^{-1} Q\, P^{-1}\). The bound \(C = \lambda_{\min}(M_{\min})\)
+   reflects both prior and likelihood.
+2. **Weak prior (\(P\) small):** \(A(d) \approx Q/d\), so
+   \(M(d) \approx d^2\, Q^{-1} Q\, Q^{-1} = d^2\, Q^{-1}\). Then
+   \(\lambda_{\min}(M(d)) \approx d^2 / \lambda_{\max}(Q)\).
+3. **Standardized model (\(P = I\)):** \(A(d) = I + Q/d\), and \(M(d)\) is
+   determined by the diagonalized \(Q\).
+
+**Limiting case \(P \to 0\).**  
+As the prior contribution to the modified log-likelihood tends to the
+zero matrix, \(A(d) = P + Q/d \to Q/d\).
+Then \(A_{\max} \to Q/low\), so
+\(M_{\min} = A_{\max}^{-1} Q\, A_{\max}^{-1}
+\to (Q/low)^{-1} Q\, (Q/low)^{-1}
+= low^2\, Q^{-1}\).
+Thus \(\lambda_{\min}(M_{\min}) \to low^2 / \lambda_{\max}(Q)\). The constant
+\(C\) no longer involves the prior; the bound depends only on the likelihood
+information \(Q\) and the lower dispersion bound \(low\). In that limit, the
+Appendix A bound reduces to
+\((\beta_j(d) - \hat{\beta})^{T} Q (\beta_j(d) - \hat{\beta})
+\ge (low^2/\lambda_{\max}(Q))\,\|r_j(d)\|_2^2\), valid for \(d \ge low\).
+
+
+# Appendix B: UB2 Minimization and Bounds
+
+This appendix addresses the minimization of
+
+\[
+\mathrm{UB2}_j(d)
+\;=\;
+\frac{1}{2d}\,\bigl(\mathrm{RSS}_j(d) - \mathrm{RSS\_Min}\bigr)
+\quad\text{over } d \in [low,\,upp].
+\]
+
+Using the RSS decomposition from Appendix A,
+
+\[
+\mathrm{RSS}(\beta) \;=\; \mathrm{RSS}(\hat{\beta})
+\;+\;
+(\beta - \hat{\beta})^{T} Q (\beta - \hat{\beta}),
+\]
+
+write both \(\mathrm{RSS}_j(d)\) and \(\mathrm{RSS\_Min}\) as a sum of two terms. The
+first term is identical and cancels in the difference.
+
+For face \(j\) at dispersion \(d\), \(\beta_j(d)\) is the tangency point:
+
+\[
+\mathrm{RSS}_j(d)
+\;=\;
+\mathrm{RSS}(\hat{\beta})
+\;+\;
+\bigl(\beta_j(d) - \hat{\beta}\bigr)^{T} Q \bigl(\beta_j(d) - \hat{\beta}\bigr).
+\]
+
+For \(\mathrm{RSS\_Min}\), the quadratic component at the global minimizer is
+bounded below by \(C\,m_{\min}^2\) (Appendix A: \(C = \lambda_{\min}(M_{\min})\)
+and \(m_{\min}^2 = \min_j m_j^2\) with \(m_j^2 = \min_d \|r_j(d)\|_2^2\)). Using
+that bound for the quadratic part,
+
+\[
+\mathrm{RSS\_Min}
+\;=\;
+\mathrm{RSS}(\hat{\beta})
+\;+\;
+C\,m_{\min}^2.
+\]
+
+The first terms cancel, so
+
+\[
+\mathrm{RSS}_j(d) - \mathrm{RSS\_Min}
+\;=\;
+\bigl(\beta_j(d) - \hat{\beta}\bigr)^{T} Q \bigl(\beta_j(d) - \hat{\beta}\bigr)
+\;-\;
+C\,m_{\min}^2,
+\]
+
+and thus
+
+\[
+\mathrm{UB2}_j(d)
+\;=\;
+\frac{1}{2d}\,
+\Bigl[
+\bigl(\beta_j(d) - \hat{\beta}\bigr)^{T} Q \bigl(\beta_j(d) - \hat{\beta}\bigr)
+\;-\;
+C\,m_{\min}^2
+\Bigr].
+\]
+
+With \(r_j(d) = \bar{c}_j - B_0(d) - A(d)\hat{\beta}\) and
+\(\beta_j(d) - \hat{\beta} = A(d)^{-1} r_j(d)\), the quadratic equals
+\(r_j(d)^{T} M(d)\, r_j(d)\) for \(M(d) = A(d)^{-1} Q\, A(d)^{-1}\) (Appendix A), so
+
+\[
+\mathrm{UB2}_j(d)
+\;=\;
+\frac{1}{2d}\,
+\Bigl[
+r_j(d)^{T} M(d)\, r_j(d) \;-\; C\,m_{\min}^2
+\Bigr].
+\]
+
+Introduce the parameterized matrix
+\(\tilde{A}(d,P) = P + (1/d)\,\text{base_A}\)
+and
+\(\tilde{M}(d,P) = \tilde{A}(d,P)^{-1} Q\, \tilde{A}(d,P)^{-1}\).
+Note that \(A(d) = \tilde{A}(d,P)\) and \(M(d) = \tilde{M}(d,P)\) with the prior precision \(P\).
+Then we can decompose
+
+\[
+\frac{1}{2d}\,
+\Bigl[
+r_j(d)^{T} M(d)\, r_j(d) \;-\; C\,m_{\min}^2
+\Bigr]
+\;=\;
+\frac{1}{2d}\,
+\Bigl[
+r_j(d)^{T} \tilde{M}(d,0)\, r_j(d) \;-\; C\,m_{\min}^2
+\Bigr]
+\;+\;
+\frac{1}{2d}\,
+\Bigl[
+r_j(d)^{T}\,
+\bigl[\tilde{M}(d,P) - \tilde{M}(d,0)\bigr]\,
+r_j(d)
+\Bigr].
+\]
+
+**Remark (simplification when \(P = 0\)).**  
+For \(P = 0\), \(\tilde{A}(d,0) = (1/d)\,Q\), so
+\(\tilde{M}(d,0) = \tilde{A}(d,0)^{-1} Q\, \tilde{A}(d,0)^{-1} = d^2\,Q^{-1}\).
+With \(t = 1/d\) and \(r_j = a_j\,t + b_j\), the first term becomes
+\[
+\frac{1}{2d}\,
+\Bigl[
+r_j^{T} \tilde{M}(d,0)\, r_j \;-\; C\,m_{\min}^2
+\Bigr]
+\;=\;
+\frac{r_j^{T} Q^{-1} r_j}{2\,t} \;-\; \frac{C\,m_{\min}^2\,t}{2}
+\;=\;
+\frac{(\alpha' - C\,m_{\min}^2)\,t^2 + \beta'\,t + \gamma'}{2\,t},
+\]
+where \(\alpha' = a_j^{T} Q^{-1} a_j\), \(\beta' = 2\,a_j^{T} Q^{-1} b_j\),
+\(\gamma' = b_j^{T} Q^{-1} b_j\). Thus the first term is a **quadratic in \(t\) divided by a single term in \(t\)** (the denominator \(2t\)).
+
+**Remark (monotonicity and critical points).**  
+Introduce \(\kappa = \alpha' - C\,m_{\min}^2\) and \(\zeta = \gamma' = b_j^{T} Q^{-1} b_j\).
+Since \(Q^{-1}\) is positive definite, \(\zeta \ge 0\) (and \(\zeta > 0\) when \(b_j \ne 0\)).
+Then \(f(t) = (\kappa/2)t + (\beta'/2) + \zeta/(2t)\) and
+\(f'(t) = \frac{1}{2}\bigl(\kappa - \zeta/t^2\bigr)\).
+The behavior of \(f\) is determined by the sign of \(\kappa\). We have two cases:
+
+- **(i)** \(\kappa > 0\): there is a unique critical point \(t^* = \sqrt{\zeta/\kappa}\);
+  \(f''(t) = \zeta/t^3 \ge 0\) for \(t > 0\), so \(t^*\) is a global minimum; \(f\)
+  decreases on \((0,t^*)\) and increases on \((t^*,\infty)\).
+- **(ii)** \(\kappa \le 0\): \(f'(t) < 0\) for all \(t > 0\) (assuming \(\zeta > 0\)), so
+  \(f\) is strictly decreasing.
+
+In both cases, the function obtains a unique minimum over the interval.
+
+
+Define \(\mathrm{UB2b}_j(d)\) by replacing \(M(d)\) with \(C\) (and factoring \(C\) out):
+
+\[
+\mathrm{UB2b}_j(d)
+\;=\;
+\frac{C}{2d}\,
+\Bigl[
+\|r_j(d)\|_2^2 \;-\; m_{\min}^2
+\Bigr].
+\]
+
+**Rewrite in \(t = 1/d\).** From Appendix A, \(r_j(d) = a_j\,t + b_j\) and
+\(\|r_j(d)\|_2^2 = \alpha\,t^2 + \beta\,t + \gamma\) with
+\(\alpha = \|a_j\|_2^2\), \(\beta = 2\,a_j^{T}b_j\), \(\gamma = \|b_j\|_2^2\).
+Since \(1/(2d) = t/2\),
+
+\[
+\mathrm{UB2b}_j(d)
+\;=\;
+\frac{C\,t}{2}\,
+\Bigl[
+(\alpha\,t^2 + \beta\,t + \gamma) \;-\; m_{\min}^2
+\Bigr]
+\;=\;
+\frac{C}{2}\,
+\Bigl[
+\alpha\,t^3 \;+\; \beta\,t^2 \;+\; (\gamma - m_{\min}^2)\,t
+\Bigr].
+\]
+
+Thus \(\mathrm{UB2b}_j\) is **cubic in \(t\)** over
+\(t \in [t_{\min},\,t_{\max}]\) with \(t_{\min} = 1/upp\) and
+\(t_{\max} = 1/low\).
+
+**Derivatives and critical points.**  
+Write the bracketed cubic as
+\(f(t) = \alpha\,t^3 + \beta\,t^2 + (\gamma - m_{\min}^2)\,t\), so
+\(\mathrm{UB2b}_j(d) = (C/2)\,f(t)\). Then
+
+\[
+f'(t) \;=\; 3\alpha\,t^2 \;+\; 2\beta\,t \;+\; (\gamma - m_{\min}^2),
+\qquad
+f''(t) \;=\; 6\alpha\,t \;+\; 2\beta.
+\]
+
+Setting \(f'(t) = 0\) gives the quadratic
+\(3\alpha\,t^2 + 2\beta\,t + (\gamma - m_{\min}^2) = 0\). Using the
+quadratic formula with discriminant
+\(D = \beta^2 - 3\alpha\,(\gamma - m_{\min}^2)\):
+
+\[
+t_{\pm}
+\;=\;
+\frac{-2\beta \;\pm\; \sqrt{4\beta^2 - 12\alpha\,(\gamma - m_{\min}^2)}}{6\alpha}
+\;=\;
+\frac{-\beta \;\pm\; \sqrt{D}}{3\alpha}.
+\]
+
+The two critical points are
+\(t_1 = (-\beta + \sqrt{D})/(3\alpha)\) and
+\(t_2 = (-\beta - \sqrt{D})/(3\alpha)\). Evaluating the second derivative:
+
+\[
+f''(t_1) \;=\; 6\alpha\,\frac{-\beta + \sqrt{D}}{3\alpha} \;+\; 2\beta
+\;=\; 2\sqrt{D}
+\quad\text{and}\quad
+f''(t_2) \;=\; -2\sqrt{D}.
+\]
+
+When \(D > 0\), \(f''(t_1) > 0\) so \(t_1\) is a **local minimum**, and
+\(f''(t_2) < 0\) so \(t_2\) is a **local maximum**. When \(D = 0\), the
+two critical points coincide (inflection point).
+
+**Remark.** For all \(d \in [low,\,upp]\),
+\(\mathrm{UB2}_j(d) \ge \mathrm{UB2b}_j(d)\).  
+*Proof:* The eigenvalue bound (Appendix A) gives
+\(r^{T} M(d)\, r \ge C\,\|r\|_2^2\) for all \(r\) and \(d\). Thus
+\(r_j(d)^{T} M(d)\, r_j(d) \ge C\,\|r_j(d)\|_2^2\), so the numerator of
+\(\mathrm{UB2}_j(d)\) satisfies
+\(r_j(d)^{T} M(d)\, r_j(d) - C\,m_{\min}^2
+\ge C\,\|r_j(d)\|_2^2 - C\,m_{\min}^2
+= C\,(\|r_j(d)\|_2^2 - m_{\min}^2)\), which is the numerator of
+\(\mathrm{UB2b}_j(d)\). Since \(1/(2d) > 0\), the inequality follows.
+
+The objective is a product of two factors: \(1/(2d)\), which is decreasing in
+\(d\) (minimized at \(d = upp\)), and the excess quadratic form in the
+brackets, which achieves its minimum elsewhere (possibly at \(d = low\) or an
+interior point), so the product introduces a trade-off. We consider
+computable lower bounds and good starting values for numerical optimization.
+
+---------------------------------------------------------------------
+
+## Derivatives of UB2 (exact, not the bound)
+
+Since \(\beta_j(d)\) is a function of \(d\), we derive the derivatives of
+\(\mathrm{UB2}_j(d)\) with respect to \(d\). Write
+
+\[
+\mathrm{UB2}_j(d) \;=\; \frac{\psi(d)}{2d},
+\quad
+\psi(d) \;=\; \bigl(\beta_j(d) - \hat\beta\bigr)^{T} Q \bigl(\beta_j(d) - \hat\beta\bigr) - C\,m_{\min}^2 \;=\; r_j(d)^{T} M(d)\, r_j(d) - C\,m_{\min}^2.
+\]
+
+**Derivatives of \(A\), \(B_0\), \(A^{-1}\):**
+
+\[
+\frac{dA}{dd} \;=\; -\frac{Q}{d^2},
+\quad
+\frac{dB_0}{dd} \;=\; -\frac{\mathrm{base\_B0}}{d^2},
+\quad
+\frac{dA^{-1}}{dd} \;=\; \frac{1}{d^2}\,A^{-1}Q\,A^{-1}.
+\]
+
+**Derivative of \(\beta_j\):**
+
+\[
+\frac{d\beta_j}{dd} \;=\; \frac{1}{d^2}\,A^{-1}\bigl( Q\,\beta_j + \mathrm{base\_B0} \bigr).
+\]
+
+**Derivative of \(r_j\):**  
+Using \(r_j = \bar{c}_j - B_0 - A\hat\beta\) and \(a_j = -(\mathrm{base\_B0} + Q\hat\beta)\),
+
+\[
+\frac{dr_j}{dd} \;=\; -\frac{a_j}{d^2}.
+\]
+
+**Derivative of \(M(d) = A^{-1}Q\,A^{-1}\):**
+
+\[
+\frac{dM}{dd} \;=\; \frac{2}{d^2}\,A^{-1}Q\,M.
+\]
+
+**Derivative of \(\psi\):**
+
+\[
+\frac{d\psi}{dd} \;=\; 2\,r_j^{T} M\,\frac{dr_j}{dd} + r_j^{T}\,\frac{dM}{dd}\,r_j
+\;=\; \frac{2}{d^2}\,r_j^{T} M\,\bigl( Q\beta_j + \mathrm{base\_B0} \bigr).
+\]
+
+**First derivative of UB2:**
+
+\[
+\frac{d\,\mathrm{UB2}}{dd} \;=\; \frac{\psi'(d)\,d - \psi(d)}{2d^2}.
+\]
+
+**Second derivative of UB2:**
+
+\[
+\frac{d^2\,\mathrm{UB2}}{dd^2} \;=\; \frac{\psi''(d)\,d^2 - 2\bigl(\psi'(d)\,d - \psi(d)\bigr)}{2d^3},
+\]
+
+where \(\psi''\) is obtained by differentiating \(\psi'\) (using \(dr_j/dd\), \(dM/dd\), \(d\beta_j/dd\) above).
+
+**Derivatives in \(t = 1/d\).**  
+Parametrize with \(t = 1/d\), so \(d = 1/t\) and \(dd/dt = -1/t^2\). Write
+\[
+g(t) \;=\; \mathrm{UB2}(1/t) \;=\; \frac{t\,\psi(1/t)}{2}.
+\]
+By the product rule,
+\[
+\frac{dg}{dt} \;=\; \frac{1}{2}\Bigl[ \psi(1/t) \;+\; t\,\frac{d\psi}{dt} \Bigr].
+\]
+With \(\tau = 1/t\), we have \(d\psi/dt = \psi'(\tau)\,d\tau/dt = \psi'(\tau)\cdot(-1/t^2)\), so
+\[
+\frac{dg}{dt} \;=\; \frac{1}{2}\Bigl[ \psi\Bigl(\frac{1}{t}\Bigr) \;-\; \frac{1}{t}\,\psi'\Bigl(\frac{1}{t}\Bigr) \Bigr].
+\]
+In terms of \(d = 1/t\):
+\[
+\frac{d\,\mathrm{UB2}}{dt} \;=\; \frac{\psi(d) - \psi'(d)\,d}{2} \;=\; -\frac{\psi'(d)\,d - \psi(d)}{2}.
+\]
+This agrees with the chain rule: \(d/dt = (dd/dt)\,d/dd = -d^2\,(d/dd)\), so
+\(d(\mathrm{UB2})/dt = -d^2\cdot(\psi'd - \psi)/(2d^2) = -(\psi'd - \psi)/2\).
+
+For the second derivative, differentiate
+\(\frac{dg}{dt} = \frac{1}{2}\bigl[ \psi(1/t) - t^{-1}\psi'(1/t) \bigr]\) again. With
+\(\tau = 1/t\) and \(d\tau/dt = -1/t^2\):
+\[
+\frac{d^2g}{dt^2}
+\;=\; \frac{1}{2}\Bigl[
+\psi'(1/t)\cdot\Bigl(-\frac{1}{t^2}\Bigr)
+\;-\; \Bigl(-\frac{1}{t^2}\Bigr)\psi'(1/t)
+\;-\; \frac{1}{t}\,\psi''(1/t)\cdot\Bigl(-\frac{1}{t^2}\Bigr)
+\Bigr].
+\]
+The first two terms cancel. Thus
+\[
+\frac{d^2g}{dt^2} \;=\; \frac{1}{2}\cdot\frac{\psi''(1/t)}{t^3}.
+\]
+In terms of \(d = 1/t\), using \(t^3 = 1/d^3\):
+\[
+\frac{d^2\,\mathrm{UB2}}{dt^2} \;=\; \frac{\psi''(d)}{2\,d^3}.
+\]
+At a minimizer in \(d\), \(\psi'd = \psi\), so \(d(\mathrm{UB2})/dt = 0\). At that point,
+\(d^2(\mathrm{UB2})/dt^2 = \psi''/(2d^3)\). Whether the second derivative is positive
+depends on \(\psi''\); see below for the explicit formula.
+
+**Formula for \(\psi''\) (for use in \(d^2\mathrm{UB2}/dt^2\)).**  
+Let \(u = Q\beta_j + \mathrm{base\_B0}\). From \(\psi'(d) = (2/d^2)\,r_j^{T} M\,u\),
+
+\[
+\psi''(d)
+\;=\;
+\frac{2}{d^4}\Bigl[
+-a_j^{T} M\,u
+\;+\; 2\,r_j^{T} A^{-1}Q\,M\,u
+\;+\; r_j^{T} M\,Q\,A^{-1}u
+\Bigr]
+\;-\; \frac{4}{d^3}\,r_j^{T} M\,u,
+\]
+
+with \(A\), \(M\), \(r_j\), \(\beta_j\), \(u\) evaluated at \(d\). In terms of \(t = 1/d\),
+use \(d = 1/t\), \(r_j = a_j\,t + b_j\), \(A = P + Q\,t\), \(M = A^{-1}Q\,A^{-1}\), and
+\(\psi''(1/t)\) in the formula above. Then
+
+\[
+\frac{d^2\,\mathrm{UB2}}{dt^2}
+\;=\;
+\frac{\psi''(1/t)}{2\,t^3}.
+\]
+
+To determine the sign of \(d^2\mathrm{UB2}/dt^2\) at a given \(t\), compute
+\(\psi''(1/t)\) from the expression above; the second derivative in \(t\) is
+positive where \(\psi''(1/t) > 0\).
+
+**Summary table:**
+
+| Quantity | Expression |
+|----------|------------|
+| \(\frac{d\beta_j}{dd}\) | \(\frac{1}{d^2}A^{-1}(Q\beta_j + \mathrm{base\_B0})\) |
+| \(\frac{dr_j}{dd}\) | \(-\frac{a_j}{d^2}\) |
+| \(\frac{dM}{dd}\) | \(\frac{2}{d^2}A^{-1}Q\,M\) |
+| \(\psi'(d)\) | \(\frac{2}{d^2}\,r_j^{T} M\,(Q\beta_j + \mathrm{base\_B0})\) |
+| \(\frac{d\,\mathrm{UB2}}{dd}\) | \(\frac{\psi'\,d - \psi}{2d^2}\) |
+| \(\frac{d^2\,\mathrm{UB2}}{dd^2}\) | \(\frac{\psi''\,d^2 - 2(\psi' d - \psi)}{2d^3}\) |
+| \(\frac{d\,\mathrm{UB2}}{dt}\) (\(t = 1/d\)) | \(\frac{\psi - \psi'\,d}{2}\) |
+| \(\frac{d^2\,\mathrm{UB2}}{dt^2}\) | \(\frac{\psi''}{2\,d^3}\) |
+
+
+ 
+ 

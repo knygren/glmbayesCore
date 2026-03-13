@@ -170,7 +170,7 @@ The output includes:
 
 - Transformed posterior mode (`bstar2`)  
 - Transformed design matrix (`x2`)  
-- Standardized prior precision matrix (`P2`)  
+- Prior contribution to the modified log-likelihood (`P2`): the part of the prior precision that is shifted to the log-likelihood  
 - Transformed prior mean (`mu2`, typically zero)  
 - Precision matrix for standardized data (`A`)  
 - Inverse transformation matrices (`L2Inv`, `L3Inv`) for undoing the standardization
