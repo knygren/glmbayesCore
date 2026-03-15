@@ -695,8 +695,83 @@ LL(\beta,d) \;=\; -\tfrac{n_{w}}{2}\log d
 Together, these correction terms guarantee that the proposals dominate the target posterior, making the accept–reject step valid.
 
 
-### 4.4 Proposition: Log‑posterior decomposition in dispersion form (new)
+### 4.4 Lower Bounds for \(RSS_j(\cdot)\) and \(UB2_j(\cdot)\)
 
+**Notation.** Let \(t = 1/d\). Define the **tangency offset**
+\[
+B_0(t) \;=\; t\,X^\top W(\alpha - y) \;+\; P\mu,
+\]
+so that the tangency point \(\beta_j(d) = c^{-1}(\bar{c}_j,d)\) satisfies
+\(A(t)\,\beta_j(d) = \bar{c}_j - B_0(t)\), where \(A(t) = P + t\,Q\).
+Let the **ML estimator** be
+\[
+\hat{\beta} \;=\; \arg\min_\beta \mathrm{RSS}(\beta) \;=\; (X^\top W X)^{-1} X^\top W (y - \alpha).
+\]
+Define the **residual** (constant in \(d\) when using \(\hat{\beta}\))
+\[
+r^{*}_j \;:=\; \bar{c}_j - P\mu - P\hat{\beta}.
+\]
+With \(\tilde{M}(t) = A(t)^{-1} Q\, A(t)^{-1}\) and \(\tilde{M}_0(t) = (1/t^2)\,Q^{-1}\) (the no-prior matrix),
+the quadratic form \(\|\beta_j(d) - \hat{\beta}\|_2^2\) equals \((r^{*}_j)^{T} \tilde{M}(1/d)\, r^{*}_j\).
+Let \(RSS_{ML} = RSS(\hat{\beta})\).
+
+
+**Proposition 1: Lower bound for \(RSS_j(\cdot)\).**
+
+For face index \(j\) and dispersion \(d \in [\mathrm{low},\,\mathrm{upp}]\),
+
+\[
+RSS_j(d) \;=\; RSS_{ML} \;+\; (r^{*}_j)^{T}\tilde{M}(1/d)\, r^{*}_j
+\] 
+
+Moreover, the term involving \(d\) satisfies the following inequality
+
+- \(  (r^{*}_{j})^{T}\tilde{M}(1/d)  r^{*}_{j}  \ge (r^{*}_{j})^{T}\tilde{M}(1/low)  r^{*}_{j} \)  
+
+and hence for all \(d \in [low,upp]\)
+
+ \[
+ RSS_j(d) \ge RSS_{ML} \;+\; (r^{*}_{j})^{T}\tilde{M}(1/low)\, r^{*}_{j}
+ \] 
+
+and we can thus set
+\(RSS_{\mathrm{Min}} = \min_j \Bigl( RSS_{ML} \;+\; (r^{*}_{j})^{T}\tilde{M}(1/low)\, r^{*}_{j}
+ \Bigr)\).
+
+
+
+
+**Proposition 2: Lower bound for \(RSS_j(\cdot)\).**
+
+For face index \(j\) and dispersion \(d \in [\mathrm{low},\,\mathrm{upp}]\),
+
+\[
+UB2_j(d) \;=\; \frac{1}{2d}(RSS_{ML} \;+\; (r^{*}_j)^{T}\tilde{M}_0(1/d)\, r^{*}_j
+\;+\; (r^{*}_j)^{T}\bigl(\tilde{M}(1/d) - \tilde{M}_0(1/d)\bigr) r^{*}_j - RSS_{\mathrm{Min}}  )
+\] 
+
+Moreover, the terms involving \(d\) satisfy the following inequalities
+
+- \(  (r^{*}_{j})^{T}\tilde{M}_0(1/d)  r^{*}_{j}  \ge (r^{*}_{j})^{T}\tilde{M}_0(1/low)  r^{*}_{j} \)  
+
+- \(  (r^{*}_{j})^{T}(\tilde{M}(1/d) - \tilde{M}_0(1/d))  r^{*}_{j}  \ge (r^{*}_{j})^{T}(\tilde{M}(1/upp) - \tilde{M}_0(1/upp))  r^{*}_{j} \)  
+
+and hence for all \(d \in [low,upp]\)
+
+ \[
+ RSS_j(d) \ge RSS_{ML} \;+\; (r^{*}_{j})^{T}\tilde{M}_0(1/\mathrm{low})\, r^{*}_{j}
+\;+\; (r^{*}_{j})^{T}\bigl(\tilde{M}(1/\mathrm{upp}) - \tilde{M}_0(1/\mathrm{upp})\bigr) r^{*}_{j}
+ \] 
+
+and we can thus set
+\(RSS_{\mathrm{LB}} = \min_j \Bigl( RSS_{ML} \;+\; (r^{*}_{j})^{T}\tilde{M}_0(1/\mathrm{low})\, r^{*}_{j}
+\;+\; (r^{*}_{j})^{T}\bigl(\tilde{M}(1/\mathrm{upp}) - \tilde{M}_0(1/\mathrm{upp})\bigr) r^{*}_{j} \Bigr)\).
+
+
+### 4.5 Proposition: Log‑posterior decomposition in dispersion form
+
+
+**Proposition 3**
 For face index \(j\), dispersion \(d\), and tangency point \(\theta(d) = c^{-1}(\bar c_j,d)\),  
 the joint log‑posterior can be written as
 \[
@@ -1880,6 +1955,232 @@ Thus, for all \(d \in [\text{low}, \text{upp}]\),
 which completes the proof.
 
 
+# Appendix (simplified): WLOG \(Q = I\)
+
+**Without loss of generality assume \(Q = I\).**  
+If \(Q = X^{T} W X \succ 0\), reparametrize via \(\beta = Q^{-1/2}\,\tilde{\beta}\). In
+\(\tilde{\beta}\)-space, the data precision is \(\tilde{Q} = I\) and the prior is
+\(\tilde{P} = Q^{-1/2} P\, Q^{-1/2} \succ 0\). The model is equivalent; all results
+stated below for \(Q = I\) extend to the general case.
+
+## 1. Why the RSS decomposition holds
+
+Let \(RSS(\beta) = \sum_i w_i (y_i - x_i^{T}\beta)^2\) and \(\hat{\beta} =
+\arg\min_\beta RSS(\beta)\). With \(Q = I\) (in the reparametrized space), the
+quadratic expansion around \(\hat{\beta}\) is exact:
+
+\[
+RSS(\beta) \;=\; RSS(\hat{\beta}) \;+\; \|\beta - \hat{\beta}\|_2^2.
+\]
+
+So \(RSS_j(t) = RSS_{ML} + \|\beta_j(t) - \hat{\beta}\|_2^2\), with \(t = 1/d\).
+
+## 2. Structure of the tangency point \(\beta_j(t)\)
+
+**Definition.** For face \(j\) and dispersion \(d\), \(\beta_j(d)\) is the **tangency point**
+(i.e., the inverse map of the gradient \(\bar{c}_j\) at dispersion \(d\)): \(\beta_j(d) =
+c^{-1}(\bar{c}_j,\,d) = A(d)^{-1}(\bar{c}_j - B_0(d))\). With \(t = 1/d\), we write
+\(\beta_j(t)\) for the same point.
+
+Let \(X\) be the design matrix, \(W\) the weight matrix, and \(\alpha\) the offset. Define
+\[
+\text{base_A} \;=\; X^{T} W\, X \;=\; Q,
+\qquad
+\text{base_B0} \;=\; X^{T} W\,(\alpha - y).
+\]
+With \(Q = I\) (in the reparametrized space), \(\text{base_A} = I\).
+
+Introduce \(\tilde{A}(t) = P + t\,\text{base_A}\) and
+\(\tilde{M}(t) = \tilde{A}(t)^{-1} Q\, \tilde{A}(t)^{-1}\). With \(Q = I\),
+\(\text{base_A} = I\), so \(\tilde{A}(t) = P + t\,I\) and \(\tilde{M}(t) = \tilde{A}(t)^{-2}\).
+Write \(A(t) = \tilde{A}(t)\), \(M(t) = \tilde{M}(t)\).
+
+With \(B_0(t) = t\,\text{base_B0} + P\mu\), the tangency point satisfies
+\[
+\beta_j(t) \;=\; A(t)^{-1}\bigl(\bar{c}_j - B_0(t)\bigr)
+\quad\Longleftrightarrow\quad
+A(t)\,\beta_j(t) \;=\; \bar{c}_j - B_0(t).
+\]
+Let \(\hat{\beta} = \arg\min_\beta RSS(\beta)\) be the ML estimator. Define the **residual**
+\[
+r_j(t) \;:=\; A(t)\,\bigl(\beta_j(t) - \hat{\beta}\bigr),
+\]
+so that \(\beta_j(t) - \hat{\beta} = A(t)^{-1}\,r_j(t)\).
+
+**Linear form of \(r_j(t)\).** Using \(r_j(t) = A(t)\bigl(\beta_j(t) - \hat{\beta}\bigr)\),
+\(A(t)\,\beta_j(t) = \bar{c}_j - B_0(t)\), \(B_0(t) = t\,\text{base_B0} + P\mu\), and
+\(A(t) = P + t\,\text{base_A}\):
+\[
+\begin{aligned}
+r_j(t)
+&\;=\; A(t)\,\bigl(\beta_j(t) - \hat{\beta}\bigr)
+\\
+&\;=\; \bigl(A(t)\,\beta_j(t)\bigr) \;-\; \bigl(A(t)\,\hat{\beta}\bigr)
+\\
+&\;=\; \bigl(\bar{c}_j - B_0(t)\bigr) \;-\; \bigl(A(t)\,\hat{\beta}\bigr)
+\\
+&\;=\; \bigl(\bar{c}_j - (t\,\text{base_B0} + P\mu)\bigr) \;-\; \bigl((P + t\,\text{base_A})\,\hat{\beta}\bigr)
+\\
+&\;=\; \bigl(\bar{c}_j - P\mu - P\hat{\beta}\bigr) \;+\; t\,\bigl(-\text{base_B0} - \text{base_A}\,\hat{\beta}\bigr)
+\\
+&\;=\; \bigl(\bar{c}_j - P\mu - P\hat{\beta}\bigr) \;+\; t\,\bigl(-\bigl(X^{T} W\,(\alpha - y) + (X^{T} W\, X)\,\hat{\beta}\bigr)\bigr)
+\\
+&\;=\; \bigl(\bar{c}_j - P\mu - P\hat{\beta}\bigr) \;+\; t\,\bigl(-\bigl(X^{T} W\,(\alpha - y) + (X^{T} W\, X)\,(X^{T} W\, X)^{-1} X^{T} W\,(y - \alpha)\bigr)\bigr)
+\\
+&\;=\; \bigl(\bar{c}_j - P\mu - P\hat{\beta}\bigr) \;+\; t\,\bigl(-\bigl(X^{T} W\,(\alpha - y) + X^{T} W\,(y - \alpha)\bigr)\bigr)
+\\
+&\;=\; \bigl(\bar{c}_j - P\mu - P\hat{\beta}\bigr) \;+\; t\cdot 0
+\\
+&\;=\; \bar{c}_j - P\mu - P\hat{\beta}.
+\end{aligned}
+\]
+(Substitute \(\text{base_B0} = X^{T} W\,(\alpha - y)\), \(\text{base_A} = X^{T} W\, X\), and
+\(\hat{\beta} = (X^{T} W\, X)^{-1} X^{T} W\,(y - \alpha)\); then
+\((X^{T} W\, X)\,\hat{\beta} = X^{T} W\,(y - \alpha)\), so the bracketed sum cancels.)
+With \(a_j = -\bigl(\text{base_B0} + \text{base_A}\,\hat{\beta}\bigr)\) and
+\(b_j = \bar{c}_j - P\mu - P\hat{\beta}\), we have \(a_j = 0\) (as shown) and
+\(r_j(t) = a_j\,t + b_j = b_j\).
+
+## 3. Lower bounding the quadratic form
+
+The quadratic form is
+\[
+\|\beta_j(t) - \hat{\beta}\|_2^2 \;=\; r_j(t)^{T}\, M(t)\, r_j(t) \;=\; r_j(t)^{T}\, \tilde{M}(t)\, r_j(t),
+\]
+where \(r_j(t)\) is the residual.
+Decompose
+\[
+\tilde{M}(t) \;=\; \tilde{M}_0(t) \;+\; \bigl(\tilde{M}(t) - \tilde{M}_0(t)\bigr),
+\]
+where \(\tilde{M}_0(t) = \tilde{M}(d,0)\) at \(t = 1/d\). With \(Q = I\),
+\(\tilde{A}_0(t) = t\,I\), so \(\tilde{M}_0(t) = (1/t^2)\,I\). For the residual \(r_j(t)\),
+\[
+r_j(t)^{T} M(t)\, r_j(t) \;=\; \frac{1}{t^2}\,\|r_j(t)\|_2^2 \;+\; r_j(t)^{T}\bigl[\tilde{M}(t) - \tilde{M}_0(t)\bigr] r_j(t).
+\]
+
+
+
+
+
+## 4. Conjecture and proof (second term, \(Q = I\))
+
+**Conjecture.** Define \(D(t) = \tilde{M}(t) - \tilde{M}_0(t)\). For \(t \ge t_{\mathrm{low}} = 1/\mathrm{upp}\),
+\[
+r_j^{T} D(t)\, r_j \;\ge\; r_j^{T} D(t_{\mathrm{low}})\, r_j
+\quad\text{for all } r_j,
+\]
+i.e. \(D(t) \succeq D(t_{\mathrm{low}})\) (Loewner order), so \(D(t)\) is increasing in \(t\).
+
+**Theorem (case \(Q = I\)).** When \(Q = I\) and \(P \succ 0\), the conjecture holds.
+
+*Proof.* With \(Q = I\), \(\tilde{A}(t) = P + t\,I\) and
+\(B(t) = Q^{1/2}\,\tilde{A}(t)^{-1}\,Q^{1/2} = (P + t\,I)^{-1}\).
+Then \(\frac{dD}{dt} = 2\,\bigl(I/t^3 - B(t)^3\bigr)\). The matrix \(B(t)\) shares eigenvectors with \(P\).
+If \(\lambda_i(P) > 0\) is an eigenvalue of \(P\), then \(B(t)\) has eigenvalue \(1/(\lambda_i(P) + t)\),
+so \(B(t)^3\) has eigenvalue \(1/(\lambda_i(P) + t)^3\), and \(I/t^3 - B(t)^3\) has eigenvalues
+\[
+\mu_i(t) \;=\; \frac{1}{t^3} \;-\; \frac{1}{(\lambda_i(P) + t)^3}.
+\]
+For \(\frac{dD}{dt} \succeq 0\) we need \(\mu_i(t) \ge 0\) for all \(i\), i.e.
+\((\lambda_i(P) + t)^3 \ge t^3\), hence \(\lambda_i(P) + t \ge t\), i.e. \(\lambda_i(P) \ge 0\).
+Since \(P \succ 0\), all \(\lambda_i(P) > 0\), so \(\mu_i(t) > 0\). Thus \(\frac{dD}{dt} \succ 0\), so \(D(t)\) is increasing in \(t\). Hence
+\(D(t) \succeq D(t_{\mathrm{low}})\) for \(t \ge t_{\mathrm{low}}\).
+
+## 5. Lower bound using the conjecture
+
+From section 3,
+\[
+r_j(t)^{T} M(t)\, r_j(t) \;=\; \frac{1}{t^2}\,\|r_j(t)\|_2^2 \;+\; r_j(t)^{T}\bigl[\tilde{M}(t) - \tilde{M}_0(t)\bigr] r_j(t).
+\]
+By the conjecture, \(D(t) = \tilde{M}(t) - \tilde{M}_0(t) \succeq D(t_{\mathrm{low}})\) for \(t \ge t_{\mathrm{low}}\),
+so \(r_j(t)^{T} D(t)\, r_j(t) \ge r_j(t)^{T} D(t_{\mathrm{low}})\, r_j(t)\). Hence
+\[
+r_j(t)^{T} M(t)\, r_j(t) \;\ge\; \frac{1}{t^2}\,\|r_j(t)\|_2^2 \;+\; r_j(t)^{T} D(t_{\mathrm{low}})\, r_j(t).
+\]
+
+## 6. Minimization of the improved lower bound
+
+Minimize over \(t \in [t_{\min},\,t_{\max}]\) the bound from section 5:
+\[
+f_j(t) \;=\; \frac{1}{t^2}\,\|r_j(t)\|_2^2 \;+\; r_j(t)^{T} D(t_{\mathrm{low}})\, r_j(t).
+\]
+Using \(r_j(t) = a_j\,t + b_j\) with \(a_j\), \(b_j\) from section 2, write
+\(\|r_j(t)\|_2^2 = \alpha\,t^2 + \beta\,t + \gamma\)
+where \(\alpha = \|a_j\|_2^2\), \(\beta = 2\,a_j^{T}b_j\), \(\gamma = \|b_j\|_2^2\). Also
+\[
+r_j(t)^{T} D(t_{\mathrm{low}})\, r_j(t)
+\;=\; \delta\,t^2 \;+\; \varepsilon\,t \;+\; \zeta,
+\]
+with \(\delta = a_j^{T} D(t_{\mathrm{low}})\, a_j\),
+\(\varepsilon = 2\,a_j^{T} D(t_{\mathrm{low}})\, b_j\),
+\(\zeta = b_j^{T} D(t_{\mathrm{low}})\, b_j\). Hence
+\[
+f_j(t) \;=\; \frac{\alpha\,t^2 + \beta\,t + \gamma}{t^2} \;+\; \delta\,t^2 + \varepsilon\,t + \zeta
+\;=\; \alpha \;+\; \frac{\beta}{t} \;+\; \frac{\gamma}{t^2} \;+\; \delta\,t^2 \;+\; \varepsilon\,t \;+\; \zeta.
+\]
+Differentiate:
+\[
+f_j'(t) \;=\; -\frac{\beta}{t^2} \;-\; \frac{2\gamma}{t^3} \;+\; 2\delta\,t \;+\; \varepsilon.
+\]
+Setting \(f_j'(t) = 0\) and multiplying by \(t^3\) gives
+\[
+2\delta\,t^4 \;+\; \varepsilon\,t^3 \;-\; \beta\,t \;-\; 2\gamma \;=\; 0.
+\]
+
+**Formulas for roots.** For weak priors (\(P\) small), \(D(t_{\mathrm{low}})\) is near zero, so \(\delta\), \(\varepsilon\), \(\zeta\) are small. The \(\delta\,t^2 + \varepsilon\,t + \zeta\) term may still shift the minimizer.
+
+- **Case \(\delta = \varepsilon = 0\):** The quartic reduces to \(-\beta\,t - 2\gamma = 0\), giving
+  \[
+  t^* \;=\; -\frac{2\gamma}{\beta} \;=\; -\frac{\|b_j\|_2^2}{a_j^{T}b_j}
+  \quad\text{(when } a_j^{T}b_j \ne 0\text{)}.
+  \]
+  This is the minimizer of \((1/t^2)\,\|r_j(t)\|_2^2\) alone.
+
+- **Case \(\delta = 0\), \(\varepsilon \ne 0\):** The equation becomes the cubic
+  \(\varepsilon\,t^3 - \beta\,t - 2\gamma = 0\). The closed-form cubic root(s) can be used; the relevant real root in \([t_{\min},\,t_{\max}]\) is the candidate.
+
+- **General case (Ferrari's formula):** Write the quartic in monic form
+  \(t^4 + a_3 t^3 + a_2 t^2 + a_1 t + a_0 = 0\) with
+  \(a_3 = \varepsilon/(2\delta)\), \(a_2 = 0\), \(a_1 = -\beta/(2\delta)\), \(a_0 = -\gamma/\delta\).
+  The resolvent cubic is \(y^3 + A\,y + B = 0\) with
+  \[
+  A \;=\; \frac{-\beta\varepsilon + 16\gamma\delta}{4\delta^2},
+  \qquad
+  B \;=\; -\frac{\beta^2\delta - \gamma\varepsilon^2}{4\delta^3}.
+  \]
+  By Cardano's formula, a real root is
+  \(y_1 = \sqrt[3]{-B/2 + \sqrt{B^2/4 + A^3/27}}
+  + \sqrt[3]{-B/2 - \sqrt{B^2/4 + A^3/27}}\) (take real cube roots). Define
+  \[
+  p \;=\; \frac{\varepsilon}{2\delta} \;\pm\; \sqrt{\frac{\varepsilon^2}{4\delta^2} + 4y_1},
+  \qquad
+  q \;=\; y_1 \;\mp\; \sqrt{y_1^2 + \frac{4\gamma}{\delta}},
+  \]
+  where the \(\pm\) and \(\mp\) are chosen in the two pairs \((+,\,-)\) and \((-,\,+)\) to yield
+  four combinations. The four roots are
+  \[
+  t \;=\; \frac{-p \;\pm\; \sqrt{p^2 - 8q}}{4},
+  \]
+  with both choices of \((\pm,\mp)\) in \((p,q)\) and both choices of \(\pm\) in the numerator.
+  The minimizer is the real root in \([t_{\min},\,t_{\max}]\) that minimizes \(f_j(t)\), or an
+  endpoint. For weak priors, \(t^* = -2\gamma/\beta\) is a useful initial guess.
+
+The minimizer over \([t_{\min},\,t_{\max}]\) is either a root of this quartic in that interval or one of the endpoints. Let \(\tilde{t}_j\) be the choice that minimizes \(f_j(t)\), and define
+\(m_j^2 = f_j(\tilde{t}_j)\).
+
+## 7. Final bound for \(RSS_{\min,j}\)
+
+Let \(t_{\max} = 1/low\) and \(A(t_{\max}) = P + t_{\max}\,I\). Then
+\(C = \lambda_{\min}(M(t_{\max})) = 1/\lambda_{\max}(A(t_{\max}))^2\).
+For all \(t \in [t_{\min},\,t_{\max}]\) with \(t_{\min} = 1/upp\),
+\(r_j(t)^{T} M(t)\, r_j(t) \ge C\,\|r_j(t)\|_2^2\), hence
+\(RSS_j(t) \ge RSS_{ML} + C\,\|r_j(t)\|_2^2\).
+Since \(m_j^2 = f_j(\tilde{t}_j)\) minimizes the lower bound (section 6),
+\(RSS_{\min,j} \ge RSS_{ML} + C\,m_j^2\). The bound is closed form and valid for all
+\(t \in [t_{\min},\,t_{\max}]\).
+
+---------------------------------------------------------------------
+
 # Appendix: Bounding RSS_j(d) Using the ML Decomposition
 
 This appendix explains the identity
@@ -1896,6 +2197,10 @@ RSS_{\min,j} \;=\; \min_{d \in [low,\,upp]} RSS_j(d).
 
 The key idea is to use the explicit dependence of the tangency point
 \(\beta_j(d)\) on the dispersion parameter \(d\).
+
+
+
+
 
 ---------------------------------------------------------------------
 
@@ -2407,6 +2712,251 @@ The behavior of \(f\) is determined by the sign of \(\kappa\). We have two cases
   \(f\) is strictly decreasing.
 
 In both cases, the function obtains a unique minimum over the interval.
+
+
+**Conjecture (Bounding of second term from below)**
+
+\[
+\frac{1}{2d}\,
+\Bigl[
+r_j(d)^{T}\,
+\bigl[\tilde{M}(d,P) - \tilde{M}(d,0)\bigr]\,
+r_j(d)
+\Bigr]
+\;\ge\;
+\frac{1}{2d}\,
+\Bigl[
+r_j(d)^{T}\,
+\bigl[\tilde{M}(\mathrm{upp},P) - \tilde{M}(\mathrm{upp},0)\bigr]\,
+r_j(d)
+\Bigr].
+\]
+
+Define \(D(d) = \tilde{M}(d,P) - \tilde{M}(d,0)\). The inequality holds for all \(r_j(d)\) iff
+\(D(d) \succeq D(\mathrm{upp})\) when \(d \le \mathrm{upp}\), i.e. \(D(d)\) is decreasing in \(d\) (Loewner order).
+Since \(1/(2d) > 0\), it suffices to show that \(r^{T} D(d)\, r \ge r^{T} D(\mathrm{upp})\, r\) for all \(r\),
+which is equivalent to \(D(d) \succeq D(\mathrm{upp})\).
+
+**Proofs (special cases)**
+
+Let \(\tilde{A}(d,P) = P + (1/d)\,Q\), \(\tilde{M}(d,P) = \tilde{A}(d,P)^{-1} Q\, \tilde{A}(d,P)^{-1}\),
+and \(\tilde{M}(d,0) = d^2\,Q^{-1}\). Then \(D(d) = \tilde{M}(d,P) - d^2\,Q^{-1}\).
+All proofs use \(t = 1/d\) and \(\tilde{A}(t) = P + t\,Q\).
+
+---
+
+**Special Case 1: Univariate.** \(P > 0\), \(Q > 0\) scalars.
+
+Then \(\tilde{A}(t) = P + t\,Q\), \(\tilde{M}(d,P) = Q\,/\,\tilde{A}(t)^2 = Q/(P+tQ)^2\),
+\(\tilde{M}(d,0) = d^2/Q = 1/(t^2 Q)\), so
+\[
+D(d) \;=\; \frac{Q}{(P + tQ)^2} \;-\; \frac{1}{t^2\,Q}.
+\]
+Differentiate w.r.t. \(t\) (with \(dt/dd = -1/d^2 < 0\)): 
+\[
+\frac{dD(d)}{dt} \;=\; -\frac{2\,Q^2}{(P+tQ)^3} \;+\; \frac{2}{t^3\,Q}
+\;=\; 2\Bigl(\frac{1}{t^3 Q} \;-\; \frac{Q^2}{(P+tQ)^3}\Bigr).
+\]
+So \(dD(d)/dt \ge 0\) iff \(\displaystyle\frac{1}{t^3 Q} \ge \frac{Q^2}{(P+tQ)^3}\)
+iff \((P+tQ)^3 \ge t^3 Q^3\) iff \(P + tQ \ge tQ\), i.e. \(P \ge 0\), which holds.
+Thus \(D\) increases in \(t\), so \(D\) decreases in \(d\) (since \(t = 1/d\)). Hence
+\(D(d) \ge D(\mathrm{upp})\) for \(d \le \mathrm{upp}\).
+
+---
+
+**Special Case 2: \(P = k\,Q\)** for some \(k > 0\).
+
+Then \(P\) and \(Q\) commute. We have \(\tilde{A}(t) = (k + t)\,Q\), so
+\(\tilde{A}(t)^{-1} = Q^{-1}/(k+t)\) and
+\[
+\tilde{M}(d,P) \;=\; \frac{Q^{-1}\,Q\,Q^{-1}}{(k+t)^2} \;=\; \frac{Q^{-1}}{(k+t)^2}.
+\]
+Also \(\tilde{M}(d,0) = d^2\,Q^{-1} = Q^{-1}/t^2\). Thus
+\[
+D(d) \;=\; Q^{-1}\Bigl(\frac{1}{(k+t)^2} \;-\; \frac{1}{t^2}\Bigr),
+\]
+and \(Q^{-1} \succ 0\) is a positive constant matrix. The scalar factor
+\(\frac{1}{(k+t)^2} - \frac{1}{t^2}\) is the same as in the univariate case
+(with \(P = k\,Q\) and \(Q\) normalized to 1). It is decreasing in \(d\) (increasing in \(t\))
+by the same argument as Case 1. Hence \(D(d) \succeq D(\mathrm{upp})\) for \(d \le \mathrm{upp}\).
+
+---
+
+**Special Case 3: \(P\) and \(Q\) both diagonal.**
+
+Let \(P = \mathrm{diag}(p_1,\ldots,p_n)\), \(Q = \mathrm{diag}(q_1,\ldots,q_n)\) with \(p_i, q_i > 0\).
+Then \(\tilde{A}(t) = \mathrm{diag}(p_1 + t\,q_1, \ldots, p_n + t\,q_n)\) is diagonal, and
+\[
+\tilde{M}(d,P)_{ii} \;=\; \frac{q_i}{(p_i + t\,q_i)^2}, \qquad
+\tilde{M}(d,0)_{ii} \;=\; \frac{q_i}{t^2\,q_i^2} \;=\; \frac{q_i}{(t\,q_i)^2}.
+\]
+Both terms have \(q_i\) in the numerator and a squared denominator; the first uses
+\((p_i + t\,q_i)^2\) and the second uses \((t\,q_i)^2\). So \(D(d)\) is diagonal with
+\[
+D(d)_{ii} \;=\; \frac{q_i}{(p_i + t\,q_i)^2} \;-\; \frac{q_i}{(t\,q_i)^2}
+\;=\; q_i\Bigl(\frac{1}{(p_i + t\,q_i)^2} \;-\; \frac{1}{(t\,q_i)^2}\Bigr).
+\]
+Differentiating with respect to \(t\),
+\[
+\frac{dD_{ii}}{dt} \;=\; -\frac{2\,q_i^2}{(p_i + t\,q_i)^3} \;+\; \frac{2}{t^3\,q_i}
+\;=\; 2\Bigl(\frac{1}{t^3\,q_i} \;-\; \frac{q_i^2}{(p_i + t\,q_i)^3}\Bigr).
+\]
+Each diagonal entry is the univariate derivative; \(dD_{ii}/dt \ge 0\) iff
+\((p_i + t\,q_i)^3 \ge t^3\,q_i^3\), i.e. \(p_i + t\,q_i \ge t\,q_i\), which holds since \(p_i > 0\).
+Hence \(D\) is increasing in \(t\), decreasing in \(d\), and \(D(d) \succeq D(\mathrm{upp})\) for \(d \le \mathrm{upp}\).
+
+---
+
+**Special Case 4: Standardization at \(d_1^*\).**
+
+Let \(d_1^* \in [\mathrm{low},\,\mathrm{upp}]\) be the dispersion used in standardization.
+At \(t^* = 1/d_1^*\), the posterior precision \(\tilde{A}(t^*) = P + Q/d_1^*\) is diagonal
+(after the L2/L3 transforms). The diagonal elements are \(a_k^* = P_{kk} + t^*\,Q_{kk} > 0\). Then
+\(\tilde{A}(t^*)^{-1}\) is diagonal with \((1/a_k^*)\), and
+\(B^* = Q^{1/2}\,\tilde{A}(t^*)^{-1}\,Q^{1/2}\) need not be diagonal; its elements are
+\[
+(B^*)_{ij} \;=\; \sum_k \frac{(Q^{1/2})_{ik}\,(Q^{1/2})_{jk}}{P_{kk} + t^*\,Q_{kk}}.
+\]
+The derivative uses \((B^*)^3\), not \((B^*)^2\): \(dD/dt = 2\,Q^{-1/2}(I/(t^*)^3 - (B^*)^3)\,Q^{-1/2}\).
+The \((i,j)\)-element of \((B^*)^3\) is
+\[
+\bigl((B^*)^3\bigr)_{ij} \;=\; \sum_{\ell,r} (B^*)_{i\ell}\,(B^*)_{\ell r}\,(B^*)_{r j}
+\;=\; \sum_{k,m,n,\ell,r}
+\frac{(Q^{1/2})_{ik}\,(Q^{1/2})_{\ell k}\,(Q^{1/2})_{\ell m}\,(Q^{1/2})_{rm}\,(Q^{1/2})_{rn}\,(Q^{1/2})_{jn}}
+{(P_{kk} + t^*\,Q_{kk})(P_{mm} + t^*\,Q_{mm})(P_{nn} + t^*\,Q_{nn})},
+\]
+so the derivative at \(t^*\) is \(2\,Q^{-1/2}\,M\,Q^{-1/2}\), where \(M\) has \((i,j)\)-element
+\[
+M_{ij} \;=\;
+\sum_{k,m,n,\ell,r} (Q^{1/2})_{ik}\,(Q^{1/2})_{\ell k}\,(Q^{1/2})_{\ell m}\,(Q^{1/2})_{rm}\,(Q^{1/2})_{rn}\,(Q^{1/2})_{jn}
+\Biggl[
+\frac{1}{(t^*\,Q_{kk})(t^*\,Q_{mm})(t^*\,Q_{nn})}
+\;-\;
+\frac{1}{(P_{kk} + t^*\,Q_{kk})(P_{mm} + t^*\,Q_{mm})(P_{nn} + t^*\,Q_{nn})}
+\Biggr].
+\]
+Since \(Q^{-1/2} \succ 0\), \(dD/dt \succeq 0\) at \(t^*\) iff \(M \succeq 0\). Then \(D\) is increasing in \(t\)
+at the anchor, hence decreasing in \(d\) at \(d_1^*\).
+
+**Comparison with Special Case 3.** When \(P = \mathrm{diag}(p_1,\ldots,p_n)\) and
+\(Q = \mathrm{diag}(q_1,\ldots,q_n)\), \(Q^{1/2}\) is diagonal with \((Q^{1/2})_{ik} = \sqrt{q_i}\,\delta_{ik}\).
+Then
+\[
+(B^*)_{ij} \;=\; \sum_k \frac{(Q^{1/2})_{ik}\,(Q^{1/2})_{jk}}{P_{kk} + t^*\,Q_{kk}}
+\;=\; \sum_k \frac{\sqrt{q_i}\,\delta_{ik}\,\sqrt{q_j}\,\delta_{jk}}{p_k + t^*\,q_k}.
+\]
+The product \(\delta_{ik}\,\delta_{jk}\) is 1 only when \(i = j = k\); otherwise it is 0. So
+\(B^*\) is diagonal with
+\[
+(B^*)_{ii} \;=\; \frac{q_i}{p_i + t^*\,q_i}, \qquad (B^*)_{ij} \;=\; 0 \;\; \text{for } i \ne j.
+\]
+
+For \((B^*)^3\), substitute \((Q^{1/2})_{ab} = \sqrt{q_a}\,\delta_{ab}\) into
+\[
+\bigl((B^*)^3\bigr)_{ij} \;=\; \sum_{k,m,n,\ell,r}
+\frac{(Q^{1/2})_{ik}\,(Q^{1/2})_{\ell k}\,(Q^{1/2})_{\ell m}\,(Q^{1/2})_{rm}\,(Q^{1/2})_{rn}\,(Q^{1/2})_{jn}}
+{(P_{kk} + t^*\,Q_{kk})(P_{mm} + t^*\,Q_{mm})(P_{nn} + t^*\,Q_{nn})}.
+\]
+The numerator is
+\(\sqrt{q_i}\,\delta_{ik}\,\sqrt{q_{\ell}}\,\delta_{\ell k}\,\sqrt{q_{\ell}}\,\delta_{\ell m}\,
+\sqrt{q_r}\,\delta_{rm}\,\sqrt{q_r}\,\delta_{rn}\,\sqrt{q_j}\,\delta_{jn}\).
+For this to be non-zero, \(\delta_{ik}\,\delta_{\ell k}\,\delta_{\ell m}\,\delta_{rm}\,\delta_{rn}\,\delta_{jn} = 1\),
+so \(i = k\), \(\ell = k\), \(\ell = m\), \(r = m\), \(r = n\), and \(j = n\). Hence \(i = \ell = k = m = r = n = j\):
+all indices collapse. The sum reduces to a single term with \(k = m = n = i\), giving
+\[
+\bigl((B^*)^3\bigr)_{ii} \;=\; \frac{q_i^3}{(p_i + t^*\,q_i)^3}, \qquad
+\bigl((B^*)^3\bigr)_{ij} \;=\; 0 \;\; \text{for } i \ne j.
+\]
+
+Since \(M = I/(t^*)^3 - (B^*)^3\), in the diagonal case \(M\) is diagonal with
+\[
+M_{ii} \;=\; \frac{1}{(t^*)^3} \;-\; \frac{q_i^3}{(p_i + t^*\,q_i)^3}, \qquad
+M_{ij} \;=\; 0 \;\; \text{for } i \ne j.
+\]
+This agrees with Special Case 3: \(dD_{ii}/dt = 2\,Q^{-1/2} M\,Q^{-1/2}\) gives
+\(dD_{ii}/dt = 2\,M_{ii}/q_i = 2\bigl(1/(t^3\,q_i) - q_i^2/(p_i + t\,q_i)^3\bigr)\).
+
+**Two-dimensional case.** For \(p = 2\), indices \(k,m,n,\ell,r \in \{1,2\}\).
+Write the bracketed factor
+\[
+\Delta_{kmn} \;=\; \frac{1}{(t^*\,Q_{kk})(t^*\,Q_{mm})(t^*\,Q_{nn})}
+\;-\; \frac{1}{(P_{kk}+t^*\,Q_{kk})(P_{mm}+t^*\,Q_{mm})(P_{nn}+t^*\,Q_{nn})},
+\]
+and use \(\sum_{\ell} (Q^{1/2})_{\ell k}(Q^{1/2})_{\ell m} = Q_{km}\) and
+\(\sum_r (Q^{1/2})_{rm}(Q^{1/2})_{rn} = Q_{mn}\) (since \(Q = (Q^{1/2})^2\)). Then
+\[
+M_{ij} \;=\; \sum_{k,m,n \,\in\, \{1,2\}}
+(Q^{1/2})_{ik}\,Q_{km}\,Q_{mn}\,(Q^{1/2})_{jn}\;\Delta_{kmn},
+\]
+a sum over 8 terms \((k,m,n) \in \{1,2\}^3\).
+With \(M_{12} = M_{21}\) (since \(M\) is symmetric), the eigenvalues of \(M\) are
+\[
+\mu_\pm \;=\; \frac{M_{11} + M_{22} \;\pm\; \sqrt{(M_{11}-M_{22})^2 + 4\,M_{12}^2}}{2},
+\]
+where \(M_{11}\), \(M_{12}\), \(M_{22}\) are given explicitly by the sum above (indices \(i,j,k,m,n,\ell,r \in \{1,2\}\)).
+\(M \succeq 0\) iff \(\mu_- \ge 0\), i.e.
+\(M_{11} + M_{22} \ge \sqrt{(M_{11}-M_{22})^2 + 4\,M_{12}^2}\).
+With the 2D form \(M_{ij} = \sum_{k,m,n} (Q^{1/2})_{ik}\,Q_{km}\,Q_{mn}\,(Q^{1/2})_{jn}\,\Delta_{kmn}\),
+\[
+\sum_{k,m,n} \Bigl[(Q^{1/2})_{1k}\,Q_{km}\,Q_{mn}\,(Q^{1/2})_{1n}
+\;+\; (Q^{1/2})_{2k}\,Q_{km}\,Q_{mn}\,(Q^{1/2})_{2n}\Bigr]\,\Delta_{kmn}
+\]
+\[
+\ge \sqrt{
+\Biggl[\sum_{k,m,n} \Bigl((Q^{1/2})_{1k}\,(Q^{1/2})_{1n} - (Q^{1/2})_{2k}\,(Q^{1/2})_{2n}\Bigr)\,Q_{km}\,Q_{mn}\,\Delta_{kmn}\Biggr]^2
+\;+\;
+4\Biggl[\sum_{k,m,n} (Q^{1/2})_{1k}\,Q_{km}\,Q_{mn}\,(Q^{1/2})_{2n}\,\Delta_{kmn}\Biggr]^2
+},
+\]
+where all sums run over \(k,m,n \in \{1,2\}\).
+
+---
+
+**Special Case 5: General case.**
+
+Let \(B = Q^{1/2}\,\tilde{A}(t)^{-1}\,Q^{1/2}\) with \(\tilde{A}(t) = P + t\,Q\). Then
+\[
+\frac{dD}{dt} \;=\; 2\,Q^{-1/2}\Bigl(\frac{I}{t^3} \;-\; B^3\Bigr)Q^{-1/2}.
+\]
+So \(dD/dt \succeq 0\) (hence \(D\) decreasing in \(d\)) iff \(B^3 \preceq I/t^3\),
+i.e. all eigenvalues of \(B\) satisfy \(\lambda(B) \le t^{-1}\). For the general case
+(arbitrary positive definite \(P\) and \(Q\)), this eigenvalue condition is not
+obvious. The conjecture remains open; numerical checks support it.
+
+---
+
+**Special Case 6: \(Q = I\), \(P \succ 0\) arbitrary.**
+
+Let \(Q = I\) and \(P\) be an arbitrary positive definite matrix. Then
+\(\tilde{A}(t) = P + t\,I\), so \(\tilde{A}(t)^{-1} = (P + t\,I)^{-1}\), and
+\[
+B \;=\; Q^{1/2}\,\tilde{A}(t)^{-1}\,Q^{1/2} \;=\; (P + t\,I)^{-1}.
+\]
+Hence \(B\) and \(P + t\,I\) share eigenvectors; if \(\lambda_i(P) > 0\) is an eigenvalue
+of \(P\), then \(P + t\,I\) has eigenvalue \(\lambda_i(P) + t\), and \(B\) has eigenvalue
+\(1/(\lambda_i(P) + t)\). Thus \(B^3\) has eigenvalues \(1/(\lambda_i(P) + t)^3\), and
+\(M = I/t^3 - B^3\) has eigenvalues
+\[
+\mu_i \;=\; \frac{1}{t^3} \;-\; \frac{1}{(\lambda_i(P) + t)^3}.
+\]
+For \(M \succeq 0\) we need \(\mu_i \ge 0\) for all \(i\), i.e.
+\(\displaystyle\frac{1}{t^3} \ge \frac{1}{(\lambda_i(P) + t)^3}\),
+or \((\lambda_i(P) + t)^3 \ge t^3\), hence \(\lambda_i(P) + t \ge t\), i.e. \(\lambda_i(P) \ge 0\).
+Since \(P \succ 0\), all \(\lambda_i(P) > 0\), so \(\mu_i > 0\) for all \(i\). Thus \(M \succ 0\),
+\(dD/dt \succ 0\), and \(D\) is strictly decreasing in \(d\). The conjecture holds.
+
+**General result by reparametrization.**  
+As long as \(Q = X^{T} W X\) is positive definite, the model can be reparametrized to
+an equivalent model in which \(\tilde{X}^{T}\tilde{W}\tilde{X} = I\). Define
+\(\beta = Q^{-1/2}\,\tilde{\beta}\). Then the precision in \(\tilde{\beta}\)-space is
+\(\tilde{A}(d) = Q^{-1/2}(P + Q/d) Q^{-1/2} = \tilde{P} + I/d\), with
+\(\tilde{P} = Q^{-1/2}\,P\,Q^{-1/2} \succ 0\). In this space, the "data precision" is
+\(\tilde{Q} = I\) and the prior is \(\tilde{P}\); we are in the setting of Special Case 6.
+The conjecture holds there, i.e. \(\tilde{D}(d)\) is decreasing in \(d\). The
+reparametrization is an invertible linear map, so the Loewner order is preserved:
+\(D(d) \succeq D(\mathrm{upp})\) in the original space iff
+\(\tilde{D}(d) \succeq \tilde{D}(\mathrm{upp})\) in the reparametrized space. Hence the
+conjecture holds in the general case whenever \(Q \succ 0\) and \(P \succ 0\).
 
 
 Define \(\mathrm{UB2b}_j(d)\) by replacing \(M(d)\) with \(C\) (and factoring \(C\) out):

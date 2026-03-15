@@ -186,8 +186,8 @@ The same hierarchical model can be fit with **`dIndependent_Normal_Gamma`**, whi
 
 ```{r schools-indep-setup, eval = TRUE}
 theta <- estimate
-n_burn_schools <- 1000
-n_sim_schools  <- 1000
+n_burn_schools <- 1
+n_sim_schools  <- 10
 theta_out <- matrix(0, nrow = n_sim_schools, ncol = J)
 mu_out    <- numeric(n_sim_schools)
 sigma_theta_out <- numeric(n_sim_schools)

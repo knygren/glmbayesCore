@@ -698,56 +698,48 @@ Rcpp::List bound_rss_over_dispersion(
   arma::mat M_min = Ainv_max.t() * base_A * Ainv_max;  // Q = base_A for Gaussian
   M_min = 0.5 * (M_min + M_min.t());
   arma::vec evals_M = arma::eig_sym(M_min);
-  if (verbose) {
-    Rcout << "[bound_rss:eigenvalues of M] ";
-    for (arma::uword i = 0; i < evals_M.n_elem; ++i)
-      Rcout << evals_M(i) << (i + 1 < evals_M.n_elem ? " " : "\n");
-  }
   double C = evals_M(0);
 
-  double t_min = 1.0 / upp;
-  double t_max = 1.0 / low;
+  // double t_min = 1.0 / upp;
+  // double t_max = 1.0 / low;
+
+  // Proposition 1 bound (two terms): RSS_j(d) >= RSS_ML + r*^T M(1/low) r*
+  // M(t) decreasing in t => min at d=low. M(low) = A_max^{-1} Q A_max^{-1} = M_min
+  // (A_max, M_min already computed above)
 
   NumericVector rss_bound_parallel(gs);
   NumericVector disp_min_parallel(gs);
+  // NumericVector rss_bound_prop1_parallel(gs);  // old C*m^2 bound (kept for comparison)
   double rss_min_bound = R_PosInf;
+  // double rss_min_bound_prop1 = R_PosInf;
 
   for (int j = 0; j < gs; ++j) {
     arma::vec cbar_j(p);
     for (int r = 0; r < p; ++r) cbar_j(r) = cbars(j, r);
 
-    // Fixed a_j, b_j: r_j(t) = a_j*t + b_j with t = 1/d
-    arma::vec a_j = -(base_B0 + base_A * beta_hat);
+    // r* = b_j for Prop1 (tangency at d -> low, t = 1/low)
     arma::vec b_j = cbar_j - Pmu - Pmat * beta_hat;
 
-    double aa = arma::dot(a_j, a_j);
-    double ab = arma::dot(a_j, b_j);
-    double t_star = (aa > 0.0 ? -ab / aa : t_min);
-    double t_tilde = std::min(std::max(t_star, t_min), t_max);
+    // Old bound: a_j, t_star, t_tilde, r_min, m_j_sq, quad_lower_bound = C*m_j^2
+    // arma::vec a_j = -(base_B0 + base_A * beta_hat);
+    // double aa = arma::dot(a_j, a_j);
+    // double ab = arma::dot(a_j, b_j);
+    // double t_star = (aa > 0.0 ? -ab / aa : t_min);
+    // double t_tilde = std::min(std::max(t_star, t_min), t_max);
+    // arma::vec r_min = a_j * t_tilde + b_j;
+    // double m_j_sq = arma::dot(r_min, r_min);
+    // double quad_lower_bound = C * m_j_sq;
+    // double lb_old = RSS_ML + quad_lower_bound;
 
-    arma::vec r_min = a_j * t_tilde + b_j;
-    double m_j_sq = arma::dot(r_min, r_min);
-    double quad_lower_bound = C * m_j_sq;
+    // Proposition 1 bound (two terms): RSS_ML + r*^T M(1/low) r* (output bound)
+    double quad_prop1 = arma::as_scalar(b_j.t() * M_min * b_j);
+    double lb_prop1_j = RSS_ML + quad_prop1;
+    rss_bound_parallel(j) = lb_prop1_j;
+    // rss_bound_prop1_parallel(j) = lb_old;
+    disp_min_parallel(j) = low;                 // Prop1 bound achieved at d=low
 
-    double lb_j = RSS_ML + quad_lower_bound;
-    rss_bound_parallel(j) = lb_j;
-    disp_min_parallel(j) = 1.0 / t_tilde;
-
-    if (verbose && j < 5) {
-      double m_j = std::sqrt(m_j_sq);
-      Rcout << "[bound_rss:face " << j << "] t_tilde=" << t_tilde
-            << " m_j=" << m_j << " lb_j-RSS_ML=" << (lb_j - RSS_ML) << "\n";
-    }
-    if (R_finite(lb_j) && lb_j < rss_min_bound) rss_min_bound = lb_j;
-  }
-
-  if (verbose) {
-    double beta_hat_norm = std::sqrt(arma::as_scalar(beta_hat.t() * beta_hat));
-    Rcout << "[EnvelopeDispersionBuild:bound_rss] RSS_ML=" << RSS_ML
-          << " LB^RSS_min=" << rss_min_bound
-          << " | C=" << C
-          << " ||beta_hat||=" << beta_hat_norm
-          << " low=" << low << " upp=" << upp << "\n";
+    if (R_finite(lb_prop1_j) && lb_prop1_j < rss_min_bound) rss_min_bound = lb_prop1_j;
+    // if (R_finite(lb_old) && lb_old < rss_min_bound_prop1) rss_min_bound_prop1 = lb_old;
   }
 
   // Optional: precompute UB2 curvature data for reuse (when gs <= 81)
@@ -804,6 +796,7 @@ Rcpp::List bound_rss_over_dispersion(
     out["ub2_curv_A_coef"]   = A_coef_vec;
     out["ub2_curv_B_coef"]   = B_coef_vec;
     out["ub2_curv_D_coef"]   = D_coef_vec;
+
   }
   return out;
 }
@@ -1106,11 +1099,12 @@ Rcpp::List minimize_ub2_over_dispersion(
     int RSS_Min_Type,
     int UB2_Min_Type,
     bool verbose,
-    const Rcpp::List& rss_bound_res
+    const Rcpp::List& rss_bound_res,
+    const Rcpp::NumericVector& disp_start
 ) {
   using namespace Rcpp;
   using namespace arma;
-  
+
   NumericVector disp_min_ub2(gs);
   NumericVector ub2_min(gs);
   
@@ -1203,7 +1197,7 @@ Rcpp::List minimize_ub2_over_dispersion(
     
 
     List ub2_parallel_res = ub2_parallel_fn(
-      Named("par0")   = 0.5 * (low + upp),
+      Named("par0")   = disp_start,
       Named("low")    = low,
       Named("upp")    = upp,
       Named("cache")  = cache,
@@ -1901,6 +1895,8 @@ List EnvelopeDispersionBuild(
                   << "\n";
   }
 
+  NumericVector disp_min_ub2_bound = bound_res["disp_min_ub2"];
+
   if (verbose) {
     Rcpp::Rcout << "[EnvelopeDispersionBuild:minimize_ub2] Entering: "
                   << glmbayes::progress::timestamp_cpp()
@@ -1917,14 +1913,14 @@ List EnvelopeDispersionBuild(
     RSS_Min_Type,
     UB2_Min_Type,
     verbose,
-    rss_bound_res
+    rss_bound_res,
+    disp_min_ub2_bound
   );
 
   NumericVector ub2_min      = ub2_res["ub2_min"];
   NumericVector disp_min_ub2 = ub2_res["disp_min_ub2"];
 
-  NumericVector ub2_min_bound      = bound_res["ub2_min"];
-  NumericVector disp_min_ub2_bound = bound_res["disp_min_ub2"];
+  NumericVector ub2_min_bound = bound_res["ub2_min"];
 
   if (verbose && gs <= 81) {
     Rcpp::Rcout << "[UB2:comparison] face | d_bound | d_min | UB2_bound | UB2_min | d_diff | UB2_diff\n";

@@ -2431,21 +2431,29 @@ EnvelopeUB2_parallel_internal <- function(par0, low, upp,
                                           cores = parallel::detectCores(logical = FALSE),
                                           use_parallel = TRUE) {
   gs <- nrow(cbars)
+  if (length(par0) == 1L) {
+    par0_vec <- rep(par0, gs)
+  } else if (length(par0) == gs) {
+    par0_vec <- par0
+  } else {
+    stop("[EnvelopeUB2_parallel_internal] par0 must be length 1 or gs (", gs, ")")
+  }
+
   avail_cores <- parallel::detectCores(logical = FALSE)
-  
+
   # Respect CRAN check limit
   if (Sys.getenv("_R_CHECK_LIMIT_CORES_", "") == "TRUE") {
     cores <- min(cores, 2L)
   } else {
     cores <- min(cores, avail_cores, gs)
   }
-  
+
   # message("[EnvelopeUB2_parallel_internal] Available cores: ", avail_cores,
   #         " | Using cores: ", if (use_parallel) cores else 1L)
 
   worker_fun <- function(j) {
     cbars_j <- cbars[j, ]
-    optim(par0,
+    optim(par0_vec[j],
           fn     = .UB2_cpp,                 # UB2 objective function
           method = "L-BFGS-B",
           lower  = low,

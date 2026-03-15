@@ -42,7 +42,7 @@ lmb.D9_v3 <- lmb(
     shape = ps$shape,
     rate  = ps$rate
   )
-#  ,verbose=TRUE
+  ,verbose=TRUE
 )
 summary(lmb.D9_v3)
 
