@@ -135,8 +135,8 @@ set.seed(101)
 x_one <- as.matrix(rep(1, J), nrow = J, ncol = 1)
 theta_ng <- estimate
 
-n_burn_ng <- 2000
-n_sim_ng  <- 20000
+n_burn_ng <- 1000
+n_sim_ng  <- 1000
 theta_out_ng <- matrix(0, nrow = n_sim_ng, ncol = J)
 mu_out_ng    <- numeric(n_sim_ng)
 sigma_theta_out_ng <- numeric(n_sim_ng)
@@ -186,8 +186,8 @@ The same hierarchical model can be fit with **`dIndependent_Normal_Gamma`**, whi
 
 ```{r schools-indep-setup, eval = TRUE}
 theta <- estimate
-n_burn_schools <- 1
-n_sim_schools  <- 10
+n_burn_schools <- 1000
+n_sim_schools  <- 1000
 theta_out <- matrix(0, nrow = n_sim_schools, ncol = J)
 mu_out    <- numeric(n_sim_schools)
 sigma_theta_out <- numeric(n_sim_schools)

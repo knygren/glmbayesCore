@@ -93,9 +93,9 @@ symbolic model description and family specification used by glm(). By default, P
 All supported models feature log-concave likelihoods, enabling efficient iid sampling via enveloping functions and
 subgradient-based accept-reject algorithms (for models where other standard iid sampling algorithms are unavailable).
 
-## Examples
+## Examples and Demos
 
-Use example() to explore built-in examples for supported families and links:
+Use example() and demo() to explore built-in examples and demos for supported families and links:
 
     ## Bayesian linear regression
     example("lmb")
@@ -108,6 +108,9 @@ Use example() to explore built-in examples for supported families and links:
 
     ## Larger Binomial Model with GPU Acceleration (requires OpenCL)
     example("Cleveland")
+
+    ## Rubin/Gelman's Hierarchical 8 schools Model
+    demo("Ex_07_Schools")
 
 ## Methodology
 
