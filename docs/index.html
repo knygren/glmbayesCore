@@ -197,14 +197,13 @@
 <div class="section level2">
 <h2 id="brain-methodology">🧠 Methodology<a class="anchor" aria-label="anchor" href="#brain-methodology"></a>
 </h2>
-<p>Sampling follows the framework from Nygren &amp; Nygren (2006), using likelihood subgradients to construct enveloping functions for the posterior distribution. When the posterior is approximately normal, the expected number of draws per acceptance is bounded. Dispersion parameters can be estimated separately using <code>rglmbdisp()</code> for Gaussian and Gamma families.</p>
+<p>Sampling follows the framework from Nygren &amp; Nygren (2006), using likelihood subgradients to construct enveloping functions for the posterior distribution. When the posterior is approximately normal, the expected number of draws per acceptance is bounded. Dispersion can be sampled via <code>rGamma_reg()</code> (standalone) or jointly with coefficients via <code>rNormalGamma_reg()</code> and <code>rindepNormalGamma_reg()</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="construction-limitations">🚧 Limitations<a class="anchor" aria-label="anchor" href="#construction-limitations"></a>
 </h2>
 <ul>
 <li>Non-log-concave likelihoods are not currently supported</li>
-<li>Dispersion estimation requires a second sampler (<code>rglmbdisp()</code>)</li>
 <li>Hierarchical modeling and GPU support remain experimental</li>
 </ul>
 </div>

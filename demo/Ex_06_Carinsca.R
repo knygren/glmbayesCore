@@ -355,10 +355,10 @@ a0<-0.01
 m0<-0.01
 b<-colMeans(out2$coefficients)
 
-out3<-rglmbdisp(n=10000,y=out$y,x=out$x,b=b,alpha= rep(0, length(out$y)),wt=out$prior.weights,shape=m0,rate=a0,family=Gamma(link=log))
-
-### Need to create a class for rglmbdisp so that print and summary produces
-### more meaningful outputs 
+prior_list_disp <- list(beta = b, shape = m0, rate = a0)
+out3 <- rGamma_reg(n = 10000, y = out$y, x = out$x, prior_list = prior_list_disp,
+                   offset = rep(0, length(out$y)), weights = out$prior.weights,
+                   family = Gamma(link = log))
 
 summary(out3)
 

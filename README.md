@@ -121,6 +121,8 @@ For generalized linear models where well known sampling methods are unavailable,
 framework from Nygren and Nygren (2006), using likelihood subgradients to construct enveloping functions for
 the posterior distribution. When the posterior is approximately normal, the expected number of draws per
 acceptance is bounded as per that paper and as discussed in our vignettes.
+Dispersion can be sampled via `rGamma_reg()` (standalone) or jointly with coefficients via
+`rNormalGamma_reg()` and `rindepNormalGamma_reg()`.
 
 ## GPU Acceleration Using OpenCL
 
@@ -250,7 +252,6 @@ Together, these vignettes form a comprehensive reference that supports users at 
 ## Limitations
 
 - Non-log-concave likelihoods are not currently supported
-- Dispersion estimation requires a second sampler (rglmbdisp())
 
 ## Future Plans
 

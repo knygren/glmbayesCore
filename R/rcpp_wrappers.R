@@ -16,29 +16,30 @@
 #
 #  Any future C++ interface changes must be reflected here to maintain
 #  positional consistency and avoid NULL → double coercion errors.
+#
+#  Wrappers are organized by tier:
+#    Tier 1: Core Simulation   - Main sampling entry points (rNormal_reg, etc.)
+#    Tier 2: Envelope          - Envelope build/eval; used by .rNormalGLM_cpp
+#    Tier 3: Indep NG std      - Split workflow samplers (custom use)
+#    Tier 4: Model Utilities   - Standardization
+#    Tier 5: OpenCL/GPU        - Kernel loading, GPU diagnostics
 # -------------------------------------------------------------------------
 
 
+# =============================================================================
+#  Tier 1: Core Simulation
+#  Callers: rNormal_reg, rNormalGamma_reg, rindepNormalGamma_reg, rGamma_reg
+#  User:    All users – primary paths via rglmb, rlmb, glmb, pfamily
+# =============================================================================
+
 #' @noRd
 #' @keywords internal
-
-.rNormalGLM_std_cpp <- function(n, y, x, mu, P, alpha, wt,
-                                f2, Envelope,
-                                family, link,
-                                progbar = 1L,
-                                verbose = FALSE) {
-  .Call(`_glmbayes_rNormalGLM_std_cpp_export`,
-        n, y, x, mu, P, alpha, wt,
-        f2, Envelope,
-        family, link,
-        progbar, verbose)
+.rNormalGLM_cpp <- function(n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family = "binomial", link = "logit", Gridtype = 2L, n_envopt = -1L, use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE) {
+  .Call(`_glmbayes_rNormalGLM_cpp_export`, n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
 }
 
-
-
 #' @noRd
 #' @keywords internal
-
 .rNormalReg_cpp <- function(
     n, y, x, mu, P, offset, wt, dispersion,
     f2, f3, start,
@@ -54,50 +55,14 @@
   )
 }
 
-
-
 #' @noRd
 #' @keywords internal
-
 .rIndepNormalGammaReg_cpp <- function(n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar) {
   .Call(`_glmbayes_rIndepNormalGammaReg_cpp_export`, n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar)
 }
 
-
-
 #' @noRd
 #' @keywords internal
-
-
-.rIndepNormalGammaReg_std_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose) {
-  .Call(`_glmbayes_rIndepNormalGammaReg_std_cpp_export`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose)
-}
-
-
-#' @noRd
-#' @keywords internal
-
-.rIndepNormalGammaReg_std_parallel_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose) {
-  .Call(`_glmbayes_rIndepNormalGammaReg_std_parallel_cpp_export`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose)
-}
-
-
-.glmb_Standardize_Model_cpp <- function(y, x, P, bstar, A1) {
-  .Call(`_glmbayes_glmb_Standardize_Model_cpp_export`, y, x, P, bstar, A1)
-}
-
-#' @noRd
-#' @keywords internal
-
-
-
-.rNormalGLM_cpp <- function(n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family = "binomial", link = "logit", Gridtype = 2L, n_envopt = -1L, use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE) {
-  .Call(`_glmbayes_rNormalGLM_cpp_export`, n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
-}
-
-#' @noRd
-#' @keywords internal
-
 .rNormalGammaReg_cpp <- function(n, y, x, mu, P, offset, wt, shape, rate,
                                  max_disp_perc, disp_lower, disp_upper,
                                  verbose = FALSE) {
@@ -108,7 +73,6 @@
 
 #' @noRd
 #' @keywords internal
-#' 
 .rGammaGaussian_cpp <- function(n, y, x, beta, wt, alpha, shape, rate,
                                 disp_lower = NULL, disp_upper = NULL,
                                 verbose = FALSE) {
@@ -119,7 +83,6 @@
 
 #' @noRd
 #' @keywords internal
-#' 
 .rGammaGamma_cpp <- function(n, y, x, beta, wt, alpha, shape, rate,
                              max_disp_perc, disp_lower = NULL,
                              disp_upper = NULL, verbose = FALSE) {
@@ -129,38 +92,47 @@
 }
 
 
-
+# =============================================================================
+#  Tier 2: Envelope & Standardization
+#  Callers: EnvelopeSize, EnvelopeBuild, EnvelopeEval, EnvelopeDispersionBuild,
+#           EnvelopeOrchestrator, rnnorm_reg_std; EnvelopeSet_* are internal
+#  User:    Advanced users – understanding algorithm, custom envelope workflows
+# =============================================================================
 
 #' @noRd
 #' @keywords internal
+.rNormalGLM_std_cpp <- function(n, y, x, mu, P, alpha, wt,
+                                f2, Envelope,
+                                family, link,
+                                progbar = 1L,
+                                verbose = FALSE) {
+  .Call(`_glmbayes_rNormalGLM_std_cpp_export`,
+        n, y, x, mu, P, alpha, wt,
+        f2, Envelope,
+        family, link,
+        progbar, verbose)
+}
 
-
-
+#' @noRd
+#' @keywords internal
 .EnvelopeSize_cpp <- function(a, G1, Gridtype, n, n_envopt, use_opencl, verbose) {
   .Call(`_glmbayes_EnvelopeSize_cpp_export`, a, G1, Gridtype, n, n_envopt, use_opencl, verbose)
 }
 
 #' @noRd
 #' @keywords internal
-
-
-.EnvelopeBuild_cpp<- function(bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose) {
+.EnvelopeBuild_cpp <- function(bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose) {
   .Call(`_glmbayes_EnvelopeBuild_cpp_export`, bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose)
 }
 
-
-
 #' @noRd
 #' @keywords internal
-
 .EnvelopeBuild_Ind_Normal_Gamma_cpp <- function(bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose) {
   .Call(`_glmbayes_EnvelopeBuild_Ind_Normal_Gamma_cpp_export`, bStar, A, y, x, mu, P, alpha, wt, family, link, Gridtype, n, n_envopt, sortgrid, use_opencl, verbose)
 }
 
-
 #' @noRd
 #' @keywords internal
-
 .EnvelopeEval_cpp <- function(G4, y, x, mu, P, alpha, wt,
                           family, link,
                           use_opencl = FALSE,
@@ -170,43 +142,6 @@
         family, link,
         use_opencl, verbose)
 }
-
-
-
-#' @noRd
-#' @keywords internal
-.load_kernel_source_wrapper_cpp <- function(relative_path, package = "glmbayes") {
-  .Call(`_glmbayes_load_kernel_source_wrapper_cpp_export`, relative_path, package)
-}
-
-
-
-
-
-#' @noRd
-#' @keywords internal
-.load_kernel_library_wrapper_cpp <- function(subdir, package = "glmbayes", verbose = FALSE) {
-  .Call(`_glmbayes_load_kernel_library_wrapper_cpp_export`, subdir, package, verbose)
-}
-
-
-
-#' @noRd
-#' @keywords internal
-.get_opencl_core_count_cpp <- function() {
-  .Call("_glmbayes_get_opencl_core_count_cpp_export")
-}
-
-
-## (phased out) Former R callbacks for RSS/UB2 minimization
-## - `.rss_face_at_disp_cpp`
-## - `.UB2_cpp`
-##
-## These were used by the older RSS/UB2 minimization callbacks passed into
-## `optim()` during envelope construction. The active code path now uses the
-## closed-form C++ bounds instead.
-
-
 
 #' @noRd
 #' @keywords internal
@@ -253,32 +188,73 @@
 
 #' @noRd
 #' @keywords internal
-
-
-
 .EnvelopeOrchestrator_cpp <- function(bstar2, A, y, x2, mu2, P2, alpha, wt, n, Gridtype, n_envopt, shape, rate, RSS_Post2, RSS_ML, max_disp_perc, disp_lower, disp_upper, use_parallel, use_opencl, verbose) {
   .Call(`_glmbayes_EnvelopeOrchestrator_cpp_export`, bstar2, A, y, x2, mu2, P2, alpha, wt, n, Gridtype, n_envopt, shape, rate, RSS_Post2, RSS_ML, max_disp_perc, disp_lower, disp_upper, use_parallel, use_opencl, verbose)
 }
 
 #' @noRd
 #' @keywords internal
-
-
 .EnvelopeSet_Grid_cpp <- function(GIndex, cbars, Lint) {
   .Call(`_glmbayes_EnvelopeSet_Grid_cpp_export`, GIndex, cbars, Lint)
 }
 
-
 #' @noRd
 #' @keywords internal
-
 .EnvelopeSet_LogP_cpp <- function(logP, NegLL, cbars, G3) {
   .Call(`_glmbayes_EnvelopeSet_LogP_cpp_export`, logP, NegLL, cbars, G3)
 }
 
 
+# =============================================================================
+#  Tier 3: Standardized Samplers (Indep Normal-Gamma)
+#  Callers: C++ only (rIndepNormalGammaReg); R wrappers for custom split workflow
+#  User:    Advanced / developers – after EnvelopeOrchestrator, sample separately
+# =============================================================================
+
+#' @noRd
+#' @keywords internal
+.rIndepNormalGammaReg_std_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose) {
+  .Call(`_glmbayes_rIndepNormalGammaReg_std_cpp_export`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose)
+}
+
+#' @noRd
+#' @keywords internal
+.rIndepNormalGammaReg_std_parallel_cpp <- function(n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose) {
+  .Call(`_glmbayes_rIndepNormalGammaReg_std_parallel_cpp_export`, n, y, x, mu, P, alpha, wt, f2, Envelope, gamma_list, UB_list, family, link, progbar, verbose)
+}
 
 
+# =============================================================================
+#  Tier 4: Model Utilities
+#  Callers: glmb_Standardize_Model
+#  User:    Advanced users – model preparation, standardization
+# =============================================================================
+
+#' @noRd
+#' @keywords internal
+.glmb_Standardize_Model_cpp <- function(y, x, P, bstar, A1) {
+  .Call(`_glmbayes_glmb_Standardize_Model_cpp_export`, y, x, P, bstar, A1)
+}
+
+
+# =============================================================================
+#  Tier 5: OpenCL / GPU
+#  Callers: load_kernel_source, load_kernel_library, has_opencl,
+#           get_opencl_core_count, gpu_names
+#  User:    Advanced users – GPU diagnostics, kernel loading for use_opencl
+# =============================================================================
+
+#' @noRd
+#' @keywords internal
+.load_kernel_source_wrapper_cpp <- function(relative_path, package = "glmbayes") {
+  .Call(`_glmbayes_load_kernel_source_wrapper_cpp_export`, relative_path, package)
+}
+
+#' @noRd
+#' @keywords internal
+.load_kernel_library_wrapper_cpp <- function(subdir, package = "glmbayes", verbose = FALSE) {
+  .Call(`_glmbayes_load_kernel_library_wrapper_cpp_export`, subdir, package, verbose)
+}
 
 #' @noRd
 #' @keywords internal
@@ -286,7 +262,11 @@
   .Call("_glmbayes_has_opencl_cpp_export")
 }
 
-
+#' @noRd
+#' @keywords internal
+.get_opencl_core_count_cpp <- function() {
+  .Call("_glmbayes_get_opencl_core_count_cpp_export")
+}
 
 #' @noRd
 #' @keywords internal
@@ -295,25 +275,8 @@
 }
 
 
-# .rnnorm_reg_std_cpp -->rNormalGLM_std_cpp
-# .rnorm_reg_cpp --> rNormalReg_cpp
-# .rindep_norm_gamma_reg_cpp --> rIndepNormalGammaReg_cpp
-# .rindep_norm_gamma_reg_std_cpp -->rIndepNormalGammaReg_std_cpp
-# .rindep_norm_gamma_reg_std_parallel_cpp --> rIndepNormalGammaReg_std_parallel_cpp
-# .rnnorm_reg_cpp --> .rNormalGLM_cpp
-
-
-# .EnvelopeSize --> .EnvelopeSize_cpp
-# .EnvelopeBuild_Ind_Normal_Gamma --> .EnvelopeBuild_Ind_Normal_Gamma_cpp
-# .EnvelopeEval --> .EnvelopeEval_cpp
-# .load_kernel_source_wrapper --> .load_kernel_source_wrapper_cpp
-# .load_kernel_library_wrapper --> .load_kernel_library_wrapper_cpp
-
-# .get_opencl_core_count --> .get_opencl_core_count_cpp
-# .rss_face_at_disp --> .rss_face_at_disp_cpp
-# .UB2 --> .UB2_cpp
-# .Set_Grid_cpp --> .EnvelopeSet_Grid_cpp
-# .setlogP_cpp -->  .EnvelopeSet_LogP_cpp
-# .has_opencl --> .has_opencl_cpp
-# .gpu_names --> .gpu_names_cpp
-
+# =============================================================================
+#  Phased Out (no R wrappers; C++ exports may still exist for compatibility)
+#  - .rss_face_at_disp_cpp, .UB2_cpp
+#  - Former RSS/UB2 minimization callbacks; active path uses closed-form C++ bounds
+# =============================================================================
