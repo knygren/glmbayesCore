@@ -2169,9 +2169,12 @@ EnvelopeDispersionBuild <- function(Env, Shape, Rate, P, y, x, alpha, n_obs, RSS
 #' \item{logP}{A matrix containing log-probabilities related to the components of the grid}
 #' \item{PLSD}{A vector containing the probability of each component in the Grid}
 #' \item{E_draws}{A containing a computed theoretical bound on the expected number of draws}
+#' \item{sort_ok}{Logical; \code{TRUE} if sort succeeded, \code{FALSE} if memory allocation failed and unsorted envelope was returned (sampler remains valid)}
 #' @details This function sorts the envelope in descending order based on the 
 #' probability associated with each component in the Grid. Sorting helps 
-#' speed up simulation once the envelope is constructed.
+#' speed up simulation once the envelope is constructed. If memory allocation 
+#' fails (e.g. for very large grids), the function returns the unsorted envelope 
+#' with \code{sort_ok = FALSE}; the sampler remains valid but may have poorer acceptance.
 #' @example inst/examples/Ex_EnvelopeSort.R
 #' @export
 
@@ -2192,31 +2195,48 @@ EnvelopeSort <- function(l1, l2,
     stop("EnvelopeSort: LLconst must be a matrix, got ", typeof(LLconst))
   }
 
-  # Order indices by decreasing PLSD
-  ord <- order(PLSD, decreasing = TRUE)
-  sel <- ord[seq_len(l2)]  # top l2 rows
-  
-  
-  # Reorder inputs once (preserve matrix structure for logU, LLconst)
-  GIndex <- GIndex[sel, , drop = FALSE]
-  G3     <- G3[sel, , drop = FALSE]
-  cbars  <- cbars[sel, , drop = FALSE]
-  logU   <- logU[sel, , drop = FALSE]
-  logrt  <- logrt[sel, , drop = FALSE]
-  loglt  <- loglt[sel, , drop = FALSE]
-  logP   <- logP[sel, 1, drop = TRUE]
-  LLconst<- LLconst[sel, , drop = FALSE]
-  PLSD   <- PLSD[sel]
-  
-  if (!is.null(lg_prob_factor)) {
-    stopifnot(length(lg_prob_factor) == l2)
-    lg_prob_factor <- lg_prob_factor[sel]
-  }
-  
-  if (!is.null(UB2min)) {
-    stopifnot(length(UB2min) == l2)
-    UB2min <- UB2min[sel]
-  }
+  n_grid <- length(PLSD)
+  sort_ok <- TRUE
+  tryCatch({
+    # Order indices by decreasing PLSD
+    ord <- order(PLSD, decreasing = TRUE)
+    sel <- ord[seq_len(l2)]  # top l2 rows
+
+    # Reorder inputs once (preserve matrix structure for logU, LLconst)
+    GIndex <- GIndex[sel, , drop = FALSE]
+    G3     <- G3[sel, , drop = FALSE]
+    cbars  <- cbars[sel, , drop = FALSE]
+    logU   <- logU[sel, , drop = FALSE]
+    logrt  <- logrt[sel, , drop = FALSE]
+    loglt  <- loglt[sel, , drop = FALSE]
+    logP   <- logP[sel, 1, drop = TRUE]
+    LLconst<- LLconst[sel, , drop = FALSE]
+    PLSD   <- PLSD[sel]
+
+    if (!is.null(lg_prob_factor)) {
+      stopifnot(length(lg_prob_factor) == l2)
+      lg_prob_factor <- lg_prob_factor[sel]
+    }
+
+    if (!is.null(UB2min)) {
+      stopifnot(length(UB2min) == l2)
+      UB2min <- UB2min[sel]
+    }
+  }, error = function(e) {
+    msg <- conditionMessage(e)
+    if (grepl("cannot allocate", msg, ignore.case = TRUE) ||
+        grepl("memory", msg, ignore.case = TRUE) ||
+        grepl("allocation", msg, ignore.case = TRUE)) {
+      warning(
+        "EnvelopeSort: memory allocation failed (grid size ", format(n_grid, big.mark = ","),
+        "). Caller will use unsorted envelope; sampler remains valid but may have poorer acceptance.",
+        call. = FALSE
+      )
+      return(list(sort_ok = FALSE))
+    } else {
+      stop(e)
+    }
+  })
   
 
   # if (!is.null(thetabar_const_base)) {
@@ -2257,7 +2277,8 @@ EnvelopeSort <- function(l1, l2,
   if (!is.null(UB2min)) {
     outlist$UB2min <- UB2min
   }
-  
+  outlist$sort_ok <- sort_ok
+
   ## Adding to enable face specific dispersion bounds
   # if (!is.null(thetabar_const_base)) {
   #   outlist$thetabar_const_base <- thetabar_const_base

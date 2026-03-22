@@ -239,7 +239,9 @@ https://knygren.r-universe.dev/articles/glmbayes/Chapter-A09.html
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-A10.html
 
 
-Together, these vignettes form a comprehensive reference that supports users at all levels, from first-time Bayesian GLM users to researchers interested in the mathematical and computational details behind the samplers.
+Together, these vignettes form a comprehensive reference that supports users at all levels, 
+from first-time Bayesian GLM users to researchers interested in the mathematical and computational
+details behind the samplers.
 
 ## Feature Highlights
 
@@ -247,7 +249,7 @@ Together, these vignettes form a comprehensive reference that supports users at 
 - Accept-reject sampling for log-concave likelihoods
 - Samplers for both fixed and variable dispersion
 - Extensive vignettes to guide users through the package's capabilities
-- Modular prior setup and checking tools
+- Modular prior setup function
 
 ## Limitations
 
@@ -256,11 +258,12 @@ Together, these vignettes form a comprehensive reference that supports users at 
 ## Future Plans
 
 - Full CRAN submission 
-- Make Gamma regression for dGamma prior consistent with gamma.dispersion() function
-- Update proofs
-   - Vignette A6 to reflect similar approach as gamma.dispersion
-   - Vignette A7 to reflect latest update to algorithm (with optimized bounds)
-- Draft and Modify additional Vignettes
-   - Chapter-10: Informative Priors: Centering and Priors with differentiated prior weights
-   - Appendix Section: Restructure and Improve
+- Poisson speed (OpenCL and simulation): Precompute the log-factorial term `log(y!)`
+  once per observation and reuse it in both OpenCL envelope construction and
+  accept-reject simulation, since it depends only on the response, to reduce
+  redundant `lgamma` evaluation and improve performance for large Poisson models.
+- Grid selection (simulation): Precompute cumulative PLSD and use inverse CDF
+  sampling (e.g. binary search) to select the grid component per candidate
+  instead of scanning PLSD, improving the simulation loop when many candidates
+  are evaluated.
 - Improve References for Vignettes and Select Functions

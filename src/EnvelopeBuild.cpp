@@ -422,25 +422,49 @@ List EnvelopeBuild(NumericVector bStar,
                   << "\n";
     }
 
-    // Test C++ sort (commented out for now; uncomment to verify EnvelopeSort_cpp)
+    // C++ sort commented out (slower than R; R result used downstream)
+    // if (verbose) {
+    //   Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSort_cpp] Entering: "
+    //               << glmbayes::progress::timestamp_cpp()
+    //               << "\n";
+    // }
     // (void) EnvelopeSort_cpp(
     //   l1, l2,
     //   GIndex, G3, cbars,
     //   logU, logrt, loglt, logP,
     //   LLconst, PLSD, a_1, E_draws
     // );
+    // if (verbose) {
+    //   Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSort_cpp] Exiting: "
+    //               << glmbayes::progress::timestamp_cpp()
+    //               << "\n";
+    // }
 
-    // Use R result downstream
     Rcpp::List outlist = EnvSort(l1, l2, GIndex, G3, cbars, logU, logrt, loglt, logP, LLconst, PLSD, a_1, E_draws);
 
+    if (outlist.containsElementNamed("sort_ok") && !Rcpp::as<bool>(outlist["sort_ok"])) {
+      if (verbose) {
+        Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSort] Using unsorted envelope (memory fallback).\n";
+      }
+      outlist = Rcpp::List::create(
+        Rcpp::Named("GridIndex") = GIndex,
+        Rcpp::Named("thetabars") = G3,
+        Rcpp::Named("cbars")    = cbars,
+        Rcpp::Named("logU")     = logU,
+        Rcpp::Named("logrt")    = logrt,
+        Rcpp::Named("loglt")    = loglt,
+        Rcpp::Named("LLconst")  = LLconst,
+        Rcpp::Named("logP")     = logP(_, 0),
+        Rcpp::Named("PLSD")     = PLSD,
+        Rcpp::Named("a1")       = a_1,
+        Rcpp::Named("E_draws")  = E_draws
+      );
+    }
     if (verbose) {
-      
       Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSort] Exiting:"
                   << glmbayes::progress::timestamp_cpp()
                   << "\n";
     }
-    
-        
     return(outlist);
     
   }

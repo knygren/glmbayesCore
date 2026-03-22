@@ -65,6 +65,7 @@ The function returns a list consisting of the following components (the first si
 \item{logP}{A matrix containing log-probabilities related to the components of the grid}
 \item{PLSD}{A vector containing the probability of each component in the Grid}
 \item{E_draws}{A containing a computed theoretical bound on the expected number of draws}
+\item{sort_ok}{Logical; \code{TRUE} if sort succeeded, \code{FALSE} if memory allocation failed and unsorted envelope was returned (sampler remains valid)}
 }
 \description{
 Sorts Enveloping function for simulation.
@@ -74,7 +75,9 @@ during simulation.
 \details{
 This function sorts the envelope in descending order based on the
 probability associated with each component in the Grid. Sorting helps
-speed up simulation once the envelope is constructed.
+speed up simulation once the envelope is constructed. If memory allocation
+fails (e.g. for very large grids), the function returns the unsorted envelope
+with \code{sort_ok = FALSE}; the sampler remains valid but may have poorer acceptance.
 }
 \examples{
 data(menarche,package="MASS")

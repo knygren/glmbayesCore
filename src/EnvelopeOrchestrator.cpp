@@ -170,31 +170,41 @@ Rcpp::Function EnvelopeSort = pkg["EnvelopeSort"];
 
 
 
-// Test C++ sort (commented out for now; uncomment to verify EnvelopeSort_cpp)
-// Rcpp::NumericVector logU_vec = Env3_raw["logU"];
-// Rcpp::NumericMatrix logU_mat(logU_vec.size(), 1, logU_vec.begin());
-// Rcpp::NumericVector LLconst_vec = Env3_raw["LLconst"];
-// Rcpp::NumericMatrix LLconst_mat(LLconst_vec.size(), 1, LLconst_vec.begin());
-// (void) glmbayes::env::EnvelopeSort_cpp(
-//   l1, l2,
-//   Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["GridIndex"]),
-//   Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["thetabars"]),
-//   cbars,
-//   logU_mat,
-//   Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["logrt"]),
-//   Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["loglt"]),
-//   logP_mat,
-//   LLconst_mat,
-//   Rcpp::as<Rcpp::NumericVector>(Env3_raw["PLSD"]),
-//   Rcpp::as<Rcpp::NumericVector>(Env3_raw["a1"]),
-//   Rcpp::as<double>(Env3_raw["E_draws"]),
-//   UB_list_new.containsElementNamed("lg_prob_factor")
-//     ? Rcpp::Nullable<Rcpp::NumericVector>(UB_list_new["lg_prob_factor"])
-//     : Rcpp::Nullable<Rcpp::NumericVector>(),
-//   UB_list_new.containsElementNamed("UB2min")
-//     ? Rcpp::Nullable<Rcpp::NumericVector>(UB_list_new["UB2min"])
-//     : Rcpp::Nullable<Rcpp::NumericVector>()
-// );
+// C++ sort commented out (slower than R; R result used downstream)
+// {
+//   Rcpp::NumericMatrix logU_disp = Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["logU"]);
+//   Rcpp::NumericMatrix LLconst_disp = Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["LLconst"]);
+//   if (verbose) {
+//     Rcpp::Rcout << "[EnvelopeSort_cpp] Entering: "
+//                 << glmbayes::progress::timestamp_cpp()
+//                 << "\n";
+//   }
+//   (void) glmbayes::env::EnvelopeSort_cpp(
+//     l1, l2,
+//     Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["GridIndex"]),
+//     Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["thetabars"]),
+//     cbars,
+//     logU_disp,
+//     Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["logrt"]),
+//     Rcpp::as<Rcpp::NumericMatrix>(Env3_raw["loglt"]),
+//     logP_mat,
+//     LLconst_disp,
+//     Rcpp::as<Rcpp::NumericVector>(Env3_raw["PLSD"]),
+//     Rcpp::as<Rcpp::NumericVector>(Env3_raw["a1"]),
+//     Rcpp::as<double>(Env3_raw["E_draws"]),
+//     UB_list_new.containsElementNamed("lg_prob_factor")
+//       ? Rcpp::Nullable<Rcpp::NumericVector>(UB_list_new["lg_prob_factor"])
+//       : Rcpp::Nullable<Rcpp::NumericVector>(),
+//     UB_list_new.containsElementNamed("UB2min")
+//       ? Rcpp::Nullable<Rcpp::NumericVector>(UB_list_new["UB2min"])
+//       : Rcpp::Nullable<Rcpp::NumericVector>()
+//   );
+//   if (verbose) {
+//     Rcpp::Rcout << "[EnvelopeSort_cpp] Exiting: "
+//                 << glmbayes::progress::timestamp_cpp()
+//                 << "\n";
+//   }
+// }
 
 Rcpp::List Env3;
 
@@ -252,6 +262,19 @@ if (disp_grid_type == 2) {
   );
 }
 
+if (Env3.containsElementNamed("sort_ok") && !Rcpp::as<bool>(Env3["sort_ok"])) {
+  if (verbose) {
+    Rcpp::Rcout << "[EnvelopeSort] Using unsorted envelope (memory fallback).\n";
+  }
+  Env3 = Env3_raw;
+  Env3["lg_prob_factor"] = UB_list_new["lg_prob_factor"];
+  Env3["UB2min"]         = UB_list_new["UB2min"];
+  if (disp_grid_type == 1) {
+    Env3["thetabar_const_base"] = UB_list_new["thetabar_const_base"];
+    Env3["New_LL_Slope"]        = UB_list_new["New_LL_Slope"];
+    Env3["shape3_face"]         = gamma_list_new["shape3_face"];
+  }
+}
 if (verbose) {
   Rcpp::Rcout << "[EnvelopeSort] Exiting: "
               << glmbayes::progress::timestamp_cpp()
@@ -266,8 +289,8 @@ UB_list_new["UB2min"]         = Env3["UB2min"];
 
 if(disp_grid_type==1){
   UB_list_new["thetabar_const_base"] = Env3["thetabar_const_base"];
-UB_list_new["New_LL_Slope"]         = Env3["New_LL_Slope"];
-gamma_list_new["shape3_face"]         = Env3["shape3_face"];
+  UB_list_new["New_LL_Slope"]        = Env3["New_LL_Slope"];
+  gamma_list_new["shape3_face"]      = Env3["shape3_face"];
 }
 
 
