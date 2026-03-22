@@ -115,6 +115,9 @@ Use example() and demo() to explore built-in examples and demos for supported fa
     ## Rubin/Gelman's Hierarchical 8 schools Model
     demo("Ex_07_Schools")
 
+    ## Hierarchical Poisson (BikeSharing) - two-block Gibbs with rglmb
+    demo("Ex_09_BikeSharingPoisson")
+
 ## Methodology
 
 For generalized linear models where well known sampling methods are unavailable, sampling follows the
@@ -186,11 +189,11 @@ https://knygren.r-universe.dev/articles/glmbayes/Chapter-09.html
 
 ### Part 4: Advanced Topics
 These chapters explore more complex modeling scenarios and computational strategies, such as
-informative priors, two-block Gibbs sampling, models with
-unknown dispersion parameters, and large-scale model fitting using GPU acceleration 
+informative priors, two-block Gibbs sampling, hierarchical linear and generalized linear models,
+models with unknown dispersion parameters, and large-scale model fitting using GPU acceleration
 using OpenCL.
 
-- **Chapter 10 — Informative Priors: Centering and priors with differentiate weights**  
+- **Chapter 10 — Informative Priors: Centering and priors with differential prior weights**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-10.html
 
 - **Chapter 11 — Estimating Models with unknown dispersion parameters**  
@@ -199,8 +202,11 @@ https://knygren.r-universe.dev/articles/glmbayes/Chapter-11.html
 - **Chapter 12 — Large Models: GPU Acceleration using OpenCL**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-12.html
 
-- **Chapter 13 — Block Gibbs Sampling Using rlmb and rglmb**  
+- **Chapter 13 — Hierarchical Linear Models**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-13.html
+
+- **Chapter 14 — Hierarchical Generalized Linear Models**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-14.html
 
 ### Part 5: Simulation Methods and Technical Implementation
 This part documents the mathematical and algorithmic foundations of the package. Topics include

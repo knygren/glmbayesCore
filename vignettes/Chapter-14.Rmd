@@ -1,10 +1,10 @@
-Yaml
-
 ---
-title: "Chapter 14: Using Two-Block Gibbs Sampling for Hierarchical Bayesian Models: Part 2"
+title: "Chapter 14: Hierarchical Generalized Linear Models"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter 14: Using Two-Block Gibbs Sampling for Hierarchical Bayesian Models: Part 2}
+  %\VignetteIndexEntry{Chapter 14: Hierarchical Generalized Linear Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -19,3 +19,183 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(glmbayes)
 ```
+
+# Chapter 14: Hierarchical Generalized Linear Models
+
+Chapter 13 focused on **hierarchical linear models**: the Eight Schools example with normally distributed group-level effects and known sampling variances. This chapter extends to **hierarchical generalized linear models**, specifically Poisson regression with observation-level random effects.
+
+We use the **BikeSharing** dataset and **`rglmb`** to implement a two-block Gibbs sampler. The Poisson likelihood is non-conjugate with the normal prior on the linear predictor, so each observation-level update requires an accept-reject step via **`rglmb`**. For a full demo, see **`demo("Ex_09_BikeSharingPoisson")`**.
+
+## 1. Model Structure
+
+Let $y_i$ denote the count (hourly bike rentals) for observation $i$, and $x_i$ the covariate vector. The hierarchical model is:
+
+1. **Observation level:** $y_i \sim \text{Poisson}(\exp(\theta_i))$, with $\theta_i$ a latent log-rate.
+2. **Population level:** $\theta_i \sim N(x_i^\top \beta, \sigma_\theta^2)$, so covariates predict the random effects.
+
+The two-block Gibbs sampler alternates:
+
+1. **Block 1 (population):** Draw $(\beta, \sigma_\theta^2) \mid \theta$ — conjugate Normal-Gamma given $\theta$, implemented with **`rglmb`** (family `gaussian()`).
+2. **Block 2 (observations):** For each $i$, draw $\theta_i \mid \beta, \sigma_\theta^2, y_i$ — Poisson likelihood with normal prior, implemented with **`rglmb`** (family `poisson()`).
+
+With $n$ observations, Block 2 requires $n$ calls to **`rglmb`** per iteration. To keep run time manageable for the vignette, we use a 1% random subset of the data for training and reserve the rest for out-of-sample prediction.
+
+## 2. Data and Setup
+
+```{r bikesharing-setup}
+data("BikeSharing")
+
+# Center continuous predictors
+cont_vars <- c("temp", "atemp", "hum", "windspeed", "hr_sin", "hr_cos", "mon_sin", "mon_cos")
+BikeSharing_c <- BikeSharing
+BikeSharing_c[cont_vars] <- scale(BikeSharing[cont_vars], center = TRUE, scale = FALSE)
+
+
+# Formula (all variable model)
+form <- cnt ~ part_of_day + quarter + holiday + workingday + weathersit +
+  hr_sin + hr_cos + mon_sin + mon_cos + temp + atemp + hum + windspeed
+
+# Formula (Limited variable model)
+form2 <- cnt ~ part_of_day + quarter + holiday + workingday + weathersit +
+  hr_sin + hr_cos + mon_sin + mon_cos
+
+# Train/test split (1% train for vignette; increase for analysis)
+pct_train <- 0.01
+set.seed(42)
+n <- nrow(BikeSharing_c)
+idx_train <- sample(n, size = round(pct_train * n))
+idx_test  <- setdiff(seq_len(n), idx_train)
+
+Bike_train <- BikeSharing_c[idx_train, ]
+Bike_test  <- BikeSharing_c[idx_test, ]
+
+X_train <- model.matrix(form2, data = Bike_train)
+X_test  <- model.matrix(form2, data = Bike_test)
+y_train <- Bike_train$cnt
+y_test  <- Bike_test$cnt
+n_train <- length(y_train)
+n_test  <- length(y_test)
+p       <- ncol(X_train)
+
+# Initial theta and prior for population block
+theta <- log(y_train + 0.5)
+data_pop <- data.frame(theta = theta, Bike_train)
+form_pop <- theta ~ part_of_day + quarter + holiday + workingday + weathersit +
+  hr_sin + hr_cos + mon_sin + mon_cos
+ps_pop <- Prior_Setup(form_pop, family = gaussian(), data = data_pop)
+```
+
+## 3. Two-Block Gibbs Sampler
+
+```{r bikesharing-gibbs, eval = TRUE}
+n_burn <- 100
+n_sim  <- 500
+
+beta_out   <- matrix(0, nrow = n_sim, ncol = p)
+sigma_out  <- numeric(n_sim)
+theta_out  <- matrix(0, nrow = n_sim, ncol = n_train)
+
+set.seed(123)
+
+# Burn-in
+burn_time <- system.time({
+  for (k in seq_len(n_burn)) {
+    out_pop <- rglmb(1, theta, X_train, family = gaussian(),
+      pfamily = dNormal_Gamma(ps_pop$mu, ps_pop$Sigma / ps_pop$dispersion,
+        ps_pop$shape, ps_pop$rate))
+    beta   <- as.vector(out_pop$coefficients[1, ])
+    sigma_theta_sq <- out_pop$dispersion[1]
+    mu_all <- as.vector(X_train %*% beta)
+    for (i in seq_len(n_train)) {
+      theta[i] <- rglmb(1, y_train[i], matrix(1, 1, 1), family = poisson(),
+        pfamily = dNormal(mu = mu_all[i], Sigma = sigma_theta_sq))$coefficients[1, 1]
+    }
+  }
+})
+
+# Main simulation
+sim_time <- system.time({
+  for (k in seq_len(n_sim)) {
+    out_pop <- rglmb(1, theta, X_train, family = gaussian(),
+      pfamily = dNormal_Gamma(ps_pop$mu, ps_pop$Sigma / ps_pop$dispersion,
+        ps_pop$shape, ps_pop$rate))
+    beta   <- as.vector(out_pop$coefficients[1, ])
+    sigma_theta_sq <- out_pop$dispersion[1]
+    mu_all <- as.vector(X_train %*% beta)
+    for (i in seq_len(n_train)) {
+      theta[i] <- rglmb(1, y_train[i], matrix(1, 1, 1), family = poisson(),
+        pfamily = dNormal(mu = mu_all[i], Sigma = sigma_theta_sq))$coefficients[1, 1]
+    }
+    beta_out[k, ]  <- beta
+    sigma_out[k]   <- sqrt(sigma_theta_sq)
+    theta_out[k, ] <- theta
+  }
+})
+
+burn_time
+sim_time
+```
+
+## 4. CODA Diagnostics
+
+We summarize the main parameters ($\beta$ and $\sigma_\theta$) using the **coda** package. Random effects $\theta$ are excluded from the summary.
+
+```{r bikesharing-coda}
+mcmc_main <- coda::mcmc(cbind(beta_out, sigma_theta = sigma_out))
+colnames(mcmc_main) <- c(colnames(X_train), "sigma_theta")
+
+summary(mcmc_main)
+coda::effectiveSize(mcmc_main)
+
+# Lag-1 own autocorrelations
+ac1 <- coda::autocorr(mcmc_main, lag = 1)
+ac1_mat <- drop(ac1)
+own_ac1 <- diag(ac1_mat)
+names(own_ac1) <- colnames(mcmc_main)
+round(own_ac1, 4)
+```
+
+## 5. Out-of-Sample Prediction
+
+We compare two prediction strategies on the held-out test set:
+
+- **Option A (conditional):** $\hat{y}_i = \exp(x_i^\top \bar{\beta})$, where $\bar{\beta}$ is the posterior mean. No random-effect uncertainty.
+- **Option B (posterior predictive):** Draw $\theta_{\text{test}} \sim N(X_{\text{test}} \beta^{(s)}, \sigma^{(s)2})$, then $y \sim \text{Poisson}(\exp(\theta_{\text{test}}))$ for each posterior sample $s$; report the mean over samples.
+
+```{r bikesharing-pred}
+beta_mean <- colMeans(beta_out)
+sigma_mean <- mean(sigma_out)
+
+# Option A: conditional mean
+y_pred_cond <- exp(X_test %*% beta_mean)
+mae_cond  <- mean(abs(y_test - y_pred_cond))
+rmse_cond <- sqrt(mean((y_test - y_pred_cond)^2))
+
+# Option B: posterior predictive mean
+n_pred <- 500
+y_pred_samples <- matrix(0, nrow = n_pred, ncol = n_test)
+for (s in seq_len(n_pred)) {
+  idx_s <- sample(n_sim, 1)
+  beta_s  <- beta_out[idx_s, ]
+  sigma_s <- sigma_out[idx_s]
+  theta_test <- rnorm(n_test, mean = X_test %*% beta_s, sd = sigma_s)
+  y_pred_samples[s, ] <- rpois(n_test, lambda = exp(theta_test))
+}
+y_pred_mean <- colMeans(y_pred_samples)
+mae_pp  <- mean(abs(y_test - y_pred_mean))
+rmse_pp <- sqrt(mean((y_test - y_pred_mean)^2))
+
+cat("Option A (conditional): MAE =", round(mae_cond, 2), " RMSE =", round(rmse_cond, 2), "\n")
+cat("Option B (post. pred.): MAE =", round(mae_pp, 2), " RMSE =", round(rmse_pp, 2), "\n")
+```
+
+## 6. Summary
+
+| Component | Implementation |
+|-----------|----------------|
+| **Block 1 (population)** | `rglmb(1, theta, X, family = gaussian(), pfamily = dNormal_Gamma(...))` |
+| **Block 2 (observations)** | For each $i$: `rglmb(1, y[i], matrix(1,1,1), family = poisson(), pfamily = dNormal(mu_i, sigma^2))` |
+| **Prior for $\beta, \sigma^2$** | From `Prior_Setup` on $\theta \sim X\beta$ (Gaussian) |
+| **Data** | BikeSharing (1% train, 99% test for vignette) |
+
+For longer runs and full diagnostics, see **`demo("Ex_09_BikeSharingPoisson")`**. For hierarchical linear models, see Chapter 13.

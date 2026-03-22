@@ -32,14 +32,15 @@ For users who are interested in the details of how the simulation is performed t
 | **Main Model Interfaces (GLM / LM)**| **lmb**  |Chapter 02 — Estimating Bayesian Linear Models |
 | **Methods**| **summary.lmb**  |Chapter 02 — Estimating Bayesian Linear Models |
 | **Prior Setup function**| **Prior_Setup** | Chapter 03 - Tailoring Priors - Leveraging the Prior_Setup Function  |
-| **Methods****| **print.PriorSetup** | Chapter 03 - Tailoring Priors - Leveraging the Prior_Setup Function  |
+| **Methods** | **print.PriorSetup** | Chapter 03 - Tailoring Priors - Leveraging the Prior_Setup Function  |
 | **Methods**| **predict.glmb, residuals.glmb, extractAIC.glmb** | Chapter 04 — Predictions, Deviance Residuals, Model Statistics |
 |**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 06 — Estimating Bayesian Generalized Linear Models |
 |**Methods**|**summary.glmb** | Chapter 06 — Estimating Bayesian Generalized Linear Models |
 |**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 07 — Models for the Binomial Family|
-|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 08 — Models for the Poisson Family
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 08 — Models for the Poisson Family |
 |**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 09 — Models for the Gamma Family |
-| **Lower-Level Interfaces  (GLM / LM)**| **rlmb, rglmb** | Chapter 13: Block Gibbs Sampling Using rlmb and rglmb |
+| **Lower-Level Interfaces (GLM / LM)** | **rlmb** | Chapter 13 — Hierarchical Linear Models |
+| **Lower-Level Interfaces (GLM / LM)** | **rglmb** | Chapter 14 — Hierarchical Generalized Linear Models |
 | **Model-Specific Simulation Functions** | **rNormal_reg, rGamma_reg, rNormal_Gamma_reg, rindependent_norm_gamma_reg** | Chapter A02: Overview of Estimation Procedures |
 | **pfamilies** |**dGamma, dNormal_Gamma, dIndependent_Normal_Gamma** | Chapter 11 — Estimating Models with Unknown Dispersion Parameters |
 | **Methods**| **Various method functions for glmbayes** | Chapter A03 — Methods Available in glmbayes |

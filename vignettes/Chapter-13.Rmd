@@ -1,10 +1,10 @@
 ---
-title: "Chapter 13: Block Gibbs Sampling Using rlmb and rglmb"
+title: "Chapter 13: Hierarchical Linear Models"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter 13: Block Gibbs Sampling Using rlmb and rglmb}
+  %\VignetteIndexEntry{Chapter 13: Hierarchical Linear Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,19 +20,16 @@ knitr::opts_chunk$set(
 library(glmbayes)
 ```
 
-# Chapter 13: Block Gibbs Sampling Using rlmb and rglmb
+# Chapter 13: Hierarchical Linear Models
 
-## 1. When to Use rlmb and rglmb
+This chapter focuses on **hierarchical linear models**—Gaussian models with random effects—and related use cases that rely on **`rlmb`** for block Gibbs sampling. The function **`rlmb`** is a minimal Bayesian simulation engine for linear (Gaussian) models: it takes a response vector, design matrix, and prior specification, and returns draws from the posterior. It is intended for settings where you need **repeated draws with updated conditioning** inside a Gibbs sampler (e.g., alternating between blocks for coefficients and dispersion, or for population and unit-level parameters).
 
-The functions **`rlmb`** and **`rglmb`** are minimal Bayesian simulation engines: they take a response vector, design matrix, prior specification, and (for `rglmb`) a likelihood family, and return one or more draws from the posterior. They do not parse formulas, build a full model object, or support the full set of methods that **`lmb`** and **`glmb`** do. That design is intentional. **`rlmb`** and **`rglmb`** are intended for settings where you need **repeated draws with updated conditioning**—for example, inside a Gibbs sampler—and where the overhead of formula handling and envelope construction per call is acceptable only if each call generates a small number of draws (often one).
+- **Use `lmb` or `glmb`** when you want a single fit or repeated standalone fits: formula interface, full object, `summary`, `predict`, etc.
+- **Use `rlmb`** when you are **building your own MCMC** for linear models, such as a two-block Gibbs sampler: you alternate between blocks, each time calling `rlmb` with the current values of the other block. The low-overhead, matrix-in/matrix-out interface is then a better fit. For hierarchical **generalized** linear models (e.g., Poisson), use **`rglmb`**—see Chapter 14.
 
-- **Use `lmb` or `glmb`** when you want a single fit or repeated standalone fits: formula interface, full object, `summary`, `predict`, etc. The extra overhead is usually minor compared to the cost of sampling.
-- **Use `rlmb` or `rglmb`** when you are **building your own MCMC**, such as a two-block Gibbs sampler: you alternate between blocks, each time calling `rlmb` or `rglmb` with the current values of the other block (e.g., current dispersion or current random effects). The low-overhead, matrix-in/matrix-out interface is then a better fit.
+We illustrate two use cases for **`rlmb`** in the context of **linear (Gaussian)** models: (1) estimating **dispersion and regression coefficients** when the prior is non-conjugate, and (2) **hierarchical (random effects)** models. All examples use data already available in the package. For hierarchical **generalized** linear models (e.g., Poisson), see Chapter 14.
 
-This chapter illustrates the two main use cases for **`rlmb`** and **`rglmb`** in Gibbs sampling: (1) estimating **dispersion and regression coefficients** in non-conjugate Gaussian (and conceptually gamma) models, and (2) **hierarchical (random effects)** models. All examples use data already available in the package or in the referenced demos.
-
-
-## 2. Use Case 1: Dispersion and Regression Coefficients (Gaussian)
+## 1. Use Case 1: Dispersion and Regression Coefficients (Gaussian)
 
 In the Gaussian linear model \(y = X\beta + \varepsilon\) with \(\varepsilon \sim \text{N}(0, \phi I)\), the likelihood depends on the residual variance \(\phi\). If the prior on \((\beta, \phi)\) is not conjugate (e.g., you want independent priors on \(\beta\) and \(\phi\)), you can still sample from the posterior by a **two-block Gibbs sampler**:
 
@@ -106,9 +103,9 @@ The Gibbs posterior means and standard deviations for \(\beta\) and \(\phi\) sho
 **Gamma regression.** The same idea—alternating draws of coefficients given dispersion and dispersion given coefficients—can be applied to **gamma regression** when the dispersion (shape) of the Gamma response is unknown and must be estimated. The conditioning steps are then implemented with **`rglmb`** (family `Gamma`) and an appropriate prior for the dispersion block. The package does not currently provide a ready-made example for gamma regression in this setting; typical textbook datasets often imply large weights that make the Gibbs steps costly. A future vignette or example may use an alternate dataset once a suitable one is identified.
 
 
-## 3. Use Case 2: Hierarchical (Random Effects) Models
+## 2. Use Case 2: Hierarchical (Random Effects) Models
 
-### 3.1 Eight Schools with dNormal_Gamma Prior (Gibbs-suitable)
+### 2.1 Eight Schools with dNormal_Gamma Prior (Gibbs-suitable)
 
 The **Eight Schools** example (Gelman et al. 2003) has \(J = 8\) schools; each school \(j\) has an observed effect estimate \(y_j\) with known sampling variance \(\sigma_j^2\). The hierarchical model has a population mean \(\mu\) and variance \(\sigma_\theta^2\), and school-specific effects \(\theta_j\). With the **`dNormal_Gamma`** prior on \((\mu, \sigma_\theta^2)\), the Gibbs sampler is efficient and suitable for repeated use inside a loop because the envelope is built once per call without the minimization overhead of **`dIndependent_Normal_Gamma`**.
 
@@ -177,7 +174,7 @@ sqrt(diag(var(theta_out_ng)))
 The **`dNormal_Gamma`** prior is well-suited for Gibbs sampling: each call avoids the RSS/UB2 minimization used by **`dIndependent_Normal_Gamma`**, so run time stays manageable.
 
 
-### 3.2 Eight Schools with dIndependent_Normal_Gamma Prior (commented out for vignette build)
+### 2.2 Eight Schools with dIndependent_Normal_Gamma Prior (commented out for vignette build)
 
 The same hierarchical model can be fit with **`dIndependent_Normal_Gamma`**, which assumes prior independence between coefficients and precision. This prior triggers repeated envelope minimization (RSS and UB2) on each population-block draw, making it slower and less suitable for long Gibbs runs. The code chunks below are disabled (`eval = FALSE`) for faster vignette builds.
 
@@ -250,81 +247,14 @@ sqrt(diag(var(theta_out)))
 Posterior means of \(\theta_j\) show shrinkage toward the population mean compared to the raw estimates.
 
 
-### 3.2 Poisson “Random Effects” (rglmb)
-
-A second hierarchical-style use case is illustrated with **`rglmb`** using the **Dobson (1990) Page 93** counts (outcome + treatment). Here, unit-level latent means \(\lambda_j\) are drawn given the linear predictor, and fixed effects \(\beta\) are drawn given the latent means. This is a simplified hierarchical structure: the “random effects” are the \(\lambda_j\), and the “prior” for each \(\lambda_j\) is updated from the current \(X\beta\).
-
-- **Block 1:** For each unit \(j\), draw \(\lambda_j \mid \beta, y_j\) with **`rglmb(1, y_j, 1, family = poisson(), dNormal(xbeta_j, disp))`**.
-- **Block 2:** Draw \(\beta \mid \lambda\) with **`rglmb(1, lambda, X, family = gaussian(), dNormal(mu, V), weights = 1/disp)`**.
-
-We use a short run for the vignette; the logic matches the demo **Ex_05_DobsonPoisson_BG.R**.
-
-```{r poisson-setup}
-counts <- c(18, 17, 15, 20, 10, 20, 25, 13, 12)
-outcome <- gl(3, 1, 9)
-treatment <- gl(3, 3)
-mu0 <- matrix(0, 5)
-mu0[1] <- log(mean(counts))
-V0 <- diag(5)
-glm_D93 <- glm(counts ~ outcome + treatment, family = poisson())
-glmb_D93 <- glmb(counts ~ outcome + treatment, family = poisson(), pfamily = dNormal(mu = mu0, Sigma = V0))
-y_pois   <- glmb_D93$y
-x_pois   <- glmb_D93$x
-wt_pois  <- glmb_D93$prior.weights
-dispbar  <- summary(glmb_D93)$dispersion
-offset2  <- rep(0, length(y_pois))
-xbeta    <- offset2 + x_pois %*% glmb_D93$coef.means
-b1temp   <- numeric(length(y_pois))
-n_obs    <- length(y_pois)
-n_var    <- ncol(x_pois)
-```
-
-```{r poisson-gibbs, eval = TRUE}
-set.seed(360)
-n_burn_pois <- 1000
-n_sim_pois  <- 1000
-b1out <- matrix(0, nrow = n_sim_pois, ncol = n_obs)
-b2out <- matrix(0, nrow = n_sim_pois, ncol = n_var)
-
-for (i in seq_len(n_burn_pois)) {
-  for (j in seq_len(n_obs)) {
-    b1temp[j] <- rglmb(1, y_pois[j], as.matrix(1), family = poisson(),
-                       pfamily = dNormal(xbeta[j], dispbar), offset = 0, weights = wt_pois[j])$coefficients[1, 1]
-  }
-  b2temp  <- rglmb(1, b1temp, x_pois, family = gaussian(),
-                   pfamily = dNormal(mu0, V0), offset = offset2, weights = 1 / dispbar)$coefficients[1, ]
-  xbeta   <- offset2 + c(x_pois %*% b2temp)
-}
-
-for (i in seq_len(n_sim_pois)) {
-  for (j in seq_len(n_obs)) {
-    b1temp[j] <- rglmb(1, y_pois[j], as.matrix(1), family = poisson(),
-                       pfamily = dNormal(xbeta[j], dispbar), offset = 0, weights = wt_pois[j])$coefficients[1, 1]
-  }
-  b2temp <- rglmb(1, b1temp, x_pois, family = gaussian(),
-                  pfamily = dNormal(mu0, V0), offset = offset2, weights = 1 / dispbar)$coefficients[1, ]
-  xbeta <- offset2 + c(x_pois %*% b2temp)
-  b1out[i, ] <- b1temp
-  b2out[i, ] <- b2temp
-}
-```
-
-```{r poisson-compare}
-rbind(glm_D93$coefficients, glmb_D93$coef.means, colMeans(b2out))
-```
-
-The Gibbs fixed-effect means are in the same ballpark as the **glmb** fit; the latent \(\lambda_j\) are in **b1out**.
-
-
-## 4. Summary
+## 3. Summary
 
 | Use case | Function | Block 1 | Block 2 | Data used |
 |----------|----------|---------|---------|-----------|
 | Dispersion + \(\beta\) (Gaussian) | **rlmb** | \(\beta \mid \phi\): `dNormal(..., dispersion = phi)` | \(\phi \mid \beta\): `dGamma(shape, rate, beta = beta)` | Dobson plant weight |
 | Hierarchical (Eight Schools, Gibbs-suitable) | **rlmb** | \((\mu, \sigma_\theta^2) \mid \theta\): `dNormal_Gamma(mu, Sigma, shape, rate)` | \(\theta_j \mid \mu, \sigma_\theta^2\): `dNormal(..., dispersion = sigma_j^2)` | Eight Schools |
 | Hierarchical (Eight Schools) | **rlmb** | \((\mu, \sigma_\theta^2) \mid \theta\): `dIndependent_Normal_Gamma` | \(\theta_j \mid \mu, \sigma_\theta^2\): `dNormal(..., dispersion = sigma_j^2)` | Eight Schools |
-| Poisson “random effects” | **rglmb** | \(\lambda_j \mid \beta, y_j\): `rglmb(1, y_j, 1, poisson, dNormal(xbeta_j, disp))` | \(\beta \mid \lambda\): `rglmb(1, lambda, X, gaussian, dNormal(...))` | Dobson counts |
 
 The same dispersion-and-coefficients idea extends to **gamma regression** when dispersion must be estimated; a worked example may be added when a suitable dataset is available.
 
-For more detail on full conditionals, prior tuning, and diagnostics, see Chapter 14 (planned). For prior setup and conjugate fits, see **`?Prior_Setup`**, **`?lmb`**, and **`?glmb`**.
+For hierarchical generalized linear models (e.g., Poisson), see Chapter 14. For prior setup and conjugate fits, see **`?Prior_Setup`**, **`?lmb`**, and **`?glmb`**.

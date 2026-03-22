@@ -101,7 +101,7 @@ The calibration batch size is:
 m_{\text{stage}} = \min\left( \lceil 0.01 \cdot n \rceil,\; \lfloor 300000 / \text{est\_per\_draw\_ms} \rfloor \right),
 \]
 
-where 300000 ms ≈ 5 minutes. The calibration run uses `parallelFor(0, m_stage, worker)` to measure per-draw time empirically.
+where 300000 ms $\approx$ 5 minutes. The calibration run uses `parallelFor(0, m_stage, worker)` to measure per-draw time empirically.
 
 From the calibration:
 

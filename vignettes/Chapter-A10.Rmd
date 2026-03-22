@@ -44,10 +44,10 @@ The OpenCL path consists of two layers:
 
 ```
 EnvelopeEval (EnvelopeEval.cpp)
-    ├── if use_opencl && pilot/check passes:
-    │       f2_f3_opencl() → f2_f3_kernel_runner()
-    └── else:
-            f2_f3_non_opencl() → CPU famfuncs (f2_f3_binomial_logit, etc.)
+    |-- if use_opencl && pilot/check passes:
+    |       f2_f3_opencl() -> f2_f3_kernel_runner()
+    \-- else:
+            f2_f3_non_opencl() -> CPU famfuncs (f2_f3_binomial_logit, etc.)
 ```
 
 `EnvelopeEval` receives the grid `G4` (coefficients at each tangency point), the design matrix, prior parameters, and family/link. It chooses the GPU or CPU path based on `use_opencl` and the outcome of the pilot (when applicable). The GPU path calls `f2_f3_opencl`, which assembles the OpenCL program and invokes `f2_f3_kernel_runner`; the CPU path calls `f2_f3_non_opencl`, which dispatches to the appropriate C++ family function.

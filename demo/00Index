@@ -6,6 +6,7 @@ Ex_05_DobsonPoisson_BG Two-Block Gibbs Sampling for Bayesian Poisson Regression
 Ex_06_Carinsca         Gamma Regression models for Canadian Car Insurance Data
 Ex_07_Schools          Rubin/Gelman Hierarchical 8 Schools Model
 Ex_08_Boston          Boston Housing Model
+Ex_09_BikeSharingPoisson    Hierarchical Poisson (BikeSharing) two-block Gibbs with rglmb
 Ex_07_MultiReg         Multivariate Multiple Regression for AMI Overdose Data
 Ex_A1_Methods          Illustrates the methods used in building the envelope
 Ex_A2_BG_vs_rindep_norm_gamma_reg         Illustrates the methods used in building the envelope

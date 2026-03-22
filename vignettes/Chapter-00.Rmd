@@ -90,9 +90,9 @@ This part presents Bayesian GLMs across the major likelihood families, including
 
 ## Part 4: Advanced Topics
 
-These chapters explore more complex modeling scenarios and computational strategies, including informative priors, unknown dispersion parameters, and GPU-accelerated envelope construction.
+These chapters explore more complex modeling scenarios and computational strategies, including informative priors, unknown dispersion parameters, hierarchical (random effects) models, and GPU-accelerated envelope construction.
 
-- **Chapter 10 — Informative Priors: Centering and Priors with Differentiated Weights**  
+- **Chapter 10 — Informative Priors: Centering and priors with differential prior weights**  
   Construct more flexible priors by centering on domain-specific values and assigning variable-specific scales. Examine how differentiated prior weights influence shrinkage and interpretability.  
   <https://knygren.r-universe.dev/articles/glmbayes/Chapter-10.html>
 
@@ -103,6 +103,14 @@ These chapters explore more complex modeling scenarios and computational strateg
 - **Chapter 12 — Large Models: GPU Acceleration using OpenCL**  
   Scale Bayesian GLMs to higher-dimensional settings by offloading key computations to the GPU. Configure OpenCL, tune envelope construction for large models, and benchmark performance gains.  
   <https://knygren.r-universe.dev/articles/glmbayes/Chapter-12.html>
+
+- **Chapter 13 — Hierarchical Linear Models**  
+  Fit hierarchical (random effects) linear models using block Gibbs sampling with `rlmb`. Covers dispersion-and-coefficients sampling (e.g., Dobson plant weight) and the Eight Schools example with conjugate and non-conjugate priors.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-13.html>
+
+- **Chapter 14 — Hierarchical Generalized Linear Models**  
+  Extend hierarchical modeling to non-Gaussian families. Implements a two-block Gibbs sampler for Poisson regression with observation-level random effects using the BikeSharing dataset and `rglmb`.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-14.html>
 
 ## Part 5: Simulation Methods and Technical Implementation
 
@@ -135,6 +143,18 @@ The appendices document the mathematical and algorithmic foundations of the samp
 - **Chapter A07 — Accept–Reject Sampling for Gaussian Regression Models with Independent Normal–Gamma Priors**  
   Detail the accept–reject-based approach for Gaussian regression with independent normal–gamma priors, including the structure of the joint prior, conditional distributions, and sampler efficiency.  
   <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A07.html>
+
+- **Chapter A08 — Overview of Envelope Related Functions**  
+  Provide a central overview of the envelope-related functions. Consolidate the theoretical foundations, function map, and workflow for users and developers.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A08.html>
+
+- **Chapter A09 — Parallel Sampling Implementation using RcppParallel**  
+  Describe the parallel sampling implementation, pilot logic, and interactive safeguards.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A09.html>
+
+- **Chapter A10 — Accelerated EnvelopeBuild Implementation using OpenCL**  
+  Document the OpenCL implementation for accelerating envelope construction on the GPU.  
+  <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A10.html>
 
 ---
 
