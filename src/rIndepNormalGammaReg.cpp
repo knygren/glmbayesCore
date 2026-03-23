@@ -1059,164 +1059,74 @@ Rcpp::List rIndepNormalGammaReg(
   // if(use_parallel) disp_grid_type=2;
   
   
-  // Base R functions
-  Rcpp::Function lm_wfit("lm.wfit");
+  // --- EnvelopeCentering: returns dispersion and RSS_post for downstream ---
+  Rcpp::List centering_out = glmbayes::env::EnvelopeCentering(
+    y, x, mu, P, offset, wt,
+    shape, rate,
+    Gridtype,
+    verbose
+  );
+  double dispersion2 = Rcpp::as<double>(centering_out["dispersion"]);
+  double RSS_Post2   = Rcpp::as<double>(centering_out["RSS_post"]);
+
+  // --- OLD CODE (commented out; replaced by EnvelopeCentering above) ---
+  // Rcpp::Function lm_wfit("lm.wfit");
+  // Rcpp::Function optim("optim");
+  // Rcpp::Function gaussian("gaussian");
+  // Rcpp::Environment glmbayes_ns = Rcpp::Environment::namespace_env("glmbayes");
+  // Rcpp::Function glmbfamfunc = glmbayes_ns["glmbfamfunc"];
+  // int n_obs = y.size();
+  // Rcpp::NumericVector ystar(n_obs);
+  // for (int i = 0; i < n_obs; i++) { ystar[i] = y[i] - offset[i]; }
+  // double n_w = 0.0;
+  // for (int i = 0; i < wt.size(); ++i)   n_w += wt[i];
+  // Rcpp::List fit = lm_wfit(Rcpp::_["x"] = x, Rcpp::_["y"] = ystar, Rcpp::_["w"] = wt);
+  // NumericVector res = fit["residuals"];
+  // double RSS = 0.0;
+  // for (int i = 0; i < res.size(); i++) { RSS += res[i] * res[i]; }
+  // int p = Rcpp::as<int>(fit["rank"]);
+  // double dispersion2 = RSS / (n_obs - p);
+  // Rcpp::List famfunc = glmbfamfunc( gaussian() );
+  // Rcpp::Function f2 = famfunc["f2"];
+  // Rcpp::Function f3 = famfunc["f3"];
+  // arma::mat X   = Rcpp::as<arma::mat>(x);
+  // arma::vec Y   = Rcpp::as<arma::vec>(y);
+  // arma::rowvec y_row = Y.t();
+  // arma::rowvec off_row = Rcpp::as<arma::rowvec>(offset);
+  // arma::rowvec wt_row  = Rcpp::as<arma::rowvec>(wt);
+  // Rcpp::List cpp_out;
+  // double RSS_Post2 = NA_REAL;
+  // for (int j = 0; j < 10; ++j) {
+  //   cpp_out = rNormalReg(10000, y, x, mu, P, offset, wt, dispersion2, f2, f3, mu, "gaussian", "identity", Gridtype);
+  //   arma::mat beta_draws = Rcpp::as<arma::mat>(cpp_out["coefficients"]);
+  //   arma::mat lp_mat = beta_draws * X.t();
+  //   arma::mat eta_mat = lp_mat.each_row() + off_row;
+  //   arma::mat mu_mat = eta_mat;
+  //   arma::mat diff = mu_mat.each_row() - y_row;
+  //   arma::mat res_sq = diff % diff;
+  //   arma::mat res_sq_weighted = res_sq;
+  //   res_sq_weighted.each_row() %= wt_row;
+  //   arma::vec RSS_temp = arma::sum(res_sq_weighted, 1);
+  //   RSS_Post2 = arma::mean(RSS_temp);
+  //   double shape2 = shape + n_w / 2.0;
+  //   double rate2  = rate  + RSS_Post2 / 2.0;
+  //   dispersion2 = rate2 / (shape2 - 1.0);
+  // }
+
+  // Base R functions (needed for mode optimization below)
   Rcpp::Function optim("optim");
   Rcpp::Function gaussian("gaussian");
-  
-  
-  // glmbayes namespace function
   Rcpp::Environment glmbayes_ns = Rcpp::Environment::namespace_env("glmbayes");
   Rcpp::Function glmbfamfunc = glmbayes_ns["glmbfamfunc"];
-  
-  
-  // Build y* = y - offset
-  int n_obs = y.size();
-  Rcpp::NumericVector ystar(n_obs);
-  for (int i = 0; i < n_obs; i++) {
-    ystar[i] = y[i] - offset[i];
-  }
-  
-  double n_w = 0.0;
-  for (int i = 0; i < wt.size(); ++i)   n_w += wt[i];
-  
-  
-  // Call lm.wfit(X, y*, w)
-  Rcpp::List fit = lm_wfit(
-    Rcpp::_["x"] = x,
-    Rcpp::_["y"] = ystar,
-    Rcpp::_["w"] = wt
-  );
-  
-  // Extract residuals
-  Rcpp::NumericVector res = fit["residuals"];
-  
-  // Compute RSS
-  double RSS = 0.0;
-  for (int i = 0; i < res.size(); i++) {
-    RSS += res[i] * res[i];
-  }
-  
-  // Extract rank
-  int p = Rcpp::as<int>(fit["rank"]);
-  
-  // Compute dispersion
-  double dispersion2 = RSS / (n_obs - p);
-  
-  
-  // Call glmbfamfunc(gaussian())
   Rcpp::List famfunc = glmbfamfunc( gaussian() );
-  
-  // Extract f2 and f3
   Rcpp::Function f2 = famfunc["f2"];
   Rcpp::Function f3 = famfunc["f3"];
-  
-  
-  // Armadillo views
-  arma::mat X   = Rcpp::as<arma::mat>(x);          // n_obs × p
-  arma::vec Y   = Rcpp::as<arma::vec>(y);          // n_obs
-  arma::rowvec y_row = Y.t();                      // 1 × n_obs
-  arma::rowvec off_row = Rcpp::as<arma::rowvec>(offset); // 1 × n_obs
-  arma::rowvec wt_row  = Rcpp::as<arma::rowvec>(wt);     // 1 × n_obs
-  
-  Rcpp::List cpp_out;   // declare here so it survives the loop
-  double RSS_Post2 = NA_REAL;   // declare before the loop
-  
-  
-  if (verbose) {
-    Rcpp::Rcout << "[rIndepNormalGammaReg:rNormalReg] Entering Loop: "
-    //            << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << glmbayes::progress::timestamp_cpp()
-                  << "\n";
-  }
-  
-  for (int j = 0; j < 10; ++j) {
-    
-    // --- Call rNormalReg (C++ version of .rnorm_reg) ---
-    cpp_out = rNormalReg(
-      10000,          // n
-      y,              // y
-      x,              // x
-      mu,             // mu
-      P,              // P
-      offset,         // offset
-      wt,             // wt
-      dispersion2,    // dispersion
-      f2,             // f2
-      f3,             // f3
-      mu,             // start
-      "gaussian",     // family
-      "identity",     // link
-      Gridtype        // Gridtype
-    );
-
-
-    // Posterior draws: matrix (n_draws × p)
-    arma::mat beta_draws = Rcpp::as<arma::mat>(cpp_out["coefficients"]);
-
-    // lp_mat: n_draws × n_obs = beta_draws %*% t(x)
-    arma::mat lp_mat = beta_draws * X.t();
-    
-    // eta_mat = lp_mat + offset (broadcasted by row)
-    arma::mat eta_mat = lp_mat.each_row() + off_row;
-    
-    // For Gaussian identity link, mu_mat = eta_mat
-    arma::mat mu_mat = eta_mat;
-    
-    // diff = mu_mat - y (broadcast y by row)
-    arma::mat diff = mu_mat.each_row() - y_row;
-    
-    // elementwise square
-    arma::mat res_sq = diff % diff;
-    
-    // weight each column by wt
-    arma::mat res_sq_weighted = res_sq;
-    res_sq_weighted.each_row() %= wt_row;
-    
-    // RSS_k = sum_i w_i (y_i - mu_ik)^2  (per draw)
-    arma::vec RSS_temp = arma::sum(res_sq_weighted, 1);
-    
-    // Posterior mean of RSS
-    RSS_Post2 = arma::mean(RSS_temp);
-    
-    // Mode from cpp_out
-    arma::vec b_old = Rcpp::as<arma::vec>(cpp_out["coef.mode"]);
-    
-    // x %*% b_old
-    arma::vec xbetastar = X * b_old;
-    
-    // RSS2_post = (y - X b_old)' (y - X b_old)
-    arma::vec resid_ml = Y - xbetastar;
-    //double RSS2_post = arma::dot(resid_ml, resid_ml);
-    
-
-    
-        // Update shape, rate, dispersion
-    double shape2 = shape + n_w / 2.0;
-    double rate2  = rate  + RSS_Post2 / 2.0;
-    
-    dispersion2 = rate2 / (shape2 - 1.0);
-  }
-  
-  
-  if (verbose) {
-    Rcpp::Rcout << "[rIndepNormalGammaReg:rNormalReg] Exiting Loop: "
-    //            << Rcpp::as<std::string>(Rcpp::Function("format")(Rcpp::Function("Sys.time")())) 
-                  << glmbayes::progress::timestamp_cpp()
-                  << "\n";
-  }
-  
-  
-  
-  // Rcpp::Rcout << "dispersion2 = " << dispersion2 << "\n";
-  
+  int n_obs = y.size();
   
   // -------------------------------
   // Posterior Mode + Hessian Block
   // -------------------------------
-  
-  // Extract posterior mode from sampler
-  arma::vec betastar = Rcpp::as<arma::vec>(cpp_out["coef.mode"]);
+  arma::mat X = Rcpp::as<arma::mat>(x);
   double dispstar = dispersion2;
   
   // wt2 = wt / dispstar

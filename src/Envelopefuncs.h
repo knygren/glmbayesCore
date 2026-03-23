@@ -134,6 +134,21 @@ List EnvelopeDispersionBuild(
 );
 
 
+/// EnvelopeCentering: initial dispersion + dispersion anchoring loop for Normal-Gamma.
+/// Returns dispersion and RSS_post for downstream mode optimization and envelope build.
+List EnvelopeCentering(
+    NumericVector y,
+    NumericMatrix x,
+    NumericVector mu,
+    NumericMatrix P,
+    NumericVector offset,
+    NumericVector wt,
+    double shape,
+    double rate,
+    int Gridtype = 2,
+    bool verbose = false
+);
+
 Rcpp::List EnvelopeOrchestrator(
     NumericVector bstar2,
     NumericMatrix A,
