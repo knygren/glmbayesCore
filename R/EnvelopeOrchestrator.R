@@ -19,7 +19,8 @@
 #' @param shape Numeric. Shape parameter of the Gamma prior for the dispersion.
 #' @param rate Numeric. Rate parameter of the Gamma prior for the dispersion.
 #' @param Gridtype Integer. Grid construction method (default \code{2}).
-#' @param verbose Logical. Reserved for API compatibility; currently unused in C++.
+#' @param verbose Logical. Reserved for API compatibility; diagnostic print
+#'   block in C++ is commented out (restore with \code{RSS_helper} comparison).
 #'
 #' @return
 #' A list with components:

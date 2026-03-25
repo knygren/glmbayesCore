@@ -2,12 +2,15 @@
 
 #include "RcppArmadillo.h"
 #include "Envelopefuncs.h"
-#include <math.h>
+#include <cmath>
 
 using namespace Rcpp;
 
 namespace {
 
+// Legacy reference implementation (lm.fit + full recompute each iteration).
+// Kept commented for audit / recovery; live path uses precomputed quantities below.
+/*
 /// Closed-form E[ sum_i w_i (y_i - x_i' beta - offset_i)^2 ] under the same
 /// Gaussian posterior as rNormalReg (weighted Normal–Normal conjugate update).
 double RSS_helper(
@@ -38,8 +41,8 @@ double RSS_helper(
 
   int i;
   for (i = 0; i < l2; i++) {
-    x2b(i, _) = x2b(i, _) * sqrt(wt2[i]);
-    y1(i) = y1(i) * sqrt(wt2[i]);
+    x2b(i, _) = x2b(i, _) * std::sqrt(wt2[i]);
+    y1(i) = y1(i) * std::sqrt(wt2[i]);
   }
 
   arma::mat RA = arma::chol(P2);
@@ -68,6 +71,7 @@ double RSS_helper(
   const double trace_term = arma::trace(XtWX * Sigma);
   return rss_at_mean + trace_term;
 }
+*/
 
 }  // namespace
 
@@ -115,17 +119,65 @@ List EnvelopeCentering(
   int p = Rcpp::as<int>(fit["rank"]);
   double dispersion2 = RSS / (n_obs - p);
 
+  // Precompute (fixed inputs): chol(P), sqrt(w)-scaled design/response, XtWX.
+  const int l1 = x.ncol();
+  const int l2 = x.nrow();
+  const arma::mat X = as<arma::mat>(x);
+  const arma::vec Y = as<arma::vec>(y);
+  const arma::vec off = as<arma::vec>(offset);
+  const arma::vec wv = as<arma::vec>(wt);
+  const arma::vec mu_vec = as<arma::vec>(mu);
+  arma::mat P_arma(P.begin(), P.nrow(), P.ncol(), false);
+
+  arma::mat Xw(l2, l1);
+  arma::vec yw(l2);
+  for (int i = 0; i < l2; i++) {
+    const double sw = std::sqrt(wv[i]);
+    Xw.row(i) = sw * X.row(i);
+    yw[i] = (Y[i] - off[i]) * sw;
+  }
+
+  const arma::mat RA = arma::chol(P_arma);
+  const arma::vec z_bot = RA * mu_vec;
+  const arma::mat XtWX = X.t() * (arma::diagmat(wv) * X);
+
+  arma::mat W(l2 + l1, l1);
+  arma::vec z(l2 + l1);
+
   double RSS_post_expected = NA_REAL;
 
   for (int j = 0; j < n_rss_iter; ++j) {
-    const double RSS_closed = RSS_helper(
-        y, x, mu, P, offset, wt, dispersion2
-    );
+    // const double RSS_closed = RSS_helper(
+    //     y, x, mu, P, offset, wt, dispersion2
+    // );
 
-    RSS_post_expected = RSS_closed;
+    const double s = 1.0 / std::sqrt(dispersion2);
+    W.rows(0, l2 - 1) = s * Xw;
+    W.rows(l2, l2 + l1 - 1) = RA;
+    z.rows(0, l2 - 1) = s * yw;
+    z.rows(l2, l2 + l1 - 1) = z_bot;
+
+    const arma::mat WtW = W.t() * W;
+    const arma::mat IR = arma::inv(arma::trimatu(arma::chol(WtW)));
+    const arma::mat Sigma = IR * arma::trans(IR);
+    const arma::vec b2_fast = Sigma * (W.t() * z);
+
+    const arma::vec r_fast = Y - X * b2_fast - off;
+    const double rss_at_mean_fast = arma::dot(wv, r_fast % r_fast);
+    const double trace_term_fast = arma::trace(XtWX * Sigma);
+    const double RSS_precomputed = rss_at_mean_fast + trace_term_fast;
+
+    // if (verbose) {
+    //   Rcpp::Rcout << "[EnvelopeCentering] iter " << j
+    //               << "  RSS (helper)=" << RSS_closed
+    //               << "  RSS (precomputed)=" << RSS_precomputed
+    //               << "  diff=" << (RSS_closed - RSS_precomputed) << "\n";
+    // }
+
+    RSS_post_expected = RSS_precomputed;
 
     double shape2 = shape + n_w / 2.0;
-    double rate2 = rate + RSS_closed / 2.0;
+    double rate2 = rate + RSS_precomputed / 2.0;
     dispersion2 = rate2 / (shape2 - 1.0);
   }
 
