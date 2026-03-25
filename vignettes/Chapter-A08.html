@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Kjell Nygren" />
+
+<meta name="date" content="2026-03-25" />
+
+<title>Chapter A08: Overview of Envelope Related Functions</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Chapter A08: Overview of Envelope Related
+Functions</h1>
+<h4 class="author">Kjell Nygren</h4>
+<h4 class="date">2026-03-25</h4>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(glmbayes)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="co">#&gt; Loading required package: MASS</span></span></code></pre></div>
+<div id="chapter-a08-overview-of-envelope-related-functions" class="section level1">
+<h1>Chapter A08: Overview of Envelope Related Functions</h1>
+<div id="introduction-and-purpose" class="section level2">
+<h2>1. Introduction and Purpose</h2>
+<p>The <code>glmbayes</code> package produces <strong>independent and
+identically distributed (iid)</strong> posterior samples for Bayesian
+generalized linear models. When the posterior is not available in closed
+form (e.g., Poisson or binomial regression with Normal priors, Gaussian
+regression with independent Normal-Gamma priors), the package uses
+<strong>accept-reject sampling</strong> based on tight
+<strong>enveloping functions</strong>. These envelopes are constructed
+using the <strong>likelihood subgradient</strong> approach of Nygren
+&amp; Nygren (2006).</p>
+<p>This chapter provides a central overview of the envelope-related
+functions in the package. It consolidates the theoretical foundations,
+the function map, and the workflow so that users and developers can see
+how the pieces fit together. For implementation details of the full
+simulation pipeline, see Chapter A05. For envelope theory in specialized
+settings, see Chapter A06 (dispersion envelopes) and Chapter A07 (joint
+envelopes for independent Normal-Gamma priors).</p>
+<div id="why-envelopes" class="section level3">
+<h3>1.1 Why Envelopes?</h3>
+<p>Accept-reject sampling requires a proposal density <span class="math inline">\(q(\theta)\)</span> and a constant <span class="math inline">\(a\)</span> such that <span class="math inline">\(a
+\cdot q(\theta) \geq \pi(\theta \mid y)\)</span> for all <span class="math inline">\(\theta\)</span>. The posterior <span class="math inline">\(\pi(\theta \mid y)\)</span> is then sampled by:
+draw <span class="math inline">\(\theta \sim q\)</span>, accept with
+probability <span class="math inline">\(\pi(\theta \mid y) / (a \cdot
+q(\theta))\)</span>. The constant <span class="math inline">\(a\)</span>
+controls efficiency: smaller <span class="math inline">\(a\)</span>
+means fewer candidates per acceptance. The likelihood subgradient
+approach constructs <strong>tight</strong> envelopes, with <span class="math inline">\(a\)</span> bounded above by <span class="math inline">\((2/\sqrt{\pi})^k\)</span> for <span class="math inline">\(k\)</span>-dimensional models when the likelihood
+is approximately normal (Nygren &amp; Nygren 2006, Theorems 2 and 3).
+This ensures efficient iid sampling even in high dimensions.</p>
+</div>
+<div id="high-level-flow" class="section level3">
+<h3>1.2 High-Level Flow</h3>
+<p>The envelope-based pipeline follows this sequence:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Optimize</strong> - Find the posterior mode.</li>
+<li><strong>Standardize</strong> - Reparameterize into standard form
+(prior precision = identity, posterior precision diagonal at the
+mode).</li>
+<li><strong>Size</strong> - Choose the number of tangency points per
+dimension (<code>EnvelopeSize</code>, <code>EnvelopeOpt</code>).</li>
+<li><strong>Build</strong> - Construct the envelope
+(<code>EnvelopeBuild</code>).</li>
+<li><strong>Sort</strong> - Order envelope components for sampling
+efficiency (<code>EnvelopeSort</code>).</li>
+<li><strong>Sample</strong> - Generate candidates from the mixture
+envelope and accept/reject (<code>rNormalGLM_std</code> or C++
+equivalents).</li>
+</ol>
+<p>For models with unknown dispersion, an additional <strong>dispersion
+envelope</strong> step (<code>EnvelopeDispersionBuild</code>) extends
+the coefficient envelope to a joint envelope over <span class="math inline">\((\beta, \phi)\)</span>. This is orchestrated by
+<code>EnvelopeOrchestrator</code> for the independent Normal-Gamma
+case.</p>
+</div>
+</div>
+<div id="theoretical-foundation" class="section level2">
+<h2>2. Theoretical Foundation</h2>
+<p>The envelope construction is grounded in Nygren &amp; Nygren (2006),
+“Likelihood Subgradient Densities,” <em>Journal of the American
+Statistical Association</em>. This section records the definitions and
+structural results from the paper that justify mixture envelopes and the
+<span class="math inline">\(3^p\)</span> partition. For how these are
+implemented in <strong>glmbayes</strong>, see Chapter A05.</p>
+<div id="posterior-and-definition-2-paper-section-2" class="section level3">
+<h3>2.1 Posterior and Definition 2 (paper Section 2)</h3>
+<p>Let the posterior be <span class="math display">\[
+\pi(\theta \mid y) \propto f(y \mid \theta)\,\pi(\theta),
+\]</span> where <span class="math inline">\(f(y \mid \theta)\)</span> is
+the likelihood and <span class="math inline">\(\pi(\theta)\)</span> is
+the prior density.</p>
+<p><strong>Definition 2.</strong> A density <span class="math inline">\(q(\cdot)\)</span> is a <strong>generalized
+likelihood-subgradient density</strong> for <span class="math inline">\(\pi(\cdot\mid y)\)</span> with prior <span class="math inline">\(\pi(\cdot)\)</span> and likelihood <span class="math inline">\(f(y\mid\cdot)\)</span> at <span class="math inline">\(\bar{\theta}\in\Theta\)</span> if there exist a
+function <span class="math inline">\(g\)</span> and a subgradient <span class="math inline">\(c(\bar{\theta})\)</span> of <span class="math inline">\(-\log g\)</span> at <span class="math inline">\(\bar{\theta}\)</span> such that:</p>
+<ol style="list-style-type: decimal">
+<li><strong>(a)</strong> <span class="math inline">\(g(\cdot)\)</span>
+bounds <span class="math inline">\(f(y\mid\cdot)\)</span> from
+above;</li>
+<li><strong>(b)</strong> <span class="math inline">\(\mathrm{MGF}(-c(\bar{\theta})) = \int_{\Theta}
+\exp(-c(\bar{\theta})^T\theta)\,\pi(\theta)\,d\theta\)</span> is
+finite;</li>
+<li><strong>(c)</strong> for all <span class="math inline">\(\theta\in\Theta\)</span>, <span class="math display">\[
+q(\theta)
+=
+\frac{\exp\!\big(-c(\bar{\theta})^T\theta\big)\,\pi(\theta)}
+{\mathrm{MGF}\!\big(-c(\bar{\theta})\big)}.
+\]</span></li>
+</ol>
+<p><strong>Special cases (paper).</strong> If <span class="math inline">\(g\)</span> is the likelihood, <span class="math inline">\(q\)</span> is a <strong>likelihood-subgradient
+density</strong>; log-concave likelihoods (e.g., Poisson and logistic
+regression) are the main examples. If <span class="math inline">\(g\)</span> is a constant upper bound on the
+likelihood, one obtains the Bayesian construction where the
+<strong>prior</strong> itself is viewed as a generalized
+likelihood-subgradient density.</p>
+<p><strong>Existence (paper Appendix).</strong> Likelihood-subgradient
+densities exist at every <span class="math inline">\(\bar{\theta}\)</span> when the prior is a
+<strong>finite mixture of multivariate normals</strong> and the
+likelihood is <strong>log-concave</strong>. Mixture priors yield
+particularly simple algebraic forms (Claim 1 below).</p>
+</div>
+<div id="claim-1-finite-mixture-of-normal-priors" class="section level3">
+<h3>2.2 Claim 1: finite mixture of normal priors</h3>
+<p>Suppose <span class="math inline">\(\pi(\theta) = \sum_{i=1}^{k}
+p_i\,\pi_i(\theta\mid \mu_i,\Sigma_i)\)</span> and <span class="math inline">\(c(\bar{\theta})\)</span> is a subgradient for
+<span class="math inline">\(-\log g\)</span> at <span class="math inline">\(\bar{\theta}\)</span>. Then <span class="math display">\[
+\mathrm{MGF}\!\big(-c(\bar{\theta})\big)
+=
+\sum_{i=1}^{k} p_i\,
+\exp\!\Big(
+-c(\bar{\theta})^T\mu_i +
+\tfrac12\,c(\bar{\theta})^T\Sigma_i\,c(\bar{\theta})
+\Big),
+\]</span> and the generalized likelihood-subgradient density is again a
+mixture of multivariate normals: <span class="math display">\[
+q(\theta) = \sum_{i=1}^{k} \tilde{p}_i\,\pi_i(\theta\mid
+\tilde{\mu}_i,\Sigma_i),
+\]</span> with <span class="math display">\[
+\tilde{p}_i
+=
+\frac{
+p_i\,\exp\!\big(-c(\bar{\theta})^T\mu_i +
+\tfrac12\,c(\bar{\theta})^T\Sigma_i\,c(\bar{\theta})\big)
+}{
+\mathrm{MGF}\!\big(-c(\bar{\theta})\big)
+},
+\qquad
+\tilde{\mu}_i = \mu_i - \Sigma_i\,c(\bar{\theta}).
+\]</span></p>
+</div>
+<div id="theorem-1-envelope-dominance-and-tangency" class="section level3">
+<h3>2.3 Theorem 1: envelope dominance and tangency</h3>
+<p>Define <span class="math display">\[
+a(\bar{\theta})
+=
+\frac{
+g(\bar{\theta})\,\mathrm{MGF}\!\big(-c(\bar{\theta})\big)
+}{
+f(y)\,\exp\!\big(-c(\bar{\theta})^T\bar{\theta}\big)
+},
+\]</span> and <span class="math display">\[
+h_{\bar{\theta}}(\theta)
+=
+\frac{
+\exp\!\big(-c(\bar{\theta})^T\bar{\theta}\big)\,f(y\mid\theta)
+}{
+\exp\!\big(-c(\bar{\theta})^T\theta\big)\,g(\bar{\theta})
+}.
+\]</span></p>
+<p>Then Theorem 1 states <span class="math display">\[
+a(\bar{\theta})\,q_{\bar{\theta}}(\theta)
+\ge
+a(\bar{\theta})\,h_{\bar{\theta}}(\theta)\,q_{\bar{\theta}}(\theta)
+=
+\pi(\theta\mid y),
+\]</span> with <span class="math display">\[
+0 \le h_{\bar{\theta}}(\theta) \le 1
+\quad \forall \theta\in\Theta.
+\]</span></p>
+<p>If <span class="math inline">\(f(y\mid\bar{\theta}) =
+g(\bar{\theta})\)</span>, then <span class="math inline">\(h_{\bar{\theta}}(\bar{\theta})=1\)</span>, so the
+envelope touches the posterior at tangency.</p>
+<p>Operationally, <span class="math inline">\(a(\bar{\theta})\)</span>
+governs acceptance efficiency: the acceptance probability is <span class="math inline">\(1/a(\bar{\theta})\)</span>.</p>
+</div>
+<div id="log-scale-form-of-h_bartheta" class="section level3">
+<h3>2.4 Log-scale form of <span class="math inline">\(h_{\bar{\theta}}\)</span></h3>
+<p>When <span class="math inline">\(g(\bar{\theta}) =
+f(y\mid\bar{\theta})\)</span>, the envelope function in Theorem 1
+simplifies to <span class="math display">\[
+h_{\bar{\theta}}(\theta)
+=
+\exp\!\big(c(\bar{\theta})^T(\theta-\bar{\theta})\big)\,
+\frac{f(y\mid\theta)}{f(y\mid\bar{\theta})},
+\]</span> hence <span class="math display">\[
+\log h_{\bar{\theta}}(\theta)
+=
+c(\bar{\theta})^T(\theta-\bar{\theta})
++\log f(y\mid\theta)-\log f(y\mid\bar{\theta}).
+\]</span> At the tangency point, <span class="math inline">\(h_{\bar{\theta}}(\bar{\theta})=1\)</span>.</p>
+</div>
+<div id="subgradient-inequality-and-h_barthetale-1-log-concave-likelihood" class="section level3">
+<h3>2.5 Subgradient inequality and <span class="math inline">\(h_{\bar{\theta}}\le 1\)</span> (log-concave
+likelihood)</h3>
+<p>When <span class="math inline">\(\log f(y\mid\cdot)\)</span> is
+concave and <span class="math inline">\(c(\bar{\theta})\)</span> is a
+subgradient at <span class="math inline">\(\bar{\theta}\)</span>, <span class="math display">\[
+\log f(y\mid\theta)
+\le
+\log f(y\mid\bar{\theta})
++
+c(\bar{\theta})^T(\theta-\bar{\theta}).
+\]</span> Thus <span class="math inline">\(\log
+h_{\bar{\theta}}(\theta)\le 0\)</span> and <span class="math inline">\(0\le h_{\bar{\theta}}(\theta)\le 1\)</span>: the
+tangent majorization of the log-likelihood is exactly what makes <span class="math inline">\(h\)</span> a valid envelope factor.</p>
+</div>
+<div id="claim-2-remark-5-and-restricted-subgradient-densities" class="section level3">
+<h3>2.6 Claim 2, Remark 5, and restricted subgradient densities</h3>
+<p><strong>Claim 2.</strong> Let <span class="math inline">\(A_1,\ldots,A_k\)</span> partition <span class="math inline">\(\Theta\)</span>. Suppose that on each <span class="math inline">\(A_i\)</span> there exist <span class="math inline">\(\tilde{a}_i&gt;0\)</span>, densities <span class="math inline">\(\tilde{q}_i\)</span>, and functions <span class="math inline">\(\tilde{h}_i\)</span> such that:</p>
+<ul>
+<li><strong>(a)</strong> if <span class="math inline">\(\theta\in
+A_i\)</span>, then <span class="math inline">\(\tilde{a}_i\,\tilde{h}_i(\theta)\,\tilde{q}_i(\theta)=\pi(\theta\mid
+y)\)</span>;</li>
+<li><strong>(b)</strong> if <span class="math inline">\(\theta\in
+A_i\)</span>, then <span class="math inline">\(0\le
+\tilde{h}_i(\theta)\le 1\)</span>.</li>
+</ul>
+<p>Define mixture weights <span class="math inline">\(\tilde{p}_i=\tilde{a}_i/\sum_j
+\tilde{a}_j\)</span>, <span class="math inline">\(\tilde{a}=\sum_j\tilde{a}_j\)</span>, and <span class="math inline">\(\tilde{q}(\theta)=\sum_i
+\tilde{p}_i\,\tilde{q}_i(\theta)\)</span>, with <span class="math inline">\(\tilde{h}(\theta)=\tilde{h}_i(\theta)\)</span> on
+<span class="math inline">\(A_i\)</span>. Then <span class="math display">\[
+\tilde{a}\,\tilde{h}(\theta)\,\tilde{q}(\theta) = \pi(\theta\mid y),
+\qquad
+0\le \tilde{h}(\theta)\le 1.
+\]</span> Remark 5 shows how to obtain restricted densities <span class="math inline">\(\tilde{q}_i\)</span> satisfying these conditions
+from unrestricted generalized likelihood-subgradient densities.</p>
+<p><strong>Remark 5.</strong> Given <span class="math inline">\(q_{\bar{\theta}}\)</span> and <span class="math inline">\(a(\bar{\theta})\)</span> from Theorem 1, restrict
+to <span class="math inline">\(A\subset\Theta\)</span> by <span class="math display">\[
+\tilde{q}_{\bar{\theta}}(\theta)
+=
+\frac{q_{\bar{\theta}}(\theta)\,\mathbf{1}_{\{\theta\in A\}}}
+{\int_{\theta&#39;\in A} q_{\bar{\theta}}(\theta&#39;)\,d\theta&#39;},
+\qquad
+\tilde{a}(\bar{\theta}) = a(\bar{\theta})\int_{\theta\in A}
+q_{\bar{\theta}}(\theta)\,d\theta.
+\]</span> Then for all <span class="math inline">\(\theta\in A\)</span>,
+<span class="math display">\[
+\tilde{a}(\bar{\theta})\,h_{\bar{\theta}}(\theta)\,\tilde{q}_{\bar{\theta}}(\theta)
+= \pi(\theta\mid y).
+\]</span></p>
+</div>
+<div id="remark-6-mixture-constants-and-weights-explicit-forms" class="section level3">
+<h3>2.7 Remark 6: mixture constants and weights (explicit forms)</h3>
+<p>When the restricted pieces are those built from Remark 5, Remark 6
+gives <span class="math display">\[
+\tilde{a}
+=
+\frac{1}{f(y)}
+\sum_{j=1}^{k}
+g(\bar{\theta}_j)\,
+\mathrm{MGF}\!\big(-c(\bar{\theta}_j)\big)\,
+\left(\int_{\theta\in A_j} q_{\bar{\theta}_j}(\theta)\,d\theta\right)
+\exp\!\big(-c(\bar{\theta}_j)^T\bar{\theta}_j\big)
+\]</span> and <span class="math display">\[
+\tilde{p}_i
+=
+\frac{
+g(\bar{\theta}_i)\,
+\mathrm{MGF}\!\big(-c(\bar{\theta}_i)\big)\,
+\left(\int_{\theta\in A_i} q_{\bar{\theta}_i}(\theta)\,d\theta\right)
+\exp\!\big(-c(\bar{\theta}_i)^T\bar{\theta}_i\big)
+}{
+\sum_{j=1}^{k}
+g(\bar{\theta}_j)\,
+\mathrm{MGF}\!\big(-c(\bar{\theta}_j)\big)\,
+\left(\int_{\theta\in A_j} q_{\bar{\theta}_j}(\theta)\,d\theta\right)
+\exp\!\big(-c(\bar{\theta}_j)^T\bar{\theta}_j\big)
+}.
+\]</span></p>
+<p>Remark 6 further notes that optimal placement of tangencies is tied
+to expectations under the resulting restricted likelihood-subgradient
+densities.</p>
+<p>In standard form with <span class="math inline">\(\mathcal{N}(0,I)\)</span> prior and diagonal
+posterior Hessian at the mode, each <span class="math inline">\(\int_{A_i}
+q_{\bar{\theta}}(\theta)\,d\theta\)</span> over a rectangle factorizes
+into products of univariate normal CDF differences, so <span class="math inline">\(\tilde{a}\)</span> and <span class="math inline">\(\tilde{p}_i\)</span> are computable without
+numerical integration over <span class="math inline">\(\mathbb{R}^p\)</span>.</p>
+</div>
+<div id="standard-form-definition-3-and-remarks-11-15-paper-section-3.3" class="section level3">
+<h3>2.8 Standard form: Definition 3 and Remarks 11-15 (paper Section
+3.3)</h3>
+<p><strong>Definition 3.</strong> A model with multivariate Normal prior
+and log-concave likelihood is in <strong>standard form</strong> if:</p>
+<ol style="list-style-type: decimal">
+<li>the prior covariance is the identity (prior precision <span class="math inline">\(I\)</span>);</li>
+<li>the Hessian of <span class="math inline">\(\log\pi(\theta\mid
+y)\)</span> at the posterior mode is diagonal.</li>
+</ol>
+<p><strong>Remark 11.</strong> If the log-likelihood is concave and
+twice continuously differentiable, a Cholesky reparameterization from
+the posterior precision at the unique mode achieves diagonal posterior
+Hessian at the mode.</p>
+<p><strong>Remark 12.</strong> For any positive definite prior precision
+<span class="math inline">\(P\)</span>, there exists diagonal <span class="math inline">\(D\succ 0\)</span> such that <span class="math inline">\(P-D\succ 0\)</span>.</p>
+<p><strong>Remark 13.</strong> With <span class="math inline">\(P\)</span> and <span class="math inline">\(D\)</span> as in Remark 12, shifting <span class="math inline">\((P-D)\)</span> from the prior quadratic form into
+the likelihood leaves the <strong>posterior unchanged</strong>: the same
+<span class="math inline">\(\pi(\theta\mid y)\)</span> arises from prior
+precision <span class="math inline">\(D\)</span> and an augmented
+log-likelihood.</p>
+<p><strong>Remark 14.</strong> If the prior covariance is diagonal and
+the posterior Hessian at the mode is diagonal, the model can be
+reparameterized into standard form.</p>
+<p><strong>Remark 15.</strong> Any model with Normal prior and
+log-concave, twice differentiable log-likelihood can be reparameterized
+into standard form.</p>
+<p><strong>Zellner <span class="math inline">\(g\)</span>-prior (paper
+discussion).</strong> In the whitened design space, both prior and
+likelihood contributions to precision are often diagonal; one still
+rescales so that the <strong>prior precision is exactly</strong> <span class="math inline">\(I\)</span> before applying the rectangular / <span class="math inline">\(3^p\)</span> partition machinery.</p>
+</div>
+<div id="example-2-rectangular-restrictions-and-truncated-moments" class="section level3">
+<h3>2.9 Example 2: rectangular restrictions and truncated moments</h3>
+<p>Assume <span class="math inline">\(\pi\)</span> is <span class="math inline">\(\mathcal{N}(0,I)\)</span> and <span class="math inline">\(q_{\bar{\theta}}\)</span> is the generalized
+likelihood-subgradient density at <span class="math inline">\(\bar{\theta}\)</span>. Then <span class="math inline">\(q_{\bar{\theta}}\)</span> is <span class="math inline">\(\mathcal{N}(-c(\bar{\theta}),I)\)</span>.</p>
+<p>For a box <span class="math inline">\(A=\{\theta:\ell^L\le \theta\le
+\ell^U\}\)</span>, <span class="math display">\[
+\int_{\theta\in A} q_{\bar{\theta}}(\theta)\,d\theta
+=
+\prod_{r=1}^{p}
+\left[
+\Phi\!\big(\ell^U_r + c_r(\bar{\theta})\big)
+-
+\Phi\!\big(\ell^L_r + c_r(\bar{\theta})\big)
+\right].
+\]</span></p>
+<p>The conditional mean of coordinate <span class="math inline">\(\theta_r\)</span> given <span class="math inline">\(\theta\in A\)</span> under the restricted density
+satisfies <span class="math display">\[
+\mathbb{E}_{\tilde{q}_{\bar{\theta}}}[\theta_r\mid \theta\in A]
+=
+-c_r(\bar{\theta})
++
+\frac{
+\varphi\!\big(\ell^L_r + c_r(\bar{\theta})\big)
+-
+\varphi\!\big(\ell^U_r + c_r(\bar{\theta})\big)
+}{
+\Phi\!\big(\ell^U_r + c_r(\bar{\theta})\big)
+-
+\Phi\!\big(\ell^L_r + c_r(\bar{\theta})\big)
+},
+\]</span> where <span class="math inline">\(\varphi\)</span> is the
+standard normal density.</p>
+<p>For <span class="math inline">\(\mathcal{N}(0,I)\)</span> prior,
+<span class="math inline">\(\mathrm{MGF}(-c(\bar{\theta}))=\exp(\tfrac12
+c(\bar{\theta})^Tc(\bar{\theta}))\)</span>, and Theorem 1 gives <span class="math display">\[
+a(\bar{\theta})
+=
+\frac{
+g(\bar{\theta})\,
+\exp\!\big(\tfrac12 c(\bar{\theta})^T c(\bar{\theta})\big)
+}{
+f(y)\,
+\exp\!\big(-c(\bar{\theta})^T\bar{\theta}\big)
+}.
+\]</span></p>
+</div>
+<div id="remarks-7-8-sampling-restricted-normals-paper" class="section level3">
+<h3>2.10 Remarks 7-8: sampling restricted normals (paper)</h3>
+<p><strong>Remark 7.</strong> Sampling from restricted Normal laws can
+be done by inverse transform (Fishman 1999).</p>
+<p><strong>Remark 8.</strong> When intervals lie in extreme Gaussian
+tails, accurate evaluation of normal CDFs (or their logs) with uniformly
+small relative error matters; classical references in the paper include
+Hart (1957, 1966) and Bryc (2002).</p>
+</div>
+<div id="theorem-2-univariate-normal-data-three-intervals-and-tildeato-2sqrtpi" class="section level3">
+<h3>2.11 Theorem 2: univariate Normal data, three intervals, and <span class="math inline">\(\tilde{a}\to 2/\sqrt{\pi}\)</span></h3>
+<p>Empirically (paper), a <strong>single</strong> optimally placed
+likelihood-subgradient component, and <strong>two-interval</strong>
+partitions, can become loose as sample size grows; the
+<strong>three-interval</strong> construction does not exhibit the same
+deterioration.</p>
+<p>Let <span class="math inline">\(\theta^\ast\)</span> be the posterior
+mode. Define (univariate case) <span class="math display">\[
+\omega
+=
+\frac{
+\sqrt{2}
+-
+\exp\!\big(-1.20491 - 0.7321\,(0.5 - \partial^2\log f(\theta^\ast\mid
+y)/\partial\theta^2)\big)
+}{
+1 - \partial^2\log f(\theta^\ast\mid y)/\partial\theta^2
+},
+\]</span> <span class="math display">\[
+\ell_1=\theta^\ast-0.5\,\omega,\quad \ell_2=\theta^\ast+0.5\,\omega,
+\]</span> regions <span class="math inline">\(A_1=(-\infty,\ell_1)\)</span>, <span class="math inline">\(A_2=[\ell_1,\ell_2]\)</span>, <span class="math inline">\(A_3=(\ell_2,\infty)\)</span>, and tangencies <span class="math inline">\(\bar{\theta}_1=\theta^\ast-\omega\)</span>, <span class="math inline">\(\bar{\theta}_2=\theta^\ast\)</span>, <span class="math inline">\(\bar{\theta}_3=\theta^\ast+\omega\)</span>.</p>
+<p>For <span class="math inline">\(N\)</span> i.i.d. Normal<span class="math inline">\((\theta,1)\)</span> observations, <span class="math inline">\(-\partial^2\log f(\theta^\ast\mid
+y)/\partial\theta^2 = N\)</span>.</p>
+<p><strong>Theorem 2.</strong> With <span class="math inline">\(\tilde{a}^\ast(N)\)</span> the combined constant
+at sample size <span class="math inline">\(N\)</span>, <span class="math display">\[
+\lim_{N\to\infty} \tilde{a}^\ast(N) = \frac{2}{\sqrt{\pi}}.
+\]</span> The paper gives a proof sketch using symmetry <span class="math inline">\(\tilde{a}_1(\bar{\theta}_1)=\tilde{a}_3(\bar{\theta}_3)\)</span>
+and appendix claims.</p>
+</div>
+<div id="multivariate-partition-in-standard-form-paper-remark-16" class="section level3">
+<h3>2.12 Multivariate partition in standard form (paper; Remark 16)</h3>
+<p>Let <span class="math inline">\(\theta^\ast\)</span> be the unique
+posterior mode. For each coordinate <span class="math inline">\(i\)</span>, define <span class="math display">\[
+\omega_i
+=
+\frac{
+\sqrt{2}
+-
+\exp\!\big(-1.20491 - 0.7321\,(0.5 - \partial^2\log f(\theta^\ast\mid
+y)/\partial\theta_i^2)\big)
+}{
+1 - \partial^2\log f(\theta^\ast\mid y)/\partial\theta_i^2
+},
+\]</span> then <span class="math inline">\(\ell_{i,1}=\theta^\ast_i-0.5\,\omega_i\)</span>,
+<span class="math inline">\(\ell_{i,2}=\theta^\ast_i+0.5\,\omega_i\)</span>,
+and <span class="math display">\[
+A_{i,1}=(-\infty,\ell_{i,1}),\quad
+A_{i,2}=[\ell_{i,1},\ell_{i,2}],\quad
+A_{i,3}=(\ell_{i,2},\infty).
+\]</span> Let <span class="math inline">\(j=(j_1,\ldots,j_p)\in\{1,2,3\}^p\)</span> and
+<span class="math inline">\(A^\ast_j=\prod_{i=1}^p A_{i,j_i}\)</span>.
+The <span class="math inline">\(A^\ast_j\)</span> partition <span class="math inline">\(\mathbb{R}^p\)</span>.</p>
+<p>With <span class="math inline">\(C_{j1}=\{i:j_i=1\}\)</span>, <span class="math inline">\(C_{j2}=\{i:j_i=2\}\)</span>, <span class="math inline">\(C_{j3}=\{i:j_i=3\}\)</span>, tangency <span class="math inline">\(\bar{\theta}_j\)</span> has coordinates <span class="math inline">\(\theta^\ast_i-\omega_i\)</span>, <span class="math inline">\(\theta^\ast_i\)</span>, or <span class="math inline">\(\theta^\ast_i+\omega_i\)</span> according as <span class="math inline">\(i\)</span> lies in <span class="math inline">\(C_{j1}\)</span>, <span class="math inline">\(C_{j2}\)</span>, or <span class="math inline">\(C_{j3}\)</span>.</p>
+<p><strong>Remark 16.</strong> The resulting mixture generalized
+likelihood-subgradient density is a mixture of
+<strong>restricted</strong> multivariate Normal laws for which a direct
+sampling procedure exists.</p>
+</div>
+<div id="theorem-3-paper" class="section level3">
+<h3>2.13 Theorem 3 (paper)</h3>
+<p>For <span class="math inline">\(k\)</span>-dimensional Normal
+regression in standard form, the three-interval construction yields
+<span class="math display">\[
+\tilde{a}\le \left(\frac{2}{\sqrt{\pi}}\right)^k.
+\]</span></p>
+<p>For other log-concave models, posterior asymptotic normality suggests
+analogous practical tightness as the posterior concentrates.</p>
+</div>
+</div>
+<div id="function-map-and-workflow" class="section level2">
+<h2>3. Function Map and Workflow</h2>
+<div id="where-envelopes-are-used" class="section level3">
+<h3>3.1 Where Envelopes Are Used</h3>
+<table>
+<colgroup>
+<col width="38%" />
+<col width="17%" />
+<col width="44%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Simfunction</th>
+<th>When</th>
+<th>Envelope role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>rNormal_reg</code></td>
+<td>Non-Gaussian families (Poisson, binomial, Gamma, etc.) with Normal
+prior</td>
+<td><code>EnvelopeBuild</code> for coefficients</td>
+</tr>
+<tr class="even">
+<td><code>rindepNormalGamma_reg</code></td>
+<td>Gaussian with independent Normal-Gamma prior</td>
+<td><code>EnvelopeOrchestrator</code> -&gt; <code>EnvelopeBuild</code> +
+<code>EnvelopeDispersionBuild</code></td>
+</tr>
+<tr class="odd">
+<td><code>rGamma_reg</code></td>
+<td>Gamma family with Gamma prior on dispersion</td>
+<td>Dispersion envelope (see Chapter A06)</td>
+</tr>
+</tbody>
+</table>
+<p>For conjugate cases (e.g., Gaussian likelihood with Normal or
+Normal-Gamma prior), no envelope is constructed; direct sampling is
+used.</p>
+</div>
+<div id="pipeline-order" class="section level3">
+<h3>3.2 Pipeline Order</h3>
+<p>The following functions are invoked in sequence during envelope-based
+sampling:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong><code>glmb_Standardize_Model</code></strong> - Transforms
+the model into standard form. Required before
+<code>EnvelopeBuild</code>.</p></li>
+<li><p><strong><code>EnvelopeSize</code></strong> - Determines the grid
+structure (number of tangency points per dimension). Calls
+<code>EnvelopeOpt</code> when <code>Gridtype = 2</code>.</p></li>
+<li><p><strong><code>EnvelopeBuild</code></strong> - Constructs the
+envelope: tangency points, gradients, mixture weights, and sampling
+constants. This is the main envelope construction function.</p></li>
+<li><p><strong><code>EnvelopeSort</code></strong> - Reorders envelope
+components by probability mass to improve sampling efficiency.</p></li>
+<li><p><strong><code>EnvelopeSetGrid</code></strong>,
+<strong><code>EnvelopeSetLogP</code></strong> - Low-level helpers that
+compute log-densities and constants for the envelope. Typically called
+internally by <code>EnvelopeBuild</code> or the C++ routines.</p></li>
+<li><p><strong><code>rNormalGLM_std</code></strong> - Samples from the
+posterior using the constructed envelope via accept-reject. Used for
+non-Gaussian GLMs.</p></li>
+<li><p><strong><code>EnvelopeDispersionBuild</code></strong> - For
+Gaussian regression with independent Normal-Gamma priors, refines the
+coefficient envelope to a joint envelope over <span class="math inline">\((\beta, \phi)\)</span>. Called by
+<code>EnvelopeOrchestrator</code>.</p></li>
+<li><p><strong><code>EnvelopeOrchestrator</code></strong> - High-level
+coordinator that runs <code>EnvelopeBuild</code>,
+<code>EnvelopeDispersionBuild</code>, and <code>EnvelopeSort</code> for
+the independent Normal-Gamma case. Used inside the C++ sampler.</p></li>
+</ol>
+</div>
+</div>
+<div id="envelope-functions-reference" class="section level2">
+<h2>4. Envelope Functions Reference</h2>
+<table>
+<colgroup>
+<col width="17%" />
+<col width="16%" />
+<col width="37%" />
+<col width="28%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Function</th>
+<th>Purpose</th>
+<th>Typically called by</th>
+<th>Theory chapter</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>glmb_Standardize_Model</code></td>
+<td>Reparameterize to standard form</td>
+<td><code>.rNormalGLM_cpp</code>, C++ routines</td>
+<td>A05</td>
+</tr>
+<tr class="even">
+<td><code>EnvelopeSize</code></td>
+<td>Choose grid size per dimension</td>
+<td><code>EnvelopeBuild</code> (or C++ equivalent)</td>
+<td>A05, A08</td>
+</tr>
+<tr class="odd">
+<td><code>EnvelopeOpt</code></td>
+<td>Adaptive grid optimization (Gridtype 2)</td>
+<td><code>EnvelopeSize</code></td>
+<td>A05</td>
+</tr>
+<tr class="even">
+<td><code>EnvelopeBuild</code></td>
+<td>Build coefficient envelope</td>
+<td><code>rNormal_reg</code>, <code>EnvelopeOrchestrator</code></td>
+<td>A05, A08</td>
+</tr>
+<tr class="odd">
+<td><code>EnvelopeSort</code></td>
+<td>Sort envelope components</td>
+<td><code>EnvelopeBuild</code>, <code>EnvelopeOrchestrator</code></td>
+<td>A08</td>
+</tr>
+<tr class="even">
+<td><code>EnvelopeSetGrid</code></td>
+<td>Compute grid log-densities</td>
+<td><code>EnvelopeBuild</code> (internal)</td>
+<td>-</td>
+</tr>
+<tr class="odd">
+<td><code>EnvelopeSetLogP</code></td>
+<td>Compute mixture constants</td>
+<td><code>EnvelopeBuild</code> (internal)</td>
+<td>-</td>
+</tr>
+<tr class="even">
+<td><code>EnvelopeDispersionBuild</code></td>
+<td>Joint envelope for <span class="math inline">\((\beta,
+\phi)\)</span></td>
+<td><code>EnvelopeOrchestrator</code></td>
+<td>A07</td>
+</tr>
+<tr class="odd">
+<td><code>EnvelopeOrchestrator</code></td>
+<td>Coordinate build + dispersion + sort</td>
+<td><code>rindepNormalGamma_reg</code> C++</td>
+<td>A07, A08</td>
+</tr>
+<tr class="even">
+<td><code>rNormalGLM_std</code></td>
+<td>Sample from standardized model</td>
+<td><code>rNormal_reg</code> (non-Gaussian path)</td>
+<td>A05</td>
+</tr>
+<tr class="odd">
+<td><code>EnvelopeEval</code></td>
+<td>Evaluate envelope at points</td>
+<td>Diagnostics, validation</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p>Users typically do not call these functions directly; they are
+invoked by <code>glmb()</code>, <code>lmb()</code>,
+<code>rglmb()</code>, or <code>rlmb()</code> through the simfunctions.
+The <code>Envelope</code> component of the returned object (when
+applicable) contains the constructed envelope and can be inspected for
+diagnostics.</p>
+</div>
+<div id="gridtype-and-envelope-sizing" class="section level2">
+<h2>5. Gridtype and Envelope Sizing</h2>
+<p>The <code>Gridtype</code> argument (passed via <code>glmb()</code>,
+<code>rglmb()</code>, etc.) controls how many tangency points are used
+per dimension. This trades off <strong>envelope build cost</strong>
+against <strong>sampling efficiency</strong>.</p>
+<table>
+<colgroup>
+<col width="20%" />
+<col width="20%" />
+<col width="60%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Gridtype</th>
+<th>Behavior</th>
+<th>Expected candidates per draw</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Static threshold: use single-point envelope if <span class="math inline">\(\sqrt{1+a_i} \leq 2/\sqrt{\pi}\)</span></td>
+<td><span class="math inline">\(\prod_i \sqrt{1+a_i}\)</span> or <span class="math inline">\((2/\sqrt{\pi})^k\)</span></td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td><strong>Adaptive</strong> via <code>EnvelopeOpt</code>: choose per
+dimension</td>
+<td>Optimized blend</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Always three-point envelope in every dimension</td>
+<td><span class="math inline">\((2/\sqrt{\pi})^k\)</span></td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Always single-point at posterior mode</td>
+<td><span class="math inline">\(\prod_i \sqrt{1+a_i}\)</span></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Gridtype 2</strong> is the default. It uses
+<code>EnvelopeOpt</code> to balance build time (more tangents = more
+cost) against acceptance rate (more tangents = tighter envelope = fewer
+candidates). The <code>n_envopt</code> argument influences the effective
+sample size used in this optimization; larger values encourage tighter
+envelopes.</p>
+<p>For large models, <code>use_opencl = TRUE</code> can accelerate
+<code>EnvelopeBuild</code> by evaluating gradients on the GPU. See
+Chapter A10 for OpenCL usage.</p>
+</div>
+<div id="central-distributions-normal_ct-gamma_ct-invgamma_ct" class="section level2">
+<h2>6. Central Distributions: Normal_ct, Gamma_ct, InvGamma_ct</h2>
+<p>The envelope-based samplers rely on <strong>restricted</strong>
+(truncated) distributions. Candidates are drawn from normals restricted
+to intervals (e.g., left tail, center, right tail) and from truncated
+Gamma distributions.</p>
+<ul>
+<li><p><strong><code>Normal_ct</code></strong> (<code>pnorm_ct</code>,
+<code>rnorm_ct</code>): Restricted Normal CDF and random generation.
+Used when sampling from mixture components that correspond to intervals
+on each coordinate. Critical when the truncation interval is narrow,
+where naive evaluation can underflow.</p></li>
+<li><p><strong><code>Gamma_ct</code></strong> (<code>pgamma_ct</code>,
+<code>rgamma_ct</code>, <code>ctrgamma</code>): Restricted Gamma
+distribution. Used in <code>rGamma_reg</code> and in dispersion
+sampling. Provides numerically stable evaluation and sampling under
+truncation.</p></li>
+<li><p><strong><code>InvGamma_ct</code></strong>
+(<code>pinvgamma_ct</code>, <code>qinvgamma_ct</code>,
+<code>rinvgamma_ct</code>): Restricted inverse-Gamma on the dispersion
+scale. Used when dispersion is bounded for envelope
+construction.</p></li>
+</ul>
+<p>These functions support the envelope construction and accept-reject
+steps; see their help pages for details.</p>
+</div>
+<div id="cross-references" class="section level2">
+<h2>7. Cross-References</h2>
+<ul>
+<li><strong>Chapter A02</strong> - Overview of estimation procedures,
+mapping of families/pfamilies to simfunctions.</li>
+<li><strong>Chapter A05</strong> - Full simulation pipeline:
+optimization, standardization, sizing, building, sampling. Deep dive
+into <code>EnvelopeBuild</code> and <code>EnvelopeOpt</code>.</li>
+<li><strong>Chapter A06</strong> - Accept-reject sampling for dispersion
+in Gamma regression.</li>
+<li><strong>Chapter A07</strong> - Accept-reject sampling for Gaussian
+regression with independent Normal-Gamma priors. Joint envelope
+construction.</li>
+<li><strong>Chapter A09</strong> - Parallel sampling implementation
+(RcppParallel).</li>
+<li><strong>Chapter A10</strong> - OpenCL acceleration for
+<code>EnvelopeBuild</code>.</li>
+<li><strong>Nygren &amp; Nygren (2006)</strong> - Original paper:
+“Likelihood Subgradient Densities,” <em>JASA</em>.</li>
+</ul>
+<p>For help on individual functions, use <code>?EnvelopeBuild</code>,
+<code>?EnvelopeSize</code>, <code>?EnvelopeOrchestrator</code>, etc.</p>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

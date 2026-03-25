@@ -24,55 +24,354 @@ library(glmbayes)
 
 ## 1. Introduction and Purpose
 
-The `glmbayes` package produces **independent and identically distributed (iid)** posterior samples for Bayesian generalized linear models. When the posterior is not available in closed form (e.g., Poisson or binomial regression with Normal priors, Gaussian regression with independent Normal–Gamma priors), the package uses **accept–reject sampling** based on tight **enveloping functions**. These envelopes are constructed using the **likelihood subgradient** approach of Nygren & Nygren (2006).
+The `glmbayes` package produces **independent and identically distributed (iid)** posterior samples for Bayesian generalized linear models. When the posterior is not available in closed form (e.g., Poisson or binomial regression with Normal priors, Gaussian regression with independent Normal-Gamma priors), the package uses **accept-reject sampling** based on tight **enveloping functions**. These envelopes are constructed using the **likelihood subgradient** approach of Nygren & Nygren (2006).
 
-This chapter provides a central overview of the envelope-related functions in the package. It consolidates the theoretical foundations, the function map, and the workflow so that users and developers can see how the pieces fit together. For implementation details of the full simulation pipeline, see Chapter A05. For envelope theory in specialized settings, see Chapter A06 (dispersion envelopes) and Chapter A07 (joint envelopes for independent Normal–Gamma priors).
+This chapter provides a central overview of the envelope-related functions in the package. It consolidates the theoretical foundations, the function map, and the workflow so that users and developers can see how the pieces fit together. For implementation details of the full simulation pipeline, see Chapter A05. For envelope theory in specialized settings, see Chapter A06 (dispersion envelopes) and Chapter A07 (joint envelopes for independent Normal-Gamma priors).
 
 ### 1.1 Why Envelopes?
 
-Accept–reject sampling requires a proposal density \(q(\theta)\) and a constant \(a\) such that \(a \cdot q(\theta) \geq \pi(\theta \mid y)\) for all \(\theta\). The posterior \(\pi(\theta \mid y)\) is then sampled by: draw \(\theta \sim q\), accept with probability \(\pi(\theta \mid y) / (a \cdot q(\theta))\). The constant \(a\) controls efficiency: smaller \(a\) means fewer candidates per acceptance. The likelihood subgradient approach constructs **tight** envelopes, with \(a\) bounded above by \((2/\sqrt{\pi})^k\) for \(k\)-dimensional models when the likelihood is approximately normal (Nygren & Nygren 2006, Theorems 2 and 3). This ensures efficient iid sampling even in high dimensions.
+Accept-reject sampling requires a proposal density \(q(\theta)\) and a constant \(a\) such that \(a \cdot q(\theta) \geq \pi(\theta \mid y)\) for all \(\theta\). The posterior \(\pi(\theta \mid y)\) is then sampled by: draw \(\theta \sim q\), accept with probability \(\pi(\theta \mid y) / (a \cdot q(\theta))\). The constant \(a\) controls efficiency: smaller \(a\) means fewer candidates per acceptance. The likelihood subgradient approach constructs **tight** envelopes, with \(a\) bounded above by \((2/\sqrt{\pi})^k\) for \(k\)-dimensional models when the likelihood is approximately normal (Nygren & Nygren 2006, Theorems 2 and 3). This ensures efficient iid sampling even in high dimensions.
 
 ### 1.2 High-Level Flow
 
 The envelope-based pipeline follows this sequence:
 
-1. **Optimize** – Find the posterior mode.
-2. **Standardize** – Reparameterize into standard form (prior precision = identity, posterior precision diagonal at the mode).
-3. **Size** – Choose the number of tangency points per dimension (`EnvelopeSize`, `EnvelopeOpt`).
-4. **Build** – Construct the envelope (`EnvelopeBuild`).
-5. **Sort** – Order envelope components for sampling efficiency (`EnvelopeSort`).
-6. **Sample** – Generate candidates from the mixture envelope and accept/reject (`rNormalGLM_std` or C++ equivalents).
+1. **Optimize** - Find the posterior mode.
+2. **Standardize** - Reparameterize into standard form (prior precision = identity, posterior precision diagonal at the mode).
+3. **Size** - Choose the number of tangency points per dimension (`EnvelopeSize`, `EnvelopeOpt`).
+4. **Build** - Construct the envelope (`EnvelopeBuild`).
+5. **Sort** - Order envelope components for sampling efficiency (`EnvelopeSort`).
+6. **Sample** - Generate candidates from the mixture envelope and accept/reject (`rNormalGLM_std` or C++ equivalents).
 
-For models with unknown dispersion, an additional **dispersion envelope** step (`EnvelopeDispersionBuild`) extends the coefficient envelope to a joint envelope over \((\beta, \phi)\). This is orchestrated by `EnvelopeOrchestrator` for the independent Normal–Gamma case.
+For models with unknown dispersion, an additional **dispersion envelope** step (`EnvelopeDispersionBuild`) extends the coefficient envelope to a joint envelope over \((\beta, \phi)\). This is orchestrated by `EnvelopeOrchestrator` for the independent Normal-Gamma case.
 
 
 ## 2. Theoretical Foundation
 
-The envelope construction is grounded in Nygren & Nygren (2006), "Likelihood Subgradient Densities," *Journal of the American Statistical Association*. Below is a concise summary; the paper should be consulted for proofs and full detail.
+The envelope construction is grounded in Nygren & Nygren (2006), "Likelihood Subgradient Densities," *Journal of the American Statistical Association*. This section records the definitions and structural results from the paper that justify mixture envelopes and the \(3^p\) partition. For how these are implemented in **glmbayes**, see Chapter A05.
 
-### 2.1 Likelihood-Subgradient Densities (Paper Section 2)
+### 2.1 Posterior and Definition 2 (paper Section 2)
 
-For a posterior \(\pi(\theta \mid y) \propto f(y \mid \theta) \pi(\theta)\), a **generalized likelihood-subgradient density** \(q_{\bar{\theta}}(\theta)\) is defined at a tangency point \(\bar{\theta}\) using a subgradient \(c(\bar{\theta})\) of the negative log-likelihood. Under a Normal prior, \(q_{\bar{\theta}}\) is itself Normal and can be sampled directly.
-
-**Theorem 1** (Nygren & Nygren 2006) states that the posterior factors as
+Let the posterior be
 \[
-\pi(\theta \mid y) = a(\bar{\theta}) \, h_{\bar{\theta}}(\theta) \, q_{\bar{\theta}}(\theta),
+\pi(\theta \mid y) \propto f(y \mid \theta)\,\pi(\theta),
 \]
-where \(0 \leq h_{\bar{\theta}}(\theta) \leq 1\), \(h_{\bar{\theta}}(\bar{\theta}) = 1\) when \(f(y \mid \bar{\theta}) = g(\bar{\theta})\), and \(a(\bar{\theta}) q_{\bar{\theta}}(\theta)\) is an envelope for the posterior. The constant \(a(\bar{\theta})\) governs the acceptance rate: \(1/a(\bar{\theta})\) is the probability of acceptance in the accept–reject step.
+where \(f(y \mid \theta)\) is the likelihood and \(\pi(\theta)\) is the prior density.
 
-A single tangency point yields an envelope whose tightness deteriorates as the sample size grows. The mixture approach (Section 2.2) addresses this.
+**Definition 2.** A density \(q(\cdot)\) is a **generalized likelihood-subgradient density** for \(\pi(\cdot\mid y)\) with prior \(\pi(\cdot)\) and likelihood \(f(y\mid\cdot)\) at \(\bar{\theta}\in\Theta\) if there exist a function \(g\) and a subgradient \(c(\bar{\theta})\) of \(-\log g\) at \(\bar{\theta}\) such that:
 
-### 2.2 Mixture Envelopes (Paper Section 3.1)
+1. **(a)** \(g(\cdot)\) bounds \(f(y\mid\cdot)\) from above;
+2. **(b)** \(\mathrm{MGF}(-c(\bar{\theta})) = \int_{\Theta} \exp(-c(\bar{\theta})^T\theta)\,\pi(\theta)\,d\theta\) is finite;
+3. **(c)** for all \(\theta\in\Theta\),
+   \[
+   q(\theta)
+   =
+   \frac{\exp\!\big(-c(\bar{\theta})^T\theta\big)\,\pi(\theta)}
+   {\mathrm{MGF}\!\big(-c(\bar{\theta})\big)}.
+   \]
 
-The parameter space is **partitioned** into subsets \(A_1, \ldots, A_m\), each with its own restricted likelihood-subgradient density. **Claim 2** shows that the posterior can be written as a mixture of these restricted densities, and the combined constant \(\tilde{a} = \sum_j \tilde{a}_j\) yields a valid envelope. **Remark 5** and **Remark 6** give the formulas for the restricted densities and mixture weights.
+**Special cases (paper).** If \(g\) is the likelihood, \(q\) is a **likelihood-subgradient density**; log-concave likelihoods (e.g., Poisson and logistic regression) are the main examples. If \(g\) is a constant upper bound on the likelihood, one obtains the Bayesian construction where the **prior** itself is viewed as a generalized likelihood-subgradient density.
 
-For Normal priors, the integrals over rectangular sets factorize across dimensions (Example 2 in the paper), making the mixture tractable. Sampling from the mixture proceeds by first choosing a component, then sampling from the restricted Normal on that component.
+**Existence (paper Appendix).** Likelihood-subgradient densities exist at every \(\bar{\theta}\) when the prior is a **finite mixture of multivariate normals** and the likelihood is **log-concave**. Mixture priors yield particularly simple algebraic forms (Claim 1 below).
 
-### 2.3 Positioning and Bounds (Paper Sections 3.2 and 3.3)
+### 2.2 Claim 1: finite mixture of normal priors
 
-For **univariate** models, a three-interval partition around the posterior mode, with tangency points at \(\theta^* - \omega\), \(\theta^*\), and \(\theta^* + \omega\) (where \(\omega\) depends on the posterior precision), yields **Theorem 2**: \(\tilde{a} \to 2/\sqrt{\pi}\) as \(N \to \infty\) for Normal data.
+Suppose \(\pi(\theta) = \sum_{i=1}^{k} p_i\,\pi_i(\theta\mid \mu_i,\Sigma_i)\) and \(c(\bar{\theta})\) is a subgradient for \(-\log g\) at \(\bar{\theta}\). Then
+\[
+\mathrm{MGF}\!\big(-c(\bar{\theta})\big)
+=
+\sum_{i=1}^{k} p_i\,
+\exp\!\Big(
+-c(\bar{\theta})^T\mu_i + \tfrac12\,c(\bar{\theta})^T\Sigma_i\,c(\bar{\theta})
+\Big),
+\]
+and the generalized likelihood-subgradient density is again a mixture of multivariate normals:
+\[
+q(\theta) = \sum_{i=1}^{k} \tilde{p}_i\,\pi_i(\theta\mid \tilde{\mu}_i,\Sigma_i),
+\]
+with
+\[
+\tilde{p}_i
+=
+\frac{
+p_i\,\exp\!\big(-c(\bar{\theta})^T\mu_i + \tfrac12\,c(\bar{\theta})^T\Sigma_i\,c(\bar{\theta})\big)
+}{
+\mathrm{MGF}\!\big(-c(\bar{\theta})\big)
+},
+\qquad
+\tilde{\mu}_i = \mu_i - \Sigma_i\,c(\bar{\theta}).
+\]
 
-For **multivariate** models, the paper introduces **standard form**: prior precision = identity, posterior precision diagonal at the mode. Under this reparameterization, the univariate construction extends dimension by dimension. **Theorem 3** states that for \(k\)-dimensional Normal data in standard form, \(\tilde{a} \leq (2/\sqrt{\pi})^k\). For general log-concave likelihoods, the Bayesian central limit theorem implies that the posterior is approximately Normal for large \(n\), so similar tightness holds in practice.
+### 2.3 Theorem 1: envelope dominance and tangency
+
+Define
+\[
+a(\bar{\theta})
+=
+\frac{
+g(\bar{\theta})\,\mathrm{MGF}\!\big(-c(\bar{\theta})\big)
+}{
+f(y)\,\exp\!\big(-c(\bar{\theta})^T\bar{\theta}\big)
+},
+\]
+and
+\[
+h_{\bar{\theta}}(\theta)
+=
+\frac{
+\exp\!\big(-c(\bar{\theta})^T\bar{\theta}\big)\,f(y\mid\theta)
+}{
+\exp\!\big(-c(\bar{\theta})^T\theta\big)\,g(\bar{\theta})
+}.
+\]
+
+Then Theorem 1 states
+\[
+a(\bar{\theta})\,q_{\bar{\theta}}(\theta)
+\ge
+a(\bar{\theta})\,h_{\bar{\theta}}(\theta)\,q_{\bar{\theta}}(\theta)
+=
+\pi(\theta\mid y),
+\]
+with
+\[
+0 \le h_{\bar{\theta}}(\theta) \le 1
+\quad \forall \theta\in\Theta.
+\]
+
+If \(f(y\mid\bar{\theta}) = g(\bar{\theta})\), then \(h_{\bar{\theta}}(\bar{\theta})=1\), so the envelope touches the posterior at tangency.
+
+Operationally, \(a(\bar{\theta})\) governs acceptance efficiency: the acceptance probability is \(1/a(\bar{\theta})\).
+
+### 2.4 Log-scale form of \(h_{\bar{\theta}}\)
+
+When \(g(\bar{\theta}) = f(y\mid\bar{\theta})\), the envelope function in Theorem 1 simplifies to
+\[
+h_{\bar{\theta}}(\theta)
+=
+\exp\!\big(c(\bar{\theta})^T(\theta-\bar{\theta})\big)\,
+\frac{f(y\mid\theta)}{f(y\mid\bar{\theta})},
+\]
+hence
+\[
+\log h_{\bar{\theta}}(\theta)
+=
+c(\bar{\theta})^T(\theta-\bar{\theta})
++\log f(y\mid\theta)-\log f(y\mid\bar{\theta}).
+\]
+At the tangency point, \(h_{\bar{\theta}}(\bar{\theta})=1\).
+
+### 2.5 Subgradient inequality and \(h_{\bar{\theta}}\le 1\) (log-concave likelihood)
+
+When \(\log f(y\mid\cdot)\) is concave and \(c(\bar{\theta})\) is a subgradient at \(\bar{\theta}\),
+\[
+\log f(y\mid\theta)
+\le
+\log f(y\mid\bar{\theta})
++
+c(\bar{\theta})^T(\theta-\bar{\theta}).
+\]
+Thus \(\log h_{\bar{\theta}}(\theta)\le 0\) and \(0\le h_{\bar{\theta}}(\theta)\le 1\): the tangent majorization of the log-likelihood is exactly what makes \(h\) a valid envelope factor.
+
+### 2.6 Claim 2, Remark 5, and restricted subgradient densities
+
+**Claim 2.** Let \(A_1,\ldots,A_k\) partition \(\Theta\). Suppose that on each \(A_i\) there exist \(\tilde{a}_i>0\), densities \(\tilde{q}_i\), and functions \(\tilde{h}_i\) such that:
+
+- **(a)** if \(\theta\in A_i\), then \(\tilde{a}_i\,\tilde{h}_i(\theta)\,\tilde{q}_i(\theta)=\pi(\theta\mid y)\);
+- **(b)** if \(\theta\in A_i\), then \(0\le \tilde{h}_i(\theta)\le 1\).
+
+Define mixture weights \(\tilde{p}_i=\tilde{a}_i/\sum_j \tilde{a}_j\), \(\tilde{a}=\sum_j\tilde{a}_j\), and \(\tilde{q}(\theta)=\sum_i \tilde{p}_i\,\tilde{q}_i(\theta)\), with \(\tilde{h}(\theta)=\tilde{h}_i(\theta)\) on \(A_i\). Then
+\[
+\tilde{a}\,\tilde{h}(\theta)\,\tilde{q}(\theta) = \pi(\theta\mid y),
+\qquad
+0\le \tilde{h}(\theta)\le 1.
+\]
+Remark 5 shows how to obtain restricted densities \(\tilde{q}_i\) satisfying these conditions from unrestricted generalized likelihood-subgradient densities.
+
+**Remark 5.** Given \(q_{\bar{\theta}}\) and \(a(\bar{\theta})\) from Theorem 1, restrict to \(A\subset\Theta\) by
+\[
+\tilde{q}_{\bar{\theta}}(\theta)
+=
+\frac{q_{\bar{\theta}}(\theta)\,\mathbf{1}_{\{\theta\in A\}}}
+{\int_{\theta'\in A} q_{\bar{\theta}}(\theta')\,d\theta'},
+\qquad
+\tilde{a}(\bar{\theta}) = a(\bar{\theta})\int_{\theta\in A} q_{\bar{\theta}}(\theta)\,d\theta.
+\]
+Then for all \(\theta\in A\),
+\[
+\tilde{a}(\bar{\theta})\,h_{\bar{\theta}}(\theta)\,\tilde{q}_{\bar{\theta}}(\theta) = \pi(\theta\mid y).
+\]
+
+### 2.7 Remark 6: mixture constants and weights (explicit forms)
+
+When the restricted pieces are those built from Remark 5, Remark 6 gives
+\[
+\tilde{a}
+=
+\frac{1}{f(y)}
+\sum_{j=1}^{k}
+g(\bar{\theta}_j)\,
+\mathrm{MGF}\!\big(-c(\bar{\theta}_j)\big)\,
+\left(\int_{\theta\in A_j} q_{\bar{\theta}_j}(\theta)\,d\theta\right)
+\exp\!\big(-c(\bar{\theta}_j)^T\bar{\theta}_j\big)
+\]
+and
+\[
+\tilde{p}_i
+=
+\frac{
+g(\bar{\theta}_i)\,
+\mathrm{MGF}\!\big(-c(\bar{\theta}_i)\big)\,
+\left(\int_{\theta\in A_i} q_{\bar{\theta}_i}(\theta)\,d\theta\right)
+\exp\!\big(-c(\bar{\theta}_i)^T\bar{\theta}_i\big)
+}{
+\sum_{j=1}^{k}
+g(\bar{\theta}_j)\,
+\mathrm{MGF}\!\big(-c(\bar{\theta}_j)\big)\,
+\left(\int_{\theta\in A_j} q_{\bar{\theta}_j}(\theta)\,d\theta\right)
+\exp\!\big(-c(\bar{\theta}_j)^T\bar{\theta}_j\big)
+}.
+\]
+
+Remark 6 further notes that optimal placement of tangencies is tied to expectations under the resulting restricted likelihood-subgradient densities.
+
+In standard form with \(\mathcal{N}(0,I)\) prior and diagonal posterior Hessian at the mode, each \(\int_{A_i} q_{\bar{\theta}}(\theta)\,d\theta\) over a rectangle factorizes into products of univariate normal CDF differences, so \(\tilde{a}\) and \(\tilde{p}_i\) are computable without numerical integration over \(\mathbb{R}^p\).
+
+### 2.8 Standard form: Definition 3 and Remarks 11-15 (paper Section 3.3)
+
+**Definition 3.** A model with multivariate Normal prior and log-concave likelihood is in **standard form** if:
+
+1. the prior covariance is the identity (prior precision \(I\));
+2. the Hessian of \(\log\pi(\theta\mid y)\) at the posterior mode is diagonal.
+
+**Remark 11.** If the log-likelihood is concave and twice continuously differentiable, a Cholesky reparameterization from the posterior precision at the unique mode achieves diagonal posterior Hessian at the mode.
+
+**Remark 12.** For any positive definite prior precision \(P\), there exists diagonal \(D\succ 0\) such that \(P-D\succ 0\).
+
+**Remark 13.** With \(P\) and \(D\) as in Remark 12, shifting \((P-D)\) from the prior quadratic form into the likelihood leaves the **posterior unchanged**: the same \(\pi(\theta\mid y)\) arises from prior precision \(D\) and an augmented log-likelihood.
+
+**Remark 14.** If the prior covariance is diagonal and the posterior Hessian at the mode is diagonal, the model can be reparameterized into standard form.
+
+**Remark 15.** Any model with Normal prior and log-concave, twice differentiable log-likelihood can be reparameterized into standard form.
+
+**Zellner \(g\)-prior (paper discussion).** In the whitened design space, both prior and likelihood contributions to precision are often diagonal; one still rescales so that the **prior precision is exactly** \(I\) before applying the rectangular / \(3^p\) partition machinery.
+
+### 2.9 Example 2: rectangular restrictions and truncated moments
+
+Assume \(\pi\) is \(\mathcal{N}(0,I)\) and \(q_{\bar{\theta}}\) is the generalized likelihood-subgradient density at \(\bar{\theta}\). Then \(q_{\bar{\theta}}\) is \(\mathcal{N}(-c(\bar{\theta}),I)\).
+
+For a box \(A=\{\theta:\ell^L\le \theta\le \ell^U\}\),
+\[
+\int_{\theta\in A} q_{\bar{\theta}}(\theta)\,d\theta
+=
+\prod_{r=1}^{p}
+\left[
+\Phi\!\big(\ell^U_r + c_r(\bar{\theta})\big)
+-
+\Phi\!\big(\ell^L_r + c_r(\bar{\theta})\big)
+\right].
+\]
+
+The conditional mean of coordinate \(\theta_r\) given \(\theta\in A\) under the restricted density satisfies
+\[
+\mathbb{E}_{\tilde{q}_{\bar{\theta}}}[\theta_r\mid \theta\in A]
+=
+-c_r(\bar{\theta})
++
+\frac{
+\varphi\!\big(\ell^L_r + c_r(\bar{\theta})\big)
+-
+\varphi\!\big(\ell^U_r + c_r(\bar{\theta})\big)
+}{
+\Phi\!\big(\ell^U_r + c_r(\bar{\theta})\big)
+-
+\Phi\!\big(\ell^L_r + c_r(\bar{\theta})\big)
+},
+\]
+where \(\varphi\) is the standard normal density.
+
+For \(\mathcal{N}(0,I)\) prior, \(\mathrm{MGF}(-c(\bar{\theta}))=\exp(\tfrac12 c(\bar{\theta})^Tc(\bar{\theta}))\), and Theorem 1 gives
+\[
+a(\bar{\theta})
+=
+\frac{
+g(\bar{\theta})\,
+\exp\!\big(\tfrac12 c(\bar{\theta})^T c(\bar{\theta})\big)
+}{
+f(y)\,
+\exp\!\big(-c(\bar{\theta})^T\bar{\theta}\big)
+}.
+\]
+
+### 2.10 Remarks 7-8: sampling restricted normals (paper)
+
+**Remark 7.** Sampling from restricted Normal laws can be done by inverse transform (Fishman 1999).
+
+**Remark 8.** When intervals lie in extreme Gaussian tails, accurate evaluation of normal CDFs (or their logs) with uniformly small relative error matters; classical references in the paper include Hart (1957, 1966) and Bryc (2002).
+
+### 2.11 Theorem 2: univariate Normal data, three intervals, and \(\tilde{a}\to 2/\sqrt{\pi}\)
+
+Empirically (paper), a **single** optimally placed likelihood-subgradient component, and **two-interval** partitions, can become loose as sample size grows; the **three-interval** construction does not exhibit the same deterioration.
+
+Let \(\theta^\ast\) be the posterior mode. Define (univariate case)
+\[
+\omega
+=
+\frac{
+\sqrt{2}
+-
+\exp\!\big(-1.20491 - 0.7321\,(0.5 - \partial^2\log f(\theta^\ast\mid y)/\partial\theta^2)\big)
+}{
+1 - \partial^2\log f(\theta^\ast\mid y)/\partial\theta^2
+},
+\]
+\[
+\ell_1=\theta^\ast-0.5\,\omega,\quad \ell_2=\theta^\ast+0.5\,\omega,
+\]
+regions \(A_1=(-\infty,\ell_1)\), \(A_2=[\ell_1,\ell_2]\), \(A_3=(\ell_2,\infty)\), and tangencies \(\bar{\theta}_1=\theta^\ast-\omega\), \(\bar{\theta}_2=\theta^\ast\), \(\bar{\theta}_3=\theta^\ast+\omega\).
+
+For \(N\) i.i.d. Normal\((\theta,1)\) observations, \(-\partial^2\log f(\theta^\ast\mid y)/\partial\theta^2 = N\).
+
+**Theorem 2.** With \(\tilde{a}^\ast(N)\) the combined constant at sample size \(N\),
+\[
+\lim_{N\to\infty} \tilde{a}^\ast(N) = \frac{2}{\sqrt{\pi}}.
+\]
+The paper gives a proof sketch using symmetry \(\tilde{a}_1(\bar{\theta}_1)=\tilde{a}_3(\bar{\theta}_3)\) and appendix claims.
+
+### 2.12 Multivariate partition in standard form (paper; Remark 16)
+
+Let \(\theta^\ast\) be the unique posterior mode. For each coordinate \(i\), define
+\[
+\omega_i
+=
+\frac{
+\sqrt{2}
+-
+\exp\!\big(-1.20491 - 0.7321\,(0.5 - \partial^2\log f(\theta^\ast\mid y)/\partial\theta_i^2)\big)
+}{
+1 - \partial^2\log f(\theta^\ast\mid y)/\partial\theta_i^2
+},
+\]
+then \(\ell_{i,1}=\theta^\ast_i-0.5\,\omega_i\), \(\ell_{i,2}=\theta^\ast_i+0.5\,\omega_i\), and
+\[
+A_{i,1}=(-\infty,\ell_{i,1}),\quad
+A_{i,2}=[\ell_{i,1},\ell_{i,2}],\quad
+A_{i,3}=(\ell_{i,2},\infty).
+\]
+Let \(j=(j_1,\ldots,j_p)\in\{1,2,3\}^p\) and \(A^\ast_j=\prod_{i=1}^p A_{i,j_i}\). The \(A^\ast_j\) partition \(\mathbb{R}^p\).
+
+With \(C_{j1}=\{i:j_i=1\}\), \(C_{j2}=\{i:j_i=2\}\), \(C_{j3}=\{i:j_i=3\}\), tangency \(\bar{\theta}_j\) has coordinates \(\theta^\ast_i-\omega_i\), \(\theta^\ast_i\), or \(\theta^\ast_i+\omega_i\) according as \(i\) lies in \(C_{j1}\), \(C_{j2}\), or \(C_{j3}\).
+
+**Remark 16.** The resulting mixture generalized likelihood-subgradient density is a mixture of **restricted** multivariate Normal laws for which a direct sampling procedure exists.
+
+### 2.13 Theorem 3 (paper)
+
+For \(k\)-dimensional Normal regression in standard form, the three-interval construction yields
+\[
+\tilde{a}\le \left(\frac{2}{\sqrt{\pi}}\right)^k.
+\]
+
+For other log-concave models, posterior asymptotic normality suggests analogous practical tightness as the posterior concentrates.
 
 
 ## 3. Function Map and Workflow
@@ -82,30 +381,30 @@ For **multivariate** models, the paper introduces **standard form**: prior preci
 | Simfunction | When | Envelope role |
 |-------------|------|---------------|
 | `rNormal_reg` | Non-Gaussian families (Poisson, binomial, Gamma, etc.) with Normal prior | `EnvelopeBuild` for coefficients |
-| `rindepNormalGamma_reg` | Gaussian with independent Normal–Gamma prior | `EnvelopeOrchestrator` → `EnvelopeBuild` + `EnvelopeDispersionBuild` |
+| `rindepNormalGamma_reg` | Gaussian with independent Normal-Gamma prior | `EnvelopeOrchestrator` -> `EnvelopeBuild` + `EnvelopeDispersionBuild` |
 | `rGamma_reg` | Gamma family with Gamma prior on dispersion | Dispersion envelope (see Chapter A06) |
 
-For conjugate cases (e.g., Gaussian likelihood with Normal or Normal–Gamma prior), no envelope is constructed; direct sampling is used.
+For conjugate cases (e.g., Gaussian likelihood with Normal or Normal-Gamma prior), no envelope is constructed; direct sampling is used.
 
 ### 3.2 Pipeline Order
 
 The following functions are invoked in sequence during envelope-based sampling:
 
-1. **`glmb_Standardize_Model`** – Transforms the model into standard form. Required before `EnvelopeBuild`.
+1. **`glmb_Standardize_Model`** - Transforms the model into standard form. Required before `EnvelopeBuild`.
 
-2. **`EnvelopeSize`** – Determines the grid structure (number of tangency points per dimension). Calls `EnvelopeOpt` when `Gridtype = 2`.
+2. **`EnvelopeSize`** - Determines the grid structure (number of tangency points per dimension). Calls `EnvelopeOpt` when `Gridtype = 2`.
 
-3. **`EnvelopeBuild`** – Constructs the envelope: tangency points, gradients, mixture weights, and sampling constants. This is the main envelope construction function.
+3. **`EnvelopeBuild`** - Constructs the envelope: tangency points, gradients, mixture weights, and sampling constants. This is the main envelope construction function.
 
-4. **`EnvelopeSort`** – Reorders envelope components by probability mass to improve sampling efficiency.
+4. **`EnvelopeSort`** - Reorders envelope components by probability mass to improve sampling efficiency.
 
-5. **`EnvelopeSetGrid`**, **`EnvelopeSetLogP`** – Low-level helpers that compute log-densities and constants for the envelope. Typically called internally by `EnvelopeBuild` or the C++ routines.
+5. **`EnvelopeSetGrid`**, **`EnvelopeSetLogP`** - Low-level helpers that compute log-densities and constants for the envelope. Typically called internally by `EnvelopeBuild` or the C++ routines.
 
-6. **`rNormalGLM_std`** – Samples from the posterior using the constructed envelope via accept–reject. Used for non-Gaussian GLMs.
+6. **`rNormalGLM_std`** - Samples from the posterior using the constructed envelope via accept-reject. Used for non-Gaussian GLMs.
 
-7. **`EnvelopeDispersionBuild`** – For Gaussian regression with independent Normal–Gamma priors, refines the coefficient envelope to a joint envelope over \((\beta, \phi)\). Called by `EnvelopeOrchestrator`.
+7. **`EnvelopeDispersionBuild`** - For Gaussian regression with independent Normal-Gamma priors, refines the coefficient envelope to a joint envelope over \((\beta, \phi)\). Called by `EnvelopeOrchestrator`.
 
-8. **`EnvelopeOrchestrator`** – High-level coordinator that runs `EnvelopeBuild`, `EnvelopeDispersionBuild`, and `EnvelopeSort` for the independent Normal–Gamma case. Used inside the C++ sampler.
+8. **`EnvelopeOrchestrator`** - High-level coordinator that runs `EnvelopeBuild`, `EnvelopeDispersionBuild`, and `EnvelopeSort` for the independent Normal-Gamma case. Used inside the C++ sampler.
 
 
 ## 4. Envelope Functions Reference
@@ -117,12 +416,12 @@ The following functions are invoked in sequence during envelope-based sampling:
 | `EnvelopeOpt` | Adaptive grid optimization (Gridtype 2) | `EnvelopeSize` | A05 |
 | `EnvelopeBuild` | Build coefficient envelope | `rNormal_reg`, `EnvelopeOrchestrator` | A05, A08 |
 | `EnvelopeSort` | Sort envelope components | `EnvelopeBuild`, `EnvelopeOrchestrator` | A08 |
-| `EnvelopeSetGrid` | Compute grid log-densities | `EnvelopeBuild` (internal) | — |
-| `EnvelopeSetLogP` | Compute mixture constants | `EnvelopeBuild` (internal) | — |
+| `EnvelopeSetGrid` | Compute grid log-densities | `EnvelopeBuild` (internal) | - |
+| `EnvelopeSetLogP` | Compute mixture constants | `EnvelopeBuild` (internal) | - |
 | `EnvelopeDispersionBuild` | Joint envelope for \((\beta, \phi)\) | `EnvelopeOrchestrator` | A07 |
 | `EnvelopeOrchestrator` | Coordinate build + dispersion + sort | `rindepNormalGamma_reg` C++ | A07, A08 |
 | `rNormalGLM_std` | Sample from standardized model | `rNormal_reg` (non-Gaussian path) | A05 |
-| `EnvelopeEval` | Evaluate envelope at points | Diagnostics, validation | — |
+| `EnvelopeEval` | Evaluate envelope at points | Diagnostics, validation | - |
 
 Users typically do not call these functions directly; they are invoked by `glmb()`, `lmb()`, `rglmb()`, or `rlmb()` through the simfunctions. The `Envelope` component of the returned object (when applicable) contains the constructed envelope and can be inspected for diagnostics.
 
@@ -153,17 +452,17 @@ The envelope-based samplers rely on **restricted** (truncated) distributions. Ca
 
 - **`InvGamma_ct`** (`pinvgamma_ct`, `qinvgamma_ct`, `rinvgamma_ct`): Restricted inverse-Gamma on the dispersion scale. Used when dispersion is bounded for envelope construction.
 
-These functions support the envelope construction and accept–reject steps; see their help pages for details.
+These functions support the envelope construction and accept-reject steps; see their help pages for details.
 
 
 ## 7. Cross-References
 
-- **Chapter A02** – Overview of estimation procedures, mapping of families/pfamilies to simfunctions.
-- **Chapter A05** – Full simulation pipeline: optimization, standardization, sizing, building, sampling. Deep dive into `EnvelopeBuild` and `EnvelopeOpt`.
-- **Chapter A06** – Accept–reject sampling for dispersion in Gamma regression.
-- **Chapter A07** – Accept–reject sampling for Gaussian regression with independent Normal–Gamma priors. Joint envelope construction.
-- **Chapter A09** – Parallel sampling implementation (RcppParallel).
-- **Chapter A10** – OpenCL acceleration for `EnvelopeBuild`.
-- **Nygren & Nygren (2006)** – Original paper: "Likelihood Subgradient Densities," *JASA*.
+- **Chapter A02** - Overview of estimation procedures, mapping of families/pfamilies to simfunctions.
+- **Chapter A05** - Full simulation pipeline: optimization, standardization, sizing, building, sampling. Deep dive into `EnvelopeBuild` and `EnvelopeOpt`.
+- **Chapter A06** - Accept-reject sampling for dispersion in Gamma regression.
+- **Chapter A07** - Accept-reject sampling for Gaussian regression with independent Normal-Gamma priors. Joint envelope construction.
+- **Chapter A09** - Parallel sampling implementation (RcppParallel).
+- **Chapter A10** - OpenCL acceleration for `EnvelopeBuild`.
+- **Nygren & Nygren (2006)** - Original paper: "Likelihood Subgradient Densities," *JASA*.
 
 For help on individual functions, use `?EnvelopeBuild`, `?EnvelopeSize`, `?EnvelopeOrchestrator`, etc.
