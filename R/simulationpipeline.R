@@ -30,13 +30,28 @@ NULL
 #' @param family an object of class \code{\link{family}}
 #' @param x an object of class \code{"glmbfamfunc"} for which a printed output is desired.
 #' @param \ldots additional optional arguments
-#' @return A list with the following components
-#' \item{f1}{Negative log-likelihood function}
-#' \item{f2}{Negative log-posterior function}
-#' \item{f3}{Gradient function for negative log-posterior function}
-#' \item{f4}{Deviance function}
-#' \item{f7}{Another function}
-#' @details  This function takes as input a family and returns a set of functions related to the family.
+#' @return A list (class \code{"glmbfamfunc"}) whose first four components are **always**
+#'   present for every supported \code{family} and \code{link}. The names \code{f1}--\code{f4}
+#'   are stable: they mean the same roles across families (only the internal formulas change).
+#'   \describe{
+#'   \item{\code{f1}}{Negative log-likelihood as a function of coefficients \code{b}
+#'     (arguments typically \code{b}, \code{y}, \code{x}, optional \code{alpha}, \code{wt}).}
+#'   \item{\code{f2}}{Negative log-posterior (likelihood plus Normal prior quadratic form in
+#'     \code{b} with precision \code{P} and mean \code{mu}).}
+#'   \item{\code{f3}}{Gradient of \code{f2} with respect to \code{b} (same argument pattern as \code{f2}).}
+#'   \item{\code{f4}}{Deviance-related quantity (twice negative log-likelihood contrast vs.\
+#'     saturated model, with a \code{dispersion} argument for quasi-families); used in DIC-style summaries.}
+#'   \item{\code{f7}}{Family-specific matrix: weighted sum of outer products of predictor rows,
+#'     i.e.\ a curvature / expected negative Hessian of the log-likelihood w.r.t.\ \code{b}
+#'     at the supplied \code{b} (used e.g.\ by \code{\link{directional_tail}} for \code{glmb} fits).}
+#'   }
+#'   Slots \code{f5} and \code{f6} are **not** returned: they were reserved for alternate or
+#'   C++-aligned likelihood/posterior routines and remain commented out in the implementation
+#'   (only \code{f1}, \code{f2}, \code{f3}, \code{f4}, and \code{f7} are assigned in the returned list).
+#' @details
+#'   For simulation, many code paths now pass closed-form objectives into C++ directly; \code{glmbfamfunc}
+#'   remains the canonical R closure bundle for the same likelihood/prior/deviance quantities and for
+#'   post-processing (e.g.\ \code{\link{logLik.glmb}}, \code{\link{summary.rglmb}}, \code{\link{directional_tail}}).
 #' @example inst/examples/Ex_glmbfamfunc.R
 #' @export
 #' @rdname glmbfamfunc
@@ -560,10 +575,8 @@ glmb_Standardize_Model<-function(y, x, P, bstar, A1){
 #'     \eqn{\sqrt{1 + a_i} \leq 2/\sqrt{\pi} \approx 1.128379},
 #'     then a single tangent at the posterior mode suffices.
 #'     Expected candidates per draw in that dimension:
-#'     \eqn{\sqrt{1 + a_i}}.  
-#'
-#'     Otherwise, a symmetric three-point envelope is used at
-#'     \eqn{\{\theta^\star_i - \omega_i, \theta^\star_i, \theta^\star_i + \omega_i\}},
+#'     \eqn{\sqrt{1 + a_i}}. Otherwise, a symmetric three-point envelope is used at
+#'     \eqn{(\theta^\star_i - \omega_i, \theta^\star_i, \theta^\star_i + \omega_i)},
 #'     with expected candidates per draw bounded above by
 #'     \eqn{2/\sqrt{\pi}}.
 #'   }
@@ -572,12 +585,10 @@ glmb_Standardize_Model<-function(y, x, P, bstar, A1){
 #'     Each dimension is assigned either a single-point or three-point envelope
 #'     by minimizing
 #'     \deqn{T_\mathrm{total}(g_i) = T_\mathrm{build}(g_i) + T_\mathrm{sample}(n, acc_i(g_i)).}
-#'
 #'     The optimizer balances build cost (grows with number of tangents) against
-#'     sampling cost (decreases as acceptance improves).  
-#'
+#'     sampling cost (decreases as acceptance improves).
 #'     Expected candidates per draw:
-#'     \eqn{\prod_j \text{scaleest}[i,j]}, where each factor is either
+#'     \eqn{\prod_j \mathrm{scaleest}_{i,j}}, where each factor is either
 #'     \eqn{\sqrt{1+a_j}} (single-point) or \eqn{2/\sqrt{\pi}} (three-point),
 #'     depending on the optimization outcome.
 #'   }

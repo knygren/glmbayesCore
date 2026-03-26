@@ -17,12 +17,24 @@ glmbfamfunc(family)
 \item{\ldots}{additional optional arguments}
 }
 \value{
-A list with the following components
-\item{f1}{Negative log-likelihood function}
-\item{f2}{Negative log-posterior function}
-\item{f3}{Gradient function for negative log-posterior function}
-\item{f4}{Deviance function}
-\item{f7}{Another function}
+A list (class \code{"glmbfamfunc"}) whose first four components are \strong{always}
+present for every supported \code{family} and \code{link}. The names \code{f1}--\code{f4}
+are stable: they mean the same roles across families (only the internal formulas change).
+\describe{
+\item{\code{f1}}{Negative log-likelihood as a function of coefficients \code{b}
+(arguments typically \code{b}, \code{y}, \code{x}, optional \code{alpha}, \code{wt}).}
+\item{\code{f2}}{Negative log-posterior (likelihood plus Normal prior quadratic form in
+\code{b} with precision \code{P} and mean \code{mu}).}
+\item{\code{f3}}{Gradient of \code{f2} with respect to \code{b} (same argument pattern as \code{f2}).}
+\item{\code{f4}}{Deviance-related quantity (twice negative log-likelihood contrast vs.\
+saturated model, with a \code{dispersion} argument for quasi-families); used in DIC-style summaries.}
+\item{\code{f7}}{Family-specific matrix: weighted sum of outer products of predictor rows,
+i.e.\ a curvature / expected negative Hessian of the log-likelihood w.r.t.\ \code{b}
+at the supplied \code{b} (used e.g.\ by \code{\link{directional_tail}} for \code{glmb} fits).}
+}
+Slots \code{f5} and \code{f6} are \strong{not} returned: they were reserved for alternate or
+C++-aligned likelihood/posterior routines and remain commented out in the implementation
+(only \code{f1}, \code{f2}, \code{f3}, \code{f4}, and \code{f7} are assigned in the returned list).
 }
 \description{
 This function takes as input a \code{\link{family}} object and returns a
@@ -30,16 +42,21 @@ set of functions that are used during simulation and summarization of models
 using the \code{\link{glmb}}, and \code{\link{rglmb}} functions.
 }
 \details{
-This function takes as input a family and returns a set of functions related to the family.
+For simulation, many code paths now pass closed-form objectives into C++ directly; \code{glmbfamfunc}
+remains the canonical R closure bundle for the same likelihood/prior/deviance quantities and for
+post-processing (e.g.\ \code{\link{logLik.glmb}}, \code{\link{summary.rglmb}}, \code{\link{directional_tail}}).
 }
 \examples{
-famfunc<-glmbfamfunc(binomial(logit))
+famfunc <- glmbfamfunc(binomial(logit))
 
 print(famfunc)
 
-f1<-famfunc$f1
-f2<-famfunc$f2
-f3<-famfunc$f3
-f5<-famfunc$f5
-f6<-famfunc$f6
+## f1--f4 and f7 are always present for supported families; f5 and f6 are not returned.
+f1 <- famfunc$f1
+f2 <- famfunc$f2
+f3 <- famfunc$f3
+f4 <- famfunc$f4
+f7 <- famfunc$f7
+stopifnot(is.function(f1), is.function(f2), is.function(f3),
+          is.function(f4), is.function(f7))
 }

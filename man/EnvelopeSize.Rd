@@ -79,30 +79,22 @@ For each dimension \eqn{i}, if
 \eqn{\sqrt{1 + a_i} \leq 2/\sqrt{\pi} \approx 1.128379},
 then a single tangent at the posterior mode suffices.
 Expected candidates per draw in that dimension:
-\eqn{\sqrt{1 + a_i}}.
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{Otherwise, a symmetric three-point envelope is used at
-\eqn{\{\theta^\star_i - \omega_i, \theta^\star_i, \theta^\star_i + \omega_i\}},
+\eqn{\sqrt{1 + a_i}}. Otherwise, a symmetric three-point envelope is used at
+\eqn{(\theta^\star_i - \omega_i, \theta^\star_i, \theta^\star_i + \omega_i)},
 with expected candidates per draw bounded above by
 \eqn{2/\sqrt{\pi}}.
-}\if{html}{\out{</div>}}
-
 }
 
 \item{Gridtype 2: Adaptive Optimization}{
 Each dimension is assigned either a single-point or three-point envelope
 by minimizing
 \deqn{T_\mathrm{total}(g_i) = T_\mathrm{build}(g_i) + T_\mathrm{sample}(n, acc_i(g_i)).}
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{The optimizer balances build cost (grows with number of tangents) against
-sampling cost (decreases as acceptance improves).  
-
+The optimizer balances build cost (grows with number of tangents) against
+sampling cost (decreases as acceptance improves).
 Expected candidates per draw:
-\eqn{\prod_j \text{scaleest}[i,j]}, where each factor is either
+\eqn{\prod_j \mathrm{scaleest}_{i,j}}, where each factor is either
 \eqn{\sqrt{1+a_j}} (single-point) or \eqn{2/\sqrt{\pi}} (three-point),
 depending on the optimization outcome.
-}\if{html}{\out{</div>}}
-
 }
 
 \item{Gridtype 3: Always Three-Point}{
