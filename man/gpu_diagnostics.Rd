@@ -103,8 +103,8 @@ queue, and compile a minimal kernel. On Windows, that probe is skipped
 because platform-creation failures are often uninformative; rely on
 \code{diagnose_glmbayes()} and driver/runtime detection instead.
 
-Start with \code{\link{diagnose_glmbayes()}} for a single readable report;
-use \code{\link{has_opencl()}} for a quick boolean when scripting.
+Start with \code{\link{diagnose_glmbayes}()} for a single readable report;
+use \code{\link{has_opencl}()} for a quick boolean when scripting.
 }
 \section{High‑level diagnostic}{
 
