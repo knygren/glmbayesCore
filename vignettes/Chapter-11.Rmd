@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 11: Estimating Models with unknown dispersion parameters"
 output: rmarkdown::html_vignette

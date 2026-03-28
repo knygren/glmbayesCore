@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 00: Introduction"
 output: rmarkdown::html_vignette

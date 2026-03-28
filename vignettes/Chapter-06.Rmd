@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 06: Estimating Bayesian Generalized Linear Models"
 author: "Kjell Nygren"

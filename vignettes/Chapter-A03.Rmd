@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter A03: Methods available in glmbayes"
 author: "Kjell Nygren"
@@ -48,7 +46,7 @@ glm.D93 <- glm(counts ~ outcome + treatment,
               family = poisson())
 ```
 
-To use the *glmb* function, we first use a call to a function *Prior_Setup" to initialize the prior and to get the variable names needed. We use the default prior from the Prior_Setup function (discussed further in a separate vignette).
+To use the *glmb* function, we first use a call to a function *Prior_Setup* to initialize the prior and to get the variable names needed. We use the default prior from the Prior_Setup function (discussed further in a separate vignette).
 
 ```{r Prior_Setup,results = "hide"}
 ## Using glmb

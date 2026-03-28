@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 03: Tailoring Priors - Leveraging the Prior_Setup Function"
 author: "Kjell Nygren"

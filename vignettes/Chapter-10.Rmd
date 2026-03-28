@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 10: Informative Priors: Centering and priors with differential prior weights"
 output: rmarkdown::html_vignette

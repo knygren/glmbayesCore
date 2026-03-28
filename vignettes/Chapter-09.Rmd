@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 09: Models for the Gamma Family"
 output: rmarkdown::html_vignette

@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 12: Large Models: GPU Acceleration using OpenCL"
 output: rmarkdown::html_vignette
@@ -222,6 +220,36 @@ You should see **both**:
 
 If only `libOpenCL.so.1` is present, install the development package.
 
+---
+
+#### **2.2.5 Verify OpenCL platforms with `clinfo` (Linux, recommended)**
+
+Having headers and `libOpenCL` installed does **not** guarantee that a **vendor** OpenCL implementation registers a **platform**. The `glmbayes` configure script and `diagnose_glmbayes()` both probe for a usable platform (e.g. `clGetPlatformIDs()`). On Linux—especially **remote GPU VMs**—it helps to check this **outside R** first.
+
+Install the **`clinfo`** utility:
+
+- **Ubuntu / Debian**
+
+        sudo apt-get install clinfo
+
+- **Fedora**
+
+        sudo dnf install clinfo
+
+- **Arch Linux**
+
+        sudo pacman -S clinfo
+
+Then run:
+
+```sh
+clinfo
+```
+
+You should see **`Number of platforms` >= 1** and at least one **GPU** device (for NVIDIA, typically under the NVIDIA platform). If **`Number of platforms` is 0**, the ICD loader is present but **no vendor runtime** is visible—install your vendor’s OpenCL ICD (on Ubuntu/Debian with NVIDIA GPUs, `sudo apt-get install nvidia-opencl-icd` is often required in minimal images) and run **`clinfo`** again.
+
+**Note:** `clinfo` is a system diagnostic, not part of R. It complements `diagnose_glmbayes()` when debugging **cloud or container** setups where the NVIDIA driver looks fine (`nvidia-smi` works) but OpenCL still reports no platform.
+
 ### **2.3 macOS**
 
 macOS includes the OpenCL headers and the system OpenCL runtime as part of the Xcode Command Line Tools, so no additional installation is required for compilation. However, Apple has deprecated OpenCL, and modern Apple Silicon systems do not provide hardware OpenCL support. As a result, `glmbayes` will compile successfully on macOS, but GPU acceleration is not guaranteed and may fall back to CPU execution.
@@ -245,6 +273,8 @@ library(glmbayes)
 ```
 
 ## **5. Check for OpenCL availability**
+
+On **Linux**, if you have shell access (including **Jupyter Terminal** on a cloud instance), running **`clinfo`** before opening R is recommended: confirm **`Number of platforms` >= 1** (see §2.2.5). That catches missing vendor ICDs early, independent of the R session.
 
 ```r
 has_opencl()
@@ -318,15 +348,13 @@ If any line shows a warning or error, the diagnostic output will indicate which 
 example(Cleveland)
 ```
 
-# GPU‑Accelerated Examples (Full Mode)
-Run larger synthetic or real‑world datasets.  
-Compare runtime differences: CPU vs GPU.  
-Include benchmark plots (runtime vs. model size).
+# Cleveland heart data: CPU vs OpenCL (illustrative)
 
+The chunks below are **not executed** during vignette builds (runtime). They mirror a large `glmb` CPU vs OpenCL comparison; for an interactive GPU check use **`example(Cleveland)`** (§6 above).
 
 ```{r, eval=FALSE}
-# Running the Cleveland GPU-accelerated example
-# (This code is shown for illustration only; it is NOT executed in the vignette.)
+# Cleveland GPU-accelerated example (same pattern as example(Cleveland))
+# (Not executed in the vignette build.)
 
 library(glmbayes)
 

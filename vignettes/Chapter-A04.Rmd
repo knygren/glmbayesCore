@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter A04: Directional Tail Diagnostics for Prior-Posterior Disagreement"
 author: "Kjell Nygren"
@@ -465,7 +463,7 @@ print(dt)
 
 ---
 
-## Legacy draft material (kept for now)
+## Supplementary notes: why the Bayesian tail can be smaller
 
 ** 1.0  Why the Bayesian tail can be smaller
 

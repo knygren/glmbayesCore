@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 07: Models for the Binomial Family"
 output: rmarkdown::html_vignette

@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter A06: Accept–Reject Sampling for Dispersion in Gamma Regression"
 author: "Kjell Nygren"

@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter A01: A detailed overview of the glmbayes package"
 author: "Kjell Nygren"

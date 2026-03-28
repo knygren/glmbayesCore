@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter 05: Foundations of GLMs – Families, Links, and Log-Concave Likelihoods"
 author: "Kjell Nygren"

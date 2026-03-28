@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter A02: Overview of Estimation Procedures"
 author: "Kjell Nygren"

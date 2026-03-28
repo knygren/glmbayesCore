@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter A05: Simulation Methods - Likelihood Subgradient Densities"
 author: "Kjell Nygren"

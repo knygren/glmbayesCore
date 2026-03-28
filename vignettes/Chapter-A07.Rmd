@@ -1,5 +1,3 @@
-Yaml
-
 ---
 title: "Chapter A07: Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors"
 author: "Kjell Nygren"
