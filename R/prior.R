@@ -36,6 +36,11 @@
 #' * `dispersion`: the estimated dispersion (for Gaussian models)
 #' * `shape`: the shape parameter for Normal-Gamma priors (if applicable)
 #' * `rate`: the rate parameter for Normal-Gamma priors (if applicable)
+#' * `coefficients`: named numeric vector, same length and names as columns of `x`; a point
+#'   estimate for the regression coefficients (currently `coef()` of the internal full-model
+#'   GLM fit, i.e. the MLE under that model). Intended mainly as `beta` in \code{\link{dGamma}()}
+#'   and related `prior_list` entries when updating dispersion with fixed coefficients.
+#'   This is distinct from `mu`, which holds prior means.
 #' * `model`: the model frame used to construct the design matrix
 #' * `x`: the model matrix used
 #' * `y`: the response used
@@ -85,12 +90,11 @@
 #' and envelope controls such as \code{max_disp_perc} (see examples).
 #'
 #' #### \code{\link{dGamma}()} (Gamma on precision / dispersion with fixed \eqn{\beta})
-#' \code{Prior_Setup()} supplies \code{shape} and \code{rate} for the Gamma on
-#' precision; you still choose fixed coefficients \code{beta} (e.g. from an
-#' \code{\link[stats]{lm}} fit). Recommended:
-#' \code{dGamma(shape = ps2$shape, rate = ps2$rate, beta = beta_fix)}.
+#' \code{Prior_Setup()} supplies \code{shape}, \code{rate}, and \code{coefficients}
+#' (full-model MLE by default). Typical use:
+#' \code{dGamma(shape = ps2$shape, rate = ps2$rate, beta = ps2$coefficients)}.
 #' For \code{\link{rGamma_reg}}, pass
-#' \code{prior_list = list(beta = beta_fix, shape = ps2$shape, rate = ps2$rate)}.
+#' \code{prior_list = list(beta = ps2$coefficients, shape = ps2$shape, rate = ps2$rate)}.
 #'
 #' #### References and further reading
 #' Zellner-style scaling of \code{Sigma} from the likelihood
@@ -171,6 +175,7 @@
 #' \item{dispersion}{Empirical bayes estimate for the dispersion (gaussian model only)}
 #' \item{shape}{Derived prior shape parameter (gaussian model only). Defaults to n_prior/2 where n_prior is derived from pwt if not provided}
 #' \item{rate}{Derived prior rate parameter (gaussian model only). Defaults to (n_prior*dispersion)/2 where n_prior is derived from pwt if not provided}
+#' \item{coefficients}{Named numeric vector of regression coefficients from the internal full-model GLM (same convention as \code{\link[stats]{coef}}); see Details}
 #' \item{model}{The model frame from \code{object} if it exists}
 #' \item{x}{The design matrix from \code{object} if it exists}
 #' \item{PriorSettings}{A list containing prior configuration details}
@@ -580,6 +585,8 @@ if (!is.null(sd)) {
   colnames(mu)=c("mu")
   rownames(Sigma)=var_names
   colnames(Sigma)=var_names
+
+  coefficients <- coef(glm_full)
   
   prior_list <- list(
     mu = mu,
@@ -587,6 +594,7 @@ if (!is.null(sd)) {
     dispersion = dispersion,
     shape=shape,
     rate=rate,
+    coefficients = coefficients,
     model = mf,
     x = x,
     y=Y,

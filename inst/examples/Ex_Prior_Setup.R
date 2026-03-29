@@ -108,9 +108,8 @@ prior_list_rindepNormalGamma <- list(
   max_disp_perc = 0.99
 )
 
-beta_fix <- coef(lm(weight ~ group, x = TRUE, y = TRUE))
 prior_list_rGamma <- list(
-  beta = beta_fix,
+  beta = ps2$coefficients,
   shape = ps2$shape,
   rate = ps2$rate
 )
@@ -129,7 +128,7 @@ prior_list_rGamma <- list(
 ## dGamma via pfamily for lmb()
 lmb.D9_dGamma <- lmb(
   weight ~ group,
-  pfamily = dGamma(shape = ps2$shape, rate = ps2$rate, beta = beta_fix)
+  pfamily = dGamma(shape = ps2$shape, rate = ps2$rate, beta = ps2$coefficients)
 )
 
 ## dGamma via prior_list for rGamma_reg()

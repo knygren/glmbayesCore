@@ -101,6 +101,7 @@ A list with items related to the prior.
 \item{dispersion}{Empirical bayes estimate for the dispersion (gaussian model only)}
 \item{shape}{Derived prior shape parameter (gaussian model only). Defaults to n_prior/2 where n_prior is derived from pwt if not provided}
 \item{rate}{Derived prior rate parameter (gaussian model only). Defaults to (n_prior*dispersion)/2 where n_prior is derived from pwt if not provided}
+\item{coefficients}{Named numeric vector of regression coefficients from the internal full-model GLM (same convention as \code{\link[stats]{coef}}); see Details}
 \item{model}{The model frame from \code{object} if it exists}
 \item{x}{The design matrix from \code{object} if it exists}
 \item{PriorSettings}{A list containing prior configuration details}
@@ -120,6 +121,11 @@ The function returns a list containing:
 \item \code{dispersion}: the estimated dispersion (for Gaussian models)
 \item \code{shape}: the shape parameter for Normal-Gamma priors (if applicable)
 \item \code{rate}: the rate parameter for Normal-Gamma priors (if applicable)
+\item \code{coefficients}: named numeric vector, same length and names as columns of \code{x}; a point
+estimate for the regression coefficients (currently \code{coef()} of the internal full-model
+GLM fit, i.e. the MLE under that model). Intended mainly as \code{beta} in \code{\link{dGamma}()}
+and related \code{prior_list} entries when updating dispersion with fixed coefficients.
+This is distinct from \code{mu}, which holds prior means.
 \item \code{model}: the model frame used to construct the design matrix
 \item \code{x}: the model matrix used
 \item \code{y}: the response used
@@ -178,12 +184,11 @@ and envelope controls such as \code{max_disp_perc} (see examples).
 
 \subsection{\code{\link{dGamma}()} (Gamma on precision / dispersion with fixed \eqn{\beta})}{
 
-\code{Prior_Setup()} supplies \code{shape} and \code{rate} for the Gamma on
-precision; you still choose fixed coefficients \code{beta} (e.g. from an
-\code{\link[stats]{lm}} fit). Recommended:
-\code{dGamma(shape = ps2$shape, rate = ps2$rate, beta = beta_fix)}.
+\code{Prior_Setup()} supplies \code{shape}, \code{rate}, and \code{coefficients}
+(full-model MLE by default). Typical use:
+\code{dGamma(shape = ps2$shape, rate = ps2$rate, beta = ps2$coefficients)}.
 For \code{\link{rGamma_reg}}, pass
-\code{prior_list = list(beta = beta_fix, shape = ps2$shape, rate = ps2$rate)}.
+\code{prior_list = list(beta = ps2$coefficients, shape = ps2$shape, rate = ps2$rate)}.
 }
 
 \subsection{References and further reading}{
@@ -382,9 +387,8 @@ prior_list_rindepNormalGamma <- list(
   max_disp_perc = 0.99
 )
 
-beta_fix <- coef(lm(weight ~ group, x = TRUE, y = TRUE))
 prior_list_rGamma <- list(
-  beta = beta_fix,
+  beta = ps2$coefficients,
   shape = ps2$shape,
   rate = ps2$rate
 )
@@ -403,7 +407,7 @@ prior_list_rGamma <- list(
 ## dGamma via pfamily for lmb()
 lmb.D9_dGamma <- lmb(
   weight ~ group,
-  pfamily = dGamma(shape = ps2$shape, rate = ps2$rate, beta = beta_fix)
+  pfamily = dGamma(shape = ps2$shape, rate = ps2$rate, beta = ps2$coefficients)
 )
 
 ## dGamma via prior_list for rGamma_reg()
