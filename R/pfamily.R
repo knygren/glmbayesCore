@@ -12,7 +12,8 @@
 #' @param dispersion the dispersion to be assumed when it is not given a prior. Should be provided
 #' when the Normal prior is for the \code{gaussian()}, \code{Gamma()}, \code{quasibinomial},
 #' or \code{quasipoisson} families. The \code{binomial()} and \code{poisson()} families
-#' do not have dispersion coefficients. 
+#' do not have dispersion coefficients. Omitted or \code{NULL} uses the internal default
+#' \code{1} and sets \code{ddef} in \code{prior_list} (see Details).
 #' @param shape the prior shape parameter used by the gamma component of the prior. 
 #' The gamma distribution is used as a prior for the inverse dispersion coefficients.
 #' @param rate the rate parameter used by the gamma component of the prior.
@@ -38,7 +39,9 @@
 #' @return An object of class \code{"pfamily"} (which has a concise print method). This is a
 #' list with elements.
 #' \item{pfamily}{character: the pfamily name}
-#' \item{prior_list}{a list with the prior parameters associated with the prior specification}
+#' \item{prior_list}{a list with the prior parameters associated with the prior specification.
+#'   For \code{dNormal}, this includes logical \code{ddef}: \code{TRUE} if \code{dispersion}
+#'   was omitted or \code{NULL} (internal default \code{1}), \code{FALSE} if set explicitly.}
 #' \item{okfamilies}{currently implemented families for which the prior family can be used.}
 #' \item{plinks}{a function that assigns a set of oklinks for the combination of a family and 
 #' and pfamily.}
@@ -61,7 +64,9 @@
 #' - **`dNormal()`**: Specifies a multivariate normal prior over regression coefficients. It is conjugate for 
 #'   Gaussian likelihoods with an identity link function, and serves as the primary implemented prior for all 
 #'   other supported likelihood families in the current framework. This structure facilitates efficient posterior 
-#'   sampling and analytical tractability.
+#'   sampling and analytical tractability. The returned \code{prior_list} includes \code{ddef}: \code{TRUE} when
+#'   \code{dispersion} was omitted or \code{NULL} (so the default \code{1} was used), \code{FALSE} when
+#'   \code{dispersion} was supplied explicitly (including \code{1}).
 #'
 #'   For models with log-concave likelihood functions-such as Poisson, Binomial, and Gamma families-
 #'   posterior sampling under a `dNormal` prior is performed using a \insertCite{Nygren2006}{glmbayes} 
@@ -90,7 +95,7 @@
 #'   or analytically convenient.
 #'
 #' Each `pfamily` object includes:
-#' - `prior_list`: A named list of prior parameters
+#' - `prior_list`: A named list of prior parameters (for `dNormal`, includes `ddef`; see above)
 #' - `okfamilies`: A character vector of compatible likelihood families
 #' - `plinks`: A function returning valid link functions for a given family
 #' - `simfun`: A simulation function used for posterior sampling
@@ -186,7 +191,8 @@ dNormal<-function(mu,Sigma,dispersion=NULL){
   if (!all(ev >= -tol * abs(ev[1L]))) 
     stop("'Sigma' is not positive definite")
   
-  if(is.null(dispersion)) dispersion=1
+  ddef <- missing(dispersion) || is.null(dispersion)
+  if (ddef) dispersion <- 1
   if(!is.null(dispersion)){
     if(!is.numeric(dispersion)) stop("non-numeric argument to numeric function")
     if(!length(dispersion)==1) stop("dispersion has length>1")
@@ -203,7 +209,7 @@ dNormal<-function(mu,Sigma,dispersion=NULL){
     return(oklinks)
   }
   
-  prior_list=list(mu=mu,Sigma=Sigma,dispersion=dispersion)
+  prior_list=list(mu=mu,Sigma=Sigma,dispersion=dispersion,ddef=ddef)
   attr(prior_list,"Prior Type")="dNormal"  
 
   outlist=list(pfamily="dNormal",prior_list=prior_list,okfamilies=okfamilies,

@@ -987,9 +987,20 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
          domain = NA)
   }
   
-
-
-    
+  ## ddef: from dNormal() if present; else infer from whether dispersion was supplied on prior_list
+  if ("ddef" %in% names(prior_list)) {
+    ddef <- prior_list$ddef
+  } else {
+    ddef <- is.null(prior_list$dispersion)
+  }
+  if (family$family %in% c("gaussian", "Gamma") && isTRUE(ddef)) {
+    stop(paste0(
+      "For gaussian() and Gamma() models, dNormal() requires an explicit dispersion ",
+      "(e.g. dispersion = ps$dispersion from Prior_Setup()). ",
+      "Omitted or NULL dispersion is not allowed"
+    ))
+  }
+  
   if(family$family=="gaussian"){ 
     outlist<-.rNormalReg_cpp(n=n,y=y,x=x,mu=mu,P=P,offset=offset2,wt=wt,dispersion=dispersion,
                             ##                      famfunc=famfunc,f1=f1,

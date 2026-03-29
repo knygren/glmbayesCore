@@ -295,7 +295,7 @@ out_gamma <- rNormal_reg(
   n = 1000,
   y = psg$y,
   x = psg$x,
-  prior_list = list(mu = psg$mu, Sigma = psg$Sigma),
+  prior_list = list(mu = psg$mu, Sigma = psg$Sigma, dispersion = psg$dispersion),
   family = Gamma(link = "log"),
   weights = carinsca$Claims
 )
