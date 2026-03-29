@@ -3,6 +3,8 @@ title: "Chapter 05: Foundations of GLMs – Families, Links, and Log-Concave Lik
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter 05: Foundations of GLMs – Families, Links, and Log-Concave Likelihoods}
   %\VignetteEngine{knitr::rmarkdown}
@@ -16,6 +18,8 @@ Generalized linear models (GLMs) rest on two foundational ideas:
 (2) **link functions**, which connect the mean of the response to a linear predictor.  
 
 This section reviews the core concepts behind exponential families, explains why canonical links play such an important role, and highlights the special role of **log-concavity** in both classical and Bayesian estimation.
+Standard references for GLM structure include [@McCullagh1989; @NelderWedderburn1972]; the original formulation of GLMs in **S** appears in [@Hastie1992].
+For Bayesian GLMs with normal priors, envelope-based iid posterior sampling in **glmbayes** builds on [@Nygren2006].
 
 ## 1.1 Exponential Families: A Unifying Framework
 
@@ -106,7 +110,7 @@ This is one of the reasons GLMs are so widely used: the optimization landscape i
 
 ### (c) Validity of envelope construction methods
 
-The envelope construction approach in Nygren & Nygren (2006) relies on:
+The envelope construction approach of [@Nygren2006] relies on:
 
 - log-concavity of the likelihood  
 - existence of subgradients for the negative log-likelihood  

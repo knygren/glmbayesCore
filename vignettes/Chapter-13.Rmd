@@ -3,6 +3,8 @@ title: "Chapter 13: Hierarchical Linear Models"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter 13: Hierarchical Linear Models}
   %\VignetteEngine{knitr::rmarkdown}
@@ -38,7 +40,7 @@ In the Gaussian linear model \(y = X\beta + \varepsilon\) with \(\varepsilon \si
 
 **`rlmb`** implements both conditionals: use **`dNormal(..., dispersion = phi)`** for the \(\beta\)-step and **`dGamma(shape, rate, beta = beta_current)`** for the \(\phi\)-step; then take the returned **`dispersion`** as the new \(\phi\).
 
-We use the **Dobson (1990) plant weight data** (Page 9): weight by treatment group (Ctl vs Trt). The code below sets the prior from **`Prior_Setup`**, then runs a short burn-in and stores draws from the Gibbs sampler. Posterior means are compared to the conjugate **`lmb(..., dIndependent_Normal_Gamma(...))`** fit.
+We use the plant weight data from [@Dobson1990] (Page 9): weight by treatment group (Ctl vs Trt). The code below sets the prior from **`Prior_Setup`**, then runs a short burn-in and stores draws from the Gibbs sampler. Posterior means are compared to the conjugate **`lmb(..., dIndependent_Normal_Gamma(...))`** fit.
 
 ```{r dobson-setup}
 ## Dobson (1990) "An Introduction to Generalized Linear Models", Page 9: Plant Weight Data
@@ -107,7 +109,7 @@ The Gibbs posterior means and standard deviations for \(\beta\) and \(\phi\) sho
 
 ### 2.1 Eight Schools with dNormal_Gamma Prior (Gibbs-suitable)
 
-The **Eight Schools** example (Gelman et al. 2003) has \(J = 8\) schools; each school \(j\) has an observed effect estimate \(y_j\) with known sampling variance \(\sigma_j^2\). The hierarchical model has a population mean \(\mu\) and variance \(\sigma_\theta^2\), and school-specific effects \(\theta_j\). With the **`dNormal_Gamma`** prior on \((\mu, \sigma_\theta^2)\), the Gibbs sampler is efficient and suitable for repeated use inside a loop because the envelope is built once per call without the minimization overhead of **`dIndependent_Normal_Gamma`**.
+The **Eight Schools** example from [@Gelman2013, Ch. 5] has \(J = 8\) schools; each school \(j\) has an observed effect estimate \(y_j\) with known sampling variance \(\sigma_j^2\). The hierarchical model has a population mean \(\mu\) and variance \(\sigma_\theta^2\), and school-specific effects \(\theta_j\). With the **`dNormal_Gamma`** prior on \((\mu, \sigma_\theta^2)\), the Gibbs sampler is efficient and suitable for repeated use inside a loop because the envelope is built once per call without the minimization overhead of **`dIndependent_Normal_Gamma`**.
 
 1. **Population block:** Draw \((\mu, \sigma_\theta^2) \mid \theta\) using **`rlmb`** with **`dNormal_Gamma(mu_mu, sigma_mu/disp_ML, shape, rate)`**.
 2. **School block:** For each \(j\), draw \(\theta_j \mid \mu, \sigma_\theta^2, y_j\) using **`rlmb`** with **`dNormal(mu, Sigma = sigma_theta^2, dispersion = sigma_j^2)`**.
@@ -287,6 +289,8 @@ sqrt(diag(var(theta_out)))
 ```
 
 Posterior means of \(\theta_j\) show shrinkage toward the population mean compared to the raw estimates.
+
+Block Gibbs sampling with **`rlmb`** for the population and school blocks follows the same conditioning logic as in other **glmbayes** linear-model examples; the independent Normal--Gamma population step is related to the joint envelope construction in [@glmbayesIndNormGammaVignette].
 
 
 ## 3. Summary

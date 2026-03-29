@@ -3,6 +3,8 @@ title: "Chapter A05: Simulation Methods - Likelihood Subgradient Densities"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter A05: Simulation Methods - Likelihood Subgradient Densities}
   %\VignetteEngine{knitr::rmarkdown}
@@ -24,7 +26,7 @@ library(glmbayes)
 
 ## 1. Introduction
 
-Many of the key models implemented in the `glmbayes` package make use of independent and identically distributed (iid) sampling procedures for models with log-concave likelihoods and multivariate normal priors. The implementation is based on theory developed in the Nygren & Nygren (2006) paper.
+Many of the key models implemented in the `glmbayes` package make use of independent and identically distributed (iid) sampling procedures for models with log-concave likelihoods and multivariate normal priors. The implementation is based on [@Nygren2006]; the envelope function map and call graph are summarized in [@glmbayesChapterA08].
 
 The objective of this vignette is to provide a detailed overview of the implementation of these simulation methods. To that end, this vignette contains the following:
 

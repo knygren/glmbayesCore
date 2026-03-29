@@ -3,6 +3,8 @@ title: "Chapter A08: Overview of Envelope Related Functions"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter A08: Overview of Envelope Related Functions}
   %\VignetteEngine{knitr::rmarkdown}
@@ -24,7 +26,7 @@ library(glmbayes)
 
 ## 1. Introduction and Purpose
 
-The `glmbayes` package produces **independent and identically distributed (iid)** posterior samples for Bayesian generalized linear models. When the posterior is not available in closed form (e.g., Poisson or binomial regression with Normal priors, Gaussian regression with independent Normal-Gamma priors), the package uses **accept-reject sampling** based on tight **enveloping functions**. These envelopes are constructed using the **likelihood subgradient** approach of Nygren & Nygren (2006).
+The `glmbayes` package produces **independent and identically distributed (iid)** posterior samples for Bayesian generalized linear models. When the posterior is not available in closed form (e.g., Poisson or binomial regression with Normal priors, Gaussian regression with independent Normal-Gamma priors), the package uses **accept-reject sampling** based on tight **enveloping functions**. These envelopes are constructed using the **likelihood subgradient** approach of [@Nygren2006].
 
 This chapter provides a central overview of the envelope-related functions in the package. It consolidates the theoretical foundations, the function map, and the workflow so that users and developers can see how the pieces fit together. For implementation details of the full simulation pipeline, see Chapter A05. For envelope theory in specialized settings, see Chapter A06 (dispersion envelopes) and Chapter A07 (joint envelopes for independent Normal-Gamma priors).
 
@@ -403,7 +405,7 @@ h_{\bar{\theta}}(\bar{\theta}) = 1.
 
 **Remark 7.** Sampling from restricted Normal laws can be done by inverse transform (Fishman 1999).
 
-**Remark 8.** When intervals lie in extreme Gaussian tails, accurate evaluation of normal CDFs (or their logs) with uniformly small relative error matters; classical references in the paper include Hart (1957, 1966) and Bryc (2002).
+**Remark 8.** When intervals lie in extreme Gaussian tails, accurate evaluation of normal CDFs (or their logs) with uniformly small relative error matters; standard approximation theory and tables are discussed in [@HartEtAl1968]; normal distribution properties relevant to tail behavior appear in [@Bryc2002].
 
 ### 2.11 Theorem 2: univariate Normal data, three intervals, and \(\tilde{a}\to 2/\sqrt{\pi}\)
 

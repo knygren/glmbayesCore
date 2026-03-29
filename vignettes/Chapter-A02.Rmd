@@ -3,6 +3,8 @@ title: "Chapter A02: Overview of Estimation Procedures"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter A02: Overview of Estimation Procedures}
   %\VignetteEngine{knitr::rmarkdown}
@@ -33,9 +35,8 @@ functions such as `glmb()` and `lmb()`, which provide formula interfaces, model 
 S3 methods.
 
 The simfunctions implement both classical conjugate Bayesian updating and the likelihood-subgradient
-envelope methods developed in Nygren and Nygren (2006). The envelope-based methods are documented
-in detail in Appendix A2 and A5 (coefficient envelopes), Appendix A6 (Gamma-family dispersion envelopes),
-and Appendix A7 (joint envelopes for Gaussian regression with independent Normal-Gamma priors).
+envelope methods of [@Nygren2006]. Companion vignettes document coefficient envelopes [@glmbayesSimmethods],
+Gamma-family dispersion envelopes [@glmbayesGammaVignette], and joint envelopes for Gaussian regression with independent Normal--Gamma priors [@glmbayesIndNormGammaVignette].
 
 This chapter begins by describing the role of `rglmb()`,  `rlmb()`and the `pfamily` system, which together
 determine which simfunction is used for a given model. Later sections describe the simfunctions
@@ -361,19 +362,15 @@ These methods guarantee iid sampling even in high dimensions and for non-conjuga
 
 The simulation functions are grounded in the following theoretical results:
 
-- Nygren and Nygren (2006), "Likelihood Subgradient Densities", Journal of the American Statistical Association.
-  This paper introduces the likelihood-subgradient approach and proves bounds on acceptance rates.
+- [@Nygren2006]: likelihood-subgradient densities and bounds on acceptance rates.
 
-- Appendix A5: Technical report for likelihood-subgradient based samplers.
-  Details the envelope construction for regression coefficients.
+- [@glmbayesSimmethods]: implementation-oriented companion (this series, Chapter A05) for likelihood-subgradient samplers and the `.rNormalGLM_cpp` pipeline.
 
-- Appendix A6: Accept-reject sampling for dispersion in Gamma regression.
-  Provides the theory behind the dispersion sampler used in `rGamma_reg`.
+- [@glmbayesGammaVignette]: accept--reject sampling for dispersion in Gamma regression (`rGamma_reg`).
 
-- Appendix A7: Accept-reject sampling for Gaussian regression with independent Normal-Gamma priors.
-  Provides the theory behind the joint sampler used in `rindepNormalGamma_reg`.
+- [@glmbayesIndNormGammaVignette]: joint sampling for Gaussian regression with independent Normal--Gamma priors (`rindepNormalGamma_reg`).
 
-These references provide the mathematical justification for the envelope-based methods implemented in the simfunctions.
+Together these provide the mathematical and implementation justification for the envelope-based methods in the simfunctions.
 
 
 ## 5. Overview of Each Simulation Function
@@ -433,7 +430,7 @@ Uses `.rNormalGLM_cpp` and `EnvelopeBuild` to construct a likelihood-subgradient
 4. Generate iid samples using accept-reject sampling.
 
 **References:**  
-JASA 2006, Appendix A5.
+[@Nygren2006]; [@glmbayesSimmethods].
 
 
 ### 5.2 rNormalGamma_reg
@@ -465,7 +462,7 @@ Draw tau from Gamma, then draw beta from conditional Normal.
 3. Draw tau and then beta = Btilde + IR %*% rnorm * sqrt(dispersion).
 
 **References:**  
-Classical Normal-Gamma theory.
+Conjugate Normal--Gamma regression [@Raiffa1961; @OHaganForster2004]; see also [@LindleySmith1972].
 
 
 ### 5.3 rindepNormalGamma_reg
@@ -506,7 +503,7 @@ Envelope-based joint sampler using a shared envelope over beta and dispersion bo
 6. Transform back to original scale.
 
 **References:**  
-Appendix A7.
+[@glmbayesIndNormGammaVignette]; [@GriffinBrown2010].
 
 
 ### 5.4 rGamma_reg
@@ -550,7 +547,7 @@ Uses the A6 envelope-based sampler with a tangent envelope for the precision.
 5. Transform to dispersion.
 
 **References:**  
-Appendix A6.
+[@glmbayesGammaVignette].
 
 
 ## 6. Use in Gibbs Samplers and Custom Algorithms

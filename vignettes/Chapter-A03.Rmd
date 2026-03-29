@@ -3,6 +3,8 @@ title: "Chapter A03: Methods available in glmbayes"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter A03: Methods available in glmbayes}
   %\VignetteEngine{knitr::rmarkdown}
@@ -21,10 +23,11 @@ library(glmbayes)
 ```
 
 The **glmb** function and related *method functions* that handle the output are designed to be Bayesian versions of the **glm** function and many of its *method functions*. This vignette shows how the basic setup/calling of the functions compare and then walks through how the method functions for glmb can be called to generate similar outputs to those from the glm functions.
+GLM background is standard [@McCullagh1989; @VenablesRipley2002]; the **glmb** interface parallels **glm** as described in [@Hastie1992].
 
 **Dobson Randomized Control Data**
 
-To understand how the outputs of the glmb function mirrors those for the glm function, it is useful to take a look at the first portion of the example that is provided with the glm function. The data is based on Randomized Controlled Trial data from Dobson (1990). Here is a view of the data:
+To understand how the outputs of the glmb function mirrors those for the glm function, it is useful to take a look at the first portion of the example that is provided with the glm function. The data are randomized controlled trial counts from [@Dobson1990]. Here is a view of the data:
 
 ```{r dobson}
 ## Dobson (1990) Page 93: Randomized Controlled Trial :

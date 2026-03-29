@@ -3,6 +3,8 @@ title: "Chapter A01: A detailed overview of the glmbayes package"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter A01: A detailed overview of the glmbayes package}
   %\VignetteEngine{knitr::rmarkdown}
@@ -18,7 +20,7 @@ the two aforementioned functions, functions used to specify and check prior dist
 
 For advanced users who are interested in implementing Block-Gibbs sampling procedures or in doing simulation for other more complex models, we recommend continuing on to the third section in this vignette that covers the two functions *rlmb* and *rglmb* and are designed for implementation of precisely that type of sampling. The third section discusses how those functions can be called, references some examples/demos where they are used, and describes how to use the output from the functions to access similar output to that produced by the *lmb* and *glmb* functions.
 
-For users who are interested in the details of how the simulation is performed there is the final section that contains a discussion of the various simulation functions that are used to sample from the posterior distributions.  This includes a discussion of three core function that simulate for the currently implemented prior families and a couple of functions related to what we call the Central Normal distribution (the normal distribution between a lower and an upper bound). It also includes a discussion of a set of functions that are used in order to utilize the enveloping functions needed to get iid samples for some of the posterior distributions. That material is rather technical and we refer the user to the Nygren and Nygren (2006) paper that forms the foundation for the simulation procedure. 
+For users who are interested in the details of how the simulation is performed there is the final section that contains a discussion of the various simulation functions that are used to sample from the posterior distributions.  This includes a discussion of three core function that simulate for the currently implemented prior families and a couple of functions related to what we call the Central Normal distribution (the normal distribution between a lower and an upper bound). It also includes a discussion of a set of functions that are used in order to utilize the enveloping functions needed to get iid samples for some of the posterior distributions. That material is rather technical; the likelihood-subgradient foundation is given by [@Nygren2006], with estimation architecture summarized in [@glmbayesChapterA02] and envelope details in [@glmbayesChapterA08]. 
 
 
 | Function Type | Functions | Vignettes |
