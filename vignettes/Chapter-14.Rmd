@@ -3,6 +3,8 @@ title: "Chapter 14: Hierarchical Generalized Linear Models"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter 14: Hierarchical Generalized Linear Models}
   %\VignetteEngine{knitr::rmarkdown}
@@ -23,9 +25,9 @@ library(coda)
 
 # Chapter 14: Hierarchical Generalized Linear Models
 
-Chapter 13 focused on **hierarchical linear models**: the Eight Schools example with normally distributed group-level effects and known sampling variances. This chapter extends to **hierarchical generalized linear models**, specifically Poisson regression with observation-level random effects.
+Chapter 13 focused on **hierarchical linear models**: the Eight Schools example with normally distributed group-level effects and known sampling variances. This chapter extends to **hierarchical generalized linear models** [@GelmanHill2007; @Gelman2013], specifically Poisson regression with observation-level random effects.
 
-We use the **BikeSharing** dataset and **`rglmb`** to implement a two-block Gibbs sampler. The Poisson likelihood is non-conjugate with the normal prior on the linear predictor, so each observation-level update requires an accept-reject step via **`rglmb`**. For a full demo, see **`demo("Ex_09_BikeSharingPoisson")`**.
+We use the **BikeSharing** dataset and **`rglmb`** to implement a two-block Gibbs sampler. The Poisson likelihood is non-conjugate with the normal prior on the linear predictor, so each observation-level update requires an accept--reject step [@RobertCasella2004] via **`rglmb`**. For a full demo, see **`demo("Ex_09_BikeSharingPoisson")`**.
 
 ## 1. Model Structure
 
@@ -157,7 +159,7 @@ stopifnot(nrow(beta_out) == n_sim, length(sigma_out) == n_sim, ncol(beta_out) ==
 
 ## 4. CODA Diagnostics
 
-We summarize the main parameters ($\beta$ and $\sigma_\theta$) using the **coda** package. Random effects $\theta$ are excluded from the summary. Object `mcmc_main` comes from the saved chain (coefficient columns match `X_train`, plus `sigma_theta`).
+We summarize the main parameters ($\beta$ and $\sigma_\theta$) using the **coda** package [@PlummerEtAl2006]. Random effects $\theta$ are excluded from the summary. Object `mcmc_main` comes from the saved chain (coefficient columns match `X_train`, plus `sigma_theta`).
 
 ```{r bikesharing-coda}
 summary(mcmc_main)

@@ -3,6 +3,8 @@ title: "Chapter A06: Accept–Reject Sampling for Dispersion in Gamma Regression
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter A06: Accept–Reject Sampling for Dispersion in Gamma Regression}
   %\VignetteEngine{knitr::rmarkdown}
@@ -25,7 +27,7 @@ knitr::opts_chunk$set(
 
 This vignette explains the derivation of the posterior for the dispersion parameter
 in a Gamma GLM with log link, and the construction of a proposal distribution and bounding function 
-used for rejection sampling in `rGamma_reg`.
+used for rejection sampling [@RobertCasella2004; @Devroye1986] in `rGamma_reg`.
 
 We consider a Gamma GLM with log link, where the mean is
 
@@ -42,9 +44,10 @@ v = \frac{1}{\phi}.
 
 Throughout this chapter, we treat the regression coefficients \(\beta\) and offsets \(\alpha_i\) as fixed and known.
 
+
 ## 1.2 Likelihood
 
-We use the standard Gamma parameterization
+We use the standard Gamma parameterization [@McCullagh1989; @Agresti2015].
 
 \[
 Y_i \mid v \sim \mathrm{Gamma}(\text{shape}=v,\ \text{rate}=v/\mu_i),
@@ -127,7 +130,7 @@ where \( C_{1}\) is a normalizing constant for the posterior density.
 
 To build effective envelopes for the Gamma family with a Gamma prior for the precision, it is important to
 be able to center the proposal close to the center of the posterior. To enable this, we introduce the following proposal
-distribution and associated bounding function and establish a key claims.
+distribution and associated bounding function and establish key claims [@RobertCasella2004].
 
 ## 2.1 Proposal Distribution
 

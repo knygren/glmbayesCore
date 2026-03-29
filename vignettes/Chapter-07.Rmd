@@ -1,6 +1,8 @@
 ---
 title: "Chapter 07: Models for the Binomial Family"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter 07: Models for the Binomial Family}
   %\VignetteEngine{knitr::rmarkdown}
@@ -28,6 +30,8 @@ Binomial generalized linear models (GLMs) are used when the response represents 
 - conversion rates in marketing  
 - event occurrence indicators  
 - grouped binomial data (successes out of *n*)
+
+Binomial regression is a standard generalized linear model [@NelderWedderburn1972; @McCullagh1989; @Agresti2015].
 
 In classical statistics, these models are fit using:
 
@@ -99,7 +103,7 @@ This form is used by both `glm()` and the Bayesian functions `glmb()` and `rglmb
 
 ### 2.3 Exponential‑family representation
 
-The binomial likelihood belongs to the exponential family.  
+The binomial likelihood belongs to the exponential family [@McCullagh1989; @Agresti2015].  
 For a model with linear predictor
 \[
 \eta_i = x_i^\top \beta,
@@ -180,7 +184,7 @@ V  <- ps$Sigma
 
 This produces:
 
-- a Zellner‑type g‑prior  
+- a Zellner‑type g‑prior [@GriffinBrown2010]  
 - prior means aligned with the null model  
 - prior variances scaled relative to the likelihood curvature  
 
@@ -229,7 +233,7 @@ y_i\,\eta_i - \log(1+e^{\eta_i})
 \]
 
 
-The **logit** link is the canonical choice for binomial GLMs:
+The **logit** link is the canonical choice for binomial GLMs [@McCullagh1989; @Agresti2015]:
 
 \[
 \eta = \log\left(\frac{\mu}{1-\mu}\right)
@@ -289,13 +293,15 @@ This produces:
 - posterior standard deviations  
 - tail probabilities  
 - credible intervals  
-- DIC and effective parameter count  
+- DIC and effective parameter count [@Spiegelhalter2002]  
 
 The slope parameter typically shows strong evidence of increasing probability of menarche with age.
 
 ---
 
 ## 5. Probit Link: Likelihood, Prior, Posterior
+
+The probit link is a common alternative to the logit when a latent normal formulation is convenient [@McCullagh1989; @Agresti2015].
 
 For the **probit link**:
 \[
@@ -383,6 +389,8 @@ The DIC often favors probit slightly for smooth S‑shaped curves (as seen in Ch
 ---
 
 ## 6. Complementary Log-Log (cloglog) Link: Likelihood, Prior, Posterior
+
+The complementary log–log link is often used for asymmetric response curves and hazard‑type interpretations [@McCullagh1989; @Agresti2015].
 
 For the **cloglog link**:
 \[
@@ -474,7 +482,7 @@ The cloglog model often fits poorly for symmetric S‑shaped curves (as shown in
 
 ## 7. Comparing Link Functions
 
-The Deviance Information Criterion (DIC) provides a Bayesian analogue to AIC:
+The Deviance Information Criterion (DIC) provides a Bayesian analogue to AIC [@Spiegelhalter2002]:
 
 ```{r Menarche_DIC_Compare}
 DIC_comp<-rbind(
@@ -492,13 +500,13 @@ Typical patterns:
 - **probit** may slightly outperform logit for smooth curves  
 - **cloglog** is best when the response is asymmetric or hazard‑like  
 
-The effective number of parameters (pD) also helps diagnose model complexity.
+The effective number of parameters (pD) is part of the same framework [@Spiegelhalter2002] and helps diagnose model complexity.
 
 ---
 
 ## 8. Concluding Discussion
 
-Binomial GLMs are a core component of the glmbayes package. Their log‑concave likelihoods make them ideal for the envelope‑based accept‑reject sampler, and the familiar link functions allow analysts to choose models that match the scientific context.
+Binomial GLMs are a core component of the glmbayes package. Their log‑concave likelihoods make them ideal for the envelope‑based accept‑reject sampler, and the familiar link functions allow analysts to choose models that match the scientific context [@McCullagh1989; @Gelman2013].
 
 This chapter demonstrated:
 
@@ -510,4 +518,3 @@ This chapter demonstrated:
 
 In the next chapter, we extend these ideas to **Poisson models**, which share many structural similarities but introduce new considerations for count data.
 
-````

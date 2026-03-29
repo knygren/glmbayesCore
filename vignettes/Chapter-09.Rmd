@@ -1,6 +1,8 @@
 ---
 title: "Chapter 09: Models for the Gamma Family"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter 09: Models for the Gamma Family}
   %\VignetteEngine{knitr::rmarkdown}
@@ -27,6 +29,8 @@ Typical applications include:
 - cost or expenditure data  
 - reaction times and waiting times  
 - positive continuous measurements with heteroskedasticity
+
+Gamma regression is a standard GLM for positive, right‑skewed responses [@NelderWedderburn1972; @McCullagh1989; @Agresti2015].
 
 In classical statistics, these models are fit using
 
@@ -107,7 +111,7 @@ This form is used by both `glm()` and the Bayesian functions `glmb()` and `rglmb
 
 ### 2.2 Exponential-Family Representation
 
-The Gamma distribution belongs to the exponential family with canonical parameter
+The Gamma distribution belongs to the exponential family [@McCullagh1989; @Agresti2015] with canonical parameter
 
 \[
 \theta_i = -\frac{1}{\mu_i},
@@ -247,7 +251,7 @@ The weights Claims reflect the number of claims on which each average is based, 
 
 ### 4.2 Classical Gamma Regression Using glm()
 
-We fit a classical Gamma GLM with a log link. As the glm function only crudely estimates the dispersion, we use a dedicated gamma.dispersion function (from the MASS package) to estimate it and provide the estimate back to the summary function.
+We fit a classical Gamma GLM with a log link. As `glm()` only crudely estimates the dispersion, we use `MASS::gamma.dispersion()` [@VenablesRipley2002] and pass the estimate to `summary()`.
 
 ```{r carinsca_classical}
 
@@ -298,7 +302,7 @@ This value will be treated as known in our Bayesian model, so that the Bayesian 
 
 ### 5.2 Prior Setup Using Prior_Setup()
 
-Next we use Prior_Setup() to construct a Zellner‑type g‑prior for the coefficients, aligned with the Gamma log‑link model and weighting structure:
+Next we use `Prior_Setup()` to construct a Zellner‑type g‑prior [@GriffinBrown2010] for the coefficients, aligned with the Gamma log‑link model and weighting structure:
 
 ```{r carinsca_prior}
     ps <- Prior_Setup(Cost/Claims ~ Merit + Class,
@@ -385,14 +389,14 @@ The Bayesian summary of out_glmb reports:
 
 - the effective number of parameters pD,  
 - the expected residual deviance D,  
-- the DIC value.
+- the DIC value [@Spiegelhalter2002].
 
 These can be compared to AIC and deviance from the classical model, especially when considering alternative specifications (for example, reduced models, different covariate sets, or alternative link functions).
 
 
 ## 7. Concluding Discussion
 
-Gamma regression provides a flexible framework for modeling positive, skewed response variables.  
+Gamma regression provides a flexible framework for modeling positive, skewed response variables [@McCullagh1989; @Gelman2013].  
 In this chapter, we have:
 
 - introduced the Gamma GLM and its link functions,  

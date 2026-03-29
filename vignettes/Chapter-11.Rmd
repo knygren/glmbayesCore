@@ -1,6 +1,8 @@
 ---
 title: "Chapter 11: Estimating Models with unknown dispersion parameters"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter 11: Estimating Models with unknown dispersion parameters}
   %\VignetteEngine{knitr::rmarkdown}
@@ -27,7 +29,7 @@ that the dispersion parameter, denoted by \( \phi \) (or equivalently the residu
 For Gaussian models this corresponds to fixing the variance of the error term,
 and for quasi‑families it corresponds to fixing the scale parameter.
 
-This chapter extends the framework to unknown dispersion parameters, showing how glmbayes
+This chapter extends the framework to unknown dispersion parameters---a standard topic in Bayesian linear and generalized linear models [@OHaganForster2004; @Gelman2013]---showing how glmbayes
 supports:
 
 (1) Priors on the dispersion only  
@@ -36,7 +38,7 @@ supports:
       • iid sampling via truncated Gamma priors  
       • two‑block Gibbs sampling  
 
-All gaussian examples use the Dobson plant‑weight data, first introduced in chapter 02.
+All Gaussian examples use the **Dobson** plant‑weight data [@Dobson1990], first introduced in Chapter 02.
 
 
 ```{r dobson}
@@ -424,7 +426,7 @@ The posterior mean of the dispersion is then:
 
 ## 3.2 Joint Conjugate Normal–Gamma Prior
 
-The conjugate prior couples \(\beta\) and \(\tau\):
+The conjugate Normal--Gamma prior couples \(\beta\) and \(\tau\) [@LindleySmith1972; @OHaganForster2004]:
 
 \[
 \beta \mid \tau \sim N(\mu_0,\;(\tau\Sigma_0)^{-1}),
@@ -596,7 +598,7 @@ cat("Dispersion: posterior mean =", mean(inc$dispersion),
 ### 3.3.2 Two-Block Gibbs Sampling using glmbayes
 
 If iid sampling is not desired, or if the user wants to inspect mixing behavior,
-a simple two-block Gibbs sampler may be used:
+a simple two-block Gibbs sampler [@RobertCasella2004] may be used:
 
 1. Sample \( \beta \mid \tau, y \) from a Normal distribution  
 2. Sample \( \tau \mid \beta, y \) from a Gamma distribution
@@ -724,7 +726,7 @@ accept‑reject algorithm for the independent Normal–Gamma prior.
 ## 4. Gamma Regression Models With Unknown Dispersion
 
 We now specify priors for \((\beta,\tau)\) and derive the corresponding
-log‑priors and log‑posteriors.
+log‑priors and log‑posteriors, using the **carinsca** data [@BaileySimon1960; @statsciCarinsca; @McCullagh1989].
 
 Throughout:
 
@@ -1080,7 +1082,8 @@ always lies above it, ensuring a valid rejection sampler.
 
 ## 8. Summary
 
-This chapter introduced Bayesian estimation of Gaussian models with unknown dispersion,
+This chapter introduced Bayesian estimation of Gaussian models with unknown dispersion
+[@Gelman2013; @OHaganForster2004],
 including:
 
 • Gamma priors on the precision \( \tau \)  
@@ -1144,7 +1147,7 @@ V_{\text{post}}
 
 ### A1.3 Sampling the Posterior
 
-Because the Normal–Gamma prior is *conjugate* to the Gaussian likelihood, the
+Because the Normal--Gamma prior is *conjugate* to the Gaussian likelihood [@OHaganForster2004], the
 **joint posterior factorizes into two standard distributions**:
 
 \[

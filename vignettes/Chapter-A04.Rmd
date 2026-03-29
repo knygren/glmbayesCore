@@ -3,6 +3,8 @@ title: "Chapter A04: Directional Tail Diagnostics for Prior-Posterior Disagreeme
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
 vignette: >
   %\VignetteIndexEntry{Chapter A04: Directional Tail Diagnostics for Prior-Posterior Disagreement}
   %\VignetteEngine{knitr::rmarkdown}
@@ -25,7 +27,7 @@ library(glmbayes)
 This appendix documents the current `directional_tail()` diagnostic, how to call it directly,
 and how it is used inside `summary.glmb()`.
 
-The diagnostic measures prior-posterior disagreement in a multivariate direction rather than
+The diagnostic measures prior--posterior disagreement in a multivariate direction [@EvansMoshonov2006] rather than
 coefficient-by-coefficient only. It reports:
 
 - `mahalanobis_shift`: the standardized prior-posterior shift magnitude in whitened space
@@ -113,7 +115,7 @@ probability scale.
 
 ### Interpretation: what probability is being assessed?
 
-This is the key conceptual difference from classical p-values.
+This is the key conceptual difference from classical p-values [@BernardoSmith1994].
 
 In a classical t-test, the p-value is a **sampling probability under the null**:
 \[
@@ -151,7 +153,7 @@ In the one-parameter case, directional tail reduces to a one-sided posterior tai
 - if posterior shift is negative: \(p_{\text{dir}} = P(\beta \ge \mu_0 \mid y)\)
 
 This is closely related to well-known Bayesian sign/tail summaries (including posterior sign probability /
-"probability of direction" style summaries in applied Bayesian reporting). In that language, for a scalar
+"probability of direction" style summaries in applied Bayesian reporting [@Gelman2013]). In that language, for a scalar
 parameter, `p_directional` is essentially the opposite-side posterior mass, and the sign probability is
 approximately \(1 - p_{\text{dir}}\).
 
