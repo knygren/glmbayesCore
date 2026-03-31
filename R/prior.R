@@ -147,12 +147,13 @@
 #' These defaults ensure that posterior means remain close to classical estimates when `pwt` is small, 
 #' while allowing additional flexible prior specifications through `mu`, `sd`, and `n_prior`. 
 #' 
-#' If `n_prior` is not provided, it is derived from `pwt` and the effective likelihood sample size `n_likelihood` using:
-#' \deqn{n_{\mathrm{prior}} = \frac{pwt}{1 - pwt} \cdot n_{\mathrm{likelihood}}}
-#' where `n_likelihood` is the number of observations in the model.
+#' If `n_prior` is not provided, it is derived from `pwt` and `n_effective` (stored as
+#' \code{PriorSettings$n_effective}; for Gaussian with weights, \eqn{n_{\mathrm{effective}}=\sum w_i}):
+#' \deqn{n_{\mathrm{prior}} = \frac{pwt}{1 - pwt} \cdot n_{\mathrm{effective}}.}
+#' The field \code{n_likelihood} in \code{PriorSettings} is set equal to \code{n_effective} for compatibility.
 #'
 #' Likewise, if `n_prior` is provided, `pwt` is computed as:
-#' \deqn{pwt = \frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}}
+#' \deqn{pwt = \frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}} + n_{\mathrm{effective}}}}
 #'
 #' When applicable, `Prior_Setup()` computes the shape and rate parameters for a Gamma prior on the residual precision (inverse variance), used in
 #' compound prior families such as `dNormal_Gamma()`, `dIndependent_Normal_Gamma()`, and `dGamma()`. These are derived from the effective prior sample size and the estimated dispersion:
@@ -160,19 +161,36 @@
 #' \deqn{\text{shape} = \frac{n_{\mathrm{prior}}}{2}}
 #' \deqn{\text{rate} = \text{shape} \cdot \text{dispersion} = \frac{n_{\mathrm{prior}}}{2} \cdot \text{dispersion}}
 #'    
-#' where RSS is the residual sum of squares from the likelihood model.
-#' 
-#' The posterior shape and rate parameters under a Normal-Gamma model are then:
-#' \deqn{\text{shape}_{\mathrm{post}} = \text{shape} + \frac{n_{\mathrm{likelihood}}}{2} = \frac{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}{2}}
-#' \deqn{\text{rate}_{\mathrm{post}} = \text{rate} + \frac{1}{2} \cdot \text{RSS} =  \frac{n_{\mathrm{prior}}+n_{\mathrm{likelihood}} - k}{2}  \cdot dispersion}
-#' 
+#' ### Default Gaussian dispersion (point estimate)
+#'
+#' For \code{family = gaussian()}, the returned \code{dispersion} is a **weighted**
+#' residual-variance point estimate from response residuals and \code{prior.weights}
+#' of the internal \code{\link[stats]{glm.fit}} fit (\code{\link[stats]{glm}} is not called).
+#' With \eqn{\mathrm{RSS}_w = \sum_i w_i r_i^2} and \eqn{n_{\mathrm{effective}} = \sum_i w_i}
+#' (see \code{PriorSettings$n_effective}), the default is
+#' \deqn{\texttt{dispersion} = \frac{\mathrm{RSS}_w}{n_{\mathrm{effective}} - 2},}
+#' requiring \eqn{n_{\mathrm{effective}} > 2}. This is **not**
+#' \code{summary(glm.fit(...))$dispersion} (which uses residual df \eqn{n-\mathrm{rank}}).
+#' The older MLE-style ratio \eqn{\mathrm{RSS}_w/n_{\mathrm{effective}}} is commented out
+#' in the source for reference. With the current \eqn{n-2} denominator, posterior summaries
+#' of precision and dispersion generally depend on \code{pwt} unless additional structure
+#' holds (e.g.\ prior mean on \eqn{\beta} aligned with the MLE in conjugate Normal--Gamma).
+#'
+#' The posterior shape and rate for precision under the same Gamma--likelihood fragment are:
+#' \deqn{\text{shape}_{\mathrm{post}} = \text{shape} + \frac{n_{\mathrm{effective}}}{2}
+#'       = \frac{n_{\mathrm{prior}} + n_{\mathrm{effective}}}{2}}
+#' \deqn{\text{rate}_{\mathrm{post}} = \text{rate} + \frac{\mathrm{RSS}_w}{2}
+#'       = \texttt{dispersion}\,\frac{n_{\mathrm{prior}}}{2} + \frac{\mathrm{RSS}_w}{2}.}
+#'
 #' This structure allows the prior to contribute pseudo-observations to the residual precision estimate, enabling adaptive shrinkage and hierarchical 
 #' regularization---especially valuable in small-sample or high-dimensional settings.
 #'
 #' @return A list with items related to the prior.
 #' \item{mu}{A prior mean vector}
 #' \item{Sigma}{A prior variance-covariance matrix}
-#' \item{dispersion}{Empirical bayes estimate for the dispersion (gaussian model only)}
+#' \item{dispersion}{For \code{gaussian()}, \eqn{\mathrm{RSS}_w/(n_{\mathrm{effective}}-2)}
+#'   from response residuals and \code{prior.weights} of the internal
+#'   \code{\link[stats]{glm.fit}} fit (see Details). \code{NULL} for other families except Gamma.}
 #' \item{shape}{Derived prior shape parameter (gaussian model only). Defaults to n_prior/2 where n_prior is derived from pwt if not provided}
 #' \item{rate}{Derived prior rate parameter (gaussian model only). Defaults to (n_prior*dispersion)/2 where n_prior is derived from pwt if not provided}
 #' \item{coefficients}{Named numeric vector of regression coefficients from the internal full-model GLM (same convention as \code{\link[stats]{coef}}); see Details}
@@ -446,17 +464,32 @@ if (!is.null(sd)) {
   }
   
   
-  ## --- CONDITIONAL DISPERSION (CORRECT MLE-BASED VERSION) ---------------------
-  
+  ## --- CONDITIONAL DISPERSION (Gaussian): explicit ratio from glm.fit object -----
+  ## Uses stats::glm.fit (not glm()). Default: dispersion = RSS_w / (n_effective - 2).
+  ## # Old MLE-style ratio (retained for reference, not used):
+  ## # dispersion <- rss_weighted / n_effective
+  ## With rate = dispersion * shape (shape = n_prior/2), posterior summaries of tau = 1/d
+  ## depend on pwt unless additional structure holds (see Details).
   if (family$family == "gaussian") {
-    
-    ## The summary.glmdispersion is not the MLE dispersion
-    # dispersion <- summary(glm_full)$dispersion
-    # True likelihood MLE dispersion:
-    #   phi_MLE = sum(w_i * r_i^2) / sum(w_i)
     res <- residuals(glm_full, type = "response")
     w   <- glm_full$prior.weights
-    dispersion <- sum(w * res^2) / sum(w)
+    rss_weighted <- sum(w * res^2)
+    if (!is.finite(rss_weighted) || rss_weighted <= 0) {
+      stop("Weighted RSS must be strictly positive for Gaussian dispersion priors.")
+    }
+    if (!is.finite(n_effective) || n_effective <= 0) {
+      stop("n_effective must be strictly positive to compute Gaussian dispersion.")
+    }
+    if (n_effective <= 2) {
+      stop(
+        "Gaussian dispersion requires n_effective > 2 ",
+        "(denominator n_effective - 2)."
+      )
+    }
+    dispersion <- rss_weighted / (n_effective - 2)
+    if (!is.finite(dispersion) || dispersion <= 0) {
+      stop("Computed Gaussian dispersion must be strictly positive.")
+    }
     
   } else if (family$family == "Gamma") {
     
@@ -470,11 +503,19 @@ if (!is.null(sd)) {
   }
   
   
-  ## Compute shape and rate if n_prior is not null and n_prior is scalar
+  ## Gamma on precision: shape = n_prior/2, rate = dispersion * shape so that
+  ## E[tau] = shape/rate = 1/dispersion (prior); with conjugate update this yields
+  ## E[tau|y] = n_effective/RSS_w independent of pwt when RSS matches dispersion.
   if (!is.null(n_prior)&& length(n_prior) == 1L&&!is.null(dispersion) ) {
     ## n_prior is interpreted as effective prior sample size, on the same scale as sum(weights).
     shape <- n_prior / 2
     rate  <- dispersion * shape
+    if (!is.finite(shape) || shape <= 0) {
+      stop("Computed shape must be strictly positive.")
+    }
+    if (!is.finite(rate) || rate <= 0) {
+      stop("Computed rate must be strictly positive.")
+    }
     }
   
   else{

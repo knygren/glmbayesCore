@@ -98,7 +98,9 @@ dimension is 14 or greater. Defaults to 0.05.}
 A list with items related to the prior.
 \item{mu}{A prior mean vector}
 \item{Sigma}{A prior variance-covariance matrix}
-\item{dispersion}{Empirical bayes estimate for the dispersion (gaussian model only)}
+\item{dispersion}{For \code{gaussian()}, \eqn{\mathrm{RSS}_w/(n_{\mathrm{effective}}-2)}
+from response residuals and \code{prior.weights} of the internal
+\code{\link[stats]{glm.fit}} fit (see Details). \code{NULL} for other families except Gamma.}
 \item{shape}{Derived prior shape parameter (gaussian model only). Defaults to n_prior/2 where n_prior is derived from pwt if not provided}
 \item{rate}{Derived prior rate parameter (gaussian model only). Defaults to (n_prior*dispersion)/2 where n_prior is derived from pwt if not provided}
 \item{coefficients}{Named numeric vector of regression coefficients from the internal full-model GLM (same convention as \code{\link[stats]{coef}}); see Details}
@@ -253,24 +255,41 @@ Default prior centering reflects classical reference structures:
 These defaults ensure that posterior means remain close to classical estimates when \code{pwt} is small,
 while allowing additional flexible prior specifications through \code{mu}, \code{sd}, and \code{n_prior}.
 
-If \code{n_prior} is not provided, it is derived from \code{pwt} and the effective likelihood sample size \code{n_likelihood} using:
-\deqn{n_{\mathrm{prior}} = \frac{pwt}{1 - pwt} \cdot n_{\mathrm{likelihood}}}
-where \code{n_likelihood} is the number of observations in the model.
+If \code{n_prior} is not provided, it is derived from \code{pwt} and \code{n_effective} (stored as
+\code{PriorSettings$n_effective}; for Gaussian with weights, \eqn{n_{\mathrm{effective}}=\sum w_i}):
+\deqn{n_{\mathrm{prior}} = \frac{pwt}{1 - pwt} \cdot n_{\mathrm{effective}}.}
+The field \code{n_likelihood} in \code{PriorSettings} is set equal to \code{n_effective} for compatibility.
 
 Likewise, if \code{n_prior} is provided, \code{pwt} is computed as:
-\deqn{pwt = \frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}}
+\deqn{pwt = \frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}} + n_{\mathrm{effective}}}}
 
 When applicable, \code{Prior_Setup()} computes the shape and rate parameters for a Gamma prior on the residual precision (inverse variance), used in
 compound prior families such as \code{dNormal_Gamma()}, \code{dIndependent_Normal_Gamma()}, and \code{dGamma()}. These are derived from the effective prior sample size and the estimated dispersion:
 
 \deqn{\text{shape} = \frac{n_{\mathrm{prior}}}{2}}
 \deqn{\text{rate} = \text{shape} \cdot \text{dispersion} = \frac{n_{\mathrm{prior}}}{2} \cdot \text{dispersion}}
+}
 
-where RSS is the residual sum of squares from the likelihood model.
+\subsection{Default Gaussian dispersion (point estimate)}{
 
-The posterior shape and rate parameters under a Normal-Gamma model are then:
-\deqn{\text{shape}_{\mathrm{post}} = \text{shape} + \frac{n_{\mathrm{likelihood}}}{2} = \frac{n_{\mathrm{prior}} + n_{\mathrm{likelihood}}}{2}}
-\deqn{\text{rate}_{\mathrm{post}} = \text{rate} + \frac{1}{2} \cdot \text{RSS} =  \frac{n_{\mathrm{prior}}+n_{\mathrm{likelihood}} - k}{2}  \cdot dispersion}
+For \code{family = gaussian()}, the returned \code{dispersion} is a \strong{weighted}
+residual-variance point estimate from response residuals and \code{prior.weights}
+of the internal \code{\link[stats]{glm.fit}} fit (\code{\link[stats]{glm}} is not called).
+With \eqn{\mathrm{RSS}_w = \sum_i w_i r_i^2} and \eqn{n_{\mathrm{effective}} = \sum_i w_i}
+(see \code{PriorSettings$n_effective}), the default is
+\deqn{\texttt{dispersion} = \frac{\mathrm{RSS}_w}{n_{\mathrm{effective}} - 2},}
+requiring \eqn{n_{\mathrm{effective}} > 2}. This is \strong{not}
+\code{summary(glm.fit(...))$dispersion} (which uses residual df \eqn{n-\mathrm{rank}}).
+The older MLE-style ratio \eqn{\mathrm{RSS}_w/n_{\mathrm{effective}}} is commented out
+in the source for reference. With the current \eqn{n-2} denominator, posterior summaries
+of precision and dispersion generally depend on \code{pwt} unless additional structure
+holds (e.g.\ prior mean on \eqn{\beta} aligned with the MLE in conjugate Normal--Gamma).
+
+The posterior shape and rate for precision under the same Gamma--likelihood fragment are:
+\deqn{\text{shape}_{\mathrm{post}} = \text{shape} + \frac{n_{\mathrm{effective}}}{2}
+      = \frac{n_{\mathrm{prior}} + n_{\mathrm{effective}}}{2}}
+\deqn{\text{rate}_{\mathrm{post}} = \text{rate} + \frac{\mathrm{RSS}_w}{2}
+      = \texttt{dispersion}\,\frac{n_{\mathrm{prior}}}{2} + \frac{\mathrm{RSS}_w}{2}.}
 
 This structure allows the prior to contribute pseudo-observations to the residual precision estimate, enabling adaptive shrinkage and hierarchical
 regularization---especially valuable in small-sample or high-dimensional settings.
