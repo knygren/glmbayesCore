@@ -701,34 +701,6 @@ if (!is.null(sd)) {
   rownames(Sigma)=var_names
   colnames(Sigma)=var_names
 
-  ## --- d_P (diagnostic only; not returned or used downstream) -----------------
-  ## Commented out for now; keep for potential future diagnostics.
-#   ## S = y'Wy + mu' P0 mu - mu_n' Pn mu_n with P0 = Sigma^{-1}, PL = X' W X,
-#   ## Pn = P0 + PL, mu_n = Pn^{-1}(P0 mu + X'Wy).  d_P = S / (n_effective - 2).
-#   d_P <- NA_real_
-#   if (identical(family$family, "gaussian")) {
-#     if (is.finite(n_effective) && n_effective > 2) {
-#       y_num <- as.numeric(Y)
-#       if (length(y_num) == n_obs) {
-#         w_vec <- if (is.null(weights)) rep(1, n_obs) else as.numeric(weights)
-#         P0 <- tryCatch(solve(Sigma), error = function(e) NULL)
-#         if (!is.null(P0)) {
-#           XtW <- sweep(X, 1, w_vec, `*`)
-#           PL <- crossprod(XtW, X)
-#           Pn <- P0 + PL
-#           mu_mat <- matrix(as.numeric(mu), ncol = 1L)
-#           rhs <- P0 %*% mu_mat + crossprod(X, w_vec * y_num)
-#           mu_n <- solve(Pn, rhs)
-#           ytWy <- sum(w_vec * y_num^2)
-#           S_quad <- ytWy +
-#             as.numeric(crossprod(mu_mat, P0 %*% mu_mat)) -
-#             as.numeric(crossprod(mu_n, Pn %*% mu_n))
-#           d_P <- S_quad / (n_effective - 2)
-#         }
-#       }
-#     }
-#   }
-
   ## Gamma on precision: shape = n_shape_num/2, rate = dispersion * (n_prior/2).
   ## n_shape_num from shape_df: n_prior, n_prior+p, or n_prior-p (latter needs n_prior > p).
   ## Rate uses n_prior/2 always so n_prior+p matches "shape += p/2, rate unchanged" vs n_prior.
@@ -795,658 +767,10 @@ if (!is.null(sd)) {
         mu = mu,
         Sigma_0 = Sigma_0_h,
         n_prior = n_prior,
-        shape_df = shape_df,
-        apply_smarg_remap = TRUE
+        shape_df = shape_df
       )
     }
   }
-  ## Legacy Gaussian old-path calculations are intentionally disabled for now.
-#   if (FALSE && identical(family$family, "gaussian") &&
-#       is.finite(rss_weighted_stored) && rss_weighted_stored > 0 &&
-#       is.finite(dispersion_classical) && dispersion_classical > 0) {
-#     bh_sm <- coef(glm_full)
-#     if (length(bh_sm) == nvar && all(is.finite(bh_sm))) {
-#       w_sm <- if (is.null(weights)) rep(1, n_obs) else as.numeric(weights)
-#       XtW_sm <- sweep(X, 1, w_sm, `*`)
-#       Gm_sm <- crossprod(XtW_sm, X)
-#       dlt_sm <- matrix(bh_sm, ncol = 1L) - matrix(as.numeric(mu), ncol = 1L)
-#       Sigma_0_pre_nm <- Sigma_pre_nm / dispersion_classical
-#       Ginv_sm <- tryCatch(
-#         solve(Gm_sm),
-#         error = function(e) {
-#           stop(
-#             "Prior_Setup: cannot invert weighted Gram matrix X'WX (S_marg_new). ",
-#             conditionMessage(e),
-#             call. = FALSE
-#           )
-#         }
-#       )
-#       M_sm <- Sigma_0_pre_nm + Ginv_sm
-#       Mi_sm <- tryCatch(
-#         solve(M_sm),
-#         error = function(e) {
-#           stop(
-#             "Prior_Setup: cannot invert Sigma_0 + (X'WX)^{-1} (S_marg_new). ",
-#             conditionMessage(e),
-#             call. = FALSE
-#           )
-#         }
-#       )
-#       quad_sm <- as.numeric(crossprod(dlt_sm, Mi_sm %*% dlt_sm))
-#       if (!is.finite(quad_sm) || quad_sm < 0) {
-#         stop(
-#           "Prior_Setup: S_marg quadratic form is not finite or nonnegative.",
-#           call. = FALSE
-#         )
-#       }
-#       S_marg_new <- rss_weighted_stored + quad_sm
-#       S_marg <- S_marg_new
-#       d_vcov <- glm_summary$dispersion
-#       if (is.finite(d_vcov) && d_vcov > 0) {
-#         Sigma_0_vcov <- Sigma_pre_nm / d_vcov
-#         M_vc <- Sigma_0_vcov + Ginv_sm
-#         Mi_vc <- tryCatch(solve(M_vc), error = function(e) NULL)
-#         if (!is.null(Mi_vc)) {
-#           quad_vc <- as.numeric(crossprod(dlt_sm, Mi_vc %*% dlt_sm))
-#           if (is.finite(quad_vc) && quad_vc >= 0) {
-#             S_marg_sigma0_vcov <- rss_weighted_stored + quad_vc
-#           }
-#         }
-#       }
-#       if (length(pwt) == 1L && is.finite(pwt)) {
-#         quad_s_sm <- as.numeric(pwt * crossprod(dlt_sm, Gm_sm %*% dlt_sm))
-#         if (is.finite(quad_s_sm) && quad_s_sm >= 0) {
-#           S_marg_scalar_zellner <- rss_weighted_stored + quad_s_sm
-#         }
-#       }
-#     }
-#   }
-# 
-#   ## Nelder–Mead Post_mean joint optimization: entire block below is commented out (not deleted).
-#   ## --- Gaussian: Post_mean - joint fixed point for d and prior scale lambda ----------
-#   ## Sigma_g = ((1-pwt)/pwt)*V0.  Search (d, lambda) with returned Sigma = Sigma_g*lambda so that, using the
-#   ## same fragment as dNormal_Gamma (rNormal_reg.wfit with P = d*Sigma^{-1}, full w):
-#   ##   (i) posterior mean of beta equals (1-pwt)*beta_MLE + pwt*mu (per coefficient, where finite);
-#   ##   (ii) d = E[dispersion|y] = (shape*d + S/2)/(a_post-1), a_post = shape + n_eff/2.
-#   ## The Nelder–Mead optimization is retained (not replaced by a shortcut) so results stay available
-#   ## for validation against direct or closed-form recipes (temporary \code{message} when run).
-#   if (identical(family$family, "gaussian") &&
-#       identical(disp_type, "Post_mean") &&
-#       !is.null(shape) && is.finite(shape) && shape > 0 &&
-#       is.finite(n_effective) && n_effective > 0) {
-#     Sigma_g <- Sigma
-#     sigma_mle_sq <- glm_summary$dispersion
-#     mu_fp <- as.numeric(mu)
-#     w_fp <- if (is.null(weights)) rep(1, n_obs) else as.numeric(weights)
-#     off_fp <- offset
-#     a_post_fp <- shape + n_effective / 2
-# 
-#     if (a_post_fp > 1 && is.finite(dispersion) && dispersion > 0 &&
-#         is.finite(sigma_mle_sq) && sigma_mle_sq > 0) {
-#       d_fp <- dispersion
-#       lam_start <- d_fp^2 / sigma_mle_sq
-#       if (!is.finite(lam_start) || lam_start <= 0) {
-#         lam_start <- 1
-#       }
-# 
-#       ng_wfit_dlam <- function(d, lam) {
-#         if (!is.finite(d) || d <= 0 || !is.finite(lam) || lam <= 0) {
-#           return(NULL)
-#         }
-#         Sig <- Sigma_g * lam
-#         R <- tryCatch(chol(Sig), error = function(e) NULL)
-#         if (is.null(R)) {
-#           return(NULL)
-#         }
-#         Pinv <- chol2inv(R)
-#         Pinv <- 0.5 * (Pinv + t(Pinv))
-#         P_ng <- d * Pinv
-#         tryCatch(
-#           rNormal_reg.wfit(
-#             x = X, y = Y, P = P_ng, mu = mu_fp, w = w_fp,
-#             offset = off_fp
-#           ),
-#           error = function(e) NULL
-#         )
-#       }
-# 
-#       ## dNormal(mu, Sigma, dispersion=d): prior precision inv(Sigma); likelihood uses w/d.
-#       post_coef_dNormal_dlam <- function(d, lam) {
-#         if (!is.finite(d) || d <= 0 || !is.finite(lam) || lam <= 0) {
-#           return(rep(NA_real_, length(mu_fp)))
-#         }
-#         Sig <- Sigma_g * lam
-#         R <- tryCatch(chol(Sig), error = function(e) NULL)
-#         if (is.null(R)) {
-#           return(rep(NA_real_, length(mu_fp)))
-#         }
-#         Pinv <- chol2inv(R)
-#         Pinv <- 0.5 * (Pinv + t(Pinv))
-#         fit <- rNormal_reg.wfit(
-#           x = X, y = Y, P = Pinv, mu = mu_fp, w = w_fp / d,
-#           offset = off_fp
-#         )
-#         as.numeric(fit$Btilde)
-#       }
-# 
-#       cmle <- coef(glm_full)
-#       mle_fp <- vapply(
-#         var_names,
-#         function(nm) {
-#           if (!is.null(names(cmle)) && nm %in% names(cmle)) {
-#             v <- unname(cmle[nm])
-#             if (length(v) == 1L && is.finite(v)) v else NA_real_
-#           } else {
-#             NA_real_
-#           }
-#         },
-#         NA_real_
-#       )
-#       blend_fp <- (1 - pwt) * mle_fp + pwt * mu_fp
-# 
-#       Sigma_start <- Sigma_g * lam_start
-#       fit_ng0 <- ng_wfit_dlam(d_fp, lam_start)
-#       coef_ng0 <- if (!is.null(fit_ng0)) {
-#         as.numeric(fit_ng0$Btilde)
-#       } else {
-#         rep(NA_real_, length(mu_fp))
-#       }
-#       coef_n0 <- post_coef_dNormal_dlam(d_fp, lam_start)
-# 
-#       ## Post_mean console diagnostics (commented out; delete when no longer needed)
-#       # cat(
-#       #   "\nPrior_Setup Post_mean diagnostics (before Nelder-Mead):\n",
-#       #   "  prior mean (mu):\n",
-#       #   sep = ""
-#       # )
-#       # print(stats::setNames(mu_fp, var_names))
-#       # cat("  MLE (weighted glm_full coefficients):\n")
-#       # print(stats::setNames(mle_fp, var_names))
-#       # if (length(pwt) == 1L) {
-#       #   cat(
-#       #     "  (1-pwt)*MLE + pwt*mu  with pwt = ", format(pwt, digits = 10), ":\n",
-#       #     sep = ""
-#       #   )
-#       # } else {
-#       #   cat("  (1-pwt)*MLE + pwt*mu  (vector pwt per coefficient):\n")
-#       # }
-#       # print(stats::setNames(blend_fp, var_names))
-#       # cat(
-#       #   "  starting dispersion d0 = ", format(d_fp, digits = 10),
-#       #   "  lambda0 = ", format(lam_start, digits = 10), "\n",
-#       #   "  starting Sigma = Sigma_g * lambda0 (rounded):\n",
-#       #   sep = ""
-#       # )
-#       # print(round(Sigma_start, 6))
-#       # cat("  posterior mean coefficients - dNormal_Gamma @ (d0, lambda0):\n")
-#       # print(stats::setNames(coef_ng0, var_names))
-#       # cat("  posterior mean coefficients - dNormal @ (d0, lambda0):\n")
-#       # print(stats::setNames(coef_n0, var_names))
-# 
-#       Q_joint_fp <- function(uv) {
-#         d <- exp(uv[1L])
-#         lam <- exp(uv[2L])
-#         fit <- ng_wfit_dlam(d, lam)
-#         if (is.null(fit)) {
-#           return(.Machine$double.xmax^0.25)
-#         }
-#         post <- as.numeric(fit$Btilde)
-#         if (length(post) != length(blend_fp)) {
-#           return(.Machine$double.xmax^0.25)
-#         }
-#         idx <- is.finite(blend_fp) & is.finite(post)
-#         if (!any(idx)) {
-#           return(.Machine$double.xmax^0.25)
-#         }
-#         diff_b <- post[idx] - blend_fp[idx]
-#         w_beta <- 1 / max(mean(blend_fp[idx]^2, na.rm = TRUE), 1e-12)
-#         term_beta <- w_beta * mean(diff_b^2)
-#         rate_m <- (n_prior / 2) * d
-#         S_m <- as.numeric(fit$S)
-#         if (length(S_m) != 1L || !is.finite(S_m)) {
-#           return(.Machine$double.xmax^0.25)
-#         }
-#         b_m <- rate_m + 0.5 * S_m
-#         m_disp <- b_m / (a_post_fp - 1)
-#         if (!is.finite(m_disp) || m_disp <= 0) {
-#           return(.Machine$double.xmax^0.25)
-#         }
-#         term_disp <- (log(m_disp) - log(d))^2
-#         term_disp + term_beta
-#       }
-# 
-#       opt_fp <- tryCatch(
-#         suppressWarnings(
-#           stats::optim(
-#             par = c(log(d_fp), log(lam_start)),
-#             fn = Q_joint_fp,
-#             method = "Nelder-Mead",
-#             control = list(maxit = 3000L, reltol = 1e-10)
-#           )
-#         ),
-#         error = function(e) NULL
-#       )
-#       ok <- !is.null(opt_fp) && length(opt_fp$par) == 2L &&
-#         is.finite(opt_fp$value) && opt_fp$value < .Machine$double.xmax^0.2
-#       nm_dispersion <- NA_real_
-#       nm_lambda <- NA_real_
-#       post_mean_return_applied <- FALSE
-#       if (ok) {
-#         u_opt <- as.numeric(opt_fp$par)
-#         d_nm <- exp(u_opt[1L])
-#         lam_nm <- exp(u_opt[2L])
-#         nm_dispersion <- d_nm
-#         nm_lambda <- lam_nm
-#         if (is.finite(d_nm) && d_nm > 0 && is.finite(lam_nm) && lam_nm > 0) {
-#           dispersion <- d_nm
-#           rate <- (n_prior / 2) * d_nm
-#           Sigma <- Sigma_g * lam_nm
-#           fit_ng1 <- ng_wfit_dlam(d_nm, lam_nm)
-#           coef_ng1 <- if (!is.null(fit_ng1)) {
-#             as.numeric(fit_ng1$Btilde)
-#           } else {
-#             rep(NA_real_, length(mu_fp))
-#           }
-#           coef_n1 <- post_coef_dNormal_dlam(d_nm, lam_nm)
-#           post_mean_return_applied <- TRUE
-#           ## Post_mean optim result diagnostics (commented out; delete when no longer needed)
-#           # cat(
-#           #   "  final dispersion d* = ", format(d_nm, digits = 10),
-#           #   "  lambda* = ", format(lam_nm, digits = 10),
-#           #   "  (optim convergence = ", opt_fp$convergence, ")\n",
-#           #   "  joint objective Q = ", format(opt_fp$value, digits = 10), "\n",
-#           #   "  final Sigma = Sigma_g * lambda* (rounded):\n",
-#           #   sep = ""
-#           # )
-#           # print(round(Sigma, 6))
-#           # cat("  posterior mean coefficients - dNormal_Gamma @ (d*, lambda*):\n")
-#           # print(stats::setNames(coef_ng1, var_names))
-#           # cat("  posterior mean coefficients - dNormal @ (d*, lambda*):\n")
-#           # print(stats::setNames(coef_n1, var_names))
-#           # cat("\n")
-#         }
-#       } else {
-#         ## Nelder-Mead failure message (commented out; delete when no longer needed)
-#         # cat(
-#         #   "  Nelder-Mead did not return a usable optimum; Sigma and dispersion unchanged.\n\n"
-#         # )
-#       }
-# 
-#       ## Temporary Nelder–Mead diagnostics (not returned; delete when no longer needed).
-#       post_mean_diag <- list(
-#         ok = ok,
-#         return_update_applied = post_mean_return_applied,
-#         starter_dispersion = d_fp,
-#         starter_lambda = lam_start,
-#         dispersion = nm_dispersion,
-#         lambda = nm_lambda,
-#         convergence = if (!is.null(opt_fp)) opt_fp$convergence else NA_integer_,
-#         objective_Q = if (!is.null(opt_fp)) opt_fp$value else NA_real_,
-#         par_log = if (!is.null(opt_fp)) as.numeric(opt_fp$par) else rep(NA_real_, 2L)
-#       )
-#       nm <- post_mean_diag
-#       message(
-#         "Prior_Setup temporary Post_mean / Nelder diagnostics:\n",
-#         paste0(
-#           c(
-#             paste0("  ok = ", nm$ok),
-#             paste0("  return_update_applied = ", nm$return_update_applied),
-#             paste0("  starter_dispersion = ", format(nm$starter_dispersion, digits = 10)),
-#             paste0("  starter_lambda     = ", format(nm$starter_lambda, digits = 10)),
-#             paste0("  dispersion (opt)   = ", format(nm$dispersion, digits = 10)),
-#             paste0("  lambda (opt)       = ", format(nm$lambda, digits = 10)),
-#             paste0("  objective_Q        = ", format(nm$objective_Q, digits = 10)),
-#             paste0("  convergence        = ", nm$convergence)
-#           ),
-#           collapse = "\n"
-#         )
-#       )
-#     }
-#   }
-# 
-#   ## S_marg_post_mean: same RSS + quadratic as S_marg_new, but Sigma_0 = Sigma/dispersion **after**
-#   ## Post_mean (Nelder--Mead may have updated Sigma and dispersion).
-#   if (identical(family$family, "gaussian") &&
-#       is.finite(rss_weighted_stored) && rss_weighted_stored > 0 &&
-#       !is.null(dispersion) && is.finite(dispersion) && dispersion > 0) {
-#     bh_pm <- coef(glm_full)
-#     if (length(bh_pm) == nvar && all(is.finite(bh_pm))) {
-#       w_pm <- if (is.null(weights)) rep(1, n_obs) else as.numeric(weights)
-#       XtW_pm <- sweep(X, 1, w_pm, `*`)
-#       Gm_pm <- crossprod(XtW_pm, X)
-#       dlt_pm <- matrix(bh_pm, ncol = 1L) - matrix(as.numeric(mu), ncol = 1L)
-#       Sigma_0_pm <- Sigma / dispersion
-#       Ginv_pm <- tryCatch(
-#         solve(Gm_pm),
-#         error = function(e) {
-#           stop(
-#             "Prior_Setup: cannot invert weighted Gram matrix X'WX (S_marg_post_mean). ",
-#             conditionMessage(e),
-#             call. = FALSE
-#           )
-#         }
-#       )
-#       M_pm <- Sigma_0_pm + Ginv_pm
-#       Mi_pm <- tryCatch(
-#         solve(M_pm),
-#         error = function(e) {
-#           stop(
-#             "Prior_Setup: cannot invert Sigma/dispersion + (X'WX)^{-1} (S_marg_post_mean). ",
-#             conditionMessage(e),
-#             call. = FALSE
-#           )
-#         }
-#       )
-#       quad_pm <- as.numeric(crossprod(dlt_pm, Mi_pm %*% dlt_pm))
-#       if (!is.finite(quad_pm) || quad_pm < 0) {
-#         stop(
-#           "Prior_Setup: S_marg_post_mean quadratic form is not finite or nonnegative.",
-#           call. = FALSE
-#         )
-#       }
-#       S_marg_post_mean <- rss_weighted_stored + quad_pm
-#     }
-#   }
-# 
-#   ## Temporary S_marg printed diagnostics: entire block below commented out (not deleted).
-#   ## Temporary S_marg diagnostics (Gaussian only; not returned; delete when no longer needed).
-#   if (identical(family$family, "gaussian")) {
-#     lines_sm <- character(0)
-#     if (is.finite(S_marg_new)) {
-#       lines_sm <- c(
-#         lines_sm,
-#         paste0("  S_marg_new (Sigma_pre/d_OLS, pre-Post_mean): ", format(S_marg_new, digits = 10))
-#       )
-#     }
-#     if (is.finite(S_marg_sigma0_vcov)) {
-#       lines_sm <- c(
-#         lines_sm,
-#         paste0(
-#           "  S_marg_sigma0_vcov (Sigma_pre/summary(glm)$dispersion): ",
-#           format(S_marg_sigma0_vcov, digits = 10)
-#         )
-#       )
-#     }
-#     if (is.finite(S_marg_new) && is.finite(S_marg_sigma0_vcov)) {
-#       dvc <- abs(S_marg_new - S_marg_sigma0_vcov)
-#       rvc <- if (abs(S_marg_new) > 0) dvc / abs(S_marg_new) else dvc
-#       lines_sm <- c(
-#         lines_sm,
-#         paste0(
-#           "  |S_marg_new - S_marg_sigma0_vcov| = ", format(dvc, digits = 10),
-#           ", rel. diff = ", format(rvc, digits = 10)
-#         )
-#       )
-#     }
-#     if (is.finite(S_marg_post_mean)) {
-#       lines_sm <- c(
-#         lines_sm,
-#         paste0(
-#           "  S_marg_post_mean (Sigma/dispersion after Post_mean): ",
-#           format(S_marg_post_mean, digits = 10)
-#         )
-#       )
-#     }
-#     if (is.finite(S_marg_new) && is.finite(S_marg_post_mean)) {
-#       dpm <- abs(S_marg_new - S_marg_post_mean)
-#       rpm <- if (abs(S_marg_new) > 0) dpm / abs(S_marg_new) else dpm
-#       lines_sm <- c(
-#         lines_sm,
-#         paste0(
-#           "  |S_marg_new - S_marg_post_mean| = ", format(dpm, digits = 10),
-#           ", rel. diff = ", format(rpm, digits = 10)
-#         )
-#       )
-#     }
-#     if (length(lines_sm) > 0L) {
-#       message("Prior_Setup temporary S_marg diagnostics:\n", paste(lines_sm, collapse = "\n"))
-#     }
-#   }
-# 
-#   ## Gaussian with shape but iteration did not run (e.g. chol failed): fall back rate.
-#   if (identical(family$family, "gaussian") && !is.null(shape) && is.null(rate) &&
-#       !is.null(dispersion_for_shape_rate) && !is.null(n_prior) && length(n_prior) == 1L) {
-#     rate <- dispersion_for_shape_rate * (n_prior / 2)
-#     if (!is.finite(rate) || rate <= 0) {
-#       stop("Computed rate must be strictly positive.")
-#     }
-#   }
-# 
-#   ## --- Marginal sum of squares S_marg (Gaussian): S_marg matches S_marg_new; fallback below --------
-#   ## Fallback below only if the pre-Post_mean computation did not yield a finite value.
-#   ## General: RSS + (beta_hat - mu)^T (Sigma_0 + G^{-1})^{-1} (beta_hat - mu),
-#   ##   Sigma_0 = Sigma/d_OLS with d_OLS = RSS_w/(n_effective-2) (= dispersion_classical).
-#   ## Scalar-pwt Zellner check: RSS + pwt * (beta_hat - mu)^T G (beta_hat - mu).
-#   dispersion_marginal <- NA_real_
-#   dispersion_nelder_mead <- NA_real_
-#   b_0_rate_dispersion <- NA_real_
-#   b_0_S_marg_formula <- NA_real_
-#   E_phi_sigma2_special <- NA_real_
-#   if (identical(family$family, "gaussian") &&
-#       is.finite(rss_weighted_stored) && rss_weighted_stored > 0 &&
-#       !is.null(dispersion) && is.finite(dispersion) && dispersion > 0) {
-#     dispersion_nelder_mead <- dispersion
-#     if (!is.null(n_prior) && length(n_prior) == 1L &&
-#         is.finite(n_prior) && n_prior > 0 &&
-#         is.finite(dispersion_nelder_mead)) {
-#       b_0_rate_dispersion <- (n_prior / 2) * dispersion_nelder_mead
-#     }
-#     bh <- coef(glm_full)
-#     if (!is.null(shape) && is.finite(shape) && shape > 0 &&
-#         (length(bh) != nvar || !all(is.finite(bh)))) {
-#       stop(
-#         "Prior_Setup: Gaussian Normal-Gamma prior requires finite GLM coefficients for every coefficient.",
-#         call. = FALSE
-#       )
-#     }
-#     if (length(bh) == nvar && all(is.finite(bh))) {
-#       w_g <- if (is.null(weights)) rep(1, n_obs) else as.numeric(weights)
-#       XtW <- sweep(X, 1, w_g, `*`)
-#       Gm <- crossprod(XtW, X)
-#       dlt <- matrix(bh, ncol = 1L) - matrix(as.numeric(mu), ncol = 1L)
-#       Ginv <- tryCatch(
-#         solve(Gm),
-#         error = function(e) {
-#           stop(
-#             "Prior_Setup: cannot invert weighted Gram matrix X'WX. ",
-#             conditionMessage(e),
-#             call. = FALSE
-#           )
-#         }
-#       )
-#       if (!is.finite(S_marg) &&
-#           is.finite(dispersion_classical) && dispersion_classical > 0) {
-#         Sigma_0 <- Sigma_pre_nm / dispersion_classical
-#         M <- Sigma_0 + Ginv
-#         Mi <- tryCatch(
-#           solve(M),
-#           error = function(e) {
-#             stop(
-#               "Prior_Setup: cannot invert Sigma_0 + (X'WX)^{-1} (S_marg fallback). ",
-#               conditionMessage(e),
-#               call. = FALSE
-#             )
-#           }
-#         )
-#         quad <- as.numeric(crossprod(dlt, Mi %*% dlt))
-#         if (!is.finite(quad) || quad < 0) {
-#           stop(
-#             "Prior_Setup: S_marg fallback quadratic form is not finite or nonnegative.",
-#             call. = FALSE
-#           )
-#         }
-#         S_marg <- rss_weighted_stored + quad
-#       }
-#       if (!is.finite(S_marg_scalar_zellner) && length(pwt) == 1L && is.finite(pwt)) {
-#         quad_s <- as.numeric(pwt * crossprod(dlt, Gm %*% dlt))
-#         if (is.finite(quad_s) && quad_s >= 0) {
-#           S_marg_scalar_zellner <- rss_weighted_stored + quad_s
-#         }
-#       }
-#       ## Same denominator as classical Gaussian dispersion (RSS_w/(n_effective-2)).
-#       if (is.finite(S_marg) && is.finite(n_effective) && n_effective > 2) {
-#         dispersion_marginal <- S_marg / (n_effective - 2)
-#       }
-#       if (!is.null(n_prior) && length(n_prior) == 1L &&
-#           is.finite(n_prior) && n_prior > 0 &&
-#           is.finite(n_effective) && n_effective > 0 &&
-#           is.finite(S_marg)) {
-#         b_0_S_marg_formula <- 0.5 * (n_prior / n_effective) * S_marg
-#         den_phi <- n_prior + n_effective - 2
-#         if (is.finite(den_phi) && den_phi > 0) {
-#           E_phi_sigma2_special <-
-#             S_marg * (n_effective + n_prior) / n_effective / den_phi
-#         }
-#       }
-#       ## S_marg validation message (commented out; delete when no longer needed)
-#       # if (length(pwt) == 1L && is.finite(S_marg) && is.finite(S_marg_scalar_zellner)) {
-#       #   diff_sm <- abs(S_marg - S_marg_scalar_zellner)
-#       #   rel_sm <- if (abs(S_marg) > 0) diff_sm / abs(S_marg) else diff_sm
-#       #   message(
-#       #     "Prior_Setup S_marg validation (scalar pwt): general = ",
-#       #     format(S_marg, digits = 10),
-#       #     ", Zellner scalar = ",
-#       #     format(S_marg_scalar_zellner, digits = 10),
-#       #     ", |diff| = ",
-#       #     format(diff_sm, digits = 10),
-#       #     ", rel_err = ",
-#       #     format(rel_sm, digits = 10),
-#       #     "."
-#       #   )
-#       # }
-#       ## Compare three dispersion notions and Zellner Sigmas (commented out; delete when no longer needed)
-#       # if (length(pwt) == 1L && is.finite(pwt) && pwt > 0 && pwt < 1 &&
-#       #     !is.null(Ginv)) {
-#       #   cat(
-#       #     "\nPrior_Setup dispersion comparison (Gaussian, scalar pwt):\n",
-#       #     "  classical RSS_w/(n_effective-2)     = ",
-#       #     format(dispersion_classical, digits = 10),
-#       #     "\n  marginal S_marg/(n_effective-2)   = ",
-#       #     format(dispersion_marginal, digits = 10),
-#       #     "\n  Nelder-Mead / returned (pre-marg) = ",
-#       #     format(dispersion_nelder_mead, digits = 10),
-#       #     "\n",
-#       #     sep = ""
-#       #   )
-#       #   gfac <- (1 - pwt) / pwt
-#       #   Sigma_classical_disp <- gfac * dispersion_classical * Ginv
-#       #   Sigma_marginal_disp <- gfac * dispersion_marginal * Ginv
-#       #   dimnames(Sigma_classical_disp) <- list(var_names, var_names)
-#       #   dimnames(Sigma_marginal_disp) <- list(var_names, var_names)
-#       #   cat("  Sigma from classical d ((1-pwt)/pwt * d * G^{-1}), rounded:\n")
-#       #   print(round(Sigma_classical_disp, 6))
-#       #   cat("  Sigma from marginal d ((1-pwt)/pwt * (S_marg/(n_w-2)) * G^{-1}), rounded:\n")
-#       #   print(round(Sigma_marginal_disp, 6))
-#       #   cat("  Sigma from Nelder-Mead / Post_mean (current matrix), rounded:\n")
-#       #   print(round(Sigma, 6))
-#       #   if (is.finite(b_0_rate_dispersion) || is.finite(b_0_S_marg_formula)) {
-#       #     cat(
-#       #       "  Gamma prior rate b_0:\n",
-#       #       "    (n_prior/2)*d_Nelder (standard)     = ",
-#       #       format(b_0_rate_dispersion, digits = 10),
-#       #       "\n",
-#       #       "    (1/2)(n_prior/n_w)*S_marg (special) = ",
-#       #       format(b_0_S_marg_formula, digits = 10),
-#       #       "\n",
-#       #       sep = ""
-#       #     )
-#       #   }
-#       #   if (is.finite(E_phi_sigma2_special)) {
-#       #     cat(
-#       #       "  E[sigma^2]=E[tau^-1] (special b_0; b_n/(a_n-1)) = ",
-#       #       format(E_phi_sigma2_special, digits = 10),
-#       #       "\n",
-#       #       "    = S_marg*(n_w+n_prior)/n_w/(n_prior+n_w-2)\n",
-#       #       sep = ""
-#       #     )
-#       #     ## Cov(beta|y) = (b_n/(a_n-1)) V_n with V_n = (n_w/(n_prior+n_w)) G^{-1}
-#       #     ## (Zellner scalar pwt); algebraically (S_marg/(n_prior+n_w-2)) G^{-1}.
-#       #     v_n_fac <- n_effective / (n_prior + n_effective)
-#       #     Cov_beta_y_special <- E_phi_sigma2_special * v_n_fac * Ginv
-#       #     dimnames(Cov_beta_y_special) <- list(var_names, var_names)
-#       #     cat(
-#       #       "  Cov(beta|y) (special b_0; (b_n/(a_n-1))*V_n), rounded:\n",
-#       #       "    V_n = (n_w/(n_prior+n_w))*G^{-1}  [same as (S_marg/(n_prior+n_w-2))*G^{-1}]\n",
-#       #       sep = ""
-#       #     )
-#       #     print(round(Cov_beta_y_special, 6))
-#       #   }
-#       #   cat("\n")
-#       # } else if (identical(family$family, "gaussian") && is.finite(dispersion_marginal)) {
-#       #   cat(
-#       #     "\nPrior_Setup dispersion comparison (Gaussian, vector pwt):\n",
-#       #     "  classical RSS_w/(n_effective-2) = ",
-#       #     format(dispersion_classical, digits = 10),
-#       #     "\n  marginal S_marg/(n_effective-2) = ",
-#       #     format(dispersion_marginal, digits = 10),
-#       #     "\n  Nelder-Mead / current d       = ",
-#       #     format(dispersion_nelder_mead, digits = 10),
-#       #     "\n  (Zellner Sigma triple skipped: pwt not scalar)\n",
-#       #     sep = ""
-#       #   )
-#       #   if (is.finite(b_0_rate_dispersion) || is.finite(b_0_S_marg_formula)) {
-#       #     cat(
-#       #       "  Gamma prior rate b_0:\n",
-#       #       "    (n_prior/2)*d_Nelder (standard)     = ",
-#       #       format(b_0_rate_dispersion, digits = 10),
-#       #       "\n",
-#       #       "    (1/2)(n_prior/n_w)*S_marg (special) = ",
-#       #       format(b_0_S_marg_formula, digits = 10),
-#       #       "\n",
-#       #       sep = ""
-#       #     )
-#       #   }
-#       #   if (is.finite(E_phi_sigma2_special)) {
-#       #     cat(
-#       #       "  E[sigma^2]=E[tau^-1] (special b_0; b_n/(a_n-1)) = ",
-#       #       format(E_phi_sigma2_special, digits = 10),
-#       #       "\n",
-#       #       "    = S_marg*(n_w+n_prior)/n_w/(n_prior+n_w-2)\n",
-#       #       sep = ""
-#       #     )
-#       #   }
-#       #   cat("\n\n")
-#       # }
-#       ## Remap returned prior to the special S_marg path:
-#       ## - dispersion: E[sigma^2|y] from b_n/(a_n-1)
-#       ## - Sigma: PRIOR covariance (not posterior), Zellner form
-#       ##          ((1-pwt)/pwt) * dispersion * G^{-1} = (n_w/n_prior) * dispersion * G^{-1}
-#       ## - rate: b_0 = (1/2)(n_prior/n_w) S_marg
-#       if (!is.null(shape) && is.finite(shape) && shape > 0) {
-#         if (!is.finite(S_marg)) {
-#           stop(
-#             "Prior_Setup: S_marg is not finite; cannot remap prior to the marginal sum-of-squares calibration.",
-#             call. = FALSE
-#           )
-#         }
-#         den_phi_remap <- n_prior + n_effective - 2
-#         if (!is.finite(den_phi_remap) || den_phi_remap <= 0) {
-#           stop(
-#             "Prior_Setup: require n_prior + n_effective > 2 for S_marg remap.",
-#             call. = FALSE
-#           )
-#         }
-#         if (!is.finite(E_phi_sigma2_special) || E_phi_sigma2_special <= 0) {
-#           stop(
-#             "Prior_Setup: E[sigma^2|y] for the S_marg path is missing or not positive.",
-#             call. = FALSE
-#           )
-#         }
-#         if (!is.finite(b_0_S_marg_formula) || b_0_S_marg_formula <= 0) {
-#           stop(
-#             "Prior_Setup: Gamma rate term b_0 from S_marg is missing or not positive.",
-#             call. = FALSE
-#           )
-#         }
-#         dispersion <- E_phi_sigma2_special
-#         Sigma <- (n_effective / n_prior) * dispersion * Ginv
-#         rownames(Sigma) <- var_names
-#         colnames(Sigma) <- var_names
-#         rate <- b_0_S_marg_formula
-#       }
-#     }
-#   }
-
   coefficients_mle <- coef(glm_full)
   coefficients <- coefficients_mle
   ## Default returned coefficients: closed-form posterior mean blend when available.
@@ -1475,49 +799,6 @@ if (!is.null(sd)) {
       names(coefficients) <- var_names
     }
   }
-
-  ## Temporary comparison of helper output vs current path output.
-#   if (identical(family$family, "gaussian") &&
-#       !is.null(.gauss_helper_preview)) {
-#     h <- .gauss_helper_preview
-#     scalar_line <- function(lbl, a, b) {
-#       if (!(is.finite(a) && is.finite(b))) {
-#         return(paste0("  ", lbl, ": old=", format(a, digits = 10),
-#                       ", helper=", format(b, digits = 10), ", diff=NA"))
-#       }
-#       d <- abs(a - b)
-#       r <- if (abs(a) > 0) d / abs(a) else d
-#       paste0(
-#         "  ", lbl, ": old=", format(a, digits = 10),
-#         ", helper=", format(b, digits = 10),
-#         ", |diff|=", format(d, digits = 10),
-#         ", rel=", format(r, digits = 10)
-#       )
-#     }
-#     sigma_abs_max <- NA_real_
-#     sigma_rel_max <- NA_real_
-#     if (is.matrix(Sigma) && is.matrix(h$Sigma) &&
-#         all(dim(Sigma) == dim(h$Sigma))) {
-#       dmat <- abs(Sigma - h$Sigma)
-#       sigma_abs_max <- max(dmat, na.rm = TRUE)
-#       denom <- max(abs(Sigma), na.rm = TRUE)
-#       sigma_rel_max <- if (is.finite(denom) && denom > 0) sigma_abs_max / denom else sigma_abs_max
-#     }
-#     message(
-#       "Prior_Setup temporary helper comparison (old path vs compute_gaussian_prior):\n",
-#       paste(
-#         c(
-#           scalar_line("dispersion", dispersion, h$dispersion),
-#           scalar_line("shape", shape, h$shape),
-#           scalar_line("rate", rate, h$rate),
-#           paste0("  Sigma max|diff|=", format(sigma_abs_max, digits = 10),
-#                  ", max rel=", format(sigma_rel_max, digits = 10)),
-#           paste0("  helper remap_applied=", h$diag$remap_applied)
-#         ),
-#         collapse = "\n"
-#       )
-#     )
-#   }
 
   ## Temporary switchover: source returned Gaussian scale/hyperparameters from helper.
   ## Keep old path above for comparison during refactor validation.
@@ -1568,8 +849,7 @@ compute_gaussian_prior <- function(
     mu,
     Sigma_0,
     n_prior,
-    shape_df = c("n_prior", "n_prior+p", "n_prior-p"),
-    apply_smarg_remap = TRUE
+    shape_df = c("n_prior", "n_prior+p", "n_prior-p")
 ) {
   shape_df <- match.arg(shape_df)
 
@@ -1604,7 +884,7 @@ compute_gaussian_prior <- function(
     stop("compute_gaussian_prior: n_effective must be a single positive finite numeric value.", call. = FALSE)
   }
 
-  ## Weighted RSS and classical dispersion
+  ## Weighted RSS
   res <- as.numeric(Y) - as.numeric(X %*% bhat) - as.numeric(offset)
   rss_weighted <- sum(as.numeric(weights) * res^2)
   if (!is.finite(rss_weighted) || rss_weighted <= 0) {
@@ -1612,10 +892,6 @@ compute_gaussian_prior <- function(
   }
   if (n_effective <= 2) {
     stop("compute_gaussian_prior: require n_effective > 2 for Gaussian dispersion (denominator n_effective - 2).", call. = FALSE)
-  }
-  dispersion_classical <- rss_weighted / (n_effective - 2)
-  if (!is.finite(dispersion_classical) || dispersion_classical <= 0) {
-    stop("compute_gaussian_prior: dispersion_classical must be strictly positive.", call. = FALSE)
   }
 
   ## Gram and marginal SS (Sigma_0 is constant, per Chapter 11)
@@ -1641,7 +917,7 @@ compute_gaussian_prior <- function(
   }
   S_marg <- rss_weighted + quad
 
-  ## Gamma hyperparameters and special remap terms
+  ## Gamma hyperparameters and calibrated Gaussian scale terms
   n_shape_num <- switch(
     shape_df,
     "n_prior"   = n_prior,
@@ -1669,25 +945,16 @@ compute_gaussian_prior <- function(
     E_phi_sigma2_special <- S_marg * (n_effective + n_prior) / n_effective / den_phi
   }
 
-  remap_applied <- FALSE
-  dispersion <- dispersion_classical
-  rate <- dispersion_classical * (n_prior / 2)
+  if (!is.finite(E_phi_sigma2_special) || E_phi_sigma2_special <= 0) {
+    stop("compute_gaussian_prior: E[sigma^2|y] (special) is missing or not positive.", call. = FALSE)
+  }
+  if (!is.finite(b_0_S_marg_formula) || b_0_S_marg_formula <= 0) {
+    stop("compute_gaussian_prior: b_0 (special) is missing or not positive.", call. = FALSE)
+  }
+  dispersion <- E_phi_sigma2_special
+  rate <- b_0_S_marg_formula
   Sigma <- (n_effective / n_prior) * dispersion * Ginv
   dimnames(Sigma) <- list(colnames(X), colnames(X))
-
-  if (isTRUE(apply_smarg_remap)) {
-    if (!is.finite(E_phi_sigma2_special) || E_phi_sigma2_special <= 0) {
-      stop("compute_gaussian_prior: E[sigma^2|y] (special) is missing or not positive.", call. = FALSE)
-    }
-    if (!is.finite(b_0_S_marg_formula) || b_0_S_marg_formula <= 0) {
-      stop("compute_gaussian_prior: b_0 (special) is missing or not positive.", call. = FALSE)
-    }
-    dispersion <- E_phi_sigma2_special
-    rate <- b_0_S_marg_formula
-    Sigma <- (n_effective / n_prior) * dispersion * Ginv
-    dimnames(Sigma) <- list(colnames(X), colnames(X))
-    remap_applied <- TRUE
-  }
 
   list(
     dispersion = dispersion,
@@ -1696,14 +963,12 @@ compute_gaussian_prior <- function(
     Sigma = Sigma,
     diag = list(
       rss_weighted = rss_weighted,
-      dispersion_classical = dispersion_classical,
       Gm = Gm,
       Ginv = Ginv,
       S_marg = S_marg,
       b_0_S_marg_formula = b_0_S_marg_formula,
       den_phi = den_phi,
-      E_phi_sigma2_special = E_phi_sigma2_special,
-      remap_applied = remap_applied
+      E_phi_sigma2_special = E_phi_sigma2_special
     )
   )
 }
