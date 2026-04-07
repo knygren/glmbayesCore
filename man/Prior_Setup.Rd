@@ -64,11 +64,13 @@ The \code{factory-fresh} default is \code{na.omit}. Another possible value is \c
     of \code{model.matrix.default}.}
 
 \item{pwt}{Weight on the prior relative to the likelihood function at the maximum likelihood
-estimate. If supplied, this value is used directly. If \code{n_prior} is provided, it is
-calculated as \code{pwt = n_prior / (n_prior + n_likelihood)}, where \code{n_likelihood} is the
-effective number of likelihood observations. If \code{sd} is provided, \code{pwt} is computed
-from the prior standard deviations. If none of these are supplied, \code{pwt} defaults to
-\code{pwt_default_low} for models with fewer than 14 coefficients, and
+estimate. If supplied, this value is used directly (scalar or one value per coefficient).
+If \code{n_prior} is provided and \code{pwt} is still a \strong{scalar} and \code{sd} was \strong{not}
+supplied, \code{pwt} is set to \code{n_prior / (n_prior + n_effective)}. If \code{length(pwt) > 1}
+(including from \code{sd}) or \code{sd} was supplied, \code{n_prior} does \strong{not} overwrite
+\code{pwt}; it is used only as a scalar for Gamma / S_marg steps. If \code{sd} is provided,
+\code{pwt} is computed from the prior standard deviations. If none of these are supplied,
+\code{pwt} defaults to \code{pwt_default_low} for models with fewer than 14 coefficients, and
 \code{pwt_default_high} otherwise.}
 
 \item{pwt_default_low}{Default prior weight used when \code{pwt} is not supplied and the model
@@ -77,7 +79,11 @@ dimension is below 14. Defaults to 0.01.}
 \item{pwt_default_high}{Default prior weight used when \code{pwt} is not supplied and the model
 dimension is 14 or greater. Defaults to 0.05.}
 
-\item{n_prior}{Optional argument with number of prior observations (either a scalar or a vector). When provided, this is used together with the number of likelihood observations to compute pwt. If not provided but pwt is a scalar, it is computed as n_prior=n_likelihood*(pwt/(1-pwt)).}
+\item{n_prior}{Optional scalar effective prior sample size (on the \code{n_effective} scale).
+If provided with scalar \code{pwt} and without \code{sd}, \code{pwt} is recomputed from
+\code{n_prior}. With vector \code{pwt} or with \code{sd}, \code{pwt} is left unchanged and
+\code{n_prior} is used for the Gamma prior on precision and related Gaussian calibration only.
+If missing and \code{pwt} is scalar, \code{n_prior = (pwt/(1-pwt))*n_effective}.}
 
 \item{sd}{Optional vector argument with the prior standard deviations for the coefficients}
 
@@ -264,7 +270,8 @@ The inputs to \code{Prior_Setup()} fall into three conceptual categories:
 \strong{2. Prior variance-covariance specification}
 \itemize{
 \item \code{pwt}: prior weight relative to the likelihood. If scalar, used to compute Zellner's g-prior.
-\item \code{n_prior}: optional effective prior sample size. If provided, overrides \code{pwt}.
+\item \code{n_prior}: optional scalar effective prior sample size. Replaces scalar \code{pwt} only when
+\code{pwt} is scalar and \code{sd} is not used; otherwise supplies precision-prior / calibration only.
 \item \code{sd}: optional vector of prior standard deviations. If provided, used to compute \code{pwt}.
 \item \code{shape_df}: maps scalar \code{n_prior} and \code{p = ncol(x)} to the Gamma \strong{shape} on residual precision
 (see argument description and Details).
@@ -306,8 +313,9 @@ If \code{n_prior} is not provided, it is derived from \code{pwt} and \code{n_eff
 \deqn{n_{\mathrm{prior}} = \frac{pwt}{1 - pwt} \cdot n_{\mathrm{effective}}.}
 The field \code{n_likelihood} in \code{PriorSettings} is set equal to \code{n_effective} for compatibility.
 
-Likewise, if \code{n_prior} is provided, \code{pwt} is computed as:
+If \code{n_prior} is provided and \code{pwt} is still scalar and \code{sd} was not used, \code{pwt} is set to:
 \deqn{pwt = \frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}} + n_{\mathrm{effective}}}}
+(With vector \code{pwt} or with \code{sd}, \code{pwt} is not overwritten.)
 
 When applicable, \code{Prior_Setup()} computes the shape and rate parameters for a Gamma prior on the residual precision (inverse variance), used in
 compound prior families such as \code{dNormal_Gamma()}, \code{dIndependent_Normal_Gamma()}, and \code{dGamma()}. Let \eqn{p=\texttt{ncol}(x)}. The \strong{shape} is

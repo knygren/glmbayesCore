@@ -435,7 +435,7 @@ We now illustrate how to use the sd argument to manually specify prior uncertain
 
 
 ```{r Mt_cars_sd_Prior1}
-pscars7 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data =mtcars,sd=c(0.005,0.010,0.0015))  ## 
+pscars7 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data =mtcars,sd=c(0.005,0.010,0.0015),n_prior=(0.01/0.99)*32)  ## 
 pscars7
 ```
 
