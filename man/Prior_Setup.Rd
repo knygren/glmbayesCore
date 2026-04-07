@@ -19,6 +19,7 @@ Prior_Setup(
   pwt_default_high = 0.05,
   n_prior = NULL,
   sd = NULL,
+  dispersion = NULL,
   shape_df = c("n_prior", "n_prior+p", "n_prior-p"),
   disp_type = c("Post_mean", "OLS_mean"),
   intercept_source = c("null_model", "full_model"),
@@ -86,6 +87,10 @@ If provided with scalar \code{pwt} and without \code{sd}, \code{pwt} is recomput
 If missing and \code{pwt} is scalar, \code{n_prior = (pwt/(1-pwt))*n_effective}.}
 
 \item{sd}{Optional vector argument with the prior standard deviations for the coefficients}
+
+\item{dispersion}{Optional scalar dispersion override (default \code{NULL}).
+For now, this is documented as an optional argument used to scale the
+\code{Sigma} (variance-covariance) matrix; see Details for additional context.}
 
 \item{shape_df}{How the Gamma \strong{shape} on residual precision is built from the scalar
 \eqn{n_{\mathrm{prior}}} and the number of coefficients \eqn{p=\texttt{ncol}(x)}.

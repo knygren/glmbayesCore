@@ -25,6 +25,9 @@
 #' \code{n_prior} is used for the Gamma prior on precision and related Gaussian calibration only.
 #' If missing and \code{pwt} is scalar, \code{n_prior = (pwt/(1-pwt))*n_effective}.
 #' @param sd Optional vector argument with the prior standard deviations for the coefficients
+#' @param dispersion Optional scalar dispersion override (default \code{NULL}).
+#' For now, this is documented as an optional argument used to scale the
+#' \code{Sigma} (variance-covariance) matrix; see Details for additional context.
 #' @param shape_df How the Gamma **shape** on residual precision is built from the scalar
 #'   \eqn{n_{\mathrm{prior}}} and the number of coefficients \eqn{p=\texttt{ncol}(x)}.
 #'   Here **df** means the **numerator** (effective prior count) before dividing by 2 for the
@@ -307,6 +310,7 @@ Prior_Setup <- function(
     pwt_default_high = 0.05,     # new: high-d default
     n_prior     = NULL,
     sd          = NULL,
+    dispersion  = NULL,
     shape_df    = c("n_prior", "n_prior+p", "n_prior-p"),
     disp_type   = c("Post_mean", "OLS_mean"),
     intercept_source = c("null_model", "full_model"),
@@ -316,11 +320,21 @@ Prior_Setup <- function(
   
   {
 
+  ## ---------------------------------------------------------------------------
+  ## Step 1: Parse and normalize top-level arguments.
+  ## ---------------------------------------------------------------------------
   call <- match.call()  
   intercept_source <- match.arg(intercept_source)
   effects_source <- match.arg(effects_source)
   shape_df <- match.arg(shape_df)
   disp_type <- match.arg(disp_type)
+  if (!is.null(dispersion)) {
+    if (!is.numeric(dispersion) || length(dispersion) != 1L ||
+        !is.finite(dispersion) || dispersion <= 0) {
+      stop("dispersion must be NULL or a single positive finite numeric value.")
+    }
+  }
+  dispersion_input <- dispersion
   
   
   
@@ -339,6 +353,9 @@ Prior_Setup <- function(
   
   if (missing(data))   data <- environment(formula)
   
+  ## ---------------------------------------------------------------------------
+  ## Step 2: Build model frame / response / design matrix.
+  ## ---------------------------------------------------------------------------
   mf <- match.call(expand.dots = FALSE)
   m <- match(c("formula", "data", "subset", "weights", "na.action", 
                "etastart", "mustart", "offset"), names(mf), 0L)
@@ -368,6 +385,9 @@ Prior_Setup <- function(
 ##  X <- if (!is.empty.model(mt)) model.matrix(mt, mf, contrasts) else matrix(, NROW(Y), 0L)
   X <- if (!is.empty.model(mt)) model.matrix(mt, mf, ...) else matrix(, NROW(Y), 0L)
   
+  ## ---------------------------------------------------------------------------
+  ## Step 3: Resolve weights and effective sample size.
+  ## ---------------------------------------------------------------------------
   ## --- WEIGHT HANDLING -------------------------------------------------------
   
   # Extract raw weights from the model frame (may be NULL)
@@ -440,6 +460,10 @@ Prior_Setup <- function(
   
   nvar=ncol(x)
   
+  ## ---------------------------------------------------------------------------
+  ## Step 4: Resolve prior-weight inputs (pwt, sd, n_prior).
+  ## Shared by Gaussian and non-Gaussian families.
+  ## ---------------------------------------------------------------------------
   if (is.null(pwt)) {
     pwt <- if (nvar < 14) pwt_default_low else pwt_default_high
     ## n_prior (later) recomputes pwt; avoid implying the default applies.
@@ -473,6 +497,9 @@ Prior_Setup <- function(
   mu_internal <- matrix(0, nrow = nvar, ncol = 1, dimnames = list(var_names, "mu"))
  
   
+  ## ---------------------------------------------------------------------------
+  ## Step 5: Fit full GLM and extract baseline covariance (V0).
+  ## ---------------------------------------------------------------------------
   
 
   glm_full <- glm.fit(
@@ -554,6 +581,10 @@ if (!is.null(sd)) {
     )
   }
 
+  ## ---------------------------------------------------------------------------
+  ## Step 6: Family-specific dispersion baseline.
+  ## Gaussian: weighted RSS ratio; Gamma: MASS::gamma.dispersion; else NULL.
+  ## ---------------------------------------------------------------------------
   ## --- CONDITIONAL DISPERSION (Gaussian): explicit ratio from glm.fit object -----
   ## Uses stats::glm.fit (not glm()). Default: dispersion = RSS_w / (n_effective - 2).
   ## # Old MLE-style ratio (retained for reference, not used):
@@ -618,6 +649,10 @@ if (!is.null(sd)) {
     )
   }
 
+  ## ---------------------------------------------------------------------------
+  ## Step 7: Construct prior mean vector mu.
+  ## Intercept and effects can be sourced from null/full model unless user sets mu.
+  ## ---------------------------------------------------------------------------
   if (var_names[1] == "(Intercept)") {
     # build 1-column design matrix for intercept only
     X0 <- matrix(1, nrow = NROW(Y), ncol = 1,
@@ -680,6 +715,10 @@ if (!is.null(sd)) {
   }
   
     
+  ## ---------------------------------------------------------------------------
+  ## Step 8: Build prior covariance Sigma from pwt and V0.
+  ## Scalar pwt gives Zellner scaling; vector pwt applies element-wise scaling.
+  ## ---------------------------------------------------------------------------
   
 #  Sigma=as.matrix(diag(nvar))
  
@@ -701,6 +740,10 @@ if (!is.null(sd)) {
   rownames(Sigma)=var_names
   colnames(Sigma)=var_names
 
+  ## ---------------------------------------------------------------------------
+  ## Step 9: Build Gamma(shape, rate) hyperparameters when available.
+  ## For Gaussian this provides precision-prior terms used in calibration.
+  ## ---------------------------------------------------------------------------
   ## Gamma on precision: shape = n_shape_num/2, rate = dispersion * (n_prior/2).
   ## n_shape_num from shape_df: n_prior, n_prior+p, or n_prior-p (latter needs n_prior > p).
   ## Rate uses n_prior/2 always so n_prior+p matches "shape += p/2, rate unchanged" vs n_prior.
@@ -736,10 +779,14 @@ if (!is.null(sd)) {
     rate <- NULL
   }
 
+  ## ---------------------------------------------------------------------------
+  ## Step 10 (Gaussian): run Gaussian calibration pipeline and replace outputs.
+  ## compute_gaussian_prior() returns calibrated dispersion/shape/rate/Sigma.
+  ## ---------------------------------------------------------------------------
   ## --- S_marg_new / S_marg_sigma0_vcov before Post_mean / Nelder (full Sigma_pre_nm: scalar or vector pwt)
   ## Sigma_0 = Sigma_pre_nm / d with d = d_OLS or d_vcov = summary(glm)$dispersion (cancels vcov scale in V0).
   ## S_marg keeps the same value for downstream b_0 / remap logic (identical to S_marg_new here).
-  ## Legacy old-path temporaries (commented out while helper path is active).
+  ## Legacy old-path temporaries (commented out while calibration path is active).
 #   S_marg <- NA_real_
 #   S_marg_new <- NA_real_
 #   S_marg_sigma0_vcov <- NA_real_
@@ -762,6 +809,7 @@ if (!is.null(sd)) {
         Y = Y,
         weights = w_h,
         offset = off_h,
+        dispersion = dispersion_input,
         n_effective = n_effective,
         bhat = bhat_h,
         mu = mu,
@@ -800,7 +848,8 @@ if (!is.null(sd)) {
     }
   }
 
-  ## Temporary switchover: source returned Gaussian scale/hyperparameters from helper.
+  ## Temporary switchover: source returned Gaussian scale/hyperparameters from
+  ## compute_gaussian_prior().
   ## Keep old path above for comparison during refactor validation.
   if (identical(family$family, "gaussian") &&
       !is.null(.gauss_helper_preview)) {
@@ -812,6 +861,9 @@ if (!is.null(sd)) {
     colnames(Sigma) <- var_names
   }
   
+  ## ---------------------------------------------------------------------------
+  ## Step 11: Assemble and return PriorSetup object.
+  ## ---------------------------------------------------------------------------
   prior_list <- list(
     mu = mu,
     Sigma = Sigma,
@@ -838,142 +890,6 @@ if (!is.null(sd)) {
   return(prior_list)
   
 }
-
-compute_gaussian_prior <- function(
-    X,
-    Y,
-    weights,
-    offset,
-    n_effective,
-    bhat,
-    mu,
-    Sigma_0,
-    n_prior,
-    shape_df = c("n_prior", "n_prior+p", "n_prior-p")
-) {
-  shape_df <- match.arg(shape_df)
-
-  n_obs <- NROW(Y)
-  if (!is.matrix(X) || NROW(X) != n_obs) {
-    stop("compute_gaussian_prior: X must be a matrix with nrow(X) == length(Y).", call. = FALSE)
-  }
-  if (!is.numeric(Y) || length(Y) != n_obs) {
-    stop("compute_gaussian_prior: Y must be a numeric vector with length equal to nrow(X).", call. = FALSE)
-  }
-  if (!is.numeric(weights) || length(weights) != n_obs) {
-    stop("compute_gaussian_prior: weights must be a numeric vector with length equal to nrow(X).", call. = FALSE)
-  }
-  if (!is.numeric(offset) || length(offset) != n_obs) {
-    stop("compute_gaussian_prior: offset must be a numeric vector with length equal to nrow(X).", call. = FALSE)
-  }
-  p <- NCOL(X)
-  if (!is.numeric(bhat) || length(bhat) != p || any(!is.finite(bhat))) {
-    stop("compute_gaussian_prior: bhat must be a finite numeric vector with length ncol(X).", call. = FALSE)
-  }
-  mu_num <- as.numeric(mu)
-  if (length(mu_num) != p || any(!is.finite(mu_num))) {
-    stop("compute_gaussian_prior: mu must be a finite numeric vector with length ncol(X).", call. = FALSE)
-  }
-  if (!is.matrix(Sigma_0) || nrow(Sigma_0) != p || ncol(Sigma_0) != p || anyNA(Sigma_0)) {
-    stop("compute_gaussian_prior: Sigma_0 must be a numeric [p x p] matrix with no missing values.", call. = FALSE)
-  }
-  if (!is.numeric(n_prior) || length(n_prior) != 1L || !is.finite(n_prior) || n_prior <= 0) {
-    stop("compute_gaussian_prior: n_prior must be a single positive finite numeric value.", call. = FALSE)
-  }
-  if (!is.numeric(n_effective) || length(n_effective) != 1L || !is.finite(n_effective) || n_effective <= 0) {
-    stop("compute_gaussian_prior: n_effective must be a single positive finite numeric value.", call. = FALSE)
-  }
-
-  ## Weighted RSS
-  res <- as.numeric(Y) - as.numeric(X %*% bhat) - as.numeric(offset)
-  rss_weighted <- sum(as.numeric(weights) * res^2)
-  if (!is.finite(rss_weighted) || rss_weighted <= 0) {
-    stop("compute_gaussian_prior: weighted RSS must be strictly positive.", call. = FALSE)
-  }
-  if (n_effective <= 2) {
-    stop("compute_gaussian_prior: require n_effective > 2 for Gaussian dispersion (denominator n_effective - 2).", call. = FALSE)
-  }
-
-  ## Gram and marginal SS (Sigma_0 is constant, per Chapter 11)
-  XtW <- sweep(X, 1, as.numeric(weights), `*`)
-  Gm <- crossprod(XtW, X)
-  Ginv <- tryCatch(
-    solve(Gm),
-    error = function(e) {
-      stop("compute_gaussian_prior: cannot invert weighted Gram matrix X'WX. ", conditionMessage(e), call. = FALSE)
-    }
-  )
-  dlt <- matrix(bhat, ncol = 1L) - matrix(mu_num, ncol = 1L)
-  M <- Sigma_0 + Ginv
-  Mi <- tryCatch(
-    solve(M),
-    error = function(e) {
-      stop("compute_gaussian_prior: cannot invert Sigma_0 + (X'WX)^{-1}. ", conditionMessage(e), call. = FALSE)
-    }
-  )
-  quad <- as.numeric(crossprod(dlt, Mi %*% dlt))
-  if (!is.finite(quad) || quad < 0) {
-    stop("compute_gaussian_prior: S_marg quadratic form is not finite or nonnegative.", call. = FALSE)
-  }
-  S_marg <- rss_weighted + quad
-
-  ## Gamma hyperparameters and calibrated Gaussian scale terms
-  n_shape_num <- switch(
-    shape_df,
-    "n_prior"   = n_prior,
-    "n_prior+p" = n_prior + p,
-    "n_prior-p" = {
-      if (!is.finite(n_prior) || !is.finite(p) || n_prior <= p) {
-        stop(
-          "compute_gaussian_prior: shape_df = \"n_prior-p\" requires n_prior > p (number of coefficients). ",
-          "Got n_prior = ", n_prior, " and p = ", p, ".",
-          call. = FALSE
-        )
-      }
-      n_prior - p
-    }
-  )
-  shape <- n_shape_num / 2
-  if (!is.finite(shape) || shape <= 0) {
-    stop("compute_gaussian_prior: computed shape must be strictly positive.", call. = FALSE)
-  }
-
-  b_0_S_marg_formula <- 0.5 * (n_prior / n_effective) * S_marg
-  den_phi <- n_prior + n_effective - 2
-  E_phi_sigma2_special <- NA_real_
-  if (is.finite(den_phi) && den_phi > 0) {
-    E_phi_sigma2_special <- S_marg * (n_effective + n_prior) / n_effective / den_phi
-  }
-
-  if (!is.finite(E_phi_sigma2_special) || E_phi_sigma2_special <= 0) {
-    stop("compute_gaussian_prior: E[sigma^2|y] (special) is missing or not positive.", call. = FALSE)
-  }
-  if (!is.finite(b_0_S_marg_formula) || b_0_S_marg_formula <= 0) {
-    stop("compute_gaussian_prior: b_0 (special) is missing or not positive.", call. = FALSE)
-  }
-  dispersion <- E_phi_sigma2_special
-  rate <- b_0_S_marg_formula
-  Sigma <- (n_effective / n_prior) * dispersion * Ginv
-  dimnames(Sigma) <- list(colnames(X), colnames(X))
-
-  list(
-    dispersion = dispersion,
-    shape = shape,
-    rate = rate,
-    Sigma = Sigma,
-    diag = list(
-      rss_weighted = rss_weighted,
-      Gm = Gm,
-      Ginv = Ginv,
-      S_marg = S_marg,
-      b_0_S_marg_formula = b_0_S_marg_formula,
-      den_phi = den_phi,
-      E_phi_sigma2_special = E_phi_sigma2_special
-    )
-  )
-}
-
-
 
 #' @export
 #' @method print PriorSetup
