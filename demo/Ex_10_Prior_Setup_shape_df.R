@@ -24,41 +24,11 @@
 ##     so rate = (shape - 1) * d_np with d_np = summary(lm)$sigma^2 (RSS/(n-p)).
 ##     NG with shape_df "n_prior-p" has shape = (3-2)/2 = 0.5 < 1, so E[sigma^2]
 ##     calibration does not apply; section 2 uses Prior_Setup default rate for NG.
-##   * Sections 3-4 mirror 1-2 with disp_type = "Post_mean": Nelder-Mead adjusts
-##     (dispersion, lambda) so the *conjugate fragment's* identity for E[dispersion|y]
-##     holds jointly with the (1-pwt)*MLE + pwt*mu coefficient target.  That pins
-##     Prior_Setup$dispersion (and Sigma) used in lmb(); it does *not* force
-##     vcov(lmb) to equal vcov(lm) at finite pwt.
-##     Typical pattern (full_model mu, this script): Sec 3 NG often leaves d* equal to
-##     starting d0 = RSS/(n-2) which matches summary(lm)$sigma^2 here (p=2); Sec 3 ING
-##     lowers d* vs lm sigma^2 (larger Gamma shape from n_prior+p).  Sec 4 ING often
-##     gives d* = summary(lm)$sigma^2 on replicated data; Sec 4 NG can nudge d* slightly
-##     above d_np.  Ratios vcov(lmb)/vcov(lm) often stay below 1 on the diagonal; the
-##     (1-pwt)*vcov(lm) heuristic still tracks Sec 1 NG and Sec 2 ING well; Post_mean
-##     rows are not uniformly closer to raw lm than OLS_mean.
-##
-## Why Post_mean can move mean-diagonal vcov(lmb)/vcov(lm) *farther* from 1 than OLS_mean:
-##   * Nelder-Mead minimizes mismatch to the *conjugate fragment* (fixed-point dispersion
-##     and (1-pwt)*MLE+pwt*mu for beta in that fragment), not mismatch of *marginal*
-##     posterior Var(beta) from lmb() to vcov(lm).
-##   * Post_mean rewrites Sigma (lambda) and dispersion together; lmb() then integrates
-##     over tau (and uses the full NG / ING structure). A good d* for the fragment need
-##     not imply the same marginal beta spread as the OLS_mean prior parameterization.
-##   * Example: Sec 3 ING lowers d* vs summary(lm)$sigma^2, which pulls uncertainty down
-##     vs the OLS_mean path with the same pwt. Sec 3 NG often leaves d* at the OLS_mean
-##     plug-in but still changes nothing if lambda is flat; small MC noise can reorder
-##     ratios slightly vs Sec 1.
-##
-## End of script: summary table - vcov ratios, target_df_denom, post_mean_disp,
-## disp_vs_lm = E_post[sigma^2]/dispersion_lm.  post_mean_prec = E_post[1/sigma^2] via
-## mean(1/dispersion draws).  prec_vs_lm = post_mean_prec / (1/dispersion_lm); not 1/disp_vs_lm.
-## Summary table includes n_over_n_plus_nprior = n/(n+n_prior) between vs_lm and vs_scaled,
-## then prior_setup_dispersion = Prior_Setup()$dispersion (Gaussian plug-in / Post_mean optimum).
 ##
 ## MC draws: n_mc = 100000 for stable vcov(lmb).  Early output includes a "scaled
 ## vcov(lm)" = vcov(lm) * (1 - pwt): heuristic when posterior beta precision scales
-## like 1/(1-pwt) under the Zellner setup (Sections 1,3: pwt = 0.01; Sections 2,4: pwt
-## from n_prior_sec2 and n_effective = 100 after 5-fold replication).  Congruence summaries use
+## like 1/(1-pwt) under the Zellner setup (section 1: pwt = 0.01; section 2: pwt from
+## n_prior_sec2 and n_effective = 100 after 5-fold replication).  Congruence summaries use
 ## M = U^{-T} vcov(lmb) U^{-1} with vcov(lm) = U'U (chol); eigenvalues of M replace
 ## elementwise ratios for a matrix-consistent scale comparison.
 ##
@@ -89,26 +59,6 @@ congruence_line <- function(V_post, label, V_base, base_label) {
     format(mean(ev), digits = 6),
     format(max(ev), digits = 6)
   )
-}
-
-## Posterior mean dispersion (sigma^2) from lmb: mean of MC draws in $dispersion.
-post_mean_lmb_dispersion <- function(fit) {
-  d <- fit$dispersion
-  if (length(d) == 1L) as.numeric(d) else mean(as.numeric(d))
-}
-
-## Posterior expected data precision E[tau | y], tau = 1/sigma^2: MC mean of 1/dispersion.
-## Not 1/E[sigma^2] and not derived from disp_vs_lm (Jensen: E[1/d] != 1/E[d]).
-post_mean_lmb_precision <- function(fit) {
-  d <- fit$dispersion
-  if (length(d) == 1L) {
-    d1 <- as.numeric(d)
-    if (!is.finite(d1) || d1 <= 0) stop("lmb dispersion must be finite and positive.")
-    return(1 / d1)
-  }
-  dd <- as.numeric(d)
-  if (any(!is.finite(dd) | dd <= 0)) stop("lmb dispersion draws must be finite and positive.")
-  mean(1 / dd)
 }
 
 ctl <- c(4.17, 5.58, 5.18, 6.11, 4.50, 4.61, 5.17, 4.53, 5.33, 5.14)
@@ -176,7 +126,6 @@ cat("######################################################################\n")
 
 p1_ng <- Prior_Setup(
   weight ~ group,
-  disp_type = "OLS_mean",
   pwt = 0.01,
   shape_df = "n_prior",
   intercept_source = "full_model",
@@ -185,7 +134,6 @@ p1_ng <- Prior_Setup(
 
 p1_ing <- Prior_Setup(
   weight ~ group,
-  disp_type = "OLS_mean",
   pwt = 0.01,
   shape_df = "n_prior+p",
   intercept_source = "full_model",
@@ -283,7 +231,6 @@ cat("######################################################################\n")
 
 p2_ing <- Prior_Setup(
   weight_s2 ~ group_s2,
-  disp_type = "OLS_mean",
   n_prior = n_prior_sec2,
   shape_df = "n_prior",
   intercept_source = "full_model",
@@ -292,7 +239,6 @@ p2_ing <- Prior_Setup(
 
 p2_ng <- Prior_Setup(
   weight_s2 ~ group_s2,
-  disp_type = "OLS_mean",
   n_prior = n_prior_sec2,
   shape_df = "n_prior-p",
   intercept_source = "full_model",
@@ -394,321 +340,6 @@ cat(congruence_line(vcov(fit_p2_ng), "NG (n_prior-p)", V_lm_s2, "vcov(lm_s2)"), 
 cat(congruence_line(vcov(fit_p2_ing), "ING (default)", V_lm_scaled_s2, "scaled vcov(lm_s2)"), "\n", sep = "")
 cat(congruence_line(vcov(fit_p2_ng), "NG (n_prior-p)", V_lm_scaled_s2, "scaled vcov(lm_s2)"), "\n", sep = "")
 
-## ----- Section 3: same as section 1 but disp_type = "Post_mean" -----
-## Prior_Setup runs Nelder-Mead so E[dispersion|y] matches the conjugate fragment;
-## returned dispersion, Sigma, rate are used as-is in lmb().
-
-cat("\n")
-cat("######################################################################\n")
-cat("# Section 3: like Section 1, disp_type = Post_mean (fixed-point d)   #\n")
-cat("#   dNormal_Gamma: default shape_df; ING: shape_df = n_prior+p       #\n")
-cat("#   pwt = 0.01; compare posterior dispersion / vcov to classical lm  #\n")
-cat("######################################################################\n")
-
-p3_ng <- Prior_Setup(
-  weight ~ group,
-  disp_type = "Post_mean",
-  pwt = 0.01,
-  shape_df = "n_prior",
-  intercept_source = "full_model",
-  effects_source = "full_model"
-)
-
-p3_ing <- Prior_Setup(
-  weight ~ group,
-  disp_type = "Post_mean",
-  pwt = 0.01,
-  shape_df = "n_prior+p",
-  intercept_source = "full_model",
-  effects_source = "full_model"
-)
-
-fit_p3_ng <- lmb(
-  weight ~ group,
-  pfamily = dNormal_Gamma(
-    p3_ng$mu,
-    p3_ng$Sigma / p3_ng$dispersion,
-    shape = p3_ng$shape,
-    rate = p3_ng$rate
-  ),
-  n = n_mc
-)
-
-fit_p3_ing <- lmb(
-  weight ~ group,
-  pfamily = dIndependent_Normal_Gamma(
-    p3_ing$mu,
-    p3_ing$Sigma,
-    shape = p3_ing$shape,
-    rate = p3_ing$rate
-  ),
-  n = n_mc
-)
-
-cat("\n======== Section 3: Prior_Setup dispersion (Post_mean fixed point) vs lm =========\n")
-cat(
-  "summary(lm)$sigma^2 (RSS/(n-p)) =", format(as.numeric(summary(fit_lm)$sigma^2), digits = 8), "\n"
-)
-cat("dNormal_Gamma:        Prior_Setup$dispersion =", format(p3_ng$dispersion, digits = 8), "\n")
-cat("dIndep_Normal_Gamma:  Prior_Setup$dispersion =", format(p3_ing$dispersion, digits = 8), "\n")
-
-cat("\n======== Section 3: posterior vcov(lmb) =========\n")
-cat("dNormal_Gamma (default shape_df, Post_mean):\n")
-print(vcov(fit_p3_ng))
-cat("\ndIndependent_Normal_Gamma (n_prior+p, Post_mean):\n")
-print(vcov(fit_p3_ing))
-
-cat("\n======== Section 3: ratios vcov(lmb) / vcov(lm) =========\n")
-R3_ng <- vcov(fit_p3_ng) / V_lm
-R3_ing <- vcov(fit_p3_ing) / V_lm
-cat("dNormal_Gamma:\n")
-print(R3_ng)
-cat("dIndependent_Normal_Gamma (n_prior+p):\n")
-print(R3_ing)
-cat(sprintf(
-  "Mean diagonal ratio vs lm:  NG %5.3f;  ING (n_prior+p) %5.3f\n",
-  mean(diag(R3_ng)),
-  mean(diag(R3_ing))
-))
-R3_ng_s <- vcov(fit_p3_ng) / V_lm_scaled_s1
-R3_ing_s <- vcov(fit_p3_ing) / V_lm_scaled_s1
-cat("\nSection 3: vcov(lmb) / scaled vcov(lm):\n")
-cat(sprintf(
-  "Mean diagonal vs scaled:  NG %5.3f;  ING (n_prior+p) %5.3f\n",
-  mean(diag(R3_ng_s)),
-  mean(diag(R3_ing_s))
-))
-
-cat("\nSection 3: congruence vs vcov(lm) / scaled:\n")
-cat(congruence_line(vcov(fit_p3_ng), "NG Post_mean", V_lm, "vcov(lm)"), "\n", sep = "")
-cat(congruence_line(vcov(fit_p3_ing), "ING Post_mean", V_lm, "vcov(lm)"), "\n", sep = "")
-cat(congruence_line(vcov(fit_p3_ng), "NG Post_mean", V_lm_scaled_s1, "scaled vcov(lm)"), "\n", sep = "")
-cat(congruence_line(vcov(fit_p3_ing), "ING Post_mean", V_lm_scaled_s1, "scaled vcov(lm)"), "\n", sep = "")
-
-## ----- Section 4: same as section 2 but disp_type = "Post_mean" -----
-## Use Prior_Setup outputs (no manual Gamma rate override).
-
-cat("\n")
-cat("######################################################################\n")
-cat("# Section 4: like Section 2, disp_type = Post_mean                   #\n")
-cat("#   Replicated n = 100, n_prior = 3; ING default / NG n_prior-p      #\n")
-cat("######################################################################\n")
-
-p4_ing <- Prior_Setup(
-  weight_s2 ~ group_s2,
-  disp_type = "Post_mean",
-  n_prior = n_prior_sec2,
-  shape_df = "n_prior",
-  intercept_source = "full_model",
-  effects_source = "full_model"
-)
-
-p4_ng <- Prior_Setup(
-  weight_s2 ~ group_s2,
-  disp_type = "Post_mean",
-  n_prior = n_prior_sec2,
-  shape_df = "n_prior-p",
-  intercept_source = "full_model",
-  effects_source = "full_model"
-)
-
-fit_p4_ing <- lmb(
-  weight_s2 ~ group_s2,
-  pfamily = dIndependent_Normal_Gamma(
-    p4_ing$mu,
-    p4_ing$Sigma,
-    shape = p4_ing$shape,
-    rate = p4_ing$rate
-  ),
-  n = n_mc
-)
-
-fit_p4_ng <- lmb(
-  weight_s2 ~ group_s2,
-  pfamily = dNormal_Gamma(
-    p4_ng$mu,
-    p4_ng$Sigma / p4_ng$dispersion,
-    shape = p4_ng$shape,
-    rate = p4_ng$rate
-  ),
-  n = n_mc
-)
-
-cat("\n======== Section 4: Prior_Setup dispersion (Post_mean) vs lm_s2 =========\n")
-cat(
-  "summary(lm_s2)$sigma^2 =", format(as.numeric(summary(fit_lm_s2)$sigma^2), digits = 8), "\n"
-)
-cat("dIndependent_Normal_Gamma: Prior_Setup$dispersion =", format(p4_ing$dispersion, digits = 8), "\n")
-cat("dNormal_Gamma (n_prior-p): Prior_Setup$dispersion =", format(p4_ng$dispersion, digits = 8), "\n")
-
-cat("\n======== Section 4: posterior vcov(lmb) =========\n")
-cat("dIndependent_Normal_Gamma (Post_mean):\n")
-print(vcov(fit_p4_ing))
-cat("\ndNormal_Gamma (n_prior-p, Post_mean):\n")
-print(vcov(fit_p4_ng))
-
-cat("\n======== Section 4: ratios vcov(lmb) / vcov(lm_s2) =========\n")
-R4_ing <- vcov(fit_p4_ing) / V_lm_s2
-R4_ng <- vcov(fit_p4_ng) / V_lm_s2
-cat("dIndependent_Normal_Gamma:\n")
-print(R4_ing)
-cat("dNormal_Gamma (n_prior-p):\n")
-print(R4_ng)
-cat(sprintf(
-  "Mean diagonal ratio vs lm:  ING %5.3f;  NG (n_prior-p) %5.3f\n",
-  mean(diag(R4_ing)),
-  mean(diag(R4_ng))
-))
-R4_ing_s <- vcov(fit_p4_ing) / V_lm_scaled_s2
-R4_ng_s <- vcov(fit_p4_ng) / V_lm_scaled_s2
-cat("\nSection 4: vcov(lmb) / scaled vcov(lm_s2):\n")
-cat(sprintf(
-  "Mean diagonal vs scaled:  ING %5.3f;  NG (n_prior-p) %5.3f\n",
-  mean(diag(R4_ing_s)),
-  mean(diag(R4_ng_s))
-))
-
-cat("\nSection 4: congruence vs vcov(lm_s2) / scaled:\n")
-cat(congruence_line(vcov(fit_p4_ing), "ING Post_mean", V_lm_s2, "vcov(lm_s2)"), "\n", sep = "")
-cat(congruence_line(vcov(fit_p4_ng), "NG Post_mean", V_lm_s2, "vcov(lm_s2)"), "\n", sep = "")
-cat(congruence_line(vcov(fit_p4_ing), "ING Post_mean", V_lm_scaled_s2, "scaled vcov(lm_s2)"), "\n", sep = "")
-cat(congruence_line(vcov(fit_p4_ng), "NG Post_mean", V_lm_scaled_s2, "scaled vcov(lm_s2)"), "\n", sep = "")
-
-cat("\n")
-cat("######################################################################\n")
-cat("# Summary table: vcov ratios, posterior dispersion & precision vs lm            #\n")
-cat("#   vs_lm  = mean(diag(vcov(lmb) / vcov(lm)))  [Sec 1,3: n=20 lm; 2,4: lm_s2] #\n")
-cat("#   n_over_n_plus_nprior = n/(n+n_prior), same n,prior scale as Prior_Setup pwt   #\n")
-cat("#   prior_setup_dispersion = Prior_Setup()$dispersion (point estimate for sigma^2)   #\n")
-cat("#   vs_scaled = vcov ratio vs (1-pwt)*vcov(lm); note (1-pwt) = n/(n+n_prior) here #\n")
-cat("#   target_df_denom = demo goal: n-p (Sec 1,3) vs n (Sec 2,4), not lm$df       #\n")
-cat("#   post_mean_disp = mean(lmb$dispersion) - posterior mean sigma^2 (MC)       #\n")
-cat("#   disp_vs_lm = post_mean_disp / summary(lm)$sigma^2  (posterior / lm variance) #\n")
-cat("#   post_mean_prec = E_post[data precision] = mean(1/dispersion draws), NOT 1/E[disp] #\n")
-cat("#   prec_vs_lm = post_mean_prec / (1/dispersion_lm); dispersion_lm = summary(lm)$sigma^2 #\n")
-cat("#     Denominator is lm data precision; do NOT use 1/disp_vs_lm.                    #\n")
-cat("#     Sec 1,3: fit_lm; Sec 2,4: fit_lm_s2.                                         #\n")
-cat("######################################################################\n")
-cat(
-  "\nPost_mean optimizes the fragment fixed point, not closeness of marginal lmb() vcov\n",
-  "to lm; column vs_lm can sit farther from 1 than OLS_mean rows (see header).\n\n",
-  sep = ""
-)
-
-d_lm_n20 <- as.numeric(summary(fit_lm)$sigma^2)
-d_lm_rep <- as.numeric(summary(fit_lm_s2)$sigma^2)
-## dispersion_lm = sigma^2_hat from lm (RSS/(n-p)); precision_lm = 1/dispersion_lm
-dispersion_lm_tbl <- c(
-  d_lm_n20, d_lm_n20, d_lm_rep, d_lm_rep,
-  d_lm_n20, d_lm_n20, d_lm_rep, d_lm_rep
-)
-precision_lm_tbl <- 1 / dispersion_lm_tbl
-
-n_eff_sec1 <- as.integer(stats::nobs(fit_lm))
-n_prior_sec1_impl <- (pwt_sec1 / (1 - pwt_sec1)) * n_eff_sec1
-n_over_nnp_sec1 <- n_eff_sec1 / (n_eff_sec1 + n_prior_sec1_impl)
-n_over_nnp_sec2 <- n_eff_s2 / (n_eff_s2 + n_prior_sec2)
-n_over_nnp_tbl <- c(
-  n_over_nnp_sec1, n_over_nnp_sec1,
-  n_over_nnp_sec2, n_over_nnp_sec2,
-  n_over_nnp_sec1, n_over_nnp_sec1,
-  n_over_nnp_sec2, n_over_nnp_sec2
-)
-
-ratio_summary <- data.frame(
-  section = c(1L, 1L, 2L, 2L, 3L, 3L, 4L, 4L),
-  disp_type = c(
-    "OLS_mean", "OLS_mean", "OLS_mean", "OLS_mean",
-    "Post_mean", "Post_mean", "Post_mean", "Post_mean"
-  ),
-  pfamily = c(
-    "NG (shape_df n_prior)",
-    "ING (n_prior+p)",
-    "ING (shape_df n_prior)",
-    "NG (n_prior-p)",
-    "NG (shape_df n_prior)",
-    "ING (n_prior+p)",
-    "ING (shape_df n_prior)",
-    "NG (n_prior-p)"
-  ),
-  target_df_denom = c("n-p", "n-p", "n", "n", "n-p", "n-p", "n", "n"),
-  vs_lm = c(
-    mean(diag(R1_ng)),
-    mean(diag(R1_ing)),
-    mean(diag(R2_ing)),
-    mean(diag(R2_ng)),
-    mean(diag(R3_ng)),
-    mean(diag(R3_ing)),
-    mean(diag(R4_ing)),
-    mean(diag(R4_ng))
-  ),
-  n_over_n_plus_nprior = n_over_nnp_tbl,
-  prior_setup_dispersion = c(
-    p1_ng$dispersion,
-    p1_ing$dispersion,
-    p2_ing$dispersion,
-    p2_ng$dispersion,
-    p3_ng$dispersion,
-    p3_ing$dispersion,
-    p4_ing$dispersion,
-    p4_ng$dispersion
-  ),
-  vs_scaled = c(
-    mean(diag(R1_ng_s)),
-    mean(diag(R1_ing_s)),
-    mean(diag(R2_ing_s)),
-    mean(diag(R2_ng_s)),
-    mean(diag(R3_ng_s)),
-    mean(diag(R3_ing_s)),
-    mean(diag(R4_ing_s)),
-    mean(diag(R4_ng_s))
-  ),
-  post_mean_disp = c(
-    post_mean_lmb_dispersion(fit_p1_ng),
-    post_mean_lmb_dispersion(fit_p1_ing),
-    post_mean_lmb_dispersion(fit_p2_ing),
-    post_mean_lmb_dispersion(fit_p2_ng),
-    post_mean_lmb_dispersion(fit_p3_ng),
-    post_mean_lmb_dispersion(fit_p3_ing),
-    post_mean_lmb_dispersion(fit_p4_ing),
-    post_mean_lmb_dispersion(fit_p4_ng)
-  ),
-  post_mean_prec = c(
-    post_mean_lmb_precision(fit_p1_ng),
-    post_mean_lmb_precision(fit_p1_ing),
-    post_mean_lmb_precision(fit_p2_ing),
-    post_mean_lmb_precision(fit_p2_ng),
-    post_mean_lmb_precision(fit_p3_ng),
-    post_mean_lmb_precision(fit_p3_ing),
-    post_mean_lmb_precision(fit_p4_ing),
-    post_mean_lmb_precision(fit_p4_ng)
-  ),
-  stringsAsFactors = FALSE
-)
-ratio_summary$vs_lm <- round(ratio_summary$vs_lm, 4)
-ratio_summary$n_over_n_plus_nprior <- round(ratio_summary$n_over_n_plus_nprior, 6)
-ratio_summary$prior_setup_dispersion <- round(ratio_summary$prior_setup_dispersion, 6)
-ratio_summary$vs_scaled <- round(ratio_summary$vs_scaled, 4)
-ratio_summary$disp_vs_lm <- round(ratio_summary$post_mean_disp / dispersion_lm_tbl, 4)
-ratio_summary$prec_vs_lm <- round(ratio_summary$post_mean_prec / precision_lm_tbl, 4)
-ratio_summary$post_mean_disp <- round(ratio_summary$post_mean_disp, 6)
-ratio_summary$post_mean_prec <- round(ratio_summary$post_mean_prec, 6)
-ratio_summary <- ratio_summary[c(
-  "section", "disp_type", "pfamily", "target_df_denom",
-  "vs_lm", "n_over_n_plus_nprior", "prior_setup_dispersion", "vs_scaled",
-  "post_mean_disp", "disp_vs_lm",
-  "post_mean_prec", "prec_vs_lm"
-)]
-print(ratio_summary, row.names = FALSE)
-cat(
-  "\nReference dispersion_lm = summary(lm)$sigma^2 (disp_vs_lm denominator):  n=20: ",
-  format(d_lm_n20, digits = 10),
-  " ; replicated: ", format(d_lm_rep, digits = 10), "\n",
-  "Reference 1/dispersion_lm = lm data precision (prec_vs_lm denominator):  n=20: ",
-  format(precision_lm_tbl[1L], digits = 10),
-  " ; replicated: ", format(precision_lm_tbl[3L], digits = 10), "\n",
-  sep = ""
-)
 cat("\nSee ?Prior_Setup, argument shape_df.\n")
 
 invisible(NULL)

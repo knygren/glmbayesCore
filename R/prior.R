@@ -59,10 +59,6 @@
 #'   }
 #'   Ignored when \code{shape} and \code{rate} are not computed (non-scalar \code{n_prior}, or
 #'   no dispersion for the family).
-#' @param disp_type For Gaussian models, how \code{dispersion} and \code{rate} are set.
-#'   \code{"Post_mean"} (default) chooses them so \code{dispersion} is **consistent with the
-#'   posterior distribution** for dispersion under the prior and data (see Details).
-#'   \code{"OLS_mean"} uses \eqn{\mathrm{RSS}_w/(n_{\mathrm{effective}}-2)}.
 #' @param intercept_source Specifies the method through which the prior mean for the intercept term is set. Options are based on the null intercept only model (null_model) or full_models. The default is the null model which is safer if variables are not centered. 
 #' @param effects_source Specifies the method through which the prior means for the effects terms are set. Options are null_effects (prior means set to zero) or full_model (effect means set to match maximum likelihood estimates).  
 #' @param mu Optional vector argument with the prior means for the coefficients
@@ -223,28 +219,20 @@
 #' \eqn{\texttt{rate}} is the same as for \code{shape_df = "n_prior"} with the same \eqn{n_{\mathrm{prior}}}
 #' and \code{dispersion}. This matches the common recipe for \code{\link{dIndependent_Normal_Gamma}}:
 #' increase Gamma **shape** by \eqn{p/2} while leaving **rate** at the \code{"n_prior"} value.
-#' With \code{disp_type = "Post_mean"}, the joint search updates \code{dispersion} and then sets
-#' \eqn{\texttt{rate} = (n_{\mathrm{prior}}/2)\cdot\texttt{dispersion}} at the optimum.
 #'    
-#' ### Gaussian dispersion and \code{disp_type}
+#' ### Gaussian dispersion
 #'
 #' For \code{family = gaussian()}, the function always computes a **classical** weighted
 #' residual-variance ratio from the internal \code{\link[stats]{glm.fit}} (not \code{\link[stats]{glm}}):
 #' with \eqn{\mathrm{RSS}_w = \sum_i w_i r_i^2} and \eqn{n_{\mathrm{effective}} = \sum_i w_i},
 #' \deqn{d_{\mathrm{OLS}} = \frac{\mathrm{RSS}_w}{n_{\mathrm{effective}} - 2}}
 #' requiring \eqn{n_{\mathrm{effective}} > 2}. This is **not**
-#' \code{summary(glm.fit(...))$dispersion}. That value is the **returned** \code{dispersion}
-#' when \code{disp_type = "OLS_mean"}; when \code{disp_type = "Post_mean"}, it is used only as an
-#' internal starting value.
+#' \code{summary(glm.fit(...))$dispersion}.
 #'
 #' If \code{n_prior} is available so a Gamma prior on precision is defined (\code{shape},
-#' \code{rate}), the returned \code{dispersion} and \code{rate} are set according to
-#' \code{disp_type}:
-#' * \code{disp_type = "Post_mean"} (default): choose \code{dispersion} and \code{rate} so the
-#'   prior's dispersion input is **consistent with the posterior distribution** for residual
-#'   dispersion (given the rest of the prior and the data).
-#' * \code{disp_type = "OLS_mean"}: return \eqn{d_{\mathrm{OLS}}} as \code{dispersion} and
-#'   \eqn{\mathrm{rate} = (n_{\mathrm{prior}}/2)\cdot \texttt{dispersion}} (for any \code{shape_df}).
+#' \code{rate}), the returned \code{dispersion} and \code{rate} are set by the
+#' Gaussian calibration pipeline and are internally consistent with the prior
+#' and data.
 #'
 #' The posterior shape and rate for residual precision (Gaussian sampling fragment) are:
 #' \deqn{\text{shape}_{\mathrm{post}} = \text{shape} + \frac{n_{\mathrm{effective}}}{2}
@@ -312,7 +300,6 @@ Prior_Setup <- function(
     sd          = NULL,
     dispersion  = NULL,
     shape_df    = c("n_prior", "n_prior+p", "n_prior-p"),
-    disp_type   = c("Post_mean", "OLS_mean"),
     intercept_source = c("null_model", "full_model"),
     effects_source   = c("null_effects",  "full_model"),
     mu          = NULL,  ...
@@ -327,7 +314,6 @@ Prior_Setup <- function(
   intercept_source <- match.arg(intercept_source)
   effects_source <- match.arg(effects_source)
   shape_df <- match.arg(shape_df)
-  disp_type <- match.arg(disp_type)
   if (!is.null(dispersion)) {
     if (!is.numeric(dispersion) || length(dispersion) != 1L ||
         !is.finite(dispersion) || dispersion <= 0) {
@@ -747,7 +733,7 @@ if (!is.null(sd)) {
   ## Gamma on precision: shape = n_shape_num/2, rate = dispersion * (n_prior/2).
   ## n_shape_num from shape_df: n_prior, n_prior+p, or n_prior-p (latter needs n_prior > p).
   ## Rate uses n_prior/2 always so n_prior+p matches "shape += p/2, rate unchanged" vs n_prior.
-  ## In `disp_type="Post_mean"`, `Sigma` is rescaled below; `dispersion` stays d_OLS and `rate` stays (n_prior/2)*dispersion.
+  ## Sigma may be rescaled below by Gaussian calibration; shape/rate use current dispersion.
   dispersion_for_shape_rate <- dispersion
   if (!is.null(n_prior) && length(n_prior) == 1L && !is.null(dispersion_for_shape_rate)) {
     ## n_prior is interpreted as effective prior sample size, on the same scale as sum(weights).

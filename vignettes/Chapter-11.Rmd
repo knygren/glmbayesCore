@@ -1565,34 +1565,14 @@ For Gaussian models with scalar `n_prior`, `Prior_Setup()` sets the prior Gamma
 \(d = \texttt{dispersion}\) returned by the function. In the notation above,
 \(b_{0} = \texttt{rate}\).
 
-- **`disp_type = "OLS_mean"`** fixes \(d\) at the **classical** weighted
-  residual-variance plug-in from the internal `glm.fit` object,
-  \(d_{\mathrm{OLS}} = \mathrm{RSS}_{w}/(n_{\mathrm{effective}}-2)\)
-  (see `?Prior_Setup`, Details). Then
-  \(b_{0} = (n_{\mathrm{prior}}/2)\, d_{\mathrm{OLS}}\) is directly tied to
-  that OLS-style estimate of \(\sigma^{2}\).
-
-- **`disp_type = "Post_mean"`** (the default) chooses \(d\) (together with the
-  joint scaling of the location prior) by a numerical search so that the
-  returned `dispersion` is **consistent with a posterior-mean target** for
-  residual dispersion under the prior fragment. The resulting \(d\) is
-  generally **not** equal to \(d_{\mathrm{OLS}}\), so \(b_{0}\) differs from
-  the `OLS_mean` path even when `pwt`, `shape_df`, and data are otherwise the
-  same.
-
-In both cases the **posterior** Gamma rate is
+The **posterior** Gamma rate is
 \(b_{n} = b_{0} + \frac{1}{2} S_{\mathrm{marg}}\). Thus a larger returned
 \(d\) increases \(b_{0}\) and, holding \(S_{\mathrm{marg}}\) fixed, would
 increase \(b_{n}\). In practice, for **`dNormal_Gamma`** the matrix passed to
 the sampler is **`Sigma / dispersion`**, so changing \(d\) also rescales the
 Normal--Gamma coupling of \(\beta\) given \(\tau\); the augmented least-squares
 step then produces a **different** \(S_{\mathrm{marg}}\) and posterior mean
-\(m_{\mathrm{post}}\) as well. The `OLS_mean` route therefore emphasizes a
-direct link to the classical \(\sigma^{2}\) plug-in for both the Gamma **rate**
-and the **g**-prior geometry, whereas `Post_mean` re-tunes \(d\) (and related
-quantities) for internal coherence, which moves **both** \(b_{0}\) and the
-term \(\frac{1}{2} S_{\mathrm{marg}}\) relative to the `OLS_mean`
-specification.
+\(m_{\mathrm{post}}\) as well.
 
 #### Special case: \(b_{0} = \frac{1}{2}(n_{\mathrm{prior}}/n_{w})\,S_{\mathrm{marg}}\)
 
