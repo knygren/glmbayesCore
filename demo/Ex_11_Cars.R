@@ -1,13 +1,17 @@
-## Prior_Setup Gaussian calibration: dNormal, dNormal_Gamma, dIndependent_Normal_Gamma
+## mtcars: Prior_Setup() - dNormal, dNormal_Gamma, dIndependent_Normal_Gamma
 ##
-## `Prior_Setup()` uses a single Gamma(shape, rate) calibration from `n_prior`
-## (shape = (n_prior+1)/2; see ?compute_gaussian_prior). `dNormal()` uses
-## `ps$Sigma` and `dispersion = ps$dispersion`. The same returned `rate`, `mu`,
-## `Sigma`, and `Sigma_0` apply to both `dNormal_Gamma()` and
-## `dIndependent_Normal_Gamma()`; for the latter, pass `shape = ps$shape + p/2`
-## with `p = ncol(ps$x)` (see ?Prior_Setup).
+## Uses `Prior_Setup()` with **`pwt = 0.001`** (weak prior; override defaults). Prior
+## mean **mu** uses the **full model** MLE for intercept
+## and effects (`intercept_source` / `effects_source` = `"full_model"`) so the
+## prior-mean penalty in `S_marg` is small and posterior variance is easier to
+## compare to **(1-pwt)*vcov(lm)** (scalar-pwt Zellner shrinkage of the likelihood
+## covariance; see Chapter A12).
 ##
-## Run: demo(Ex_10_Prior_Setup_shape_df, package = "glmbayes")
+## `dNormal()` uses `ps$Sigma` and **default** `dispersion = ps$dispersion`. 
+## `dIndependent_Normal_Gamma()` uses `shape = ps$shape + p/2` with `p = ncol(ps$x)`
+## (same `ps$rate` as `dNormal_Gamma()`); see `?Prior_Setup`.
+##
+## Run: demo(Ex_11_Cars, package = "glmbayes")
 
 library(glmbayes)
 
@@ -32,28 +36,50 @@ congruence_line <- function(V_post, label, V_base, base_label) {
   )
 }
 
-ctl <- c(4.17, 5.58, 5.18, 6.11, 4.50, 4.61, 5.17, 4.53, 5.33, 5.14)
-trt <- c(4.81, 4.17, 4.41, 3.59, 5.87, 3.83, 6.03, 4.89, 4.32, 4.69)
-group <- gl(2, 10, 20, labels = c("Ctl", "Trt"))
-weight <- c(ctl, trt)
+data("mtcars", package = "datasets")
+mt <- mtcars
+mt$c_wt  <- as.numeric(scale(mtcars$wt, center = TRUE, scale = FALSE))
+mt$c_cyl <- as.numeric(scale(mtcars$cyl, center = TRUE, scale = FALSE))
 
-n_mc <- 100000L
-pwt <- 0.001
-
-fit_lm <- lm(weight ~ group, x = TRUE, y = TRUE)
+form <- mpg ~ c_wt + c_cyl
+fit_lm <- lm(form, data = mt, x = TRUE, y = TRUE)
 V_lm <- vcov(fit_lm)
-V_lm_shrunk <- (1 - pwt) * V_lm
 
+pwt=0.001
+
+# Explicit full-model prior means (must match lmb() below - same ps)
 ps <- Prior_Setup(
-  weight ~ group,
+  form,
+  gaussian(),
+  data = mt,
   pwt = pwt,
   intercept_source = "full_model",
   effects_source = "full_model"
 )
 p <- ncol(ps$x)
+pwt <- ps$PriorSettings$pwt
+V_lm_shrunk <- (1 - pwt) * V_lm
+
+cat("\n======== Prior_Setup (pwt = 0.001, Gaussian) =========\n")
+print(ps$PriorSettings)
+cat("p =", p, "  ps$shape =", ps$shape, "  ps$shape + p/2 (ING) =", ps$shape + p / 2, "\n")
+
+n_mc <- 100000L
+
+fit_dn <- lmb(
+  form,
+  data = mt,
+  pfamily = dNormal(
+    mu = ps$mu,
+    Sigma = ps$Sigma,
+    dispersion = ps$dispersion
+  ),
+  n = n_mc
+)
 
 fit_ng <- lmb(
-  weight ~ group,
+  form,
+  data = mt,
   pfamily = dNormal_Gamma(
     ps$mu,
     Sigma_0 = ps$Sigma_0,
@@ -64,7 +90,8 @@ fit_ng <- lmb(
 )
 
 fit_ing <- lmb(
-  weight ~ group,
+  form,
+  data = mt,
   pfamily = dIndependent_Normal_Gamma(
     ps$mu,
     ps$Sigma,
@@ -74,18 +101,6 @@ fit_ing <- lmb(
   n = n_mc
 )
 
-fit_dn <- lmb(
-  weight ~ group,
-  pfamily = dNormal(
-    mu = ps$mu,
-    Sigma = ps$Sigma,
-    dispersion = ps$dispersion
-  ),
-  n = n_mc
-)
-
-cat("\n======== One Prior_Setup(); NG uses ps$shape; ING uses ps$shape + p/2 =========\n")
-cat("shape (NG) =", ps$shape, "  shape (ING) =", ps$shape + p / 2, "  rate =", ps$rate, "\n")
 
 cat("\n======== Classical vs. Posterior vcov(lmb) =========\n")
 cat("Classical Scaled:\n")

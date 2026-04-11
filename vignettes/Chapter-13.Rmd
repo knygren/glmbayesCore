@@ -85,7 +85,7 @@ for (i in seq_len(n_sim)) {
 ```
 
 ```{r dobson-compare}
-lmb_D9 <- lmb(weight ~ group, dIndependent_Normal_Gamma(mu, V, shape = shape, rate = rate))
+lmb_D9 <- lmb(weight ~ group, dIndependent_Normal_Gamma(mu, V, shape = shape + ncol(x) / 2, rate = rate))
 print(lmb_D9)
 
 ## Compare Gibbs vs lmb: means and SDs

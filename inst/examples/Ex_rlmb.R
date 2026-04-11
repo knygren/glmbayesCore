@@ -10,6 +10,7 @@ group  <- gl(2, 10, 20, labels = c("Ctl", "Trt"))
 weight <- c(ctl, trt)
 
 ps <- Prior_Setup(weight ~ group)
+p  <- ncol(ps$x)
 x  <- ps$x
 mu <- ps$mu
 V  <- ps$Sigma
@@ -72,7 +73,7 @@ print(coda::effectiveSize(mcmc_two_block)["dispersion"])
 ## Same model using the lmb function
 
 lmb.D9 <- lmb(n= 4000,weight  ~ group,
-  pfamily = dIndependent_Normal_Gamma(ps$mu, ps$Sigma,shape = ps$shape,rate  = ps$rate))
+  pfamily = dIndependent_Normal_Gamma(ps$mu, ps$Sigma, shape = ps$shape + p / 2, rate  = ps$rate))
 
 ## lmb summary
 summary(lmb.D9)

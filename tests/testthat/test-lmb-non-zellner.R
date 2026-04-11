@@ -9,6 +9,7 @@ test_that("lmb: Independent Normal-Gamma with scaled diagonal Sigma (non-Zellner
   weight <- c(ctl, trt)
 
   ps <- Prior_Setup(weight ~ group, gaussian())
+  p <- ncol(ps$x)
   Sigma_non_zellner <- 0.001 * diag(diag(ps$Sigma))
 
   fit <- lmb(
@@ -16,7 +17,7 @@ test_that("lmb: Independent Normal-Gamma with scaled diagonal Sigma (non-Zellner
     dIndependent_Normal_Gamma(
       ps$mu,
       Sigma_non_zellner,
-      shape = ps$shape,
+      shape = ps$shape + p / 2,
       rate  = ps$rate
     ),
     n = 500L,
@@ -30,7 +31,7 @@ test_that("lmb: Independent Normal-Gamma with scaled diagonal Sigma (non-Zellner
   expect_true(all(is.finite(fit$coef.means)))
 })
 
-test_that("Prior_Setup shape_df n_prior+p: shape += p/2, same calibrated dispersion", {
+test_that("Prior_Setup Gaussian calibration: shape from n_prior, E[sigma^2|y] = dispersion", {
   ctl <- c(4.17, 5.58)
   trt <- c(4.81, 4.17)
   group <- gl(2, 2, 4)
@@ -38,25 +39,13 @@ test_that("Prior_Setup shape_df n_prior+p: shape += p/2, same calibrated dispers
   ps <- Prior_Setup(
     weight ~ group,
     gaussian(),
-    pwt = 0.01,
-    shape_df = "n_prior"
+    pwt = 0.01
   )
   p <- ncol(ps$x)
   n_w <- ps$PriorSettings$n_effective
+  n_prior <- ps$PriorSettings$n_prior
   S_marg <- ps$dispersion * (n_w - p)
-  ps1 <- Prior_Setup(
-    weight ~ group,
-    gaussian(),
-    pwt = 0.01,
-    shape_df = "n_prior+p"
-  )
-  ## Prior Gamma(shape, rate) on precision; posterior E[sigma^2|y] = (rate + S_marg/2)/(shape + n_w/2 - 1)
-  ## is calibrated to dispersion for both shape_df settings, but rate differs (see compute_gaussian_prior).
-  post_mean_sigma2 <- function(ps) {
-    (ps$rate + S_marg / 2) / (ps$shape + n_w / 2 - 1)
-  }
-  expect_equal(ps1$shape, ps$shape + p / 2)
-  expect_equal(ps1$dispersion, ps$dispersion)
-  expect_equal(post_mean_sigma2(ps), ps$dispersion)
-  expect_equal(post_mean_sigma2(ps1), ps$dispersion)
+  expect_equal(ps$shape, (n_prior + 1) / 2)
+  post_mean_sigma2 <- (ps$rate + S_marg / 2) / (ps$shape + n_w / 2 - 1)
+  expect_equal(post_mean_sigma2, ps$dispersion)
 })

@@ -562,12 +562,13 @@ stopifnot(
 ```
 
 ```{r Independent_normal_gamma_prior, eval = FALSE}
+p <- ncol(ps$x)
 lmb.D9_v3 <- lmb(n = 10000,
   weight ~ group,
   dIndependent_Normal_Gamma(
     ps$mu,
     ps$Sigma,
-    shape = ps$shape,
+    shape = ps$shape + p / 2,
     rate  = ps$rate,
     max_disp_perc = 0.99,
     disp_lower = NULL,
@@ -1549,7 +1550,7 @@ then \((1-pwt)\to 1\) **and** \(G^{-1}\) typically scales as \(O(1/n_{w})\), so
 prior contributes negligibly to precision.
 
 With `Prior_Setup()` defaults for the Gamma on \(\tau\),
-\(a_{0} = n_{\mathrm{prior}}/2\) for `shape_df = "n_prior"`, so
+\(a_{0} = n_{\mathrm{prior}}/2\) in the pre-calibration Step 9 rate scaling, so
 \(a_{n} = (n_{\mathrm{prior}} + n_{w})/2\); the prior rate is
 \(b_{0} = (n_{\mathrm{prior}}/2)\, d\) with `dispersion` \(d\) returned by
 `Prior_Setup()` (see Section 3.2 and `?Prior_Setup`).
@@ -1589,7 +1590,7 @@ the discussion in the main text). Because \(S_{\mathrm{marg}}\) depends on
 \(y\) (and on \(\mu_{0}\) versus \(\hat\beta\)), such a \(b_{0}\) is
 **data-dependent** unless used only in stylized derivations.
 
-Assume \(a_{0} = n_{\mathrm{prior}}/2\) (`shape_df = "n_prior"`). Then
+Assume \(a_{0} = n_{\mathrm{prior}}/2\) (nominal rate scaling). Then
 \(a_{n} = (n_{\mathrm{prior}} + n_{w})/2\) and, provided \(a_{n} > 1\)
 (equivalently \(n_{\mathrm{prior}} + n_{w} > 2\)),
 

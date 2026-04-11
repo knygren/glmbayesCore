@@ -197,7 +197,7 @@ We show how to call the lmb function under three different prior specification. 
 ```{r Plant_lmb_calls}
 lmb.D9=lmb(weight ~ group,dNormal(mu=ps$mu,Sigma  =ps$Sigma,dispersion=ps$dispersion))
 ##lmb.D9_v2=lmb(weight ~ group,dNormal_Gamma(mu=ps$mu,Sigma_0=ps$Sigma_0,shape=ps$shape,rate=ps$rate))
-##lmb.D9_v3=lmb(weight ~ group,dIndependent_Normal_Gamma(mu=ps$mu,Sigma = ps$Sigma,shape=ps$shape,rate=ps$rate))
+## p <- ncol(ps$x); lmb.D9_v3=lmb(weight ~ group,dIndependent_Normal_Gamma(mu=ps$mu,Sigma = ps$Sigma,shape=ps$shape+p/2,rate=ps$rate))
 summary(lmb.D9)
 ```
 With both models fitted, we’re ready to explore their summaries and compare classical versus Bayesian outputs in the next section.

@@ -32,6 +32,7 @@ weight <- c(ctl, trt)
 
 ps <- Prior_Setup(weight ~ group)
 x <- ps$x
+p <- ncol(x)
 y <- ps$y
 mu <- ps$mu
 V <- ps$Sigma
@@ -45,7 +46,7 @@ lmb_D9_v3 <- lmb(
   dIndependent_Normal_Gamma(
     ps$mu,
     ps$Sigma,
-    shape = ps$shape,
+    shape = ps$shape + p / 2,
     rate = ps$rate,
     max_disp_perc = 0.99,
     disp_lower = NULL,

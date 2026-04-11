@@ -10,4 +10,5 @@ Ex_09_BikeSharingPoisson    Hierarchical Poisson (BikeSharing) two-block Gibbs w
 Ex_07_MultiReg         Multivariate Multiple Regression for AMI Overdose Data
 Ex_A1_Methods          Illustrates the methods used in building the envelope
 Ex_A2_BG_vs_rindep_norm_gamma_reg         Illustrates the methods used in building the envelope
-Ex_10_Prior_Setup_shape_df   Prior_Setup shape_df: Gamma shape numerators for Normal-Gamma priors
+Ex_10_Prior_Setup_shape_df   Prior_Setup: same Gamma calibration for dNormal_Gamma and dIndependent_Normal_Gamma
+Ex_11_Cars                   mtcars: default Prior_Setup; dNormal_Gamma vs dIndependent_Normal_Gamma (shape + p/2)

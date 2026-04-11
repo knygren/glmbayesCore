@@ -12,7 +12,7 @@
 #'   \item Validate dimensions and numeric inputs.
 #'   \item Compute weighted residual sum of squares at \code{bhat}.
 #'   \item Build \eqn{X'WX}, invert it, and construct \eqn{S_{marg}}.
-#'   \item Map \code{shape_df} and \code{n_prior} to Gamma shape.
+#'   \item Map \code{n_prior} to Gamma shape and calibrate rate.
 #'   \item Calibrate \code{dispersion}, \code{rate}, and coefficient covariance.
 #'   \item Return calibrated outputs.
 #' }
@@ -36,21 +36,18 @@
 #' The function computes:
 #' \itemize{
 #'   \item \eqn{S_{marg} = RSS_w + (\hat\beta-\mu)^T(\Sigma_0 + (X^T W X)^{-1})^{-1}(\hat\beta-\mu)}
-#'   \item \code{shape} from \code{shape_df}; write \eqn{n_{\mathrm{shape}}}{} for the implied
-#'   shape numerator (\code{n_prior}, \code{n_prior+p}, or \code{n_prior-p}). The prior
-#'   Gamma \code{shape} is \eqn{(n_{\mathrm{shape}}+1)/2}{}. Posterior Gamma shape is
-#'   \eqn{a_n = (n_{\mathrm{shape}}+n_w+1)/2}{} with \eqn{n_w}{} = \code{n_effective}.
+#'   \item Prior Gamma \code{shape} is \eqn{(n_{\mathrm{prior}}+1)/2}{}. Posterior Gamma shape is
+#'   \eqn{a_n = (n_{\mathrm{prior}}+n_w+1)/2}{} with \eqn{n_w}{} = \code{n_effective}.
 #'   \item Calibrated \code{dispersion} equals \eqn{S_{marg}/(n_w-p)}{} with \eqn{p=\texttt{ncol}(X)}{},
 #'   i.e.\ the usual weighted residual-df denominator.
-#'   \item Prior rate \eqn{b_0 = \frac{1}{2} S_{marg}(n_{\mathrm{shape}}+p-1)/(n_w-p)}{} so that
+#'   \item Prior rate \eqn{b_0 = \frac{1}{2} S_{marg}(n_{\mathrm{prior}}+p-1)/(n_w-p)}{} so that
 #'   \eqn{b_n=b_0+S_{marg}/2}{} gives \eqn{E[\sigma^2\mid y]=b_n/(a_n-1)=S_{marg}/(n_w-p)}{}.
 #'   The \eqn{+1}{} in the prior shape and \eqn{p-1}{} in the rate numerator pair so
-#'   \eqn{a_n-1}{} and \eqn{b_n}{} share a factor \eqn{n_{\mathrm{shape}}+n_w-1}{}; this
+#'   \eqn{a_n-1}{} and \eqn{b_n}{} share a factor \eqn{n_{\mathrm{prior}}+n_w-1}{}; this
 #'   preserves the posterior mean dispersion while improving prior propriety when
 #'   \eqn{p=1}{} and \eqn{n_{\mathrm{prior}}}{} is small.
 #'   \item \eqn{\Sigma = (n_w/n_{\mathrm{prior}}) E[\sigma^2 \mid y] (X^T W X)^{-1}}{}
 #' }
-#' with Gamma shape controlled by \code{shape_df}.
 #'
 #' Limiting behavior:
 #' \itemize{
@@ -62,9 +59,9 @@
 #'   \eqn{S_{marg}/(n_{\mathrm{effective}}-p)} when \eqn{n_{\mathrm{effective}}>p}.
 #'   With \eqn{S_{marg}\to \mathrm{RSS}_w}, this matches the usual weighted
 #'   Gaussian unbiased dispersion \eqn{\mathrm{RSS}_w/(n_{\mathrm{effective}}-p)}.
-#'   \item Strict positivity of \eqn{b_0}{} requires \eqn{n_{\mathrm{shape}}+p>1}{}.
-#'   Prior \code{shape} is at least \eqn{1/2}{} because \eqn{\texttt{shape}=(n_{\mathrm{shape}}+1)/2}{}.
-#'   As \eqn{n_{prior}\to 0^+}, terms can become very small depending on \code{shape_df}; this
+#'   \item Strict positivity of \eqn{b_0}{} requires \eqn{n_{\mathrm{prior}}+p>1}{}.
+#'   Prior \code{shape} is at least \eqn{1/2}{} because \eqn{\texttt{shape}=(n_{\mathrm{prior}}+1)/2}{}.
+#'   As \eqn{n_{prior}\to 0^+}, terms can become very small; this
 #'   corresponds to a very diffuse precision prior and may be numerically
 #'   delicate near the boundary.
 #'   \item In the Chapter 11 scalar-\code{pwt} path
@@ -73,8 +70,6 @@
 #'   \eqn{E[\sigma^2\mid y]\to \mathrm{RSS}_w/(n_w-p)}, and \eqn{V_n\to (X^TWX)^{-1}}
 #'   under the conjugate Zellner setup, so marginal coefficient covariance
 #'   aligns with \eqn{\mathrm{RSS}_w/(n_w-p)\,(X^TWX)^{-1}} in the same limit.
-#'   \item The \code{shape_df} choice adjusts how coefficient dimension \eqn{p}
-#'   enters the precision shape (\code{"n_prior"}, \code{"n_prior+p"}, \code{"n_prior-p"}).
 #' }
 #'
 #' @param X Numeric model matrix with \code{nrow(X) == length(Y)}.
@@ -101,8 +96,7 @@
 #'   \code{NULL}, the existing calibrated \code{Sigma} / input \code{Sigma_0}
 #'   path is used.
 #' @param n_prior Positive scalar effective prior sample size.
-#' @param shape_df Character string controlling the Gamma shape numerator:
-#'   \code{"n_prior"}, \code{"n_prior+p"}, or \code{"n_prior-p"}.
+#' @param shape_df Defunct. If non-\code{NULL}, a warning is issued; the argument is ignored.
 #'
 #' @return A list with elements:
 #' \itemize{
@@ -128,18 +122,24 @@ compute_gaussian_prior <- function(
     Sigma_0,
     Sigma = NULL,
     n_prior,
-    shape_df = c("n_prior", "n_prior+p", "n_prior-p")
+    shape_df = NULL
 ) {
+  if (!is.null(shape_df)) {
+    warning(
+      "compute_gaussian_prior(): argument shape_df is defunct and ignored; ",
+      "shape and rate use n_prior only.",
+      call. = FALSE
+    )
+  }
   ## ---------------------------------------------------------------------------
   ## Gaussian calibration pipeline:
   ## Step A: Validate inputs and dimensions.
   ## Step B: Compute weighted RSS from (Y, X, bhat, offset, weights).
   ## Step C: Build Gram terms and S_marg using Sigma_0 + (X'WX)^{-1}.
-  ## Step D: Build Gamma shape from n_prior + shape_df rule.
+  ## Step D: Gamma shape = (n_prior + 1) / 2; rate from n_prior (not shape_df).
   ## Step E: Calibrate dispersion/rate and map to coefficient Sigma.
   ## Step F: Return calibrated terms.
   ## ---------------------------------------------------------------------------
-  shape_df <- match.arg(shape_df)
   if (!is.null(dispersion)) {
     if (!is.numeric(dispersion) || length(dispersion) != 1L ||
         !is.finite(dispersion) || dispersion <= 0) {
@@ -221,36 +221,19 @@ compute_gaussian_prior <- function(
   }
   S_marg <- rss_weighted + quad
 
-  ## Step D: Gamma shape via shape_df rule.
-  n_shape_num <- switch(
-    shape_df,
-    "n_prior"   = n_prior,
-    "n_prior+p" = n_prior + p,
-    "n_prior-p" = {
-      if (!is.finite(n_prior) || !is.finite(p) || n_prior <= p) {
-        stop(
-          "compute_gaussian_prior: shape_df = \"n_prior-p\" requires n_prior > p (number of coefficients). ",
-          "Got n_prior = ", n_prior, " and p = ", p, ".",
-          call. = FALSE
-        )
-      }
-      n_prior - p
-    }
-  )
-  ## Prior Gamma shape (shape--rate): (n_shape_num + 1) / 2 pairs with rate
-  ## using (n_shape_num + p - 1) so that b_n/(a_n-1) = S_marg/(n_effective - p).
-  shape <- (n_shape_num + 1L) / 2
+  ## Step D: Gamma shape and rate from n_prior only.
+  shape <- (n_prior + 1L) / 2
   if (!is.finite(shape) || shape <= 0) {
     stop("compute_gaussian_prior: computed shape must be strictly positive.", call. = FALSE)
   }
 
   ## Step E: calibrate Gaussian dispersion/rate and implied Sigma.
-  ## E[sigma^2|y] = b_n/(a_n-1) with a_n = (n_shape_num + n_effective + 1)/2,
+  ## E[sigma^2|y] = b_n/(a_n-1) with a_n = (n_prior + n_effective + 1)/2,
   ## b_n = b_0 + S_marg/2, dispersion = S_marg/(n_effective - p),
-  ## b_0 = (S_marg/2) * (n_shape_num + p - 1) / (n_effective - p).
+  ## b_0 = (S_marg/2) * (n_prior + p - 1) / (n_effective - p).
   den_resid_df <- n_effective - p
   dispersion_cal <- S_marg / den_resid_df
-  b_0_S_marg_formula <- 0.5 * S_marg * (n_shape_num + p - 1L) / den_resid_df
+  b_0_S_marg_formula <- 0.5 * S_marg * (n_prior + p - 1L) / den_resid_df
 
   if (!is.finite(dispersion_cal) || dispersion_cal <= 0) {
     stop("compute_gaussian_prior: calibrated dispersion (S_marg/(n_effective-p)) is missing or not positive.", call. = FALSE)
@@ -258,8 +241,7 @@ compute_gaussian_prior <- function(
   if (!is.finite(b_0_S_marg_formula) || b_0_S_marg_formula <= 0) {
     stop(
       "compute_gaussian_prior: prior rate b_0 is missing or not positive. ",
-      "Require n_shape + p > 1 where n_shape follows shape_df (e.g. n_prior + p > 1 for shape_df = \"n_prior\"). ",
-      "Got n_shape_num = ", n_shape_num, ", p = ", p, ".",
+      "Require n_prior + p > 1. Got n_prior = ", n_prior, ", p = ", p, ".",
       call. = FALSE
     )
   }

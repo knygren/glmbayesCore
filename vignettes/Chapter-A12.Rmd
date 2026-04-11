@@ -311,11 +311,14 @@ with $n_w =$ `n_effective` and $p=\texttt{ncol}(X)$ (number of coefficients).
 
 ### 3.2 Prior-strength parameterization from `pwt`
 
-For scalar `pwt`, the same strength mapping used in Section 2 is
+For scalar `pwt`, with $n_w=\texttt{n\_effective}$ (Section~3.1), the strength
+mapping used in Section~2 and in `Prior_Setup()` is
 \[
 n_{\mathrm{prior}}
 =
-\frac{\mathrm{pwt}}{1-\mathrm{pwt}}.
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,n_w,
+\qquad\text{equivalently}\qquad
+\mathrm{pwt}=\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}.
 \]
 Interpretation: larger `pwt` means more prior pseudo-information; as
 $\mathrm{pwt}\to 0$, the setup approaches likelihood-dominated behavior.
@@ -381,193 +384,297 @@ S_{\mathrm{marg}}
 So under scalar `pwt`, the prior-mean penalty term in $S_{\mathrm{marg}}$ is
 scaled directly by `pwt`.
 
-### 3.3 `dNormal_Gamma()`: default `shape`, `rate`, and implied posterior Gamma parameters
+### 3.3 Gaussian prior-family calibration and parameter mapping
 
-This subsection develops the **Normal--Gamma** prior returned by `Prior_Setup()` for
-Gaussian models when the sampling model is taken to be **`dNormal_Gamma()`** with the
-default **`shape_df = "n_prior"`**. (Other `shape_df` settings swap in
-$n_{\mathrm{prior}}\pm p$ in the implementation’s shape numerator; see `?Prior_Setup`.
-The algebra below is the same after renaming that numerator.)
+This section summarizes how `Prior_Setup()` outputs map into the Gaussian prior
+families and how the default calibration is shared across them. Section~3.3.1
+derives the default `shape`/`rate` construction from `n_prior` only.
+Section~3.3.2 states **Claim~1** (conjugate posterior) and **Claim~2** (weak
+limit as $n_{\mathrm{prior}}\to 0^{+}$) for `dNormal_Gamma()`. Section~3.3.3
+uses the same posterior mean dispersion to fix default `dispersion` for
+`dNormal()`. Section~3.3.4 covers `dIndependent_Normal_Gamma()`, including the
+**`shape + p/2`** offset relative to `dNormal_Gamma()`, **Claim~3** (ING analogue
+of Claim~2), and the weak-prior discussion. Section~3.3.5 addresses `dGamma()`.
+Section~3.3.4.1 states the theorem and moment corollary on weak limits.
 
 #### 3.3.1 Default calibration and posterior Gamma shape/rate
 
-With scalar `pwt`, define
-\[
-n_{\mathrm{prior}}=\frac{\mathrm{pwt}}{1-\mathrm{pwt}}.
-\]
-`compute_gaussian_prior()` then sets the prior Gamma on residual precision $\tau$ with
-\[
-\mathrm{shape}=\frac{n_{\mathrm{prior}}+1}{2}.
-\]
-Gaussian calibration requires **$n_w>p$** (strictly, so $n_w-p$ is a positive
-residual degrees-of-freedom denominator).
 
-Calibrated **dispersion** (posterior mean $\sigma^2$ under this Gamma update) is
+Let $n_w=\sum_i w_i$ be the weighted sample size; this is the same total as
+`n_effective` from `Prior_Setup()`. With scalar `pwt`, `Prior_Setup()` sets
 \[
-\mathrm{dispersion}
+n_{\mathrm{prior}}
 =
-\frac{S_{\mathrm{marg}}}{n_w-p}.
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,n_w,
+\qquad\text{equivalently}\qquad
+\mathrm{pwt}=\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w},
 \]
-The prior **rate** is
+matching `?Prior_Setup` (and the inverse map when `n_prior` is supplied
+explicitly). The prior Gamma on residual precision $\tau$ (shape--rate
+parameterization $\mathrm{Gamma}(\texttt{shape},\texttt{rate})$ with density
+$\propto \tau^{\texttt{shape}-1}e^{-\texttt{rate}\,\tau}$ on $\tau>0$) is
 \[
-\mathrm{rate}
+\texttt{shape}=a_0=\frac{n_{\mathrm{prior}}+1}{2},
+\qquad
+\texttt{rate}=b_0
 =
-\frac{1}{2}\,\frac{n_{\mathrm{prior}}+p-1}{n_w-p}\,S_{\mathrm{marg}}.
+\frac{1}{2}\,(n_{\mathrm{prior}}+p-1)\frac{S_{\mathrm{marg}}}{n_w-p},
 \]
-The numerator $n_{\mathrm{prior}}+p-1$ pairs with $\mathrm{shape}=(n_{\mathrm{prior}}+1)/2$
-so that the implied posterior for $\sigma^2$ matches $\mathrm{dispersion}$ (derived below).
-\[
-\Sigma_{\mathrm{calibrated}}
-=
-\frac{n_w}{n_{\mathrm{prior}}}\,\mathrm{dispersion}\,
-\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
-\]
-The prior rate requires $n_{\mathrm{prior}}+p>1$ so $\mathrm{rate}>0$ (see `?compute_gaussian_prior`).
+where $S_{\mathrm{marg}}$ is the marginal sum of squares from Section~3.1 and
+$n_w>p$ is required for a proper Normal--Gamma prior (denominator $n_w-p$).
+The conjugate posterior hyperparameters $(\mu_{\mathrm{post}},\Sigma_{0,\mathrm{post}},a_n,b_n)$ and the implied moments $\mathbb{E}[\beta\mid y]$,
+$\mathbb{E}[\sigma^2\mid y]$, and $\mathrm{Cov}(\beta\mid y)$ under the default
+Zellner $\Sigma_0$ are stated in **Claim~1** (Section~3.3.2). The posterior mean
+dispersion $\mathbb{E}[\sigma^2\mid y]=S_{\mathrm{marg}}/(n_w-p)$ motivates the
+default `dispersion` returned by `Prior_Setup()` for `dNormal()` workflows
+(Section~3.3.3).
 
-Plugging these defaults into the posterior Gamma update,
+#### 3.3.2 Properties for the `dNormal_Gamma()` Prior
+
+Continuing the **`dNormal_Gamma()`** default prior from Section 3.3.1:
+
+**Claim 1:** (conjugate posterior under the default `dNormal_Gamma()` calibration).  
+With prior $\beta\mid\tau\sim \mathcal{N}\bigl(\mu,\,\tau^{-1}\Sigma_0\bigr)$ and
+the Zellner default
+$\Sigma_0=\frac{n_w}{n_{\mathrm{prior}}}\bigl(X^{\mathsf T}W_{\mathrm{obs}}X\bigr)^{-1}$
+(equivalently $\Sigma_0=\frac{1-\mathrm{pwt}}{\mathrm{pwt}}(X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}$),
+the posterior is again Normal--Gamma. Hyperparameters:
+
+**(i) Posterior mean (coefficients).** With $\hat\beta$ the weighted least-squares
+vector,
 \[
-a_n = \mathrm{shape} + \frac{n_w}{2},
-\qquad
-b_n = \mathrm{rate} + \frac{1}{2}S_{\mathrm{marg}}.
+\mu_{\mathrm{post}}
+=
+\mathrm{pwt}\,\mu+(1-\mathrm{pwt})\,\hat\beta
+=
+\frac{n_{\mathrm{prior}}}{{n_{\mathrm{prior}}+n_w}}\,\mu
++\frac{n_w}{{n_{\mathrm{prior}}+n_w}}\,\hat\beta.
 \]
-Since $\mathrm{shape}=(n_{\mathrm{prior}}+1)/2$,
+
+**(ii) Posterior dispersion-free covariance (coefficients given $\tau$).** Let
+$G:=X^{\mathsf T}W_{\mathrm{obs}}X$. For Zellner
+$\Sigma_0=(n_w/n_{\mathrm{prior}})\,G^{-1}$,
 \[
-a_n=\frac{n_{\mathrm{prior}}+n_w+1}{2},
-\qquad
-a_n-1=\frac{n_{\mathrm{prior}}+n_w-1}{2}.
+\Sigma_{0,\mathrm{post}}
+=
+\bigl(\Sigma_0^{-1}+G\bigr)^{-1}
+=
+\frac{n_{\mathrm{prior}}}{{n_{\mathrm{prior}}+n_w}}\,\Sigma_0
+=
+\frac{n_w}{{n_{\mathrm{prior}}+n_w}}\,G^{-1}.
 \]
-For $b_n$, substitute $\mathrm{rate}=\frac{1}{2}S_{\mathrm{marg}}(n_{\mathrm{prior}}+p-1)/(n_w-p)$:
+For a general positive definite $\Sigma_0$, use
+$\Sigma_{0,\mathrm{post}}=(\Sigma_0^{-1}+G)^{-1}$ (the same matrix is the
+$\tau^{-1}$-scaled covariance in $\beta\mid\tau,y\sim\mathcal{N}(\mu_{\mathrm{post}},\,\tau^{-1}\Sigma_{0,\mathrm{post}})$).
+
+**(iii) Posterior Gamma shape for $\tau\mid y$.** Likelihood integration over
+$\beta$ adds $\frac{n_w}{2}$ to the prior shape $a_0=\texttt{shape}$, so
+\[
+a_n
+=
+\texttt{shape}+\frac{n_w}{2}
+=
+\frac{n_{\mathrm{prior}}+n_w+1}{2}.
+\]
+
+**(iv) Posterior Gamma rate for $\tau\mid y$.** With prior
+$b_0=\texttt{rate}$ and likelihood contribution $\frac{1}{2}S_{\mathrm{marg}}$,
 \[
 \begin{aligned}
 b_n
 &=
-\frac{1}{2}\,\frac{n_{\mathrm{prior}}+p-1}{n_w-p}\,S_{\mathrm{marg}}
-+\frac{1}{2}S_{\mathrm{marg}} \\
+\texttt{rate}+\frac{1}{2}\,S_{\mathrm{marg}}
+=
+\frac{1}{2}\,(n_{\mathrm{prior}}+p-1)\frac{S_{\mathrm{marg}}}{n_w-p}
++\frac{1}{2}\,S_{\mathrm{marg}} \\
 &=
-\frac{S_{\mathrm{marg}}}{2}\left(\frac{n_{\mathrm{prior}}+p-1}{n_w-p}+1\right) \\
-&=
-\frac{S_{\mathrm{marg}}}{2}\cdot\frac{n_{\mathrm{prior}}+p-1+n_w-p}{n_w-p} \\
-&=
-\frac{S_{\mathrm{marg}}}{2}\cdot\frac{n_{\mathrm{prior}}+n_w-1}{n_w-p}.
+\frac{1}{2}\,(n_{\mathrm{prior}}+n_w-1)\frac{S_{\mathrm{marg}}}{n_w-p}.
 \end{aligned}
 \]
-**Posterior mean dispersion (step-by-step).** For $\tau\mid y\sim\mathrm{Gamma}(a_n,b_n)$ in the
-shape--rate parameterization used here, $E(\tau^{-1}\mid y)=b_n/(a_n-1)$ when $a_n>1$. Therefore
+Equivalently, $a_n=a_0+n_w/2$ and $b_n=b_0+\frac{1}{2}S_{\mathrm{marg}}$ with
+$(a_0,b_0)=(\texttt{shape},\texttt{rate})$ from Section~3.3.1.
+
+**(v) Posterior expectation of $\beta$ (marginal).** The marginal posterior mean
+of $\beta$ equals the Normal kernel mean:
 \[
-\begin{aligned}
-\frac{b_n}{a_n-1}
-&=
-\frac{\displaystyle\frac{S_{\mathrm{marg}}}{2}\cdot\frac{n_{\mathrm{prior}}+n_w-1}{n_w-p}}
-{\displaystyle\frac{n_{\mathrm{prior}}+n_w-1}{2}} \\
-&=
-\frac{S_{\mathrm{marg}}}{n_w-p}.
-\end{aligned}
+\mathbb{E}[\beta\mid y]=\mu_{\mathrm{post}}.
 \]
-The factor $\frac{1}{2}(n_{\mathrm{prior}}+n_w-1)$ cancels between numerator and denominator.
-By construction $\mathrm{dispersion}=S_{\mathrm{marg}}/(n_w-p)$, so
+(The marginal of $\beta$ is multivariate $t$ with the same location.)
+
+**(vi) Posterior expectation of $\sigma^2=1/\tau$.** For
+$\tau\mid y\sim\mathrm{Gamma}(a_n,b_n)$ in this shape--rate parameterization,
+when $a_n>1$,
 \[
-\frac{b_n}{a_n-1}
+\mathbb{E}[\sigma^2\mid y]=\mathbb{E}[\tau^{-1}\mid y]=\frac{b_n}{a_n-1}
 =
 \frac{S_{\mathrm{marg}}}{n_w-p}
 =
 \mathrm{dispersion}.
 \]
-The denominator $n_w-p$ aligns the weak-prior limit of $\mathrm{dispersion}$ with the usual
-weighted **$n_w-p$** residual variance rather than $n_w-2$.
-
-#### 3.3.2 Posterior dispersion and covariance under `dNormal_Gamma()`
-
-Continuing the **`dNormal_Gamma()`** default prior from Section 3.3.1:
-
-**Posterior expected dispersion.** From the posterior Gamma law for $\tau\mid y$,
-\[
-E(\sigma^2\mid y)=E(\tau^{-1}\mid y)=\frac{b_n}{a_n-1},
-\]
-and Section 3.3.1 implies directly
-\[
-E(\sigma^2\mid y)
-=
-\frac{S_{\mathrm{marg}}}{n_w-p}
-=
-\mathrm{dispersion}.
-\]
-Substitute
+Substituting the decomposition of $S_{\mathrm{marg}}$ from Section~3.1,
 \[
 S_{\mathrm{marg}}
 =
-\mathrm{RSS}_w
+\mathrm{RSS}_{w}
 +
-\mathrm{pwt}\,(\hat\beta-\mu)^{\mathsf T}(X^{\mathsf T}W_{\mathrm{obs}}X)(\hat\beta-\mu),
+\mathrm{pwt}\,(\hat{\beta}-\mu)^{\mathsf T}G(\hat{\beta}-\mu),
 \]
-to obtain
+gives
 \[
-E(\sigma^2\mid y)=
-\frac{\mathrm{RSS}_w
-+
-\mathrm{pwt}\,(\hat\beta-\mu)^{\mathsf T}(X^{\mathsf T}W_{\mathrm{obs}}X)(\hat\beta-\mu)}
-{n_w-p}.
-\]
-As $\mathrm{pwt}\to 0$ (equivalently $n_{\mathrm{prior}}\to 0$), this converges to
-\[
-E(\sigma^2\mid y)\to \frac{\mathrm{RSS}_w}{n_w-p},
-\]
-the usual weighted Gaussian residual-variance estimate (denominator $n_w-p$).
-
-**Posterior covariance of coefficients.** Using total variance,
-\[
-\mathrm{Var}(\beta\mid y)
+\mathbb{E}[\sigma^2\mid y]
 =
-E_{\tau\mid y}\!\left[\mathrm{Var}(\beta\mid \tau,y)\right]
+\frac{
+\mathrm{RSS}_{w}
 +
-\mathrm{Var}_{\tau\mid y}\!\left[E(\beta\mid \tau,y)\right].
+\mathrm{pwt}\,(\hat{\beta}-\mu)^{\mathsf T}G(\hat{\beta}-\mu)
+}{
+n_w-p
+}.
 \]
-From Section 2.3.3, $E(\beta\mid\tau,y)$ is free of $\tau$, so the second term
-is $0$. Also,
+As $\mathrm{pwt}\to 0$ (equivalently $n_{\mathrm{prior}}\to 0$), $\mathbb{E}[\sigma^2\mid y]\to \mathrm{RSS}_{w}/(n_w-p)$.
+
+**(vii) Posterior covariance of $\beta$ (marginal).** Write
+$V_n:=\Sigma_{0,\mathrm{post}}=(G+\Sigma_0^{-1})^{-1}$. Since
+$\mathbb{E}[\beta\mid\tau,y]=\mu_{\mathrm{post}}$ does not depend on $\tau$
+(Section~2.3.3),
 \[
-\mathrm{Var}(\beta\mid \tau,y)=\tau^{-1}V_n,
-\qquad
-V_n=\left(X^{\mathsf T}W_{\mathrm{obs}}X+\Sigma_0^{-1}\right)^{-1},
+\mathrm{Cov}(\beta\mid y)
+=
+\mathbb{E}[\sigma^2\mid y]\,V_n
+=
+\frac{b_n}{a_n-1}\,V_n.
 \]
-hence
-\[
-\mathrm{Var}(\beta\mid y)=\frac{b_n}{a_n-1}\,V_n.
-\]
-With scalar `pwt`,
+With scalar `pwt` and Zellner $\Sigma_0$,
 \[
 V_n
 =
-\left(\frac{1}{1-\mathrm{pwt}}X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}
+\left(\frac{1}{1-\mathrm{pwt}}\,G\right)^{-1}
 =
-\frac{n_w}{n_w+n_{\mathrm{prior}}}\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
+\frac{n_w}{n_w+n_{\mathrm{prior}}}\,G^{-1},
 \]
 so
 \[
-\mathrm{Var}(\beta\mid y)
+\mathrm{Cov}(\beta\mid y)
 =
 \frac{S_{\mathrm{marg}}}{n_w-p}\,
 \frac{n_w}{n_w+n_{\mathrm{prior}}}\,
-\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+G^{-1}.
 \]
-There is no cancellation to a single $(n_w+n_{\mathrm{prior}}-2)$ denominator
-here; both residual df $(n_w-p)$ and the Zellner factor
-$n_w/(n_w+n_{\mathrm{prior}})$ appear. Substituting $S_{\mathrm{marg}}$ gives
+Expanded,
 \[
-\mathrm{Var}(\beta\mid y)
+\mathrm{Cov}(\beta\mid y)
 =
-\frac{\mathrm{RSS}_w
+\frac{\mathrm{RSS}_{w}
 +
-\mathrm{pwt}\,(\hat\beta-\mu)^{\mathsf T}(X^{\mathsf T}W_{\mathrm{obs}}X)(\hat\beta-\mu)}
+\mathrm{pwt}\,(\hat{\beta}-\mu)^{\mathsf T}G(\hat{\beta}-\mu)}
 {n_w-p}
 \cdot
-\frac{n_w}{n_w+n_{\mathrm{prior}}}
+\frac{n_w}{n_w+n_{\mathrm{prior}}}\,
+G^{-1}.
+\]
+
+**Weighting interpretation.** Scalar `pwt` controls how much the prior center
+$\mu$ enters the posterior mean in **(i)** versus the weighted least-squares
+vector $\hat\beta$. In **(vii)**, the matrix $V_n$ carries a Zellner-style
+shrinkage factor $n_w/(n_w+n_{\mathrm{prior}})$ on $G^{-1}$: as
+$\mathrm{pwt}\to 0$, that factor approaches $1$, so coefficient uncertainty
+aligns with the usual regression scale. Independently, the denominator $n_w-p$
+in $\mathbb{E}[\sigma^2\mid y]$ and in the covariance string is the residual
+degrees-of-freedom divisor for weighted Gaussian error variance. Together,
+these are the two places where ``weighting'' from prior strength (`pwt`,
+$n_{\mathrm{prior}}$) meets the weighted sample size $n_w$ and the model
+dimension $p$.
+
+**Claim 2:** (limiting `dNormal_Gamma()` posterior as prior weight vanishes).  
+Under the same default calibration as Claim~1, let $n_{\mathrm{prior}}\to 0^{+}$
+(equivalently $\mathrm{pwt}\to 0^{+}$ with $n_{\mathrm{prior}}=\mathrm{pwt}\,n_w/(1-\mathrm{pwt})$).
+Then $S_{\mathrm{marg}}\to \mathrm{RSS}_w$, and the conjugate posterior from
+Claim~1 converges weakly to a **Normal--Gamma** law
+$\Pi_{0}(\cdot\mid y)$ on $(\beta,\tau)$ in the package sense
+`dNormal_Gamma(mu, Sigma_0, shape, rate)` (equivalently joint Normal for
+$\beta\mid\tau$ with Gamma $\tau$). The **limiting hyperparameters** are the
+limits of the Claim~1 quantities as $n_{\mathrm{prior}}\to 0^{+}$. Subscripts
+$\Pi_{0}$ mark the weak-limit law (Section~3.3.4.1); they are **not** the prior
+Gamma labels $a_0$, $b_0$ from Claim~1.
+
+**(i) Limiting mean (coefficients).**
+\[
+\mu_{\Pi_{0}}
+:=
+\lim_{n_{\mathrm{prior}}\to 0^{+}}\mu_{\mathrm{post}}
+=
+\hat\beta,
+\]
+the weighted least-squares vector (the `mu` slot for $\Pi_{0}$).
+
+**(ii) Limiting dispersion-free covariance (coefficients given $\tau$).**
+\[
+\Sigma_{0,\Pi_{0}}
+:=
+\lim_{n_{\mathrm{prior}}\to 0^{+}}\Sigma_{0,\mathrm{post}}
+=
+G^{-1}
+=
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+\]
+
+**(iii) Limiting Gamma shape for $\tau\mid y$.**
+\[
+a_{\Pi_{0}}
+:=
+\lim_{n_{\mathrm{prior}}\to 0^{+}}a_n
+=
+\frac{n_w+1}{2}.
+\]
+
+**(iv) Limiting Gamma rate for $\tau\mid y$.**
+\[
+b_{\Pi_{0}}
+:=
+\lim_{n_{\mathrm{prior}}\to 0^{+}}b_n
+=
+\frac{1}{2}\,\frac{n_w-1}{n_w-p}\,\mathrm{RSS}_w.
+\]
+
+**(v) Limiting expectation of $\beta$ (marginal).** The marginal of $\beta$ under
+$\Pi_{0}$ has mean
+\[
+\mathbb{E}_{\Pi_{0}}[\beta\mid y]=\mu_{\Pi_{0}}=\hat\beta.
+\]
+
+**(vi) Limiting expectation of $\sigma^2=1/\tau$.** For
+$\tau\mid y\sim\mathrm{Gamma}(a_{\Pi_{0}},b_{\Pi_{0}})$ under $\Pi_{0}$,
+\[
+\mathbb{E}_{\Pi_{0}}[\sigma^2\mid y]
+=
+\frac{b_{\Pi_{0}}}{a_{\Pi_{0}}-1}
+=
+\frac{\mathrm{RSS}_w}{n_w-p},
+\]
+the usual weighted residual-variance estimate (denominator $n_w-p$).
+
+**(vii) Limiting covariance of $\beta$ (marginal).** Under $\Pi_{0}$,
+\[
+\mathrm{Cov}_{\Pi_{0}}(\beta\mid y)
+=
+\mathbb{E}_{\Pi_{0}}[\sigma^2\mid y]\,\Sigma_{0,\Pi_{0}}
+=
+\frac{\mathrm{RSS}_w}{n_w-p}\,
 \left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
 \]
-and therefore, as $\mathrm{pwt}\to 0$ (equivalently $n_{\mathrm{prior}}\to 0$),
-\[
-\mathrm{Var}(\beta\mid y)\to
-\frac{\mathrm{RSS}_w}{n_w-p}\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
-\]
-the classical weighted least-squares covariance.
+matching the classical weighted least-squares covariance.
+
+These limiting values coincide with the $\Pi_{0}$ hyperparameters stated in
+Section~3.3.4.1 (Theorem, **1)**) and are the plug-in limits of the Claim~1
+formulas.
+
+**Remark (Claim~2 and $\Pi_0$).** Claim~2 is the hyperparameter and moment
+description of the same weak limit $\Pi_0$ recorded in the Theorem: a
+Normal--Gamma law with data-driven location $\hat\beta$, dispersion-free
+coefficient geometry $G^{-1}$, and Gamma law for $\tau$ fixed by
+$(a_{\Pi_0},b_{\Pi_0})$. The ING posterior (**Claim~3**, Section~3.3.4) converges to this
+**identical** $\Pi_0$ under the package hypotheses; only the finite-$n_{\mathrm{prior}}$
+joint density differs from the conjugate NG path.
 
 #### 3.3.3 Posterior covariance under `dNormal()` with default dispersion
 
@@ -595,24 +702,33 @@ $1-\mathrm{pwt}=n_w/(n_w+n_{\mathrm{prior}})$, this is
 \left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
 \]
 
-If one plugs in the default dispersion from Section 3.3.2,
+Section 2.3.2 expresses `dNormal()` covariance conditional on a fixed $\sigma^2$.
+To choose a default fixed value, `Prior_Setup()` uses the `dNormal_Gamma()` result
+from Section 3.3.2:
 \[
-\sigma^2_{\mathrm{default}}
+\mathrm{dispersion}_{\mathrm{default}}
 =
-E(\sigma^2\mid y)
-=
-\frac{S_{\mathrm{marg}}}{n_w-p},
+\frac{S_{\mathrm{marg}}}{n_w-p}
 \]
-then
+so the default is consistent with the classical residual degree-of-freedom
+adjustment (denominator $n_w-p$). Using this in the Section 2 formula gives
 \[
 \begin{aligned}
-\mathrm{Var}(\beta\mid y,\sigma^2_{\mathrm{default}})
+\mathrm{Var}(\beta\mid y,\mathrm{dispersion}_{\mathrm{default}})
 &=
 \frac{n_w}{n_w+n_{\mathrm{prior}}}\,
 \frac{S_{\mathrm{marg}}}{n_w-p}
 \left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
 \end{aligned}
 \]
+With this same default dispersion, `Prior_Setup()` returns
+\[
+\Sigma_{\mathrm{calibrated}}
+=
+\frac{n_w}{n_{\mathrm{prior}}}\,\mathrm{dispersion}_{\mathrm{default}}\,
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
+\]
+which is the coefficient-scale prior covariance used for `dNormal()`.
 This matches the `dNormal_Gamma()` expression in Section 3.3.2, so `dNormal()`
 with default dispersion has the same convergence property:
 \[
@@ -623,6 +739,230 @@ with default dispersion has the same convergence property:
 
 This keeps `shape`, `rate`, `dispersion`, and returned covariance objects
 internally consistent under the package calibration.
+
+#### 3.3.4 `dIndependent_Normal_Gamma()` and weak-prior limits
+
+`dIndependent_Normal_Gamma()` uses a **coefficient-scale** normal covariance
+`Sigma` together with a Gamma prior on residual precision. Use the same
+`Prior_Setup()` output `ps` as for `dNormal_Gamma()` (`inst/examples/Ex_lmb.R`):
+`dNormal_Gamma()` takes `Sigma_0 = ps$Sigma_0`; `dIndependent_Normal_Gamma()`
+takes `ps$Sigma` with the same `ps$rate` (see `?Prior_Setup`).
+
+**Gamma `shape`: NG vs ING.** `Prior_Setup()` returns one `shape` and `rate` for
+the residual-precision Gamma. For **`dNormal_Gamma()`**, pass **`shape =
+ps$shape`** (conjugate Normal--Gamma on the precision-weighted coefficient
+scale). For **`dIndependent_Normal_Gamma()`**, pass **`shape = ps$shape +
+p/2`**, where $p$ is the number of coefficients (the column dimension of the
+model matrix). The extra **`p/2`** is required so that the joint prior matches
+the **independent** normal factor for $\beta$ (full $p$-dimensional covariance
+`ps$Sigma`) times the Gamma on $\tau$ in the package parameterization; NG and
+ING then share the same `rate` and the same weak-prior limit $\Pi_0$ (Chapter~11
+and `?dIndependent_Normal_Gamma`). The posterior Gamma **shape** after seeing
+data still updates from this prior `shape` slot; only the **limiting** law
+$\Pi_0$ is stated in Claim~3 below.
+
+**Claim 3:** (limiting `dIndependent_Normal_Gamma()` posterior as prior weight vanishes).  
+Pass **`dIndependent_Normal_Gamma(ps$mu, ps$Sigma, shape = ps$shape + p/2, rate =
+ps$rate)`** with $p$ as above. Let $n_{\mathrm{prior}}\to 0^{+}$ as in Claim~2.
+Under hypotheses **(1)--(3)** of the Theorem in Section~3.3.4.1, the ING
+posterior $\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\cdot\mid y)$ converges
+weakly to the **same** Normal--Gamma law $\Pi_0(\cdot\mid y)$ as in Claim~2. The
+limiting hyperparameters and marginal moments match Claim~2 **(i)--(vii)**
+exactly:
+\[
+\mu_{\Pi_{0}}=\hat\beta,
+\qquad
+\Sigma_{0,\Pi_{0}}=G^{-1},
+\qquad
+a_{\Pi_{0}}=\frac{n_w+1}{2},
+\qquad
+b_{\Pi_{0}}=\frac{1}{2}\,\frac{n_w-1}{n_w-p}\,\mathrm{RSS}_w,
+\]
+\[
+\mathbb{E}_{\Pi_{0}}[\beta\mid y]=\hat\beta,
+\qquad
+\mathbb{E}_{\Pi_{0}}[\sigma^2\mid y]=\frac{\mathrm{RSS}_w}{n_w-p},
+\qquad
+\mathrm{Cov}_{\Pi_{0}}(\beta\mid y)
+=
+\frac{\mathrm{RSS}_w}{n_w-p}\,G^{-1}.
+\]
+At finite $n_{\mathrm{prior}}$, ING is not the conjugate NG factorization, so
+closed forms differ from Claim~1; Claim~3 concerns **only** the
+$n_{\mathrm{prior}}\to 0^{+}$ limit. A proof that weak convergence implies
+convergence of these moments for the ING path (uniform integrability and
+Billingsley) is in **Appendix~6.2**.
+
+The numbered conjecture items and `Ex_lmb` discussion below predate the formal
+Theorem in Section~3.3.4.1; they align with Claim~3 and that Theorem when the
+hypotheses hold.
+
+**Package calibration (conjugate fragment).** With `shape` and `rate` from
+`n_{\mathrm{prior}}` only,
+`compute_gaussian_prior()` sets `rate` so that, **in the conjugate Normal--Gamma
+update** (Section 3.3.1--3.3.2),
+\[
+\frac{b_n}{a_n-1}=\frac{S_{\mathrm{marg}}}{n_w-p},
+\]
+with the same $S_{\mathrm{marg}}$ and $n_w-p$. The **marginal**
+$E(\sigma^2\mid y)$ under `dIndependent_Normal_Gamma()` need not equal this
+closed form at finite $n_{\mathrm{prior}}$ because $\beta$ and $\tau$ are not
+conjugate in that parameterization. **Claim~3** and Section~3.3.4.1 nonetheless
+give the weak limit and limiting moments as $n_{\mathrm{prior}}\to 0^{+}$; the
+numbered list below is retained as motivation for the `Ex_lmb` pairing.
+
+**Conjecture (marginal limits for the `Ex_lmb` pairing).** The joint prior
+factorizations differ between `dNormal_Gamma()` and `dIndependent_Normal_Gamma()`
+(Chapter 11 and Section 2.3 of this appendix). It is nonetheless plausible
+that, **when the two fits use the same `ps` as in `Ex_lmb.R` above** (same
+formula, data, and scalar `pwt`, but different `pfamily`), the **marginal** posterior summaries align in the weak-prior
+limit $\mathrm{pwt}\to 0^+$ (equivalently $n_{\mathrm{prior}}\to 0^+$) with
+$n_w>p$ held fixed:
+
+1. **Coefficients:** $E(\beta\mid y)\to \hat\beta$ (the weighted least-squares
+   coefficient vector).
+2. **Dispersion:** $E(\sigma^2\mid y)\to \mathrm{RSS}_w/(n_w-p)$, the classical
+   weighted residual variance.
+3. **Coefficient uncertainty:** the marginal posterior covariance of $\beta$
+   converges to
+   \[
+   \frac{\mathrm{RSS}_w}{n_w-p}\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
+   \]
+   i.e.\ the usual weighted least-squares covariance.
+
+In words: the example workflow compares conjugate `dNormal_Gamma()` on `ps` to
+independent `dIndependent_Normal_Gamma()` on the same `ps` (with **`shape =
+ps$shape + p/2`** for ING as above). Finite-$n_{\mathrm{prior}}$ joint posteriors
+need not coincide; **Claim~3** and Section~3.3.4.1 formalize the shared weak
+limit $\Pi_0$ and marginal moment limits under the stated hypotheses.
+
+#### 3.3.4.1 Theorem, equivalence of limits, and moments
+
+The objects below are defined relative to the weighted Gaussian sampling model
+in Sections 3.1--3.3, `Prior_Setup()` / `compute_gaussian_prior()` calibration,
+and the `dNormal_Gamma()` construction in this package. Let
+$\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\cdot\mid y)$ denote the posterior law
+of $(\beta,\sigma^2)$ under `dNormal_Gamma()` with `Prior_Setup()` hyperparameters
+indexed by scalar $n_{\mathrm{prior}}>0$. Let
+$\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\cdot\mid y)$ denote the posterior
+under `dIndependent_Normal_Gamma()` with the same `ps` except **`shape =
+ps$shape + p/2`** with $p=\dim(\beta)$. All limits are taken as
+$n_{\mathrm{prior}}\to 0^+$ with data $(y,X)$ fixed and with the `Prior_Setup`
+construction held fixed aside from $n_{\mathrm{prior}}$. The weak limit of the
+posterior as $n_{\mathrm{prior}}\to 0^+$ is denoted $\Pi_{0}(\cdot\mid y)$ (subscript
+$0$, not $\infty$, because the limit is taken as $n_{\mathrm{prior}}\to 0$).
+
+**1) Theorem (equivalence of posterior limits; target statement).**  
+
+Consider the default prior specifications produced by `Prior_Setup()` for the
+weighted Gaussian model in Sections~3.1--3.3, and assume:
+
+1. $X^{\mathsf T}W_{\mathrm{obs}}X$ is positive definite.
+
+2. $n_w>p$.
+
+3. $\mathrm{RSS}_w>0$.
+
+Then there exists a **unique** probability measure $\Pi_{0}(\cdot\mid y)$ on
+$\mathcal{S}$ such that, as $n_{\mathrm{prior}}\to 0^+$,
+\[
+\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\cdot\mid y)
+\Rightarrow \Pi_{0}(\cdot\mid y),
+\qquad
+\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\cdot\mid y)
+\Rightarrow \Pi_{0}(\cdot\mid y).
+\]
+Specifically, the shared limiting distribution $\Pi_{0}(\cdot\mid y)$ is a
+**Normal--Gamma** law in the package parameterization
+`dNormal_Gamma(mu, Sigma_0, shape, rate)` with hyperparameters
+\[
+\mu=\hat\beta,
+\qquad
+\Sigma_0=\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
+\qquad
+\texttt{shape}=\frac{n_w+1}{2},
+\qquad
+\texttt{rate}=\frac{1}{2}\,\frac{n_w-1}{n_w-p}\,\mathrm{RSS}_w,
+\]
+where $\hat\beta$ is the weighted least-squares coefficient vector,
+$\mathrm{RSS}_w$ is the weighted residual sum of squares from Section~3.1, and
+$n_w$ and $p$ are as above. These values are the limits of the conjugate
+posterior hyperparameters
+$(\mu_{n_{\mathrm{prior}}},\Sigma_{0,n_{\mathrm{prior}}},a_n,b_n)$ in
+Sections~3.3.1--3.3.2 as $n_{\mathrm{prior}}\to 0^+$ (with
+$S_{\mathrm{marg}}\to\mathrm{RSS}_w$).
+
+**2) Corollary (expectations and covariance).**  
+
+Assume the **same** hypotheses **(1)--(3)** as in the Theorem in **1)**.
+
+**Normal--Gamma path.** For every admissible $n_{\mathrm{prior}}>0$, the
+posterior $\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\cdot\mid y)$ is the
+**conjugate** Normal--Gamma law in the package parameterization. Hence
+$\mathbb{E}[\beta\mid y]$, $\mathbb{E}[\sigma^{2}\mid y]$, and
+$\mathrm{Cov}(\beta\mid y)$ are **explicit elementary functions** of the
+posterior hyperparameters $(\mu_{n_{\mathrm{prior}}},\Sigma_{0,n_{\mathrm{prior}}},
+a_{n_{\mathrm{prior}}},b_{n_{\mathrm{prior}}})$ from Sections~3.3.1--3.3.2 (the
+same closed forms as in any textbook conjugate linear-model treatment). Under
+**(1)--(3)**, those hyperparameters converge to the limiting
+$\Pi_{0}$-hyperparameters from **1)** as $n_{\mathrm{prior}}\to 0^{+}$. The
+corresponding posterior moments therefore converge to the **plug-in** values at
+the limit **immediately**, by **continuity** of those formulas on the admissible
+region, without appealing to weak convergence or uniform integrability for the NG
+case. See **Appendix~6.1**.
+
+**Independent Normal--Gamma path.** At finite $n_{\mathrm{prior}}$, the ING
+posterior is **not** the same conjugate NG factorization, so the same shortcut
+is unavailable. Weak convergence from **1)** does **not** automatically pass
+unbounded functionals; **Appendix~6.2** completes the argument for the ING
+moments using uniform integrability (via uniform $L^{r}$ bounds) and Billingsley.
+
+Then
+\[
+\mathbb{E}_{\Pi^{(\mathrm{NG})}}[\beta\mid y]\to \mathbb{E}_{\Pi_{0}}[\beta\mid y],
+\quad
+\mathbb{E}_{\Pi^{(\mathrm{ING})}}[\beta\mid y]\to \mathbb{E}_{\Pi_{0}}[\beta\mid y],
+\]
+\[
+\mathbb{E}_{\Pi^{(\mathrm{NG})}}[\sigma^2\mid y]\to \mathbb{E}_{\Pi_{0}}[\sigma^2\mid y],
+\quad
+\mathbb{E}_{\Pi^{(\mathrm{ING})}}[\sigma^2\mid y]\to \mathbb{E}_{\Pi_{0}}[\sigma^2\mid y],
+\]
+and
+\[
+\mathrm{Cov}_{\Pi^{(\mathrm{NG})}}(\beta\mid y)\to \mathrm{Cov}_{\Pi_{0}}(\beta\mid y),
+\quad
+\mathrm{Cov}_{\Pi^{(\mathrm{ING})}}(\beta\mid y)\to \mathrm{Cov}_{\Pi_{0}}(\beta\mid y),
+\]
+where $\mathrm{Cov}(\beta\mid y)=\mathbb{E}[\beta\beta^{\mathsf T}\mid y]-
+\mathbb{E}[\beta\mid y]\mathbb{E}[\beta^{\mathsf T}\mid y]$. In particular,
+the **NG** and **ING** limiting expectations and limiting posterior covariance
+matrices **coincide** with each other and with the moments of $\Pi_{0}$.
+
+**Remark.** For **NG**, **Appendix~6.1** records the logic (closed forms +
+continuity). For **ING**, **Appendix~6.2** supplies the measure-theoretic step
+from weak convergence to moments.
+
+Proofs of the Theorem are deferred; supporting derivations for the kernels and
+normalizing constants appear in **Appendix~5.1--5.2** at the end of this
+chapter. A fully explicit description of $\Pi_{0}$ from the **ING**
+factorization alone is a separate step.
+
+#### 3.3.4.2 Un-normalized log posteriors and lemmas (toward the ING limit)
+
+The definitions of $g_{\mathrm{NG}}$, $g_{\mathrm{ING}}$, $g_{0}$, $\Delta g$, and **Lemmas~1--2** (pointwise log kernels and normalizing constants) are given in **Appendix 5.1** at the end of this chapter. That appendix records the weighted Gaussian notation, the `Prior_Setup` calibrations, the un-normalized log-posterior kernels, and the proofs toward the ING weak-prior limit.
+
+#### 3.3.4.3 Marginal $\beta$ after integrating $\tau$
+
+The integration of $\tau$ out of the NG and ING kernels, the Gamma conditional rates $\rho_{\bullet}$, the explicit marginal difference and its factored form, the log-ratio identities, the Fubini identity for $\int_{\mathbb{R}^{p}} D_{n_{\mathrm{prior}}}(\beta)\,\mathrm{d}\beta$, and the surrounding limits are in **Appendix 5.2**.
+
+#### 3.3.5 `dGamma()` prior on coefficients
+
+For Gaussian models, `dGamma()` supplies a Gamma prior on precision for
+coefficients in a different parameterization than the residual-precision Gamma
+above. Mapping `Prior_Setup()` outputs (`shape`, `rate`, `dispersion`, `Sigma`)
+into `dGamma()` workflows is deferred here; see `?dGamma`, `?Prior_Setup`, and
+Chapter A02 for constructor slots and simulation entry points.
 
 ### 3.4 Returned objects and model mapping
 
@@ -674,11 +1014,1108 @@ path. Other compound specifications reuse parts of the same output but expect
 **different** slots:
 
 - **`dIndependent_Normal_Gamma()`** takes **undivided** `ps$Sigma` (coefficient
-  scale) plus the same `shape` and `rate`; do **not** substitute `Sigma_0` for
-  `Sigma` there.
+  scale) plus **`shape = ps$shape + p/2`** with **`p = ncol(ps$x)`** and the same `ps$rate`;
+  do **not** substitute `Sigma_0` for `Sigma` there.
 - **`dGamma()`** with fixed coefficients uses `shape`, `rate`, and typically
   `coefficients` from the prior list for residual precision updates.
 
 See Chapter A02 for `prior_list` templates (`rNormalGamma_reg()` vs
 `rindepNormalGamma_reg()`), Chapter 11 Section 3.3 for the independent
 Normal--Gamma model, and Chapter A07 for truncated-Gamma / envelope extensions.
+
+## 5. Appendix: Detailed derivations for Section 3.3.4.2 and Section 3.3.4.3
+
+### 5.1 Un-normalized log posteriors and lemmas (toward the ING limit)
+
+
+**References for notation.** The weighted exponential-family framework (weights
+$w_i$, canonical parameters, and $b(\theta_i)$) is set out in **Chapter~05**
+(foundations of GLMs and exponential families). The same weighted
+log-likelihood notation feeds **Chapter~11**, which gives the general weighted
+log-likelihood $\ell(\beta,\phi)$, the **Gaussian** special case in precision
+form $\ell(\beta,\tau)$, and the **log-prior** and **log-posterior** for the
+conjugate Normal--Gamma model (Section~3.2) and the independent Normal--Gamma
+model (Section~3.3). Below, $\ell$, $\mathrm{RSS}(\beta)$, and the prior pieces
+match Chapter~11 **exactly**; only the map from `Prior_Setup()` objects to
+$(\mu_0,\Sigma_0,a_0,b_0)$ is specialized as in Section~3.3.4 of this appendix.
+
+Work on the **precision** scale $\tau=\phi^{-1}=\sigma^{-2}>0$ and coefficients
+$\beta\in\mathbb{R}^{p}$. Let $W=\mathrm{diag}(w_1,\ldots,w_n)$ denote the
+observation weights (so $W=W_{\mathrm{obs}}$ in Sections~3.1--3.3),
+\[
+G \;=\; X^{\mathsf T}W_{\mathrm{obs}}X,
+\]
+and define the weighted residual sum of squares
+\[
+\mathrm{RSS}(\beta)
+=
+\sum_{i=1}^{n} w_i\bigl(y_i-x_i^{\mathsf T}\beta\bigr)^2
+=
+\bigl(y-X\beta\bigr)^{\mathsf T}W\bigl(y-X\beta\bigr),
+\]
+and $n_w=\sum_{i=1}^{n} w_i$, as in Chapter~11 (Gaussian special case). Let
+$\hat\beta$ denote the weighted least-squares coefficient vector,
+$\mathrm{RSS}_w=\mathrm{RSS}(\hat\beta)$, and let $\mu\in\mathbb{R}^{p}$ denote the
+**prior mean** returned by `Prior_Setup()` (fixed as $n_{\mathrm{prior}}$
+varies).
+
+**`Prior_Setup` strength in terms of $n_{\mathrm{prior}}$ and $n_w$.**  
+When `Prior_Setup()` is driven by a scalar **`n_prior`** on the same scale as
+$n_w$ (i.e.\ `n_effective` $=n_w$), the implied scalar prior weight satisfies
+\[
+\begin{aligned}
+\mathrm{pwt}
+&=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}, \\
+1-\mathrm{pwt}
+&=
+\frac{n_w}{n_{\mathrm{prior}}+n_w}, \\
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}
+&=
+\frac{n_{\mathrm{prior}}}{n_w}.
+\end{aligned}
+\]
+Then the **calibrated** objects in Sections~3.3.1--3.3.3 can be written as
+functions of $(n_{\mathrm{prior}},n_w)$:
+\[
+\begin{aligned}
+S_{\mathrm{marg}}(n_{\mathrm{prior}})
+&=
+\mathrm{RSS}_w
+\\
+&\quad{}
++
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,
+(\hat\beta-\mu)^{\mathsf T}G(\hat\beta-\mu), \\
+a_0(n_{\mathrm{prior}})
+&=
+\frac{n_{\mathrm{prior}}+1}{2}, \\
+b_0(n_{\mathrm{prior}})
+&=
+\frac{1}{2}\,(n_{\mathrm{prior}}+p-1)\,
+\frac{S_{\mathrm{marg}}(n_{\mathrm{prior}})}{n_w-p}, \\
+\Sigma_0(n_{\mathrm{prior}})^{-1}
+&=
+\frac{n_{\mathrm{prior}}}{n_w}\,G
+\quad\text{(dispersion-free \texttt{Sigma\_0} slot from Prior\_Setup).}
+\end{aligned}
+\]
+\[
+\begin{aligned}
+\mathrm{dispersion}(n_{\mathrm{prior}})
+&=
+\frac{S_{\mathrm{marg}}(n_{\mathrm{prior}})}{n_w-p}, \\
+\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})
+&=
+\Sigma_0(n_{\mathrm{prior}})\,\mathrm{dispersion}(n_{\mathrm{prior}}) \\
+&=
+\frac{n_w}{n_{\mathrm{prior}}}\,
+\frac{S_{\mathrm{marg}}(n_{\mathrm{prior}})}{n_w-p}\,G^{-1}
+\quad\text{(\texttt{Sigma} coefficient scale for \texttt{dNormal()} / ING).}
+\end{aligned}
+\]
+\[
+\begin{aligned}
+a_0^{\mathrm{ING}}(n_{\mathrm{prior}})
+&=
+a_0(n_{\mathrm{prior}})+\frac{p}{2} \\
+&=
+\frac{n_{\mathrm{prior}}+p+1}{2}.
+\end{aligned}
+\]
+All of these are indexed by $n_{\mathrm{prior}}$ so that the dependence on the
+weak-prior limit $n_{\mathrm{prior}}\to 0^+$ is explicit.
+
+**Weighted Gaussian log-likelihood (Chapter~11, Section~2.2).**  
+Up to an additive constant **not** depending on $(\beta,\tau)$,
+\[
+\ell(\beta,\tau;y,n_w)
+=
+\frac{\tau}{2}\,\mathrm{RSS}(\beta)
+-\frac{n_w}{2}\,\log\!\left(\frac{2\pi}{\tau}\right),
+\]
+equivalently the precision-form display obtained by expanding
+$\log(2\pi/\tau)$ and absorbing $\log(2\pi)$ into the constant.
+
+**Definitions (un-normalized log posteriors as functions of
+$(\beta,\tau,n_{\mathrm{prior}},n_w)$).**  
+Absorb into a single additive constant (allowed to depend on $n_{\mathrm{prior}}$
+but not on $(\beta,\tau)$) every term that does not depend on $(\beta,\tau)$.
+
+The **conjugate Normal--Gamma** kernel is the Chapter~11 Section~3.2 log-posterior with
+the substitutions above (including $\frac{p}{2}\log\tau$ from
+$|\tau\Sigma_0^{-1}|^{1/2}$ in $\beta\mid\tau$):
+\[
+\begin{aligned}
+g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w)
+&=
+\ell(\beta,\tau;y,n_w)
++\bigl(a_0(n_{\mathrm{prior}})-1\bigr)\log\tau
+-b_0(n_{\mathrm{prior}})\tau \\
+&\quad
+-\frac{\tau}{2}\,
+(\beta-\mu)^{\mathsf T}\Sigma_0(n_{\mathrm{prior}})^{-1}(\beta-\mu)
++\frac{p}{2}\,\log\tau
+\\
+&=
+\frac{\tau}{2}\,\mathrm{RSS}(\beta)
+-\frac{n_w}{2}\,\log\!\left(\frac{2\pi}{\tau}\right)
++\frac{n_{\mathrm{prior}}+p-1}{2}\,\log\tau \\
+&\quad
+-\frac{1}{2}\,(n_{\mathrm{prior}}+p-1)\,
+\frac{S_{\mathrm{marg}}(n_{\mathrm{prior}})}{n_w-p}\,\tau \\
+&\quad
+-\frac{\tau}{2}\,\frac{n_{\mathrm{prior}}}{n_w}\,
+(\beta-\mu)^{\mathsf T}G(\beta-\mu).
+\end{aligned}
+\]
+
+The **independent Normal--Gamma** kernel is the Chapter~11 Section~3.3 log-posterior
+with the same $\ell$ and $b_0(n_{\mathrm{prior}})$, but **coefficient-scale**
+normal covariance $\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})$ and shape
+$a_0^{\mathrm{ING}}(n_{\mathrm{prior}})$:
+\[
+\begin{aligned}
+g_{\mathrm{ING}}(\beta,\tau;n_{\mathrm{prior}},n_w)
+&=
+\ell(\beta,\tau;y,n_w) \\
+&\quad
+-\frac{1}{2}\,
+(\beta-\mu)^{\mathsf T}\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})^{-1}(\beta-\mu)
+\\
+&\quad
++\bigl(a_0^{\mathrm{ING}}(n_{\mathrm{prior}})-1\bigr)\log\tau
+-b_0(n_{\mathrm{prior}})\tau
+\\
+&=
+\frac{\tau}{2}\,\mathrm{RSS}(\beta)
+-\frac{n_w}{2}\,\log\!\left(\frac{2\pi}{\tau}\right)
++\frac{n_{\mathrm{prior}}+p-1}{2}\,\log\tau \\
+&\quad
+-\frac{1}{2}\,(n_{\mathrm{prior}}+p-1)\,
+\frac{S_{\mathrm{marg}}(n_{\mathrm{prior}})}{n_w-p}\,\tau \\
+&\quad
+-\frac{1}{2}\,\frac{n_{\mathrm{prior}}(n_w-p)}{n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+(\beta-\mu)^{\mathsf T}G(\beta-\mu).
+\end{aligned}
+\]
+
+Define the **difference kernel** (only terms that do not cancel) by
+\[
+\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w)
+\;=\;
+g_{\mathrm{ING}}(\beta,\tau;n_{\mathrm{prior}},n_w)
+-
+g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w).
+\]
+Then $\ell(\beta,\tau;y,n_w)$, $-b_0(n_{\mathrm{prior}})\tau$, and all
+$\log\tau$ terms **cancel**, because
+$a_0^{\mathrm{ING}}(n_{\mathrm{prior}})-a_0(n_{\mathrm{prior}})=p/2$ offsets
+the extra $\frac{p}{2}\log\tau$ in $g_{\mathrm{NG}}$. What remains is the
+mismatch between the **coefficient-scale** normal ($\Sigma_{\mathrm{coeff}}$)
+and the **precision-scaled** conjugate normal ($\tau\Sigma_0$):
+\[
+\begin{aligned}
+\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w)
+&=
+-\frac{1}{2}\,
+(\beta-\mu)^{\mathsf T}\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})^{-1}(\beta-\mu)
++\frac{\tau}{2}\,
+(\beta-\mu)^{\mathsf T}\Sigma_0(n_{\mathrm{prior}})^{-1}(\beta-\mu)
+\\
+&=
+\frac{1}{2}\,
+(\beta-\mu)^{\mathsf T}
+\Bigl(
+\tau\,\Sigma_0(n_{\mathrm{prior}})^{-1}
+-\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})^{-1}
+\Bigr)
+(\beta-\mu)
+\\
+&=
+\frac{n_{\mathrm{prior}}}{2}\,
+(\beta-\mu)^{\mathsf T}G(\beta-\mu)
+\left(
+\frac{\tau}{n_w}
+-\frac{n_w-p}{n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}
+\right).
+\end{aligned}
+\]
+
+The **limiting Normal--Gamma** kernel $g_{0}$ is obtained from
+$g_{\mathrm{NG}}$ by **the same expressions**, with
+$n_{\mathrm{prior}}=0$ and hence $S_{\mathrm{marg}}(0)=\mathrm{RSS}_w$ (no
+$\mathrm{pwt}$-weighted penalty). Equivalently,
+$g_{0}(\beta,\tau;n_w)=g_{\mathrm{NG}}(\beta,\tau;0,n_w)$ as long as the
+calibration formulas above are evaluated at $n_{\mathrm{prior}}=0$.
+\[
+\begin{aligned}
+g_{0}(\beta,\tau;n_w)
+&=
+\ell(\beta,\tau;y,n_w)
++\bigl(a_0(0)-1\bigr)\log\tau
+-b_0(0)\tau \\
+&\quad
+-\frac{\tau}{2}\,
+(\beta-\mu)^{\mathsf T}\Sigma_0(0)^{-1}(\beta-\mu)
++\frac{p}{2}\,\log\tau
+\\
+&=
+\ell(\beta,\tau;y,n_w)
++\frac{p-1}{2}\,\log\tau
+-b_0(0)\tau
+\\
+&=
+\frac{\tau}{2}\,\mathrm{RSS}(\beta)
+-\frac{n_w}{2}\,\log\!\left(\frac{2\pi}{\tau}\right)
++\frac{0-1}{2}\,\log\tau
++\frac{p}{2}\,\log\tau \\
+&\quad
+-\frac{1}{2}\,(0+p-1)\,
+\frac{S_{\mathrm{marg}}(0)}{n_w-p}\,\tau \\
+&\quad
+-\frac{\tau}{2}\,\frac{0}{n_w}\,
+(\beta-\mu)^{\mathsf T}G(\beta-\mu) \\
+&=
+\frac{\tau}{2}\,\mathrm{RSS}(\beta)
+-\frac{n_w}{2}\,\log\!\left(\frac{2\pi}{\tau}\right)
++\frac{p-1}{2}\,\log\tau
+-\frac{1}{2}\,(p-1)\,
+\frac{\mathrm{RSS}_w}{n_w-p}\,\tau
+\end{aligned}
+\]
+with $S_{\mathrm{marg}}(0)=\mathrm{RSS}_w$. One line above, $\Sigma_0(0)^{-1}=0$
+so the $(\beta-\mu)$ quadratic vanishes and
+$(a_0(0)-1)\log\tau+\frac{p}{2}\log\tau
+=-\tfrac{1}{2}\log\tau+\frac{p}{2}\log\tau
+=\frac{p-1}{2}\log\tau$.
+The last line of the expanded block is identically zero; the final equality
+drops it and replaces $\frac{0-1}{2}\log\tau+\frac{p}{2}\log\tau$ by
+$\frac{p-1}{2}\log\tau$, and $(0+p-1)\,S_{\mathrm{marg}}(0)/(n_w-p)$ by
+$(p-1)\,\mathrm{RSS}_w/(n_w-p)$. Here
+$b_0(0)=\tfrac{1}{2}(p-1)\mathrm{RSS}_w/(n_w-p)$. The
+Theorem in Section~3.3.4.1 records the **posterior** Normal--Gamma limit in
+`dNormal_Gamma(mu, Sigma_0, shape, rate)` notation (different algebraic
+packaging of the same weak limit); proofs relate that parameterization to this
+$n_{\mathrm{prior}}=0$ evaluation.
+
+Here $g_{0}$ depends on **$n_w$** and the data through
+$(\hat\beta,\mathrm{RSS}_w,G)$ but **not** on $n_{\mathrm{prior}}$; it is the
+log-kernel obtained by evaluating the $g_{\mathrm{NG}}$ template at
+$n_{\mathrm{prior}}=0$. The same expression may be rearranged into the
+**collapsed** Normal--Gamma joint density (Chapter~11 Section~3.2 prior display); proofs
+may use either form up to $(\beta,\tau)$-independent constants.
+
+Thus $\exp\{g_{\mathrm{NG}}\}$, $\exp\{g_{\mathrm{ING}}\}$, and $\exp\{g_{0}\}$
+are **un-normalized** kernels on $(\beta,\tau)$ for the respective laws under
+this convention. Chapter~A07 truncates $\tau$ only to implement accept--reject
+sampling; the integrals and limits below use the **full** domain
+$\mathbb{R}^{p}\times(0,\infty)$ appropriate to the continuous posteriors.
+
+### 5.2 Marginal $\beta$ after integrating $\tau$: Gamma conditionals and the NG/ING difference
+
+
+Fix $n_{\mathrm{prior}}>0$ and suppress it in $b_0$, $\Sigma_0$, and when convenient
+write $S_{\mathrm{marg}}=S_{\mathrm{marg}}(n_{\mathrm{prior}})$. Define
+$Q_{G}(\beta)=(\beta-\mu)^{\mathsf T}G(\beta-\mu)$.
+
+From Appendix~5.1,
+$\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})
+=\frac{n_w}{n_{\mathrm{prior}}}\,
+\frac{S_{\mathrm{marg}}(n_{\mathrm{prior}})}{n_w-p}\,G^{-1}$, hence
+\[
+\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})^{-1}
+=
+\frac{n_{\mathrm{prior}}}{n_w}\,
+\frac{n_w-p}{S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+G.
+\]
+Therefore every ING prior quadratic appearing below can be written **without**
+$\Sigma_{\mathrm{coeff}}$ as
+\[
+\frac{1}{2}\,
+(\beta-\mu)^{\mathsf T}\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})^{-1}(\beta-\mu)
+=
+\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta),
+\]
+a **scalar** multiple of $Q_{G}(\beta)$ with coefficient
+$\frac{n_{\mathrm{prior}}(n_w-p)}{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}
+=O(n_{\mathrm{prior}})$ as $n_{\mathrm{prior}}\to 0^{+}$ because
+$S_{\mathrm{marg}}(n_{\mathrm{prior}})\to\mathrm{RSS}_w>0$.
+
+Work from the **explicit** blocks for $g_{\mathrm{NG}}$ and $g_{\mathrm{ING}}$ in
+Appendix~5.1 (same $\ell$, same $b_0$, same $\log\tau$ power, different
+$\beta$ factor). Expand
+$-\frac{n_w}{2}\log\bigl(\frac{2\pi}{\tau}\bigr)
+=\frac{n_w}{2}\log\tau-\frac{n_w}{2}\log(2\pi)$.
+Define the **Gamma shape** in $\tau\mid\beta$ as an explicit function of
+$n_{\mathrm{prior}}$ (it is **not** constant as the prior weight varies):
+\[
+s(n_{\mathrm{prior}})
+:=
+\frac{n_w+n_{\mathrm{prior}}+p+1}{2},
+\qquad
+s(n_{\mathrm{prior}})-1
+=
+\frac{n_w+n_{\mathrm{prior}}+p-1}{2}.
+\]
+In particular
+$s(n_{\mathrm{prior}})=\frac{n_w+p+1}{2}+\frac{n_{\mathrm{prior}}}{2}$, so the
+shape moves linearly with $n_{\mathrm{prior}}$. Algebraically,
+$s(n_{\mathrm{prior}})
+=a_0(n_{\mathrm{prior}})+\frac{n_w}{2}+\frac{p}{2}$
+with $a_0(n_{\mathrm{prior}})=(n_{\mathrm{prior}}+1)/2$ from Appendix~5.1: the
+$\log\tau$ power adds contributions from $\ell$, from the prior on $\tau$, and
+from the $\beta\mid\tau$ normalizing factor in the NG factorization (and the ING
+shape $a_0^{\mathrm{ING}}$ is chosen so the **same** $s(n_{\mathrm{prior}})$
+appears). Below, shorthand $\tau^{s-1}$, $\Gamma(s)$, and $\rho^{-s}$ always mean
+$\tau^{s(n_{\mathrm{prior}})-1}$,
+$\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)$, and $\rho^{-s(n_{\mathrm{prior}})}$.
+
+For every $\beta$, the $\tau$-dependent part of $g_{\mathrm{NG}}$ is
+\[
+\frac{\tau}{2}\mathrm{RSS}(\beta)
+-b_0\tau
+-\frac{\tau}{2}\,\frac{n_{\mathrm{prior}}}{n_w}\,Q_{G}(\beta)
++\bigl(s(n_{\mathrm{prior}})-1\bigr)\log\tau
+=
+-\tau\,\rho_{\mathrm{NG}}(\beta)+\bigl(s(n_{\mathrm{prior}})-1\bigr)\log\tau,
+\]
+hence
+\[
+\rho_{\mathrm{NG}}(\beta)
+=
+b_0+\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)-\frac{1}{2}\mathrm{RSS}(\beta).
+\]
+The $\tau$-dependent part of $g_{\mathrm{ING}}$ is
+$-\tau\,\rho_{\mathrm{ING}}(\beta)+\bigl(s(n_{\mathrm{prior}})-1\bigr)\log\tau$ with
+\[
+\rho_{\mathrm{ING}}(\beta)
+=
+b_0-\frac{1}{2}\mathrm{RSS}(\beta).
+\]
+Substitute
+$b_0=b_0(n_{\mathrm{prior}})
+=\frac{1}{2}(n_{\mathrm{prior}}+p-1)\,
+S_{\mathrm{marg}}(n_{\mathrm{prior}})/(n_w-p)$
+(Appendix~5.1). Then the rates depend on $n_{\mathrm{prior}}$ **only** through
+$b_0(n_{\mathrm{prior}})$, through $S_{\mathrm{marg}}(n_{\mathrm{prior}})$ inside
+$b_0$, and through the explicit $\frac{n_{\mathrm{prior}}}{2n_w}$ multiplying
+$Q_{G}(\beta)$ in $\rho_{\mathrm{NG}}$:
+\[
+\begin{aligned}
+\rho_{\mathrm{ING}}(\beta;n_{\mathrm{prior}})
+&=
+\frac{(n_{\mathrm{prior}}+p-1)\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}
+{2(n_w-p)}
+-\frac{1}{2}\mathrm{RSS}(\beta), \\
+\rho_{\mathrm{NG}}(\beta;n_{\mathrm{prior}})
+&=
+\frac{(n_{\mathrm{prior}}+p-1)\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}
+{2(n_w-p)}
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)
+-\frac{1}{2}\mathrm{RSS}(\beta).
+\end{aligned}
+\]
+In particular
+$\rho_{\mathrm{NG}}(\beta;n_{\mathrm{prior}})
+-\rho_{\mathrm{ING}}(\beta;n_{\mathrm{prior}})
+=\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)$ for all $\beta$.
+
+**Separately**, the remaining **$\tau$-free** term in $g_{\mathrm{ING}}$ is the ING
+prior quadratic. Using
+$\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})^{-1}$ above, it equals
+\[
+-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta),
+\]
+from the third and fourth lines of the $g_{\mathrm{ING}}$ display (Appendix~5.1).
+
+Let $C_{\mathrm{absorb}}$ denote any additive constant **allowed in
+Appendix~5.1** that does not depend on $(\beta,\tau)$. The only other
+$\tau$-free contribution from $\ell$ is $-\frac{n_w}{2}\log(2\pi)$. Define the
+**common** scalar
+\[
+K
+:=
+\exp\Bigl\{C_{\mathrm{absorb}}-\frac{n_w}{2}\log(2\pi)\Bigr\}.
+\]
+Then, for every $\beta$ for which $\rho_{\mathrm{NG}}(\beta)>0$ and
+$\rho_{\mathrm{ING}}(\beta)>0$ (equivalently the Gamma integrals below converge),
+\[
+\begin{aligned}
+\exp\{g_{\mathrm{NG}}(\beta,\tau)\}
+&=
+K\,\tau^{\,s(n_{\mathrm{prior}})-1}\exp\{-\tau\,\rho_{\mathrm{NG}}(\beta)\}, \\
+\exp\{g_{\mathrm{ING}}(\beta,\tau)\}
+&=
+K\,\tau^{\,s(n_{\mathrm{prior}})-1}\exp\{-\tau\,\rho_{\mathrm{ING}}(\beta)\}\,
+\exp\Bigl\{
+-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta)
+\Bigr\}.
+\end{aligned}
+\]
+
+**Gamma conditional for $\tau\mid\beta,y$.**  
+With the usual **rate** parameterization
+$\mathrm{Gamma}\bigl(s(n_{\mathrm{prior}}),\rho\bigr)$ having density
+$\propto\tau^{\,s(n_{\mathrm{prior}})-1}e^{-\rho\tau}$ on $\tau>0$,
+\[
+\tau\mid\beta,y\sim\mathrm{Gamma}\bigl(s(n_{\mathrm{prior}}),\rho_{\bullet}(\beta)\bigr),
+\qquad
+\bullet\in\{\mathrm{NG},\mathrm{ING}\},
+\]
+with the **same** shape $s(n_{\mathrm{prior}})$ in both models and rates
+$\rho_{\mathrm{NG}}$, $\rho_{\mathrm{ING}}$ above. In particular
+$\rho_{\mathrm{NG}}(\beta)-\rho_{\mathrm{ING}}(\beta)
+=\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)$.
+
+**Exact $\tau$ integrals (unnormalized $\beta$ marginals).**  
+Since
+$\int_{0}^{\infty}\tau^{\,s(n_{\mathrm{prior}})-1}e^{-\rho\tau}\,\mathrm{d}\tau
+=\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)/\rho^{\,s(n_{\mathrm{prior}})}$
+for $\rho>0$,
+\[
+\begin{aligned}
+\widetilde p_{\mathrm{NG}}(\beta\mid y)
+&:=
+\int_{0}^{\infty}
+\exp\{g_{\mathrm{NG}}(\beta,\tau)\}\,\mathrm{d}\tau
+=
+K\,\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)\,
+\rho_{\mathrm{NG}}(\beta)^{-\,s(n_{\mathrm{prior}})}, \\
+\widetilde p_{\mathrm{ING}}(\beta\mid y)
+&:=
+\int_{0}^{\infty}
+\exp\{g_{\mathrm{ING}}(\beta,\tau)\}\,\mathrm{d}\tau
+=
+K\,\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)\,
+\rho_{\mathrm{ING}}(\beta)^{-\,s(n_{\mathrm{prior}})}\,
+\exp\Bigl\{
+-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta)
+\Bigr\}.
+\end{aligned}
+\]
+Here $\widetilde p_{\mathrm{NG}}(\cdot\mid y)$ is the usual **multivariate $t$**
+kernel obtained by expanding $\mathrm{RSS}(\beta)$ into a quadratic in $\beta$; the
+ING marginal differs at finite $n_{\mathrm{prior}}$ by the explicit Gaussian
+factor.
+
+**Exact difference.**  
+The **same** prefactor $K\,\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)$ cancels in ratios; the **difference** of the
+two $\tau$ integrals is the pointwise identity obtained by substituting the
+rates $\rho_{\bullet}(\beta;n_{\mathrm{prior}})$ above, written below directly in
+terms of $A_{n_{\mathrm{prior}}}$, $\mathrm{RSS}(\beta)$, and $Q_{G}(\beta)$
+(recall $s(n_{\mathrm{prior}})=(n_w+n_{\mathrm{prior}}+p+1)/2$). Write
+$A_{n_{\mathrm{prior}}}:=\frac{(n_{\mathrm{prior}}+p-1)\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}
+{2(n_w-p)}$ for the $b_0$-part common to both rates. Then
+\[
+\begin{aligned}
+{}&
+\int_{0}^{\infty}\exp\{g_{\mathrm{ING}}(\beta,\tau)\}\,\mathrm{d}\tau
+-
+\int_{0}^{\infty}\exp\{g_{\mathrm{NG}}(\beta,\tau)\}\,\mathrm{d}\tau \\
+&\qquad
+=
+K\,\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)\Biggl[
+\Biggl(
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
+\Biggr)^{-\,s(n_{\mathrm{prior}})}
+\exp\Bigl\{
+-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta)
+\Bigr\}
+\\
+&\qquad\qquad
+-
+\Biggl(
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)
+\Biggr)^{-\,s(n_{\mathrm{prior}})}
+\Biggr].
+\end{aligned}
+\]
+The same difference admits the **factored** form obtained by pulling the **NG**
+rate power
+$\bigl(A_{n_{\mathrm{prior}}}-\frac{1}{2}\mathrm{RSS}(\beta)
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)\bigr)^{-\,s(n_{\mathrm{prior}})}$
+to the front:
+\[
+\begin{aligned}
+{}&
+\int_{0}^{\infty}\exp\{g_{\mathrm{ING}}(\beta,\tau)\}\,\mathrm{d}\tau
+-
+\int_{0}^{\infty}\exp\{g_{\mathrm{NG}}(\beta,\tau)\}\,\mathrm{d}\tau \\
+&\qquad
+=
+K\,\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)\,
+\Biggl(
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)
+\Biggr)^{-\,s(n_{\mathrm{prior}})}
+\\
+&\qquad\qquad
+\times
+\Biggl[
+\Biggl(
+\frac{
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)
+}{
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
+}
+\Biggr)^{\,s(n_{\mathrm{prior}})}
+\exp\Bigl\{
+-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta)
+\Bigr\}
+-1
+\Biggr].
+\end{aligned}
+\]
+The outer power is the **NG** rate
+$A_{n_{\mathrm{prior}}}-\frac{1}{2}\mathrm{RSS}(\beta)
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)$; the inner bracket compares
+that rate to the **ING** piece
+$A_{n_{\mathrm{prior}}}-\frac{1}{2}\mathrm{RSS}(\beta)$ and the ING Gaussian
+correction, and is the form most convenient for tracking
+$n_{\mathrm{prior}}\to 0^{+}$ (the ratio tends to $1$ and the exponential to
+$1$, so the bracket tends to $0$).
+
+Here $\mathrm{RSS}(\beta)$ and $Q_{G}(\beta)$ do **not** depend on
+$n_{\mathrm{prior}}$; every $n_{\mathrm{prior}}$ dependence in the bracket is
+through $s(n_{\mathrm{prior}})$ (hence also through $\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)$),
+through $S_{\mathrm{marg}}(n_{\mathrm{prior}})$ in
+$A_{n_{\mathrm{prior}}}$ and in the Gaussian exponent, and through the extra
+$\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)$ in the **NG** rate only.
+
+**Log ratio** (no proportionality ambiguity), in the same expanded notation with
+$A_{n_{\mathrm{prior}}}$ fixed as above:
+\[
+\begin{aligned}
+\log \widetilde p_{\mathrm{ING}}(\beta\mid y)
+-
+\log \widetilde p_{\mathrm{NG}}(\beta\mid y)
+&=
+-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta) \\
+&\quad
+-
+s(n_{\mathrm{prior}})\,\log
+\frac{
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
+}{
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)
+}.
+\end{aligned}
+\]
+Since the ratio in the logarithm equals
+$1/\bigl(1+\frac{n_{\mathrm{prior}}}{2n_w}\,
+Q_{G}(\beta)/\bigl(A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}\bigr)\bigr)$,
+\[
+\begin{aligned}
+\log \widetilde p_{\mathrm{ING}}(\beta\mid y)
+-
+\log \widetilde p_{\mathrm{NG}}(\beta\mid y)
+&=
+-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta) \\
+&\quad
++
+s(n_{\mathrm{prior}})\,\log\Biggl(
+1+\frac{n_{\mathrm{prior}}}{2n_w}\,
+\frac{Q_{G}(\beta)}
+{A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}}
+\Biggr)
+\end{aligned}
+\]
+whenever $A_{n_{\mathrm{prior}}}-\frac{\mathrm{RSS}(\beta)}{2}>0$. As
+$n_{\mathrm{prior}}\to 0^{+}$,
+$S_{\mathrm{marg}}(n_{\mathrm{prior}})\to\mathrm{RSS}_w$ and the Gaussian
+prefactor satisfies
+$\exp\bigl\{-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,Q_{G}(\beta)\bigr\}\to 1$
+for each fixed $\beta$; equivalently
+$\Sigma_{\mathrm{coeff}}(n_{\mathrm{prior}})^{-1}
+=\frac{n_{\mathrm{prior}}(n_w-p)}{n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,G\to 0$
+entrywise. Also $\Sigma_0(n_{\mathrm{prior}})^{-1}
+=\frac{n_{\mathrm{prior}}}{n_w}\,G\to 0$, and the ratio
+$\bigl(A_{n_{\mathrm{prior}}}-\frac{\mathrm{RSS}(\beta)}{2}\bigr)
+/\bigl(A_{n_{\mathrm{prior}}}-\frac{\mathrm{RSS}(\beta)}{2}
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)\bigr)\to 1$
+pointwise over $\beta$, matching the **same** weak limit recorded in
+Section~3.3.4.1.
+
+**$\beta$-integral of the displayed marginal difference.**  
+For each $\beta$, define the **pointwise** difference (same quantity as in the
+display immediately above)
+\[
+D_{n_{\mathrm{prior}}}(\beta)
+:=
+\int_{0}^{\infty}\exp\{g_{\mathrm{ING}}(\beta,\tau)\}\,\mathrm{d}\tau
+-
+\int_{0}^{\infty}\exp\{g_{\mathrm{NG}}(\beta,\tau)\}\,\mathrm{d}\tau
+=
+K\,\Gamma\bigl(s(n_{\mathrm{prior}})\bigr)\Biggl[
+\Biggl(
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
+\Biggr)^{-\,s(n_{\mathrm{prior}})}
+\exp\Bigl\{
+-\frac{n_{\mathrm{prior}}(n_w-p)}
+{2\,n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}\,
+Q_{G}(\beta)
+\Bigr\}
+-
+\Biggl(
+A_{n_{\mathrm{prior}}}
+-\frac{\mathrm{RSS}(\beta)}{2}
++\frac{n_{\mathrm{prior}}}{2n_w}\,Q_{G}(\beta)
+\Biggr)^{-\,s(n_{\mathrm{prior}})}
+\Biggr],
+\]
+the same bracket as in the first **Exact difference** display above; whenever
+the Gamma--rate factorization is valid (equivalently: wherever both rate
+combinations are $>0$); elsewhere $D_{n_{\mathrm{prior}}}(\beta)$ is still
+defined by the $\tau$ integrals on the left-hand side.
+
+To integrate $D_{n_{\mathrm{prior}}}(\beta)$ over $\beta$, use **Fubini's
+theorem** on the **difference** of the two nonnegative joint kernels. Under the
+structural conditions in Section~3.3.4.1, $\exp\{g_{\mathrm{ING}}\}$ and
+$\exp\{g_{\mathrm{NG}}\}$ are integrable on
+$\mathcal{D}=\mathbb{R}^{p}\times(0,\infty)$ (proper **ING** and **NG**
+posteriors), hence
+$\exp\{g_{\mathrm{ING}}\}-\exp\{g_{\mathrm{NG}}\}\in L^{1}(\mathcal{D})$ because
+$|\exp\{g_{\mathrm{ING}}\}-\exp\{g_{\mathrm{NG}}\}|
+\le
+\exp\{g_{\mathrm{ING}}\}+\exp\{g_{\mathrm{NG}}\}$. Therefore
+\[
+\begin{aligned}
+\int_{\mathbb{R}^{p}} D_{n_{\mathrm{prior}}}(\beta)\,\mathrm{d}\beta
+&=
+\int_{\mathbb{R}^{p}}
+\int_{0}^{\infty}
+\Bigl(
+\exp\{g_{\mathrm{ING}}(\beta,\tau)\}
+-
+\exp\{g_{\mathrm{NG}}(\beta,\tau)\}
+\Bigr)\,\mathrm{d}\tau\,\mathrm{d}\beta \\
+&=
+\iint_{\mathcal{D}}
+\exp\{g_{\mathrm{ING}}(\beta,\tau)\}\,\mathrm{d}\beta\,\mathrm{d}\tau
+-
+\iint_{\mathcal{D}}
+\exp\{g_{\mathrm{NG}}(\beta,\tau)\}\,\mathrm{d}\beta\,\mathrm{d}\tau \\
+&=
+Z_{\mathrm{ING}}(n_{\mathrm{prior}})
+-
+Z_{\mathrm{NG}}(n_{\mathrm{prior}}).
+\end{aligned}
+\]
+The first equality is Fubini applied to the integrable difference; the second is
+the definition of $Z_{\mathrm{ING}}$ and $Z_{\mathrm{NG}}$ in Lemma~2 below.
+**No further manipulation of the closed form in $K$, $\rho_{\bullet}$, and
+$Q_{G}$ is needed:** the $\beta$-integral of that bracketed expression is exactly
+$Z_{\mathrm{ING}}-Z_{\mathrm{NG}}$ because it is the same
+$D_{n_{\mathrm{prior}}}(\beta)$ integrated over $\beta$.
+
+By Lemma~2,
+$Z_{\mathrm{ING}}(n_{\mathrm{prior}})-Z_{\mathrm{NG}}(n_{\mathrm{prior}})\to 0$ as
+$n_{\mathrm{prior}}\to 0^{+}$, hence
+\[
+\int_{\mathbb{R}^{p}} D_{n_{\mathrm{prior}}}(\beta)\,\mathrm{d}\beta\longrightarrow 0.
+\]
+(**Total variation**
+$\int_{\mathbb{R}^{p}}|D_{n_{\mathrm{prior}}}(\beta)|\,\mathrm{d}\beta$ is a
+different quantity from this signed integral.)
+
+**Lemma 1 (pointwise log kernels).**  
+Assume the structural conditions in the Theorem (Section~3.3.4.1). Then, as
+$n_{\mathrm{prior}}\to 0^{+}$:
+
+1. **Normal--Gamma versus the limit.** For each fixed $(\beta,\tau)$ in the
+   domain,
+   \[
+   g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w)\;\longrightarrow\;g_{0}(\beta,\tau;n_w)
+   \qquad\text{as}\qquad n_{\mathrm{prior}}\to 0^{+}.
+   \]
+
+2. **Independent Normal--Gamma versus Normal--Gamma.** For each fixed
+   $(\beta,\tau)$ in the domain,
+   $\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w)\to 0$ (equivalently
+   $g_{\mathrm{ING}}-g_{\mathrm{NG}}\to 0$), as
+   $n_{\mathrm{prior}}\to 0^{+}$.
+   Consequently, for each such $(\beta,\tau)$,
+   \[
+   \exp\{g_{\mathrm{ING}}(\beta,\tau;n_{\mathrm{prior}},n_w)\}\;\longrightarrow\;\exp\{g_{0}(\beta,\tau;n_w)\}
+   \qquad\text{as}\qquad n_{\mathrm{prior}}\to 0^{+}.
+   \]
+
+*Proof.* **1)** By construction,
+$g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w)$ uses the same closed form
+as $g_{0}(\beta,\tau;n_w)$ once $n_{\mathrm{prior}}=0$ and
+$S_{\mathrm{marg}}(0)=\mathrm{RSS}_w$ (Appendix~5.1); letting
+$n_{\mathrm{prior}}\to 0^{+}$ sends the calibrated hyperparameters to that
+evaluation, so
+$g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w)\to g_{0}(\beta,\tau;n_w)$
+pointwise for each fixed $(\beta,\tau)$. (Equivalently, this is the conjugate
+Normal--Gamma weak-prior limit.)
+
+**2)** By definition of $\Delta g$,
+\[
+g_{\mathrm{ING}}(\beta,\tau;n_{\mathrm{prior}},n_w)
+=
+g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w)
++
+\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w),
+\]
+hence
+\[
+\exp\{g_{\mathrm{ING}}(\beta,\tau;n_{\mathrm{prior}},n_w)\}
+=
+\exp\{g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w)\}\,
+\exp\{\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w)\}.
+\]
+From the explicit formula for $\Delta g$ in Appendix~5.1,
+\[
+\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w)
+=
+\frac{n_{\mathrm{prior}}}{2}\,
+(\beta-\mu)^{\mathsf T}G(\beta-\mu)
+\left(
+\frac{\tau}{n_w}
+-\frac{n_w-p}{n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}
+\right),
+\]
+which is a product of $n_{\mathrm{prior}}$ and a factor that stays finite for
+fixed $(\beta,\tau)$ and fixed data as $n_{\mathrm{prior}}\to 0^{+}$ (since
+$S_{\mathrm{marg}}(n_{\mathrm{prior}})\to\mathrm{RSS}_w>0$). Therefore
+$\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w)\to 0$ and
+$\exp\{\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w)\}\to 1$. Combining with
+**1)**,
+\[
+\exp\{g_{\mathrm{ING}}\}
+=
+\exp\{g_{\mathrm{NG}}\}\,\exp\{\Delta g\}
+\;\longrightarrow\;
+\exp\{g_{0}\}\cdot 1
+=
+\exp\{g_{0}\}
+\]
+pointwise for each fixed $(\beta,\tau)$.
+
+**Lemma 2 (normalizing constants).**  
+Let $\mathcal{D}=\mathbb{R}^{p}\times(0,\infty)$ and define
+\[
+\begin{aligned}
+Z_{\mathrm{NG}}(n_{\mathrm{prior}})
+&=
+\iint_{\mathcal{D}}
+\exp\{g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w)\}\,
+\mathrm{d}\beta\,\mathrm{d}\tau, \\
+Z_{\mathrm{ING}}(n_{\mathrm{prior}})
+&=
+\iint_{\mathcal{D}}
+\exp\{g_{\mathrm{ING}}(\beta,\tau;n_{\mathrm{prior}},n_w)\}\,
+\mathrm{d}\beta\,\mathrm{d}\tau, \\
+Z_{0}
+&=
+\iint_{\mathcal{D}}
+\exp\{g_{0}(\beta,\tau;n_w)\}\,
+\mathrm{d}\beta\,\mathrm{d}\tau.
+\end{aligned}
+\]
+Under the structural conditions in the Theorem (Section~3.3.4.1), as
+$n_{\mathrm{prior}}\to 0^{+}$,
+\[
+Z_{\mathrm{NG}}(n_{\mathrm{prior}})\longrightarrow Z_{0},
+\qquad
+Z_{\mathrm{ING}}(n_{\mathrm{prior}})\longrightarrow Z_{0}.
+\]
+
+*Proof.* **Finiteness.** For every $n_{\mathrm{prior}}>0$ admitted by
+`compute_gaussian_prior()`, the **NG** and **ING** posteriors are **proper**
+probability measures on $\mathcal{D}$, so $Z_{\mathrm{NG}}(n_{\mathrm{prior}})$ and
+$Z_{\mathrm{ING}}(n_{\mathrm{prior}})$ are finite and positive. The limiting
+Normal--Gamma law $\Pi_{0}$ (Section~3.3.4.1) is a proper distribution on
+$(\beta,\tau)$ under the same assumptions ($n_w>p$, $\mathrm{RSS}_w>0$, $G$
+positive definite), so $Z_{0}<\infty$.
+
+**Convergence $Z_{\mathrm{NG}}\to Z_{0}$.** The kernel
+$\exp\{g_{\mathrm{NG}}(\beta,\tau;n_{\mathrm{prior}},n_w)\}$ is, up to an overall
+multiplicative constant absorbed in $g_{\mathrm{NG}}$, the **conjugate**
+Normal--Gamma posterior density with hyperparameters
+$(\mu,\Sigma_0(n_{\mathrm{prior}}),a_n,b_n)$ that vary **continuously** in
+$n_{\mathrm{prior}}$ on $(0,\varepsilon)$. The normalizing constant of a
+proper Normal--Gamma$(\mu,\Sigma_0,a,b)$ law on $\mathcal{D}$ is a **continuous**
+function of $(\mu,\Sigma_0,a,b)$ on the open parameter set where the density is
+integrable. As $n_{\mathrm{prior}}\to 0^{+}$, those hyperparameters converge to
+the limiting values implicit in $g_{0}$, hence
+$Z_{\mathrm{NG}}(n_{\mathrm{prior}})\to Z_{0}$.
+
+**Convergence $Z_{\mathrm{ING}}\to Z_{\mathrm{NG}}$ (hence $Z_{\mathrm{ING}}\to
+Z_{0}$).** This is the substantive step. Write
+\[
+Z_{\mathrm{ING}}-Z_{\mathrm{NG}}
+=
+\iint_{\mathcal{D}}
+\exp\{g_{\mathrm{NG}}\}\,\bigl(\exp\{\Delta g\}-1\bigr)\,
+\mathrm{d}\beta\,\mathrm{d}\tau.
+\]
+Let $\pi_{\mathrm{NG}}$ denote the **NG** posterior probability measure with
+density $\exp\{g_{\mathrm{NG}}\}/Z_{\mathrm{NG}}$. Appendix~5.1 gives
+\[
+\Delta g(\beta,\tau;n_{\mathrm{prior}},n_w)
+=
+n_{\mathrm{prior}}\,H(\beta,\tau;n_{\mathrm{prior}}),
+\quad
+H(\beta,\tau;n_{\mathrm{prior}})
+=
+\frac{1}{2}\,
+(\beta-\mu)^{\mathsf T}G(\beta-\mu)
+\left(
+\frac{\tau}{n_w}
+-\frac{n_w-p}{n_w\,S_{\mathrm{marg}}(n_{\mathrm{prior}})}
+\right),
+\]
+with $S_{\mathrm{marg}}(n_{\mathrm{prior}})\to\mathrm{RSS}_w>0$. Under
+$\pi_{\mathrm{NG}}$, the coefficients have **finite moments of all orders**:
+conditionally on $\tau$, $\beta$ is Gaussian; marginally, $\tau$ is Gamma. In
+particular,
+\[
+M(n_{\mathrm{prior}})
+:=
+\mathbb{E}_{\pi_{\mathrm{NG}}}\!\left[
+\bigl\|G^{1/2}(\beta-\mu)\bigr\|^{2}\,(1+\tau)
+\right]
+\]
+is finite for each admissible $n_{\mathrm{prior}}>0$ and remains bounded as
+$n_{\mathrm{prior}}\to 0^{+}$ (continuous dependence of the conjugate posterior on
+$n_{\mathrm{prior}}$). Hence, with a constant $C$ depending only on
+$(n_w,p,\mathrm{RSS}_w)$ and the fixed prior mean $\mu$,
+\[
+|H(\beta,\tau;n_{\mathrm{prior}})|
+\le
+C\,\bigl\|G^{1/2}(\beta-\mu)\bigr\|^{2}\,(1+\tau)
+\qquad\text{for all }(\beta,\tau)\in\mathcal{D}
+\]
+and all sufficiently small $n_{\mathrm{prior}}$. Therefore
+$\mathbb{E}_{\pi_{\mathrm{NG}}}[|H|]\le C'\,M(n_{\mathrm{prior}})$ is finite and
+$O(1)$ as $n_{\mathrm{prior}}\to 0^{+}$.
+
+For every $(\beta,\tau)$ one has the **pointwise** bound
+\[
+\bigl|\exp\{g_{\mathrm{NG}}\}\,(\exp\{\Delta g\}-1)\bigr|
+\le
+\exp\{g_{\mathrm{ING}}\}+\exp\{g_{\mathrm{NG}}\},
+\]
+because if $\Delta g\ge 0$ then $0\le \exp\{\Delta g\}-1\le \exp\{\Delta g\}$ and
+$\exp\{g_{\mathrm{NG}}\}(\exp\{\Delta g\}-1)\le \exp\{g_{\mathrm{ING}}\}$, while
+if $\Delta g<0$ then $|\exp\{\Delta g\}-1|=1-\exp\{\Delta g\}\le 1$ and
+$\exp\{g_{\mathrm{NG}}\}\,|\exp\{\Delta g\}-1|\le \exp\{g_{\mathrm{NG}}\}$.
+
+On $\{|\Delta g|\le 1\}$, the mean-value theorem gives
+$|\exp\{\Delta g\}-1|\le e\,|\Delta g|=e\,n_{\mathrm{prior}}\,|H|$, hence
+\[
+\iint_{\{|\Delta g|\le 1\}}
+\exp\{g_{\mathrm{NG}}\}\,\bigl|\exp\{\Delta g\}-1\bigr|
+\le
+e\,n_{\mathrm{prior}}\,Z_{\mathrm{NG}}\,
+\mathbb{E}_{\pi_{\mathrm{NG}}}\!\bigl[|H|\bigr].
+\]
+On $\{|\Delta g|>1\}$, using the pointwise bound above,
+\[
+\iint_{\{|\Delta g|>1\}}
+\exp\{g_{\mathrm{NG}}\}\,\bigl|\exp\{\Delta g\}-1\bigr|
+\le
+\iint_{\{|\Delta g|>1\}} \exp\{g_{\mathrm{ING}}\}
+\;+\;
+\iint_{\{|\Delta g|>1\}} \exp\{g_{\mathrm{NG}}\}.
+\]
+Here $\Delta g=n_{\mathrm{prior}}H$, so $\{|\Delta g|>1\}=\{|H|>1/n_{\mathrm{prior}}\}$.
+For any $n_{\mathrm{prior}}>0$, $\mathbb{E}_{\pi_{\mathrm{NG}}}[H^{2}]$ and
+$\mathbb{E}_{\pi_{\mathrm{ING}}}[H^{2}]$ are finite (same moment argument as for
+$M(n_{\mathrm{prior}})$ above). Chebyshev's inequality gives
+\[
+\pi_{\mathrm{NG}}\bigl(|H|>1/n_{\mathrm{prior}}\bigr)
+\le
+n_{\mathrm{prior}}^{2}\,\mathbb{E}_{\pi_{\mathrm{NG}}}\bigl[H^{2}\bigr],
+\qquad
+\pi_{\mathrm{ING}}\bigl(|H|>1/n_{\mathrm{prior}}\bigr)
+\le
+n_{\mathrm{prior}}^{2}\,\mathbb{E}_{\pi_{\mathrm{ING}}}\bigl[H^{2}\bigr],
+\]
+so
+\[
+\iint_{\{|\Delta g|>1\}} \exp\{g_{\mathrm{NG}}\}
+=
+Z_{\mathrm{NG}}\,\pi_{\mathrm{NG}}\bigl(|H|>1/n_{\mathrm{prior}}\bigr)
+\le
+n_{\mathrm{prior}}^{2}\,Z_{\mathrm{NG}}\,\mathbb{E}_{\pi_{\mathrm{NG}}}\bigl[H^{2}\bigr]
+\]
+and, with the same event,
+\[
+\iint_{\{|\Delta g|>1\}} \exp\{g_{\mathrm{ING}}\}
+\le
+n_{\mathrm{prior}}^{2}\,Z_{\mathrm{ING}}\,\mathbb{E}_{\pi_{\mathrm{ING}}}\bigl[H^{2}\bigr].
+\]
+Combining the $\{|\Delta g|\le 1\}$ and $\{|\Delta g|>1\}$ pieces,
+\[
+\bigl|Z_{\mathrm{ING}}-Z_{\mathrm{NG}}\bigr|
+\le
+e\,n_{\mathrm{prior}}\,Z_{\mathrm{NG}}\,
+\mathbb{E}_{\pi_{\mathrm{NG}}}\!\bigl[|H|\bigr]
+\;+\;
+n_{\mathrm{prior}}^{2}\Bigl(
+Z_{\mathrm{ING}}\,\mathbb{E}_{\pi_{\mathrm{ING}}}\bigl[H^{2}\bigr]
++
+Z_{\mathrm{NG}}\,\mathbb{E}_{\pi_{\mathrm{NG}}}\bigl[H^{2}\bigr]
+\Bigr)
+=
+O(n_{\mathrm{prior}})
+\]
+as $n_{\mathrm{prior}}\to 0^{+}$ (the $n_{\mathrm{prior}}$ term from the first
+integral dominates the $n_{\mathrm{prior}}^{2}$ tail). Since $Z_{\mathrm{NG}}$
+is bounded away from $0$, $Z_{\mathrm{ING}}/Z_{\mathrm{NG}}\to 1$ and
+$Z_{\mathrm{ING}}-Z_{\mathrm{NG}}\to 0$. Together with $Z_{\mathrm{NG}}\to Z_{0}$,
+\[
+Z_{\mathrm{ING}}(n_{\mathrm{prior}})
+=
+\bigl(Z_{\mathrm{ING}}-Z_{\mathrm{NG}}\bigr)
++
+Z_{\mathrm{NG}}
+\longrightarrow
+0+Z_{0}
+=
+Z_{0}.
+\]
+
+Together, Lemmas~1--2 supply one route to the **ING** weak limit: normalized
+posterior densities are $\exp\{g_{\bullet}\}/Z_{\bullet}$; convergence of
+$Z_{\mathrm{NG}}$ and $Z_{\mathrm{ING}}$ as above and pointwise convergence of
+kernels yield convergence of the normalized densities (e.g.\ Scheffe's lemma for
+total variation).
+
+## 6. Appendix: Moment limits in the Corollary (Section 3.3.4.1)
+
+Claims~1 and~2 in Section~3.3.2 are **conjugate** Normal--Gamma identities and
+limits as $n_{\mathrm{prior}}\to 0^{+}$; standard algebra and continuity in the
+hyperparameters suffice, so this appendix does not expand them further.
+**Claim~3** (Section~3.3.4) matches the same limiting $\Pi_0$ for the ING
+posterior; the nontrivial step is passing from weak convergence to moments when
+closed-form conjugate formulas are unavailable at finite $n_{\mathrm{prior}}$.
+That argument is **Appendix~6.2**.
+
+### 6.1 Normal--Gamma: conjugate formulas and continuity (Claims~1--2)
+
+Under $\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\cdot\mid y)$, the pair
+$(\beta,\tau)$ with $\tau=1/\sigma^{2}$ has the **conjugate** Normal--Gamma
+structure (Chapter~11 and Sections~3.3.1--3.3.2 here). Consequently:
+
+- $\mathbb{E}[\beta\mid y]$ and $\mathrm{Cov}(\beta\mid y)$ are **standard
+  closed forms**: the marginal of $\beta$ is **multivariate $t$** with location
+  $\mu_{n_{\mathrm{prior}}}$, scale matrix determined by $\Sigma_{0,n_{\mathrm{prior}}}$
+  and the posterior Gamma shape for $\tau$, and degrees of freedom
+  $\nu=2\,s-p=n_{w}+n_{\mathrm{prior}}+1$ in the `Prior_Setup` calibration
+  (**Appendix~5.2**, with $s=(n_{w}+n_{\mathrm{prior}}+p+1)/2$). In particular
+  $\mathbb{E}[\beta\mid y]=\mu_{n_{\mathrm{prior}}}$ and, for $\nu>2$,
+  $\mathrm{Cov}(\beta\mid y)=\frac{\nu}{\nu-2}$ times the scale matrix in that
+  marginal $t$ density (the standard conjugate Normal--Gamma expression in terms
+  of $\Sigma_{0,n_{\mathrm{prior}}}$ and the residual-precision update).
+- $\mathbb{E}[\sigma^{2}\mid y]=\mathbb{E}[\tau^{-1}\mid y]$ is the
+  **inverse-Gamma** (equivalently $\tau$--Gamma) posterior mean: **rate divided
+  by (shape minus one)** in the package's rate parameterization, whenever the
+  posterior shape exceeds one.
+
+Each of these expressions is an **elementary function** of the posterior
+hyperparameters $\mu_{n_{\mathrm{prior}}}$, $\Sigma_{0,n_{\mathrm{prior}}}$,
+and the posterior Gamma shape and rate parameters from Sections~3.3.1--3.3.2. Under hypotheses **(1)--(3)** of the
+Theorem in Section~3.3.4.1, those hyperparameters converge to the limiting
+$\Pi_{0}$ values as $n_{\mathrm{prior}}\to 0^{+}$. On the region where the
+closed forms are well-defined (e.g.\ $\nu>2$ for second moments of $\beta$,
+posterior shape${}>1$ for $\mathbb{E}[\sigma^{2}]$), the map from hyperparameters
+to moments is **continuous**. Hence the **NG** limits in the Corollary are the
+plug-in moments at $\Pi_{0}$, **without** using weak convergence or uniform
+integrability on this path.
+
+### 6.2 Independent Normal--Gamma: proof of Claim~3 (uniform integrability)
+
+This subsection justifies convergence of posterior means and covariances along
+the ING path as in **Claim~3** and the Corollary in Section~3.3.4.1. At finite
+$n_{\mathrm{prior}}$, the ING posterior does **not** coincide with
+the conjugate NG factorization, so the same **single** list of textbook NG
+formulas does not apply directly. To pass from **weak convergence**
+$\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}\Rightarrow\Pi_{0}$ to convergence of
+$\mathbb{E}[\beta\mid y]$, $\mathbb{E}[\sigma^{2}\mid y]$, and
+$\mathrm{Cov}(\beta\mid y)$, use **uniform integrability** and Billingsley.
+
+**Lemma 6.1.** If $\sup_{n}\mathbb{E}\bigl[\|X_{n}\|^{r}\bigr]<\infty$ for some
+$r>1$, then $\{X_{n}\}$ is uniformly integrable.
+
+*Proof.* $\mathbb{E}\bigl[\|X_{n}\|
+\mathbf{1}\{\|X_{n}\|>M\}\bigr]
+\le M^{1-r}\,\mathbb{E}\bigl[\|X_{n}\|^{r}\bigr]$. $\square$
+
+**Lemma 6.2.** If $r>2$, the same hypothesis implies uniform integrability of
+the products $\beta_{j}\beta_{k}$ needed for $\mathrm{Cov}(\beta\mid y)$ (e.g.\
+$|\beta_{j}\beta_{k}|\le \|\beta\|^{2}$ and Lyapunov/Cauchy--Schwarz).
+
+**Theorem 6.3** (Billingsley, *Convergence of Probability Measures*, 2nd ed.,
+Theorem~25.11 and Corollary). If $X_{n}\Rightarrow X$ and $\{X_{n}\}$ is uniformly
+integrable, then $\mathbb{E}[X_{n}]\to\mathbb{E}[X]$; the same applies to
+coordinates and, with Lemma~6.2, to second moments and covariances when the limit
+has finite moments.
+
+**Uniform $L^{r}$ bounds for $\beta$ under ING.** Let $\widetilde p_{\bullet}$
+be the unnormalized $\beta$ marginals after integrating $\tau$ (Appendix~5.2).
+Since $Q_{G}(\beta)=(\beta-\mu)^{\mathsf T}G(\beta-\mu)\ge 0$,
+$\widetilde p_{\mathrm{ING}}\le \widetilde p_{\mathrm{NG}}$ pointwise, hence
+$Z_{\mathrm{ING}}\le Z_{\mathrm{NG}}$ and
+\[
+\pi_{\mathrm{ING}}(\beta)
+\le
+\frac{Z_{\mathrm{NG}}}{Z_{\mathrm{ING}}}\,\pi_{\mathrm{NG}}(\beta).
+\]
+For nonnegative $h$,
+$\mathbb{E}_{\Pi^{(\mathrm{ING})}}[h(\beta)]
+\le \frac{Z_{\mathrm{NG}}}{Z_{\mathrm{ING}}}\,
+\mathbb{E}_{\Pi^{(\mathrm{NG})}}[h(\beta)]$.
+Appendix~5.2 gives $Z_{\mathrm{NG}}/Z_{\mathrm{ING}}\to 1$, so this ratio is
+bounded on $(0,\varepsilon]$ for $\varepsilon$ small. Together with **Appendix~6.1**,
+the NG marginal $t$ moments of $\|\beta\|^{r}$ are bounded uniformly in
+$n_{\mathrm{prior}}$ on that interval when $\nu>r$; hence the same holds for ING.
+
+**Dispersion.** For $\sigma^{2}=\tau^{-1}$, use the same program: finite
+posterior moments of $\sigma^{2}$ of fixed order along $n_{\mathrm{prior}}\in(0,\varepsilon]$
+follow from **continuity** of the Gamma/inverse-Gamma moment maps in the
+posterior shape and rate under **(1)--(3)**, together with the domination step
+above where it applies, or direct finiteness at each $n_{\mathrm{prior}}$ plus
+the boundedness implied by convergence of laws to $\Pi_{0}$ with finite
+variance.
+
+**Conclusion.** Lemmas~6.1--6.2 supply uniform integrability for the ING
+functionals; Theorem~6.3 and weak convergence from the Theorem in Section~3.3.4.1
+yield the **ING** limits in the Corollary. Combined with **Appendix~6.1**, both paths
+agree with the moments of $\Pi_{0}$.
+

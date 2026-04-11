@@ -24,7 +24,8 @@ test_that("Bayesian Gaussian regression with Independent Normal-Gamma prior — 
   # Conjugate Normal prior (fixed dispersion)
   # --------------------------------
   ps <- Prior_Setup(form, gaussian(), data = Boston_centered)
-  
+  p <- ncol(ps$x)
+
   lmb.boston <- lmb(form,data     = Boston_centered,
     pfamily  = dNormal(mu = ps$mu,
                        Sigma = ps$Sigma,
@@ -52,7 +53,7 @@ test_that("Bayesian Gaussian regression with Independent Normal-Gamma prior — 
                         data       = Boston_centered,
                         family     = gaussian(),
                         pfamily    = dIndependent_Normal_Gamma(ps$mu, ps$Sigma,
-                                                               shape = ps$shape,
+                                                               shape = ps$shape + p / 2,
                                                                rate  = ps$rate
                         ),
                         use_parallel = TRUE,
