@@ -85,19 +85,40 @@ jobs:
             exit 1
           fi
 
-      # Workaround for: R_NamespaceRegistry compilation failure on R-devel.
-      # Seen on: valgrind, nosuggests.
+      # Workaround for: R_NamespaceRegistry in Rcpp/Function.h (R-devel vs Rcpp headers).
+      # CRAN source Rcpp can still lag R-devel; GitHub Rcpp matches (same idea as Windows job).
       - name: Diagnostics (R / Rcpp)
-        if: ${{ matrix.config.label == 'valgrind' || matrix.config.label == 'nosuggests' }}
+        if: ${{ matrix.config.label == 'valgrind' || matrix.config.label == 'nosuggests' || matrix.config.label == 'clang-asan' || matrix.config.label == 'gcc-asan' }}
         run: |
           Rscript -e "cat('R:', R.version.string, '\n')"
           Rscript -e "if (requireNamespace('Rcpp', quietly=TRUE)) cat('Rcpp:', as.character(packageVersion('Rcpp')), '\n') else cat('Rcpp: <not installed>\\n')"
 
-      # Option 1: CRAN source — no GitHub PAT / remotes::install_github (avoids HTTP 401 on rhub).
-      - name: Force reinstall Rcpp from CRAN (source) for R-devel
-        if: ${{ matrix.config.label == 'valgrind' || matrix.config.label == 'nosuggests' }}
+      - name: Install Rcpp from CRAN (source) for R-devel (nosuggests)
+        if: ${{ matrix.config.label == 'nosuggests' }}
         run: |
           Rscript -e "install.packages('Rcpp', repos='https://cloud.r-project.org', type='source')"
+
+      # valgrind + ASan: R-devel needs headers from GitHub when CRAN Rcpp lags (R_NamespaceRegistry).
+      - name: Install Rcpp from GitHub (valgrind / clang-asan / gcc-asan)
+        if: ${{ matrix.config.label == 'valgrind' || matrix.config.label == 'clang-asan' || matrix.config.label == 'gcc-asan' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
+          Rscript -e 'lib <- .libPaths()[1L]; try(remove.packages("Rcpp", lib = lib), silent = TRUE); remotes::install_github("RcppCore/Rcpp", upgrade = "never", auth_token = Sys.getenv("GITHUB_TOKEN"))'
+
+      # After GitHub Rcpp: lazy-load fails on RcppArmadillo.so — libflexiblas.so.3 (CRAN binary links FlexiBLAS).
+      # Rebuild RcppArmadillo from source against R's BLAS (no FlexiBLAS runtime on image).
+      - name: Rebuild RcppArmadillo from source (valgrind)
+        if: ${{ matrix.config.label == 'valgrind' }}
+        run: |
+          Rscript -e "lib <- .libPaths()[1L]; if ('RcppArmadillo' %in% rownames(installed.packages(lib.loc=lib, noCache=TRUE))) remove.packages('RcppArmadillo', lib=lib); install.packages('RcppArmadillo', lib=lib, repos='https://cloud.r-project.org', type='source', Ncpus=2L)"
+
+      # nosuggests omits Suggests, but vignette re-build still needs VignetteBuilder packages (not glmbayes code).
+      - name: Install vignette toolchain (nosuggests)
+        if: ${{ matrix.config.label == 'nosuggests' }}
+        run: |
+          Rscript -e 'lib <- .libPaths()[1L]; install.packages(c("knitr", "rmarkdown"), lib = lib, repos = "https://cloud.r-project.org", dependencies = TRUE)'
       - uses: r-hub/actions/run-check@v1
         with:
           token: ${{ secrets.RHUB_TOKEN }}
@@ -139,8 +160,8 @@ jobs:
           job-config: ${{ matrix.config.job-config }}
           token: ${{ secrets.RHUB_TOKEN }}
 
-      # Workaround for: R_NamespaceRegistry compilation failure on Windows R-devel.
-      # (This keeps the workaround scoped; other platforms still use CRAN binaries.)
+      # Workaround for: R_NamespaceRegistry in Rcpp/Function.h on Windows R-devel (CRAN Rcpp can lag R-devel).
+      # Use GITHUB_TOKEN from the workflow — avoids HTTP 401 from an empty/bundled PAT in remotes.
       - name: Diagnostics (R / Rcpp)
         if: ${{ matrix.config.label == 'windows' }}
         shell: bash
@@ -148,22 +169,26 @@ jobs:
           Rscript -e "cat('R:', R.version.string, '\n')"
           Rscript -e "if (requireNamespace('Rcpp', quietly=TRUE)) cat('Rcpp:', as.character(packageVersion('Rcpp')), '\n') else cat('Rcpp: <not installed>\\n')"
 
-      # Option 1: CRAN source — no GitHub PAT / remotes::install_github (avoids HTTP 401 on rhub).
-      - name: Force reinstall Rcpp from CRAN (source) for R-devel
+      - name: Install Rcpp from GitHub (Windows R-devel)
         if: ${{ matrix.config.label == 'windows' }}
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          Rscript -e "install.packages('Rcpp', repos='https://cloud.r-project.org', type='source')"
+          Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
+          Rscript -e 'lib <- .libPaths()[1L]; try(remove.packages("Rcpp", lib = lib), silent = TRUE); remotes::install_github("RcppCore/Rcpp", upgrade = "never", auth_token = Sys.getenv("GITHUB_TOKEN"))'
 
       # Workaround for: ubuntu-next vignette build fails loading rlang.so
-      # Error: undefined symbol: SETLENGTH (rlang.so built for wrong R / stale binary in user lib).
-      # setup-deps may install a bad rlang first — remove then install.packages(type='source').
+      # Error: undefined symbol: SETLENGTH (rlang C API vs R-devel — CRAN rlang may lag; use GitHub rlang).
       - name: Force rebuild vignette toolchain from source (ubuntu-next)
         if: ${{ matrix.config.label == 'ubuntu-next' }}
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           Rscript -e "cat('R:', R.version.string, '\n')"
-          Rscript -e 'user_lib <- Sys.getenv("R_LIBS_USER"); if (!nzchar(user_lib)) user_lib <- .libPaths()[1L]; message("Rebuilding rlang stack in: ", user_lib); pkgs <- c("rmarkdown","knitr","yaml","xfun","lifecycle","vctrs","glue","cli","rlang"); ip <- rownames(installed.packages(lib.loc = user_lib, noCache = TRUE)); for (p in pkgs) if (p %in% ip) remove.packages(p, lib = user_lib); install.packages(rev(pkgs), lib = user_lib, repos = "https://cloud.r-project.org", type = "source", Ncpus = 2L)'
+          Rscript -e "install.packages('remotes', repos='https://cloud.r-project.org')"
+          Rscript -e 'user_lib <- Sys.getenv("R_LIBS_USER"); if (!nzchar(user_lib)) user_lib <- .libPaths()[1L]; message("Rebuilding rlang stack in: ", user_lib); pkgs <- c("rmarkdown","knitr","yaml","xfun","lifecycle","vctrs","glue","cli","rlang"); ip <- rownames(installed.packages(lib.loc = user_lib, noCache = TRUE)); for (p in pkgs) if (p %in% ip) remove.packages(p, lib = user_lib); remotes::install_github("r-lib/rlang", lib = user_lib, upgrade = "never", auth_token = Sys.getenv("GITHUB_TOKEN")); pkgs_rest <- pkgs[pkgs != "rlang"]; install.packages(rev(pkgs_rest), lib = user_lib, repos = "https://cloud.r-project.org", type = "source", Ncpus = 2L)'
       - uses: r-hub/actions/run-check@v1
         with:
           job-config: ${{ matrix.config.job-config }}
