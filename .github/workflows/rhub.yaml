@@ -73,6 +73,14 @@ jobs:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
 
+      # ubuntu-next: CRAN *binary* rlang.so can reference SETLENGTH while R-patched no longer exposes it;
+      # library(testthat) → rlang then fails. Rebuild rlang from source for this R (vignettes still skipped below).
+      - name: Reinstall rlang from source (ubuntu-next — testthat / SETLENGTH)
+        if: ${{ matrix.config.label == 'ubuntu-next' }}
+        run: |
+          set -eux
+          Rscript -e 'lib <- .libPaths()[1L]; try(remove.packages("rlang", lib = lib), silent = TRUE); install.packages("rlang", lib = lib, repos = "https://cloud.r-project.org", type = "source", Ncpus = 2L)'
+
       # Workaround for: lazy-load fails loading RcppArmadillo.so — libquadmath.so.0 not found.
       # Intel platform uses a Fedora container; RcppArmadillo (via gfortran/quadmath) needs the
       # libquadmath runtime package on the image. Not a glmbayes R code issue.
@@ -104,7 +112,7 @@ jobs:
       # run-check step env): r-hub run-check delegates to nested r-lib/check-r-package, which reads
       # Sys.getenv("BUILD_ARGS") — nested composites often do not inherit the parent step env.
       # ubuntu-next is a *container* platform (see r-hub setup/platforms.json), so it runs in this
-      # job — not other-platforms. CRAN rlang vs R-patched (SETLENGTH) breaks vignette rebuild there.
+      # job — not other-platforms. Skip vignette build (rmarkdown stack); tests use rlang rebuilt above.
       - name: Skip vignettes (nosuggests, ubuntu-next) — BUILD_ARGS/CHECK_ARGS for rcmdcheck
         if: ${{ matrix.config.label == 'nosuggests' || matrix.config.label == 'ubuntu-next' }}
         run: |
