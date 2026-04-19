@@ -100,7 +100,15 @@ jobs:
       # nosuggests: setup-deps does not install Suggests — prepend one lib via R_LIBS for source Rcpp
       # (R-devel). Do NOT set R_LIBS_USER to that path: it replaces the default user library and
       # hides packages setup-deps installed (e.g. rcmdcheck for run-check). Vignettes are skipped
-      # on run-check (no knitr/rmarkdown); see BUILD_ARGS/CHECK_ARGS on that step.
+      # on run-check (no knitr/rmarkdown). BUILD_ARGS/CHECK_ARGS must be in GITHUB_ENV (not only the
+      # run-check step env): r-hub run-check delegates to nested r-lib/check-r-package, which reads
+      # Sys.getenv("BUILD_ARGS") — nested composites often do not inherit the parent step env.
+      - name: Skip vignettes (nosuggests) — BUILD_ARGS/CHECK_ARGS for rcmdcheck
+        if: ${{ matrix.config.label == 'nosuggests' }}
+        run: |
+          echo "BUILD_ARGS=--no-build-vignettes" >> "$GITHUB_ENV"
+          echo "CHECK_ARGS=--no-build-vignettes --ignore-vignettes" >> "$GITHUB_ENV"
+
       - name: Nosuggests — library path for Rcpp (source)
         if: ${{ matrix.config.label == 'nosuggests' }}
         env:
@@ -148,13 +156,10 @@ jobs:
           upload-snapshots: false
 
       # nosuggests: must pass R_LIBS on the step (same path as prep); generic run-check does not inherit GITHUB_ENV reliably.
-      # Skip vignettes: Suggests (e.g. rmarkdown) are not installed — same idea as ubuntu-next.
       - uses: r-hub/actions/run-check@v1
         if: ${{ matrix.config.label == 'nosuggests' }}
         env:
           R_LIBS: ${{ format('{0}/rhub-nosuggests-lib', runner.temp) }}
-          BUILD_ARGS: --no-build-vignettes
-          CHECK_ARGS: --no-build-vignettes --ignore-vignettes
         with:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
@@ -230,10 +235,17 @@ jobs:
           INC=$(Rscript -e "ul <- Sys.getenv('R_LIBS_USER'); if (!nzchar(ul)) ul <- .libPaths()[1L]; cat(gsub('\\\\', '/', normalizePath(system.file('include', package = 'Rcpp', lib.loc = ul), winslash = '/', mustWork = TRUE)))")
           echo "PKG_CPPFLAGS=-I${INC}" >> "$GITHUB_ENV"
 
-      # ubuntu-next: CRAN rlang vs R-devel (SETLENGTH) breaks vignette rebuild. Skip building/checking
-      # vignettes on this platform via BUILD_ARGS/CHECK_ARGS (r-hub run-check reads these — see r-hub/actions run-check action.yaml).
+      # ubuntu-next: CRAN rlang vs R-devel (SETLENGTH) breaks vignette rebuild. Skip vignettes via
+      # BUILD_ARGS/CHECK_ARGS in GITHUB_ENV (see nosuggests comment — nested check-r-package needs it).
       # Re-enable when CRAN/GitHub rlang matches ubuntu-next R.
       # run-check: Windows uses PKG_CPPFLAGS from GitHub Rcpp in R_LIBS_USER; other platforms use defaults.
+      - name: Skip vignettes (ubuntu-next) — BUILD_ARGS/CHECK_ARGS for rcmdcheck
+        if: ${{ matrix.config.label == 'ubuntu-next' }}
+        shell: bash
+        run: |
+          echo "BUILD_ARGS=--no-build-vignettes" >> "$GITHUB_ENV"
+          echo "CHECK_ARGS=--no-build-vignettes --ignore-vignettes" >> "$GITHUB_ENV"
+
       - uses: r-hub/actions/run-check@v1
         if: ${{ matrix.config.label == 'windows' }}
         with:
@@ -242,9 +254,6 @@ jobs:
 
       - uses: r-hub/actions/run-check@v1
         if: ${{ matrix.config.label == 'ubuntu-next' }}
-        env:
-          BUILD_ARGS: --no-build-vignettes
-          CHECK_ARGS: --no-build-vignettes --ignore-vignettes
         with:
           job-config: ${{ matrix.config.job-config }}
           token: ${{ secrets.RHUB_TOKEN }}
