@@ -194,6 +194,10 @@ RCPP_PKG_LIB=$(printf '%s\n' "$RCPP_META" | cut -f2)
 echo "configure.win: confirmed Rcpp package version ${RCPP_PKG_VERSION} (library: ${RCPP_PKG_LIB})"
 echo "📦 RCPP_CPPFLAGS = $RCPP_CPPFLAGS"
 
+# R CMD INSTALL may not pass GLMBAYES_RCPP_LIB into this script; patch the same lib we use for -I
+# (R 4.5.x / R-devel: Rcpp/Function.h can reference R_NamespaceRegistry when R no longer exposes it).
+GLMBAYES_RCPP_LIB="$RCPP_PKG_LIB" "$RSCRIPT" --vanilla tools/patch_rcpp_function_h.R
+
 # --------------------------------------------------------------------
 # 7. Generate Makevars.win
 # --------------------------------------------------------------------
