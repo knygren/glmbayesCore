@@ -965,7 +965,7 @@ Rcpp::List run_rcppparallel_pilot(
     Rcpp::Named("any_maxdraw")    = any_hit_after_test,
     Rcpp::Named("est_total_sec")  = est_total_sec,
     Rcpp::Named("cal_elapsed_sec")= cal_elapsed_sec
-  );
+  ));
 }
 
 
@@ -1411,8 +1411,8 @@ Rcpp::List rNormalGLM(int n,NumericVector y,NumericMatrix x,
        Rcpp::_["method"]  = "BFGS",
        Rcpp::_["hessian"] = true
      ),
-     Rcpp::_["silent"] = true
-   );
+    Rcpp::_["silent"] = true
+  ));
    
    // Check for try-error using R API
    if (Rf_inherits(optSEXP, "try-error")) {
@@ -1467,7 +1467,7 @@ Rcpp::List rNormalGLM(int n,NumericVector y,NumericMatrix x,
     P,   // Prior Precision Matrix (to be adjusted)
     b2a, // Posterior Mode from optimization (to be adjusted)
     A1  // Precision for Log-Posterior at posterior mode (to be adjusted)
-  ));
+  );
 
   //Rcout << "Finished Standardizing Model"  << std::endl;
   
