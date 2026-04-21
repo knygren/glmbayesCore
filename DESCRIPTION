@@ -11,7 +11,7 @@ BugReports: https://github.com/knygren/glmbayes/issues
 Imports:
     stats,
     coda,
-    Rcpp (>= 1.1.1),
+    Rcpp (>= 1.1.1-1),
     RcppParallel,
     Rdpack (>= 0.11-0)
 RdMacros: Rdpack
