@@ -21,7 +21,8 @@ Suggests:
     Rcpp (>= 1.1.1-1),
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    spelling
 SystemRequirements: Optional OpenCL support. If available, GPU acceleration will be used; otherwise, computation runs on CPU. 
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -29,3 +30,4 @@ RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 LazyData: true
+Language: en-US

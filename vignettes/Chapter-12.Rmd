@@ -97,8 +97,8 @@ Choose one of:
   Includes full OpenCL headers.  
   https://developer.nvidia.com/cuda-downloads
 
-- **Intel OpenCL SDK (OpenCL CPU + headers)**  
-  https://www.intel.com/content/www/us/en/developer/archive/tools/tools-opencl-applications.html
+- **Intel OpenCL runtimes / Intel oneAPI CPU runtime**  
+  https://www.intel.com/content/www/us/en/developer/articles/tool/opencl-drivers.html
 
 - **Khronos OpenCL Headers (header‑only download)**  
   https://github.com/KhronosGroup/OpenCL-Headers
