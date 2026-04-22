@@ -67,10 +67,44 @@ jobs:
         with:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
+
+      # libc++ (c23 / noremap / clang16–20): CRAN Rcpp 1.1.1-1 fails to compile (R_getRegisteredNamespace
+      # undeclared under clang++ -stdlib=libc++). DESCRIPTION lists Rcpp in Suggests with (>= 1.1.1-1); pak
+      # merges bounds and tries to build 1.1.1-1 during setup-deps before any Ensure step. Temporarily
+      # drop that Suggests line, preinstall Rcpp 1.1.1, restore DESCRIPTION after setup-deps, and skip
+      # Ensure Rcpp on these labels; check runs with _R_CHECK_FORCE_SUGGESTS_=FALSE so Suggests Rcpp
+      # is not forced to 1.1.1-1 during R CMD check.
+      - name: Rhub — relax DESCRIPTION for pak (libc++ / Rcpp Suggests)
+        if: ${{ contains('c23,noremap,clang16,clang17,clang18,clang19,clang20', matrix.config.label) }}
+        run: |
+          set -eux
+          cp -f DESCRIPTION DESCRIPTION.rhub-orig
+          sed -i '/^[[:space:]]*Rcpp (>= 1\.1\.1-1),$/d' DESCRIPTION
+          echo "Rhub DESCRIPTION patched for pak (removed duplicate Suggests Rcpp >= 1.1.1-1 line)"
+
+      - name: Rhub — preinstall Rcpp 1.1.1 before setup-deps (libc++)
+        if: ${{ contains('c23,noremap,clang16,clang17,clang18,clang19,clang20', matrix.config.label) }}
+        run: |
+          set -eux
+          Rscript -e 'lib <- Sys.getenv("R_LIBS_USER", ""); if (!nzchar(lib)) lib <- .libPaths()[1L]; dir.create(lib, showWarnings = FALSE, recursive = TRUE); if (!lib %in% .libPaths()) .libPaths(c(lib, .libPaths())); install.packages("remotes", lib = lib, repos = "https://cloud.r-project.org", type = "source", Ncpus = 1L); try(remove.packages("Rcpp", lib = lib), silent = TRUE); remotes::install_version("Rcpp", version = "1.1.1", lib = lib, repos = "https://cloud.r-project.org", type = "source", dependencies = TRUE, Ncpus = 2L); message("Rcpp preinstall: ", packageVersion("Rcpp"), " in ", lib)'
+
       - uses: r-hub/actions/setup-deps@v1
         with:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
+
+      - name: Rhub — restore DESCRIPTION after setup-deps
+        if: ${{ contains('c23,noremap,clang16,clang17,clang18,clang19,clang20', matrix.config.label) }}
+        run: |
+          set -eux
+          test -f DESCRIPTION.rhub-orig
+          mv -f DESCRIPTION.rhub-orig DESCRIPTION
+          echo "DESCRIPTION restored to repository version"
+
+      - name: Rhub — check without forcing Suggests (libc++ Rcpp workaround)
+        if: ${{ contains('c23,noremap,clang16,clang17,clang18,clang19,clang20', matrix.config.label) }}
+        run: |
+          echo "_R_CHECK_FORCE_SUGGESTS_=FALSE" >> "$GITHUB_ENV"
 
       # c23/noremap can fail loading RcppParallel's TBB (`libtbb.so.2`) due to libc++ runtime symbol
       # mismatch. clang21/clang22 can fail on TBB requiring ASan runtime symbols
@@ -198,8 +232,10 @@ jobs:
       # Runs after setup-deps (and after nosuggests sets R_LIBS) but before R CMD build/check.
       # Skip intel: rhub devel-intel image often cannot compile Rcpp from source (toolchain); keep
       # setup-deps Rcpp as before (same rationale as the old "skip intel" GitHub Rcpp step).
+      # Skip libc++ labels (c23, noremap, clang16–20): pre-setup-deps path already installed Rcpp 1.1.1;
+      # Ensure would rebuild 1.1.1-1 and fail the same compile error.
       - name: Ensure Rcpp (CRAN → GitHub fallback, patch if needed)
-        if: ${{ matrix.config.label != 'intel' }}
+        if: ${{ matrix.config.label != 'intel' && !contains('c23,noremap,clang16,clang17,clang18,clang19,clang20', matrix.config.label) }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
