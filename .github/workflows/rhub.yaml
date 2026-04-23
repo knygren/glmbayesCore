@@ -541,55 +541,49 @@ jobs:
         run: |
           set -eu
           mkdir -p platform-report
-          python - <<'PY'
-          import json, os, subprocess
-          from pathlib import Path
-
-          def rscript(code: str) -> str:
-              try:
-                  out = subprocess.check_output(
-                      ["Rscript", "-e", code],
-                      text=True,
-                      stderr=subprocess.DEVNULL,
-                  ).strip()
-                  return out or "unknown"
-              except Exception:
-                  return "unknown"
-
-          plat = os.environ.get("PLATFORM", "unknown")
-          job_status = os.environ.get("JOB_STATUS", "unknown")
-
-          rver = rscript("cat(as.character(getRversion()))")
-          rcpp = rscript(
-              'if (requireNamespace("Rcpp", quietly=TRUE)) '
-              'cat(as.character(packageVersion("Rcpp"))) else cat("not-installed")'
-          )
-
-          r_cmd = "no-check-log"
-          check_root = Path("check")
-          if check_root.exists():
-              logs = list(check_root.rglob("00check.log"))
-              if logs:
-                  logs.sort(key=lambda p: p.stat().st_mtime)
-                  lines = logs[-1].read_text(encoding="utf-8", errors="replace").splitlines()
-                  status = None
-                  for line in reversed(lines):
-                      if line.startswith("Status:"):
-                          status = line.split(":", 1)[1].strip()
-                          break
-                  r_cmd = status if status else "no-status-line"
-
-          report = {
-              "platform": plat,
-              "r_version": rver,
-              "rcpp_version": rcpp,
-              "r_cmd_check_status": r_cmd,
-              "job_status": job_status,
+          f="$(mktemp)"
+          trap 'rm -f "$f"' EXIT
+          cat <<'PRR' >"$f"
+          ensure_jsonlite <- function() {
+            if (requireNamespace("jsonlite", quietly = TRUE)) return(invisible())
+            utils::install.packages("jsonlite", repos = "https://cloud.r-project.org",
+                                    quiet = TRUE, Ncpus = 1L)
           }
-          Path("platform-report/report.json").write_text(
-              json.dumps(report, indent=2) + "\n", encoding="utf-8"
+          plat <- Sys.getenv("PLATFORM", "unknown")
+          job_status <- Sys.getenv("JOB_STATUS", "unknown")
+          rver <- as.character(getRversion())
+          rcpp <- if (requireNamespace("Rcpp", quietly = TRUE)) {
+            as.character(packageVersion("Rcpp"))
+          } else "not-installed"
+          r_cmd <- "no-check-log"
+          if (dir.exists("check")) {
+            logs <- list.files("check", pattern = "^00check\\.log$", full.names = TRUE, recursive = TRUE)
+            if (length(logs)) {
+              mt <- file.info(logs)$mtime
+              ord <- order(mt, na.last = TRUE)
+              pick <- logs[ord[length(ord)]]
+              lines <- readLines(pick, warn = FALSE, encoding = "UTF-8")
+              status_lines <- grep("^Status:", lines, value = TRUE)
+              if (length(status_lines)) {
+                last <- status_lines[length(status_lines)]
+                r_cmd <- trimws(sub("^Status:\\s*", "", last, perl = TRUE))
+                if (!nzchar(r_cmd)) r_cmd <- "no-status-line"
+              } else {
+                r_cmd <- "no-status-line"
+              }
+            }
+          }
+          ensure_jsonlite()
+          report <- list(
+            platform = plat,
+            r_version = rver,
+            rcpp_version = rcpp,
+            r_cmd_check_status = r_cmd,
+            job_status = job_status
           )
-          PY
+          jsonlite::write_json(report, "platform-report/report.json", auto_unbox = TRUE, pretty = TRUE)
+          PRR
+          Rscript "$f"
 
       - name: Upload platform report artifact (always)
         if: always()
@@ -984,55 +978,49 @@ jobs:
         run: |
           set -eu
           mkdir -p platform-report
-          python - <<'PY'
-          import json, os, subprocess
-          from pathlib import Path
-
-          def rscript(code: str) -> str:
-              try:
-                  out = subprocess.check_output(
-                      ["Rscript", "-e", code],
-                      text=True,
-                      stderr=subprocess.DEVNULL,
-                  ).strip()
-                  return out or "unknown"
-              except Exception:
-                  return "unknown"
-
-          plat = os.environ.get("PLATFORM", "unknown")
-          job_status = os.environ.get("JOB_STATUS", "unknown")
-
-          rver = rscript("cat(as.character(getRversion()))")
-          rcpp = rscript(
-              'if (requireNamespace("Rcpp", quietly=TRUE)) '
-              'cat(as.character(packageVersion("Rcpp"))) else cat("not-installed")'
-          )
-
-          r_cmd = "no-check-log"
-          check_root = Path("check")
-          if check_root.exists():
-              logs = list(check_root.rglob("00check.log"))
-              if logs:
-                  logs.sort(key=lambda p: p.stat().st_mtime)
-                  lines = logs[-1].read_text(encoding="utf-8", errors="replace").splitlines()
-                  status = None
-                  for line in reversed(lines):
-                      if line.startswith("Status:"):
-                          status = line.split(":", 1)[1].strip()
-                          break
-                  r_cmd = status if status else "no-status-line"
-
-          report = {
-              "platform": plat,
-              "r_version": rver,
-              "rcpp_version": rcpp,
-              "r_cmd_check_status": r_cmd,
-              "job_status": job_status,
+          f="$(mktemp)"
+          trap 'rm -f "$f"' EXIT
+          cat <<'PRR' >"$f"
+          ensure_jsonlite <- function() {
+            if (requireNamespace("jsonlite", quietly = TRUE)) return(invisible())
+            utils::install.packages("jsonlite", repos = "https://cloud.r-project.org",
+                                    quiet = TRUE, Ncpus = 1L)
           }
-          Path("platform-report/report.json").write_text(
-              json.dumps(report, indent=2) + "\n", encoding="utf-8"
+          plat <- Sys.getenv("PLATFORM", "unknown")
+          job_status <- Sys.getenv("JOB_STATUS", "unknown")
+          rver <- as.character(getRversion())
+          rcpp <- if (requireNamespace("Rcpp", quietly = TRUE)) {
+            as.character(packageVersion("Rcpp"))
+          } else "not-installed"
+          r_cmd <- "no-check-log"
+          if (dir.exists("check")) {
+            logs <- list.files("check", pattern = "^00check\\.log$", full.names = TRUE, recursive = TRUE)
+            if (length(logs)) {
+              mt <- file.info(logs)$mtime
+              ord <- order(mt, na.last = TRUE)
+              pick <- logs[ord[length(ord)]]
+              lines <- readLines(pick, warn = FALSE, encoding = "UTF-8")
+              status_lines <- grep("^Status:", lines, value = TRUE)
+              if (length(status_lines)) {
+                last <- status_lines[length(status_lines)]
+                r_cmd <- trimws(sub("^Status:\\s*", "", last, perl = TRUE))
+                if (!nzchar(r_cmd)) r_cmd <- "no-status-line"
+              } else {
+                r_cmd <- "no-status-line"
+              }
+            }
+          }
+          ensure_jsonlite()
+          report <- list(
+            platform = plat,
+            r_version = rver,
+            rcpp_version = rcpp,
+            r_cmd_check_status = r_cmd,
+            job_status = job_status
           )
-          PY
+          jsonlite::write_json(report, "platform-report/report.json", auto_unbox = TRUE, pretty = TRUE)
+          PRR
+          Rscript "$f"
 
       - name: Upload platform report artifact (always)
         if: always()
@@ -1048,6 +1036,10 @@ jobs:
     runs-on: ubuntu-latest
     name: platform-summary
     steps:
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+
       - name: Download per-platform reports
         uses: actions/download-artifact@v4
         with:
@@ -1059,49 +1051,79 @@ jobs:
         shell: bash
         run: |
           set -eu
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          root = Path("platform-reports")
-          rows = []
-          if root.exists():
-            for p in sorted(root.rglob("*.json")):
-              try:
-                rows.append(json.loads(p.read_text(encoding="utf-8")))
-              except Exception:
-                pass
-
-          def rcmd_status(r: dict) -> str:
-            return r.get("r_cmd_check_status", "unknown")
-
-          def job_outcome(r: dict) -> str:
-            # Older reports only stored job outcome as check_status.
-            return r.get("job_status", r.get("check_status", "unknown"))
-
-          out = []
-          out.append("## Cross-Platform Summary")
-          out.append("")
-          out.append(
-            "_R CMD check_ column is parsed from `check/**/00check.log` (`Status:` line). "
+          f="$(mktemp)"
+          trap 'rm -f "$f"' EXIT
+          cat <<'PRR' >"$f"
+          ensure_jsonlite <- function() {
+            if (requireNamespace("jsonlite", quietly = TRUE)) return(invisible())
+            utils::install.packages("jsonlite", repos = "https://cloud.r-project.org",
+                                    quiet = TRUE, Ncpus = 1L)
+          }
+          ensure_jsonlite()
+          root <- "platform-reports"
+          rows <- list()
+          if (dir.exists(root)) {
+            paths <- sort(list.files(root, pattern = "\\.json$", full.names = TRUE, recursive = TRUE))
+            for (p in paths) {
+              row <- tryCatch(jsonlite::fromJSON(p, simplifyVector = TRUE), error = function(e) NULL)
+              if (!is.null(row)) rows <- c(rows, list(row))
+            }
+          }
+          plat_key <- function(x) {
+            v <- x[["platform"]]
+            if (is.null(v)) "" else as.character(v)
+          }
+          if (length(rows)) {
+            ord <- order(vapply(rows, plat_key, ""))
+            rows <- rows[ord]
+          }
+          getf <- function(x, nm, alt = "unknown") {
+            v <- x[[nm]]
+            if (is.null(v)) return(alt)
+            v <- as.character(v)
+            if (!length(v) || !nzchar(v)) alt else v
+          }
+          job_outcome <- function(x) {
+            if (!is.null(x[["job_status"]])) {
+              as.character(x[["job_status"]])
+            } else if (!is.null(x[["check_status"]])) {
+              as.character(x[["check_status"]])
+            } else {
+              "unknown"
+            }
+          }
+          rcmd_stat <- function(x) {
+            if (!is.null(x[["r_cmd_check_status"]])) as.character(x[["r_cmd_check_status"]]) else "unknown"
+          }
+          lines <- character()
+          lines <- c(lines, "## Cross-Platform Summary", "")
+          lines <- c(lines, paste0(
+            "_R CMD check_ column is parsed from `check/**/00check.log` (`Status:` line). ",
             "_Job_ column is the GitHub Actions job outcome after all steps (e.g. Valgrind grep can fail after `Status: OK`)."
-          )
-          out.append("")
-          if not rows:
-            out.append("_No platform report artifacts were found._")
-          else:
-            out.append("| Platform | R version | Rcpp version | R CMD check (00check) | Job |")
-            out.append("|---|---:|---:|---|---|")
-            for r in sorted(rows, key=lambda x: x.get("platform", "")):
-              out.append(
-                f"| {r.get('platform','unknown')} | {r.get('r_version','unknown')} | "
-                f"{r.get('rcpp_version','unknown')} | {rcmd_status(r)} | {job_outcome(r)} |"
-              )
-          out.append("")
-          Path("platform-summary.md").write_text("\n".join(out), encoding="utf-8")
-          PY
-
-          cat platform-summary.md >> "$GITHUB_STEP_SUMMARY"
+          ))
+          lines <- c(lines, "")
+          if (!length(rows)) {
+            lines <- c(lines, "_No platform report artifacts were found._", "")
+          } else {
+            lines <- c(lines, "| Platform | R version | Rcpp version | R CMD check (00check) | Job |",
+                       "|---|---:|---:|---|---|")
+            for (x in rows) {
+              lines <- c(lines, sprintf(
+                "| %s | %s | %s | %s | %s |",
+                getf(x, "platform"), getf(x, "r_version"), getf(x, "rcpp_version"),
+                rcmd_stat(x), job_outcome(x)
+              ))
+            }
+            lines <- c(lines, "")
+          }
+          md <- paste(lines, collapse = "\n")
+          writeLines(lines, "platform-summary.md", useBytes = TRUE)
+          gs <- Sys.getenv("GITHUB_STEP_SUMMARY")
+          if (nzchar(gs)) {
+            cat(md, "\n", file = gs, append = file.exists(gs))
+          }
+          PRR
+          Rscript "$f"
 
       - name: Upload platform summary artifact
         uses: actions/upload-artifact@v4
