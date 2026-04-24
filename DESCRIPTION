@@ -11,14 +11,13 @@ BugReports: https://github.com/knygren/glmbayes/issues
 Imports:
     stats,
     coda,
-    Rcpp (>= 1.1.1),
+    Rcpp (>= 1.2.0),
     RcppParallel,
     Rdpack (>= 0.11-0)
 RdMacros: Rdpack
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel
 Depends: MASS, R (>= 3.5.0)
 Suggests:
-    Rcpp (>= 1.1.1-1),
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),

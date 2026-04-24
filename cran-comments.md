@@ -14,13 +14,20 @@ code path gracefully — all checks pass on platforms without OpenCL.
 
 ### Local (developer machine)
 - Windows 11, ASUS TUF F16, GeForce RTX GPU, OpenCL installed
-- R [version], glmbayes built with OpenCL enabled
-- Result: 0 errors, 0 warnings, 2 notes (see Notes section)
-
+- R 4.5.1, glmbayes built with OpenCL enabled
+- Command: `devtools::check(vignettes = TRUE, args = "--as-cran", remote = TRUE, manual = TRUE)`
+- 0 errors, 0 warnings, 3 notes
+  1. New submission (see Notes)
+  2. Rcpp workaround (see Notes)
+  3. Long-running examples on OpenCL-enabled machine (see Notes)
+   
 ### Win-builder
-- R release: 0 errors, 0 warnings, N notes
-- R devel:   0 errors, 0 warnings, N notes
-- R oldrel:  0 errors, 0 warnings, N notes
+- R-devel (4.6.0 RC, 2026-04-20 r89921 ucrt):    0 errors, 0 warnings, 2 notes
+- R-release (4.5.3, 2026-03-11 ucrt):             0 errors, 0 warnings, 2 notes
+- R-oldrelease (4.4.3 patched, 2026-02-12 ucrt):  0 errors, 0 warnings, 3 notes
+
+The additional note on R-oldrelease relates to the Rcpp version workaround
+(see Notes).
 
 ### Mac-builder
 - macOS release (mac.R-project.org): 0 errors, 0 warnings, N notes
@@ -48,7 +55,47 @@ code path gracefully — all checks pass on platforms without OpenCL.
 - Confirms OpenCL code path builds and runs correctly outside Windows
 - Result: 0 errors, 0 warnings, N notes
 
+
 ## Notes
+
+All checks produced 0 errors and 0 warnings. The following 3 notes were
+observed on the local Windows machine (R 4.5.3, OpenCL enabled):
+
+1. **New submission**
+
+       Maintainer: 'Kjell Nygren <kjell.a.nygren@gmail.com>'
+       New submission
+
+   Expected for an initial CRAN submission. No action required.
+
+2. **Rcpp listed in more than one field**
+
+       Package listed in more than one of Depends, Imports, Suggests, Enhances:
+         'Rcpp'
+       A package should be listed in only one of these fields.
+
+   Rcpp 1.1.1 (current on R-release and R-oldrelease) and Rcpp 1.1.1-1
+   (current on R-devel) differ in a header that glmbayes links against.
+   `Imports: Rcpp (>= 1.1.1)` ensures compatibility on release platforms;
+   `Suggests: Rcpp (>= 1.1.1-1)` captures the R-devel requirement without
+   breaking release builds. This is a temporary workaround for an upstream
+   Rcpp incompatibility across the current R release/devel boundary.
+
+3. **Examples with long CPU or elapsed time**
+
+       Examples with CPU (user + system) or elapsed time > 5s
+                        user  system elapsed
+       Boston_centered 150.89  16.16  105.20
+       Cleveland        42.25   3.00   29.34
+       rlmb              8.57   1.79    8.30
+
+   Boston_centered and Cleveland are GPU/OpenCL examples guarded by
+   `has_opencl()` and do not execute on machines without OpenCL installed.
+   They will not appear on CRAN check servers. The `rlmb` example reflects
+   genuine sampling time for a Bayesian linear model and cannot be
+   meaningfully reduced without undermining the demonstration.
+   
+
 
 ### Note 1: New submission
 This is the first submission of glmbayes to CRAN.

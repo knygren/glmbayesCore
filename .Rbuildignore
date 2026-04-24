@@ -27,3 +27,5 @@
 ^scripts$
 ^cran-comments\.md$
 ^\.github$
+^\.positai$
+^\.claude$
