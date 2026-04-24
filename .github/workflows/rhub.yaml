@@ -232,6 +232,7 @@ jobs:
           f="${GITHUB_WORKSPACE}/.rhub-ensure-rcpp-inline.R"
           cat <<'RS' >"$f"
           target_min <- package_version("1.1.1-1")
+          runtime_min <- package_version("1.1.1")
           cran <- Sys.getenv("CRAN_REPOS", "https://cloud.r-project.org")
           tok <- Sys.getenv("GITHUB_TOKEN", "")
           label <- Sys.getenv("MATRIX_LABEL", "")
@@ -362,6 +363,18 @@ jobs:
           }
           step_log <- c(step_log, paste0("- **Context**: label=", label, ", R=", rv, ", CRAN release=", if (is.na(rel)) "unknown" else rel, ", preferred=", preferred))
           step_log <- c(step_log, "- **Note on OK**: A CRAN line marked **OK** only means `remotes::install_version` did not throw. The run **adopts** a tree when `Rcpp` is found and `Version` is read under `lib` (see **Resolved** = verified, or a **not adopted** line if not).")
+          current_ver <- rcpp_desc_version()
+          if (!is.na(current_ver) && current_ver >= runtime_min) {
+            message("Keeping preinstalled Rcpp ", current_ver, " (>= ", runtime_min, "); skipping reinstall.")
+            maybe_patch(current_ver)
+            step_log <- c(
+              step_log,
+              paste0("- **Preinstalled Rcpp kept**: ", current_ver, " (>= ", runtime_min, ")."),
+              "- **Reinstall skipped**: preserving setup-deps result to avoid unnecessary CRAN/GitHub override."
+            )
+            finish_ok(paste0("- **Resolved**: ", current_ver, " (preinstalled, verified loadable in session)"))
+            quit(status = 0L)
+          }
           ensure_remotes()
           strip_rcpp()
           ok1 <- try_install(paste0("CRAN Rcpp ", preferred, " (source)"), {
@@ -761,6 +774,7 @@ jobs:
           f="${GITHUB_WORKSPACE}/.rhub-ensure-rcpp-inline.R"
           cat <<'RS' >"$f"
           target_min <- package_version("1.1.1-1")
+          runtime_min <- package_version("1.1.1")
           cran <- Sys.getenv("CRAN_REPOS", "https://cloud.r-project.org")
           tok <- Sys.getenv("GITHUB_TOKEN", "")
           label <- Sys.getenv("MATRIX_LABEL", "")
@@ -891,6 +905,18 @@ jobs:
           }
           step_log <- c(step_log, paste0("- **Context**: label=", label, ", family=", family, ", R=", rv, ", CRAN release=", if (is.na(rel)) "unknown" else rel, ", preferred=", preferred))
           step_log <- c(step_log, "- **Note on OK**: A CRAN line marked **OK** only means `remotes::install_version` did not throw. The run **adopts** a tree when `Rcpp` is found and `Version` is read under `lib` (see **Resolved** = verified, or a **not adopted** line if not).")
+          current_ver <- rcpp_desc_version()
+          if (!is.na(current_ver) && current_ver >= runtime_min) {
+            message("Keeping preinstalled Rcpp ", current_ver, " (>= ", runtime_min, "); skipping reinstall.")
+            maybe_patch(current_ver)
+            step_log <- c(
+              step_log,
+              paste0("- **Preinstalled Rcpp kept**: ", current_ver, " (>= ", runtime_min, ")."),
+              "- **Reinstall skipped**: preserving setup-deps result to avoid unnecessary CRAN/GitHub override."
+            )
+            finish_ok(paste0("- **Resolved**: ", current_ver, " (preinstalled, verified loadable in session)"))
+            quit(status = 0L)
+          }
           ensure_remotes()
           strip_rcpp()
           ok1 <- try_install(paste0("CRAN Rcpp ", preferred, " (source)"), {
