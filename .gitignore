@@ -23,5 +23,7 @@ vignettes/*.html
 vignettes/*.pdf
 
 # Maintainer-only scripts (VM / OpenCL / CRAN check helpers); not package source
-/scripts/
+# Exception: r-hub workflow needs this file in the checked-out tree on GitHub Actions
+scripts/*
+!scripts/rhub_detect_r460_snapshot.R
 .positai

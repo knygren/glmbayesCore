@@ -136,13 +136,44 @@ jobs:
               RSCRIPT="$wline"
             fi
           fi
-          if [ -z "$RSCRIPT" ]; then
-            echo "glmbayes_r460_snapshot: Rscript not found (R_HOME=${R_HOME:-})" >&2
+          f="${GITHUB_WORKSPACE}/scripts/rhub_detect_r460_snapshot.R"
+          if [ ! -f "$f" ]; then
+            echo "glmbayes: expected $f (branch must include scripts/rhub_detect_r460_snapshot.R)" >&2
             exit 1
           fi
-          echo "glmbayes_r460_snapshot: Rscript=$RSCRIPT" >&2
-          relax="$("$RSCRIPT" -e 'lab <- Sys.getenv("MATRIX_LABEL", ""); rv <- getRversion(); v <- R.version; raw <- if (!is.null(v[["svn.rev"]])) v[["svn.rev"]] else v[["svn rev"]]; svn <- suppressWarnings(as.integer(as.character(raw))); is460 <- identical(as.character(rv), "4.6.0"); relax <- !identical(lab, "rchk") && isTRUE(is460) && length(svn) == 1L && !is.na(svn) && svn < 89746L; cat(if (relax) "true" else "false")')"
-          note="$("$RSCRIPT" -e 'lab <- Sys.getenv("MATRIX_LABEL", ""); rv <- getRversion(); v <- R.version; raw <- if (!is.null(v[["svn.rev"]])) v[["svn.rev"]] else v[["svn rev"]]; svn <- suppressWarnings(as.integer(as.character(raw))); is460 <- identical(as.character(rv), "4.6.0"); relax <- !identical(lab, "rchk") && isTRUE(is460) && length(svn) == 1L && !is.na(svn) && svn < 89746L; if (relax) cat("R 4.6.0 svn", svn, "(<89746): DESCRIPTION relax + Ensure Rcpp") else cat("none")')"
+          out=""
+          if [ -n "$RSCRIPT" ] && [ -e "$RSCRIPT" ]; then
+            if ! out=$("$RSCRIPT" "$f" 2>/dev/null); then
+              out=""
+            fi
+          fi
+          if [ -z "$out" ] && command -v Rscript >/dev/null 2>&1; then
+            if ! out=$(Rscript "$f" 2>/dev/null); then
+              out=""
+            fi
+          fi
+          if [ -z "$out" ] && [ "${RUNNER_OS:-}" = "Windows" ]; then
+            out=$(
+              cd "$GITHUB_WORKSPACE" && cmd //c "Rscript scripts\\rhub_detect_r460_snapshot.R" 2>/dev/null
+            ) || out=""
+          fi
+          if [ -z "$out" ] && [ "${RUNNER_OS:-}" = "Windows" ]; then
+            out=$(
+              cd "$GITHUB_WORKSPACE" && cmd //c "Rscript scripts/rhub_detect_r460_snapshot.R" 2>/dev/null
+            ) || out=""
+          fi
+          if [ -z "$out" ] && [ "${RUNNER_OS:-}" = "Windows" ]; then
+            out=$(
+              cd "$GITHUB_WORKSPACE" && powershell -NoProfile -NoLogo -NonInteractive -Command "Rscript './scripts/rhub_detect_r460_snapshot.R'" 2>/dev/null
+            ) || out=""
+          fi
+          if [ -z "$out" ]; then
+            echo "glmbayes_r460_snapshot: could not run Rscript (R_HOME=${R_HOME:-} RSCRIPT=${RSCRIPT:-})" >&2
+            exit 1
+          fi
+          relax=$(printf '%s' "$out" | head -n1 | tr -d '\r')
+          note=$(printf '%s' "$out" | tail -n1 | tr -d '\r')
+          echo "glmbayes_r460_snapshot: Rscript=resolved relax=${relax}" >&2
           echo "relax_description=${relax}" >> "$GITHUB_OUTPUT"
           echo "GLMBAYES_RCPP_SNAPSHOT_WORKAROUND=${relax}" >> "$GITHUB_ENV"
           echo "GLMBAYES_RCPP_SNAPSHOT_WORKAROUND_NOTE=${note}" >> "$GITHUB_ENV"
@@ -1007,13 +1038,44 @@ jobs:
               RSCRIPT="$wline"
             fi
           fi
-          if [ -z "$RSCRIPT" ]; then
-            echo "glmbayes_r460_snapshot: Rscript not found (R_HOME=${R_HOME:-})" >&2
+          f="${GITHUB_WORKSPACE}/scripts/rhub_detect_r460_snapshot.R"
+          if [ ! -f "$f" ]; then
+            echo "glmbayes: expected $f (branch must include scripts/rhub_detect_r460_snapshot.R)" >&2
             exit 1
           fi
-          echo "glmbayes_r460_snapshot: Rscript=$RSCRIPT" >&2
-          relax="$("$RSCRIPT" -e 'lab <- Sys.getenv("MATRIX_LABEL", ""); rv <- getRversion(); v <- R.version; raw <- if (!is.null(v[["svn.rev"]])) v[["svn.rev"]] else v[["svn rev"]]; svn <- suppressWarnings(as.integer(as.character(raw))); is460 <- identical(as.character(rv), "4.6.0"); relax <- !identical(lab, "rchk") && isTRUE(is460) && length(svn) == 1L && !is.na(svn) && svn < 89746L; cat(if (relax) "true" else "false")')"
-          note="$("$RSCRIPT" -e 'lab <- Sys.getenv("MATRIX_LABEL", ""); rv <- getRversion(); v <- R.version; raw <- if (!is.null(v[["svn.rev"]])) v[["svn.rev"]] else v[["svn rev"]]; svn <- suppressWarnings(as.integer(as.character(raw))); is460 <- identical(as.character(rv), "4.6.0"); relax <- !identical(lab, "rchk") && isTRUE(is460) && length(svn) == 1L && !is.na(svn) && svn < 89746L; if (relax) cat("R 4.6.0 svn", svn, "(<89746): DESCRIPTION relax + Ensure Rcpp") else cat("none")')"
+          out=""
+          if [ -n "$RSCRIPT" ] && [ -e "$RSCRIPT" ]; then
+            if ! out=$("$RSCRIPT" "$f" 2>/dev/null); then
+              out=""
+            fi
+          fi
+          if [ -z "$out" ] && command -v Rscript >/dev/null 2>&1; then
+            if ! out=$(Rscript "$f" 2>/dev/null); then
+              out=""
+            fi
+          fi
+          if [ -z "$out" ] && [ "${RUNNER_OS:-}" = "Windows" ]; then
+            out=$(
+              cd "$GITHUB_WORKSPACE" && cmd //c "Rscript scripts\\rhub_detect_r460_snapshot.R" 2>/dev/null
+            ) || out=""
+          fi
+          if [ -z "$out" ] && [ "${RUNNER_OS:-}" = "Windows" ]; then
+            out=$(
+              cd "$GITHUB_WORKSPACE" && cmd //c "Rscript scripts/rhub_detect_r460_snapshot.R" 2>/dev/null
+            ) || out=""
+          fi
+          if [ -z "$out" ] && [ "${RUNNER_OS:-}" = "Windows" ]; then
+            out=$(
+              cd "$GITHUB_WORKSPACE" && powershell -NoProfile -NoLogo -NonInteractive -Command "Rscript './scripts/rhub_detect_r460_snapshot.R'" 2>/dev/null
+            ) || out=""
+          fi
+          if [ -z "$out" ]; then
+            echo "glmbayes_r460_snapshot: could not run Rscript (R_HOME=${R_HOME:-} RSCRIPT=${RSCRIPT:-})" >&2
+            exit 1
+          fi
+          relax=$(printf '%s' "$out" | head -n1 | tr -d '\r')
+          note=$(printf '%s' "$out" | tail -n1 | tr -d '\r')
+          echo "glmbayes_r460_snapshot: Rscript=resolved relax=${relax}" >&2
           echo "relax_description=${relax}" >> "$GITHUB_OUTPUT"
           echo "GLMBAYES_RCPP_SNAPSHOT_WORKAROUND=${relax}" >> "$GITHUB_ENV"
           echo "GLMBAYES_RCPP_SNAPSHOT_WORKAROUND_NOTE=${note}" >> "$GITHUB_ENV"
