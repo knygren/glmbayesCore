@@ -78,16 +78,69 @@ jobs:
           MATRIX_LABEL: ${{ matrix.config.label }}
         run: |
           set -eu
-          RSCRIPT="Rscript"
+          RSCRIPT=""
           if [ -n "${R_HOME:-}" ]; then
-            if [ -f "$R_HOME/bin/Rscript.exe" ]; then
-              RSCRIPT="$R_HOME/bin/Rscript.exe"
-            elif [ -f "$R_HOME/bin/Rscript" ]; then
-              RSCRIPT="$R_HOME/bin/Rscript"
-            else
-              export PATH="$R_HOME/bin:$PATH"
+            R_HOME="${R_HOME//\\//}"
+            export R_HOME
+            for c in \
+              "$R_HOME/bin/x64/Rscript.exe" \
+              "$R_HOME/bin/Rscript.exe" \
+              "$R_HOME/bin/Rscript"
+            do
+              if [ -e "$c" ]; then
+                RSCRIPT="$c"
+                break
+              fi
+            done
+            if [ -z "$RSCRIPT" ]; then
+              export PATH="$R_HOME/bin/x64:$R_HOME/bin:$PATH"
             fi
           fi
+          if [ -z "$RSCRIPT" ]; then
+            for rc in R R.exe; do
+              if command -v "$rc" >/dev/null 2>&1; then
+                rh="$("$rc" RHOME 2>/dev/null | tr -d '\r' | tr '\\' '/')"
+                if [ -n "$rh" ]; then
+                  export R_HOME="${rh//\\//}"
+                  for c in \
+                    "$R_HOME/bin/x64/Rscript.exe" \
+                    "$R_HOME/bin/Rscript.exe" \
+                    "$R_HOME/bin/Rscript"
+                  do
+                    if [ -e "$c" ]; then
+                      RSCRIPT="$c"
+                      break
+                    fi
+                  done
+                fi
+                if [ -n "$RSCRIPT" ]; then
+                  break
+                fi
+              fi
+            done
+          fi
+          if [ -z "$RSCRIPT" ]; then
+            for n in Rscript.exe Rscript; do
+              w="$(command -v "$n" 2>/dev/null || true)"
+              if [ -n "$w" ] && [ -e "$w" ]; then
+                RSCRIPT="$w"
+                break
+              fi
+            done
+          fi
+          if [ -z "$RSCRIPT" ] && command -v cmd.exe >/dev/null 2>&1; then
+            wline="$(cmd //c "where Rscript 2>nul" 2>/dev/null | head -n1 || true)"
+            wline="${wline%%$'\r'}"
+            wline="${wline//\\//}"
+            if [ -n "$wline" ] && [ -e "$wline" ]; then
+              RSCRIPT="$wline"
+            fi
+          fi
+          if [ -z "$RSCRIPT" ]; then
+            echo "glmbayes_r460_snapshot: Rscript not found (R_HOME=${R_HOME:-})" >&2
+            exit 1
+          fi
+          echo "glmbayes_r460_snapshot: Rscript=$RSCRIPT" >&2
           relax="$("$RSCRIPT" -e 'lab <- Sys.getenv("MATRIX_LABEL", ""); rv <- getRversion(); v <- R.version; raw <- if (!is.null(v[["svn.rev"]])) v[["svn.rev"]] else v[["svn rev"]]; svn <- suppressWarnings(as.integer(as.character(raw))); is460 <- identical(as.character(rv), "4.6.0"); relax <- !identical(lab, "rchk") && isTRUE(is460) && length(svn) == 1L && !is.na(svn) && svn < 89746L; cat(if (relax) "true" else "false")')"
           note="$("$RSCRIPT" -e 'lab <- Sys.getenv("MATRIX_LABEL", ""); rv <- getRversion(); v <- R.version; raw <- if (!is.null(v[["svn.rev"]])) v[["svn.rev"]] else v[["svn rev"]]; svn <- suppressWarnings(as.integer(as.character(raw))); is460 <- identical(as.character(rv), "4.6.0"); relax <- !identical(lab, "rchk") && isTRUE(is460) && length(svn) == 1L && !is.na(svn) && svn < 89746L; if (relax) cat("R 4.6.0 svn", svn, "(<89746): DESCRIPTION relax + Ensure Rcpp") else cat("none")')"
           echo "relax_description=${relax}" >> "$GITHUB_OUTPUT"
@@ -896,16 +949,69 @@ jobs:
           MATRIX_LABEL: ${{ matrix.config.label }}
         run: |
           set -eu
-          RSCRIPT="Rscript"
+          RSCRIPT=""
           if [ -n "${R_HOME:-}" ]; then
-            if [ -f "$R_HOME/bin/Rscript.exe" ]; then
-              RSCRIPT="$R_HOME/bin/Rscript.exe"
-            elif [ -f "$R_HOME/bin/Rscript" ]; then
-              RSCRIPT="$R_HOME/bin/Rscript"
-            else
-              export PATH="$R_HOME/bin:$PATH"
+            R_HOME="${R_HOME//\\//}"
+            export R_HOME
+            for c in \
+              "$R_HOME/bin/x64/Rscript.exe" \
+              "$R_HOME/bin/Rscript.exe" \
+              "$R_HOME/bin/Rscript"
+            do
+              if [ -e "$c" ]; then
+                RSCRIPT="$c"
+                break
+              fi
+            done
+            if [ -z "$RSCRIPT" ]; then
+              export PATH="$R_HOME/bin/x64:$R_HOME/bin:$PATH"
             fi
           fi
+          if [ -z "$RSCRIPT" ]; then
+            for rc in R R.exe; do
+              if command -v "$rc" >/dev/null 2>&1; then
+                rh="$("$rc" RHOME 2>/dev/null | tr -d '\r' | tr '\\' '/')"
+                if [ -n "$rh" ]; then
+                  export R_HOME="${rh//\\//}"
+                  for c in \
+                    "$R_HOME/bin/x64/Rscript.exe" \
+                    "$R_HOME/bin/Rscript.exe" \
+                    "$R_HOME/bin/Rscript"
+                  do
+                    if [ -e "$c" ]; then
+                      RSCRIPT="$c"
+                      break
+                    fi
+                  done
+                fi
+                if [ -n "$RSCRIPT" ]; then
+                  break
+                fi
+              fi
+            done
+          fi
+          if [ -z "$RSCRIPT" ]; then
+            for n in Rscript.exe Rscript; do
+              w="$(command -v "$n" 2>/dev/null || true)"
+              if [ -n "$w" ] && [ -e "$w" ]; then
+                RSCRIPT="$w"
+                break
+              fi
+            done
+          fi
+          if [ -z "$RSCRIPT" ] && command -v cmd.exe >/dev/null 2>&1; then
+            wline="$(cmd //c "where Rscript 2>nul" 2>/dev/null | head -n1 || true)"
+            wline="${wline%%$'\r'}"
+            wline="${wline//\\//}"
+            if [ -n "$wline" ] && [ -e "$wline" ]; then
+              RSCRIPT="$wline"
+            fi
+          fi
+          if [ -z "$RSCRIPT" ]; then
+            echo "glmbayes_r460_snapshot: Rscript not found (R_HOME=${R_HOME:-})" >&2
+            exit 1
+          fi
+          echo "glmbayes_r460_snapshot: Rscript=$RSCRIPT" >&2
           relax="$("$RSCRIPT" -e 'lab <- Sys.getenv("MATRIX_LABEL", ""); rv <- getRversion(); v <- R.version; raw <- if (!is.null(v[["svn.rev"]])) v[["svn.rev"]] else v[["svn rev"]]; svn <- suppressWarnings(as.integer(as.character(raw))); is460 <- identical(as.character(rv), "4.6.0"); relax <- !identical(lab, "rchk") && isTRUE(is460) && length(svn) == 1L && !is.na(svn) && svn < 89746L; cat(if (relax) "true" else "false")')"
           note="$("$RSCRIPT" -e 'lab <- Sys.getenv("MATRIX_LABEL", ""); rv <- getRversion(); v <- R.version; raw <- if (!is.null(v[["svn.rev"]])) v[["svn.rev"]] else v[["svn rev"]]; svn <- suppressWarnings(as.integer(as.character(raw))); is460 <- identical(as.character(rv), "4.6.0"); relax <- !identical(lab, "rchk") && isTRUE(is460) && length(svn) == 1L && !is.na(svn) && svn < 89746L; if (relax) cat("R 4.6.0 svn", svn, "(<89746): DESCRIPTION relax + Ensure Rcpp") else cat("none")')"
           echo "relax_description=${relax}" >> "$GITHUB_OUTPUT"
@@ -1591,6 +1697,8 @@ jobs:
           pattern: platform-report-*
           merge-multiple: true
           path: platform-reports
+          # Do not fail the summary job when a matrix leg failed before upload (e.g. Windows Rscript)
+          if-no-files-found: warn
 
       - name: Build cross-platform summary table
         shell: bash
@@ -1631,6 +1739,33 @@ jobs:
             if (is.null(v)) return(alt)
             v <- as.character(v)
             if (!length(v) || !nzchar(v)) alt else v
+          }
+          # paste0 (not sprintf): cell text can contain % or other sprintf specials
+          md_row8 <- function(a, b, c, d, e, f, g, h) {
+            esc <- function(z) {
+              z <- as.character(z)
+              if (!length(z) || is.na(z[[1L]])) {
+                return("")
+              }
+              gsub("|", "/", z[[1L]], fixed = TRUE)
+            }
+            paste0(
+              "| ", esc(a), " | ", esc(b), " | ", esc(c), " | ", esc(d), " | ",
+              esc(e), " | ", esc(f), " | ", esc(g), " | ", esc(h), " |"
+            )
+          }
+          md_row9 <- function(a, b, c, d, e, f, g, h, i) {
+            esc <- function(z) {
+              z <- as.character(z)
+              if (!length(z) || is.na(z[[1L]])) {
+                return("")
+              }
+              gsub("|", "/", z[[1L]], fixed = TRUE)
+            }
+            paste0(
+              "| ", esc(a), " | ", esc(b), " | ", esc(c), " | ", esc(d), " | ",
+              esc(e), " | ", esc(f), " | ", esc(g), " | ", esc(h), " | ", esc(i), " |"
+            )
           }
           job_outcome <- function(x) {
             if (!is.null(x[["job_status"]])) {
@@ -1708,8 +1843,7 @@ jobs:
             lines <- c(lines, "| Platform | R version | R svn rev | Rcpp version | R CMD check (00check) | Job | Rcpp snapshot workaround | Rcpp ensure (source / Function.h) |",
                        "|---|---:|---:|---:|---|---|---|---|")
             for (x in rows) {
-              lines <- c(lines, sprintf(
-                "| %s | %s | %s | %s | %s | %s | %s | %s |",
+              lines <- c(lines, md_row8(
                 getf(x, "platform"), getf(x, "r_version"), getf(x, "r_svn_rev", "unknown"),
                 rcpp_stat(x), rcmd_stat(x), job_outcome(x), snapshot_cell(x), ensure_summary_cell(x)
               ))
@@ -1746,8 +1880,7 @@ jobs:
                 if (nzchar(ilog)) cell_parts <- c(cell_parts, paste0("`", ilog, "`"))
                 if (nzchar(arts)) cell_parts <- c(cell_parts, arts)
                 cell <- if (length(cell_parts)) paste(cell_parts, collapse = " — ") else "—"
-                lines <- c(lines, sprintf(
-                  "| %s | %s | %s | %s | %s | %s | %s | %s | %s |",
+                lines <- c(lines, md_row9(
                   getf(x, "platform"), getf(x, "r_version"), getf(x, "r_svn_rev", "unknown"),
                   getf(x, "rcpp_version"),
                   rkget(x, "rchk_native_install_done", "unknown"),
