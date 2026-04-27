@@ -8,75 +8,76 @@ likelihood subgradients (Nygren & Nygren, 2006). It mirrors the interface
 of base R's glm() and lm(), and optionally accelerates envelope
 construction via OpenCL for high-dimensional models. OpenCL is an optional
 capability; the package detects its absence at build time and disables that
-code path gracefully — all checks pass on platforms without OpenCL.
+code path gracefully — all checks pass on platforms without OpenCL. See 
+Readme.md and New.md for additional package details.
+
+
 
 ## Test environments
 
-### Local (developer machine)
-- Windows 11, ASUS TUF F16, GeForce RTX GPU, OpenCL installed
-- R version 4.6.0 RC (2026-04-22 r89945 ucrt), glmbayes built with OpenCL enabled
-- Rcpp 1.1.1-1
-- Command: `devtools::check(vignettes = TRUE, args = "--as-cran", remote = TRUE, manual = TRUE)`
-
-- 0 errors, 0 warnings, 3 notes
-
-  1. New submission (see Notes)
-  2. Rcpp workaround (see Notes)
-  3. Long-running examples on OpenCL-enabled machine (see Notes)
-   
 ### Win-builder
 
 - R release 
-    -R 4.6.0 RC (2026-04-22 r89945 ucrt)
-    -Rcpp 1.1.1-1    
-    -0 errors, 0 warnings, 2 notes
+    -R 4.6.0 (2026-04-24 ucrt)
+    -Platform: x86_64-w64-mingw32 (Windows Server 2022 x64)
+    -Toolchain: GCC 14.3.0 (C/C++) and GNU Fortran 14.3.0
+    -Rcpp 1.1.1-1.1
+    -0 errors, 0 warnings, 1 note (New submission)
 
-- R-devel   
-    -R Under development (unstable) (2026-04-24 r89961 ucrt)
-    -Rcpp 1.1.1-1    
-    -0 errors, 0 warnings, 2 notes
     
 - R-oldrelease 
     -R 4.5.3 (2026-03-11 ucrt)
-    -Rcpp 1.1.1    
-    -0 errors, 0 warnings, 3 notes
-
+    -Platform: x86_64-w64-mingw32 (Windows Server 2022 x64)
+    -Toolchain: GCC 14.3.0 (C/C++) and GNU Fortran 14.3.0
+    -Rcpp 1.1.1
+    -0 errors, 0 warnings, 2 notes (New submission; long-running non-OpenCL example timing)
 
   1. New submission (see Notes)
-  2. Rcpp workaround (see Notes)
-  3. Long-running non-OpenCL (see Notes - oldrelease only)
+  2. Long-running non-OpenCL (see Notes - oldrelease only)
+
+A version of package prior to a change to the Rcpp Include/Suggest setup ran as below
+
+- R-devel   
+    -R Under development (unstable) (2026-04-25 r89962 ucrt)
+    -Platform: x86_64-w64-mingw32 (Windows Server 2022 x64)
+    -Toolchain: GCC 14.3.0 (C/C++) and GNU Fortran 14.3.0
+    -Rcpp 1.1.1-1.1
+    -0 errors, 0 warnings, 3 notes (New submission, )
+
+where the additional notes were
+
+a) Package listed in more than one of Depends, Imports, Suggests, Enhances
+
+b) Skipping checking math rendering: package 'V8' unavailable
+
+A rerun after removing these currently runs into an ERROR: failed to lock directory 'd:/RCompile/CRANguest/R-devel/lib' for modifying
+(likely due to re-run being too close to the previous one).
 
 ### Mac-builder
 
 - macOS release (mac.R-project.org)
-    - R version 4.6.0 (svn r89674)
-    - Build Profile reported by macbuilder: r-devel-macosx-arm64
+    - Build system: `r-release-macosx-arm64|4.6.0|macosx|macOS 26.2 (25C56)|Mac mini|Apple M1||en_US.UTF-8|macOS 14.4|clang-1700.6.3.2|GNU Fortran (GCC) 14.2.0`
+    - R Under development (unstable) (2026-03-22 r89674)
     - Platform: aarch64-apple-darwin23
-    - Rcpp 1.1.1-1.1 (configure log prints normalized form `1.1.1.1.1`)
-    - 1 error, 0 warnings, 0 notes
-    - Install failed at compile time in `Rcpp/Function.h` with:
-      `error: use of undeclared identifier 'R_getRegisteredNamespace'`
+    - Toolchain: Apple clang 17.0.0 (clang-1700.6.3.2), GNU Fortran (GCC) 14.2.0
+    - Rcpp 1.1.1-1.1 
+    - Status: OK (macbuilder reports final status instead of standard E/W/N summary)
 
 - macOS devel (mac.R-project.org)
-    - R version 4.6.0 (svn r89674)
-    - Build Profile reported by macbuilder: r-devel-macosx-arm64
+    - Build system: `r-release-macosx-arm64|4.6.0|macosx|macOS 26.2 (25C56)|Mac mini|Apple M1||en_US.UTF-8|macOS 14.4|clang-1700.6.3.2|GNU Fortran (GCC) 14.2.0`
+    - R Under development (unstable) (2026-03-22 r89674)
     - Platform: aarch64-apple-darwin23
-    - Rcpp 1.1.1-1.1 (configure log prints normalized form `1.1.1.1.1`)
-    - 1 error, 0 warnings, 0 notes
-    - Install failed at compile time in `Rcpp/Function.h` with:
-      `error: use of undeclared identifier 'R_getRegisteredNamespace'`
+    - Toolchain: Apple clang 17.0.0 (clang-1700.6.3.2), GNU Fortran (GCC) 14.2.0
+    - Rcpp 1.1.1-1.1
+    - Status: OK (macbuilder reports final status instead of standard E/W/N summary)
 
-The attempted macOS build resolves Rcpp from CRAN binaries for arm64 (`Rcpp 1.1.1-1.1`).
-The corresponding CRAN Rcpp arm64 checks run on newer patched R snapshots (e.g. r89960), while
-the current winbuilder/mac-builder environment reports `R 4.6.0 (svn r89674)`, i.e. below the
-`r89746` compatibility cutoff for this Rcpp transition. Once the builder image catches up to the
-current CRAN release snapshot level, this package is expected to build without this error.
+Both macOS release and devel submissions currently report the same effective build profile
+on arm64 and now finish with `Status: OK`.
 
 ### R-universe
-- All platforms pass except wasm (WebAssembly), which is expected:
-  the package includes compiled C/C++ code that is not compatible
-  with the wasm toolchain.
--r-universe seems to source Rcpp from github repository
+- R-universe: all non-wasm platforms pass with 0 errors, 0 warnings, and 0 notes.
+- wasm (WebAssembly) remains expected to fail because the package includes compiled
+  C/C++ code that is not compatible with the wasm toolchain.
 
 ### rhub (via rhub::rhub_check())
 
@@ -84,64 +85,70 @@ current CRAN release snapshot level, this package is expected to build without t
 
 | Platform              | R version (svn)   | Rcpp version | E/W/N        |
 |-----------------------|-------------------|--------------|--------------|
-| atlas                 | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| c23*                  | R 4.6.0 (r89623)  | 1.1.1        | 0/0/1 NOTE   |
-| clang16*              | R 4.6.0 (r89629)  | 1.1.1        | 0/0/1 NOTE   |
-| clang17*              | R 4.6.0 (r89629)  | 1.1.1        | 0/0/2 NOTEs  |
-| clang18*              | R 4.6.0 (r89623)  | 1.1.1        | 0/0/2 NOTEs  |
-| clang19*              | R 4.6.0 (r89629)  | 1.1.1        | 0/0/2 NOTEs  |
-| clang20*              | R 4.6.0 (r89623)  | 1.1.1        | 0/0/2 NOTEs  |
-| clang21               | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/2 NOTEs  |
-| clang22               | R 4.7.0 (r89950)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| donttest              | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| gcc13*                | R 4.6.0 (r89629)  | 1.1.1        | 0/0/1 NOTE   |
-| gcc14*                | R 4.6.0 (r89629)  | 1.1.1        | 0/0/1 NOTE   |
-| gcc15*                | R 4.6.0 (r89629)  | 1.1.1        | 0/0/1 NOTE   |
-| gcc16                 | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| intel*                | R 4.6.0 (r89439)  | 1.1.1        | 0/0/1 NOTE   |
-| linux (R-devel)       | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| lto                   | R 4.5.3 (r89597)  | 1.1.1.1      | 0/0/1 NOTE   |
-| m1-san (R-devel)      | R 4.6.0 (r89961)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| macos-arm64 (R-devel) | R 4.6.0 (r89961)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| mkl                   | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| nold                  | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| noremap*              | R 4.6.0 (r89623)  | 1.1.1        | 0/0/1 NOTE   |
-| ubuntu-clang          | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| ubuntu-gcc12          | R 4.7.0 (r89874)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| ubuntu-next           | R 4.6.0 (r89955)  | 1.1.1-1      | 0/0/1 NOTE   |
-| ubuntu-release        | R 4.5.3 (r89597)  | 1.1.1.1      | 0/0/1 NOTE   |
-| windows (R-devel)     | R 4.7.0 (r89955)  | 1.1.1.1      | 0/0/1 NOTE   |
+| atlas                 | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+| c23*                  | R 4.6.0 (r89623)  | 1.1.1        | OK           |
+| clang16*              | R 4.6.0 (r89629)  | 1.1.1        | OK           |
+| clang17*              | R 4.6.0 (r89629)  | 1.1.1        | 1 NOTE       |
+| clang18*              | R 4.6.0 (r89623)  | 1.1.1        | 1 NOTE       |
+| clang19*              | R 4.6.0 (r89629)  | 1.1.1        | 1 NOTE       |
+| clang20*              | R 4.6.0 (r89623)  | 1.1.1        | 1 NOTE       |
+| clang21               | R 4.7.0 (r89961)  | 1.1.1-1.1    | 1 NOTE       |
+| clang22               | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+| donttest              | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+| gcc13*                | R 4.6.0 (r89629)  | 1.1.1        | OK           |
+| gcc14*                | R 4.6.0 (r89629)  | 1.1.1        | OK           |
+| gcc15*                | R 4.6.0 (r89629)  | 1.1.1        | OK           |
+| gcc16                 | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+| intel*                | R 4.6.0 (r89439)  | 1.1.1        | OK           |
+| linux (R-devel)       | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+| lto                   | R 4.6.0 (r89956)  | 1.1.1.1      | OK           |
+| m1-san (R-devel)      | R 4.6.0 (r89961)  | 1.1.1-1.1    | OK           |
+| macos-arm64 (R-devel) | R 4.6.0 (r89961)  | 1.1.1-1.1    | OK           |
+| mkl                   | R 4.7.0 (r89955)  | 1.1.1-1.1    | OK           |
+| nold                  | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+| noremap*              | R 4.6.0 (r89623)  | 1.1.1        | OK           |
+| ubuntu-clang          | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+| ubuntu-gcc12          | R 4.7.0 (r89874)  | 1.1.1-1.1    | OK           |
+| ubuntu-next           | R 4.6.0 (r89961)  | 1.1.1.1      | OK           |
+| ubuntu-release        | R 4.6.0 (r89956)  | 1.1.1.1      | OK           |
+| windows (R-devel)     | R 4.7.0 (r89962)  | 1.1.1-1.1    | OK           |
 
 `*` Platforms where R/Rcpp version inconsistencies prevent installation of 
-Rcpp 1.1.1-1 or later. Rcpp 1.1.1 installs correctly on these platforms. 
-The dual Imports/Suggests listing of Rcpp in the DESCRIPTION
-handles this boundary — see Notes. The boundary appears to be r89746 
-(i.e., R 4.6.0 below r89746 requires Rcpp 1.1.1 instead of Rcpp 1.1.1-1 or 
-later). If the R versions on these systems get updated to the release 
-version or later, these should migrate to the latest CRAN Rcpp version.
+Rcpp 1.1.1-1 or later. Rcpp 1.1.1 installs correctly on these platforms if custom installed. 
+The boundary appears to be r89746 (i.e., R 4.6.0 below r89746 requires Rcpp 1.1.1 
+instead of Rcpp 1.1.1-1 or later). If the R versions on these systems get updated to the 
+release version or later, these should migrate to the latest CRAN Rcpp version.
 
 **Platforms with special checks:**
 
 | Platform    | R version (svn)   | Rcpp version | E/W/N        |
 |-------------|-------------------|--------------|--------------|
-| clang-asan  | R 4.7.0 (r89961)  | 1.1.1-1.1    | 0/0/2 NOTEs  |
-| clang-ubsan | R 4.7.0 (r89961)  | 1.1.1-1.1    | 0/0/2 NOTEs  |
-| gcc-asan    | R 4.7.0 (r89955)  | 1.1.1-1.1    | 0/0/1 NOTE   |
-| valgrind    | R 4.7.0 (r89961)  | 1.1.1-1.1    | 0/0/1 NOTE   |
+| clang-asan  | R 4.7.0 (r89961)  | 1.1.1-1.1    | 1 NOTE       |
+| clang-ubsan | R 4.7.0 (r89961)  | 1.1.1-1.1    | 1 NOTE       |
+| gcc-asan    | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+| valgrind    | R 4.7.0 (r89961)  | 1.1.1-1.1    | OK           |
+
+- Remaining NOTE on some clang-based rhub platforms is environment/toolchain-provided:
+  non-portable compile flag `-Wp,-D_FORTIFY_SOURCE=3` reported by `R CMD check`.
+  This flag is injected by the build image, not by glmbayes Makevars.
+
+- Sanitizer/valgrind diagnostic summary for special-check platforms:
+  - `clang-asan` and `gcc-asan` focus on memory safety (out-of-bounds access, use-after-free,
+    double/invalid free); no sanitizer findings attributable to package code were reported.
+  - `clang-ubsan` focuses on undefined behavior (e.g., invalid shifts/casts, misalignment,
+    overflow-related UB); no UBSAN findings attributable to package code were reported.
+  - `valgrind` focuses on runtime memory errors/leaks; no invalid read/write or leak diagnostics
+    attributable to package code were reported.
+  - These diagnostics apply to code paths exercised during the rhub check workload
+    (examples/tests/vignettes run on those platforms).
 
 - rchk: [describe outcome and explain here]
-
-
-### GPU / OpenCL on Linux (Vast.ai virtual machine)
-- Ubuntu [version], OpenCL enabled, R [version]
-- Confirms OpenCL code path builds and runs correctly outside Windows
-- Result: 0 errors, 0 warnings, N notes
 
 
 ## Comments Related to Notes appearing on various systems
 
 All checks produced 0 errors and 0 warnings. The following 3 notes were
-observed on the local Windows machine (R 4.6.0 RC, OpenCL enabled):
+observed on select systems.
 
 ### Note: **New submission** 
 
@@ -150,74 +157,96 @@ observed on the local Windows machine (R 4.6.0 RC, OpenCL enabled):
 
    Expected for an initial CRAN submission. No action required.
 
-### Note: Rcpp listed in both Imports and Suggests
+### Note: **Non-OpenCL Examples with long CPU or elapsed time**
 
-**Background:**
+       Examples with CPU (user + system) or elapsed time > 5s
+                user  system elapsed
+       rlmb    12.60    0.45   10.61
 
-The latest release for R (4.6.0) required a patch by the Rcpp team
-for Rcpp to properly build and install. Updates to R 4.6.0 starting with
-svn r89746 enabled the Rcpp team to introduce a fix starting with Rcpp 1.1.1-1
-that allows the package to properly build and install on the newer version of R.
-This fix uses R_getRegisteredNamespace (which seems to have been added by the R team
-starting with svn r89746). See (https://github.com/RcppCore/Rcpp/pull/1469) for detailed
-discussion by thr Rcpp team.
+This appears only on select platforms/machines. On many, this note is never
+triggered as elapsed time falls below the 5-second threshold. Example compares 
+a two-block gibbs sampler (MCMC) to the main lmb implementation (MC). Sufficently long 
+runs and needed to make comparisons valid statistically.
 
-This fix, however, leads to incompatibility with earlier pre-release versions of 
-R 4.6.0 (as noted in the macbuilder section). As a result, CRAN currently list the below 
-binaries (with differing Rcpp versions across platforms).
 
-**Current CRAN Rcpp Package source and a binary information**
+### Note on rchk
+[rchk checks for PROTECT issues in C code. Describe what rchk flagged,
+whether it is a false positive, and what you did to investigate or
+mitigate it. If the flag is in Rcpp-generated code rather than your
+own C, say so explicitly.]
 
-Package source:	Rcpp_1.1.1-1.1.tar.gz
-Windows binaries:	r-release: Rcpp_1.1.1-1.zip, r-oldrel: Rcpp_1.1.1.zip
-macOS binaries:	
-  r-release (arm64): Rcpp_1.1.1-1.1.tgz, r-oldrel (arm64): Rcpp_1.1.1-1.1.tgz, 
-  r-release (x86_64): Rcpp_1.1.1.tgz, r-oldrel (x86_64): Rcpp_1.1.1-1.1.tg
+## GPU/OpenCL test environments
 
-As seen, two platforms (windows r-oldrel) and macOS r-release (x86_64)
-both use the earlier Rcpp 1.1.1 and not the version consistent with the package
-source (likely because of build/install failures for Rcpp 1.1.1-1.1) on those platforms.
+### Local (developer machine)
 
-**Implications for glmbayes**
+#### Local release/near-release (`R 4.6.0 RC`)
+- Environment: Windows 11 x64 (build 26200), ASUS TUF F16, NVIDIA GeForce RTX GPU, OpenCL available
+- R version: 4.6.0 RC (2026-04-22 r89945 ucrt), platform `x86_64-w64-mingw32`
+- Toolchain:
+  - R compiled by `gcc.exe (GCC) 14.3.0`, `GNU Fortran (GCC) 14.3.0`
+  - Package install/check used C compiler `gcc.exe (GCC) 14.2.0`, C++ compiler `G++ (GCC) 14.2.0`
+- Command: `devtools::check(vignettes = TRUE, args = "--as-cran", remote = TRUE, manual = TRUE)`
+- Result: `0 errors | 0 warnings | 2 notes`
+  1. New submission (see Notes above)
+  2. Long-running OpenCL examples (see Notes below)
+- OpenCL/GPU context: this run uses the local OpenCL-capable NVIDIA GPU (`has_opencl()` true), so the GPU code path is exercised.
+- Example timing note (from `R CMD check`):
+  - `Boston_centered`: user 51.22s, system 4.64s, elapsed 31.44s
+  - `Cleveland`: user 11.09s, system 3.25s, elapsed 7.92s
 
-Because the latest release version of R (4.6.0) requires Rcpp to be of version
-Rcpp 1.1.1-1 or later to properly build and install, glmbayes would ideally 
-ship with Rcpp (>= 1.1.1-1) in the Imports field. However, at present this would
-lead to failures of installs from CRAN on (windows r-oldrel) and macOS r-release  (x86_64)
-since Rcpp 1.1.1-1 or later binaries are unavailable.
+#### Local oldrel (`R 4.5.3`)
+- Environment: Windows 11 x64 (build 26200), ASUS TUF F16, NVIDIA GeForce RTX GPU, OpenCL available
+- R version: 4.5.3 (2026-03-11 ucrt), platform `x86_64-w64-mingw32`
+- Toolchain:
+  - R compiled by `gcc.exe (GCC) 14.3.0`, `GNU Fortran (GCC) 14.3.0`
+  - Package install/check used C compiler `gcc.exe (GCC) 14.2.0`, C++ compiler `G++ (GCC) 14.2.0`
+- Command: `devtools::check(vignettes = TRUE, args = "--as-cran", remote = TRUE, manual = TRUE)`
+- Result: `0 errors | 0 warnings | 2 notes`
+  1. New submission
+  2. Long-running OpenCL examples
+- OpenCL/GPU context: this run uses the local OpenCL-capable NVIDIA GPU (`has_opencl()` true), so the GPU code path is exercised.
+- Example timing note (from `R CMD check`):
+  - `Boston_centered`: user 78.87s, system 7.53s, elapsed 59.11s
+  - `Cleveland`: user 16.86s, system 2.12s, elapsed 10.47s
 
-To handle this, the package currently keeps Rcpp (>= 1.1.1) in the Imports fields
-and Rcpp (>= 1.1.1-1) in the Suggests field. This seems to lead to the following behavior
+### GPU / OpenCL on Linux (Vast.ai virtual machine)
+- Environment: Ubuntu 22.04 (gcc/g++ 11.4.0), NVIDIA GeForce RTX 5060 Ti, OpenCL runtime detected
 
-(i) All platforms with no Rcpp or Rcpp (< 1.1.1-1) attempts CRAN installation of 
-the most recent version available
+#### Vast.ai oldrel (`R 4.5.3`)
+- R version: 4.5.3 (svn r89597), invoked explicitly via `/opt/R/4.5.3/bin/Rscript`
+- Install sources: glmbayes from r-universe (`https://knygren.r-universe.dev/src/contrib/...`), dependencies from CRAN source tarballs
+- Dependencies built from source in this run: `rbibutils`, `coda`, `Rcpp`, `RcppParallel`, `Rdpack`, `RcppArmadillo`
+- Rcpp: `1.1.1-1.1` (configure reports normalized `1.1.1.1.1`), simulated `Function.h` branch = 2 (`R_VERSION < 4.6.0 || R_SVN_REVISION < 89746`)
+- OpenCL detection in configure:
+  - headers found in `/usr/include`
+  - OpenCL library found in `/usr/lib/x86_64-linux-gnu`
+  - runtime probe succeeded
+- Build/install result: source install completed successfully (`* DONE (glmbayes)`), Step 1 elapsed `301.18s`
+- Repos used by install script in this run: `https://knygren.r-universe.dev`, `https://cloud.r-project.org`
+- OpenCL examples (`run_opencl_examples()`) result: `OK`, Step 2 elapsed `80.06s`
+  - examples exceeding 5s:
+    - `example:Boston_centered`: user 138s, system 19.2s, elapsed 67s
+    - `example:Cleveland`: user 33s, system 3.9s, elapsed 13s
+- Combined remote run timing (install + examples): `381.24s`
 
-(ii) Platforms where CRAN provides valid binaries (Windows and macOS) or source (Unix) 
-for Rcpp (>= 1.1.1-1) attempts that installation and should succeed unless the R system
-sits on a boundary between R oldrel and R 4.6.0 release.
+#### Vast.ai release (`R 4.6.0`)
+- R version: 4.6.0 (svn r89956), invoked explicitly via `/opt/R/4.6.0/bin/Rscript`
+- Install sources: glmbayes from r-universe (`https://knygren.r-universe.dev/src/contrib/...`), dependencies from CRAN source tarballs
+- Dependencies built from source in this run: `rbibutils`, `coda`, `Rcpp`, `RcppParallel`, `Rdpack`, `RcppArmadillo`
+- Rcpp: `1.1.1-1.1` (configure reports normalized `1.1.1.1.1`), simulated `Function.h` branch = 3 (`R_VERSION < 4.6.0 || R_SVN_REVISION < 89746` is false)
+- OpenCL detection in configure:
+  - headers found in `/usr/include`
+  - OpenCL library found in `/usr/lib/x86_64-linux-gnu`
+  - runtime probe succeeded
+- Build/install result: source install completed successfully (`* DONE (glmbayes)`), Step 1 elapsed `341.55s`
+- Repos used by install script in this run: `https://knygren.r-universe.dev`, `https://cloud.r-project.org`
+- OpenCL examples (`run_opencl_examples()`) result: `OK`, Step 2 elapsed `79.40s`
+  - examples exceeding 5s:
+    - `example:Boston_centered`: user 140s, system 19.5s, elapsed 67s
+    - `example:Cleveland`: user 24s, system 3.9s, elapsed 12s
+- Combined remote run timing (install + examples): `420.97s`
 
-(iii) Platforms where CRAN does not provide valid binaries for Rcpp (< 1.1.1-1)
-fall back gracefully to Rcpp 1.1.1 and attempt that install (which generally succeeds for older
-versions of R)
-
-**Proposed release approach**
-
-To ensure binaries and/or a Source tar becomes available for all platforms on CRAN and to 
-remove notes for the long term, I propose the following two step release approach:
-
-(i) Release an initial version (glmbayes 0.9.0) with Rcpp (>= 1.1.1) in the Imports field 
-and Rcpp (>= 1.1.1-1) in the Suggests field
-
-(ii) Shortly thereafter release a patched version (tentatively glmbayes 0.9.0-1)
-with Rcpp (>= 1.1.1-1) in the Imports field and no Rcpp version in the Suggests field
-
-Once both versions are available, The sources and binaries should show consistency with Rcpp 
-sources and binaries as follows:
-
-- Package Source: glmbayes 0.9.0-1
-- Windows and macOS binaries with latest Rcpp version --> glmbayes 0.9.0-1 binaries
-- Windows and macOS binaries with Rcpp version 1.1.1 --> glmbayes 0.9.0 binaries
-
+- These VM runs validate source build + install and OpenCL runtime execution on Linux; no `R CMD check` run on these VMs.
 
 ### Note: **OpenCL Examples with long CPU or elapsed time**
 
@@ -226,26 +255,24 @@ sources and binaries as follows:
        Boston_centered 150.89  16.16  105.20
        Cleveland        42.25   3.00   29.34
 
-   Boston_centered and Cleveland are GPU/OpenCL examples where part of code is guarded by
-   `has_opencl()` that does not execute on machines without OpenCL installed.
-   They will not appear on CRAN check servers. These examples 
-   are used on OpenCL machines to demonstrate models with many variables and observations.
+`Boston_centered` and `Cleveland` are GPU/OpenCL examples: the heavy path runs only when
+`has_opencl()` is true. On typical CRAN check machines there is no usable OpenCL device, so
+that path is skipped and these timings are **not** what CRAN sees. The numbers above are
+from an OpenCL-capable maintainer machine and are included to document behavior and
+performance validation.
 
-### Note: **Non-OpenCL Examples with long CPU or elapsed time**
+**Timing columns:** `elapsed` is wall-clock time (what CRAN’s example-timing checks care about).
+`user` and `system` are CPU time for the R process; on parallel workloads (host threads,
+OpenMP/BLAS, OpenCL/device overlap), CPU time can be summed across cores so **user + system
+can exceed elapsed** even though wall-clock time is lower.
 
-       Examples with CPU (user + system) or elapsed time > 5s
-                user  system elapsed
-       rlmb    12.60    0.45   10.61
-
-This appears only on select platforms/machines. On many, this note is never
-triggered as elapsed time falls below the 5-second threshold.
-
-
-### Note on rchk
-[rchk checks for PROTECT issues in C code. Describe what rchk flagged,
-whether it is a false positive, and what you did to investigate or
-mitigate it. If the flag is in Rcpp-generated code rather than your
-own C, say so explicitly.]
+**Why this matters for users:** The main motivation for the OpenCL path is speed on **large**
+problems (many covariates and/or observations). **Wall-clock gains from parallel GPU/OpenCL
+execution typically grow with problem size**—often dramatically—because work maps well to the
+device and amortizes setup. The examples above use **modest** data sizes so they stay
+runnable in documentation; they **understate** the speedup you should expect on realistically
+large models, where the advantage over a serial CPU-only path is likely to be **much**
+larger.
 
 ---
 _This file is listed in `.Rbuildignore` and is not included in the built
