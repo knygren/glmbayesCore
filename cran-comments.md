@@ -9,8 +9,7 @@ of base R's glm() and lm(), and optionally accelerates envelope
 construction via OpenCL for high-dimensional models. OpenCL is an optional
 capability; the package detects its absence at build time and disables that
 code path gracefully — all checks pass on platforms without OpenCL. See 
-Readme.md and New.md for additional package details.
-
+README.md and NEWS.md for additional package details.
 
 
 ## Test environments
