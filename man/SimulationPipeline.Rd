@@ -38,10 +38,6 @@ V1<-1*diag(as.numeric(2.0))
 V1[1,1]<-((log(0.9/0.1)-log(0.5/0.5))/2)^2 
 V1[2,2]=(3*mu[2,1]/2)^2  # Allows slope to be up to 1 times as large as point estimate 
 
-#out<-rglmb(n = 1000, y=y, x=x, mu=mu, P=solve(V1), wt = wt, 
-#           family = binomial(logit), Gridtype = 3) 
-#summary(out)
-
 famfunc<-glmbfamfunc(binomial(logit))
 
 f1<-famfunc$f1
@@ -105,10 +101,7 @@ Env2=EnvelopeBuild(as.vector(bstar2), as.matrix(A),y, as.matrix(x2),
 
 Env2
 
-#int n, NumericVector y, NumericMatrix x, NumericMatrix mu, NumericMatrix P, 
-#NumericVector alpha, NumericVector wt, Function f2,
-#Rcpp::List Envelope, Rcpp::CharacterVector family, 
-#Rcpp::CharacterVector link, int progbar
+# The low-level sampler is called below with explicit type coercions.
 
 ### Note: getting the types correct here is important but potentially difficult for users
 ### May be better to call an R function wrapper that checks (and converts when possible) 

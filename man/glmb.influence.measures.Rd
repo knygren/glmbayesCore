@@ -61,7 +61,7 @@ glmb.D93 <- glmb(
 betastar <- glmb.D93$coef.mode # Posterior mode from optim
 x <- glmb.D93$x
 y <- glmb.D93$y
-# offset=glmb.D93$offset   # not present in the output --> For now set to 0 vector
+# The fitted object does not currently store an offset, so use zeros here.
 offset2 <- 0 * y # Should return this from lower level functions
 weights2 <- glmb.D93$prior.weights
 
@@ -96,10 +96,6 @@ influence(glmb2.D93)
 influence(glmb2.D93, do.coef = TRUE)
 influence(glmb2.D93, do.coef = FALSE)
 
-# glmb2.D93$qr=glmb2.D93$fit$qr
-# influence.measures(glmb2.D93,influence(glmb2.D93))
-# influence.measures(glmb2.D93$fit,influence(glmb2.D93))
-# influence.measures(glmb2.D93$fit,influence(glmb2.D93,do.coef=FALSE))
 glmb.influence.measures(glmb2.D93, influence(glmb2.D93))
 
 
@@ -109,16 +105,15 @@ dfbeta(glmb2.D93$fit, influence(glmb2.D93))
 hatvalues(glmb2.D93, influence(glmb2.D93))
 hatvalues(glmb2.D93$fit, influence(glmb2.D93))
 
-# Methods (implmented)
+# Implemented methods
 
 rstandard(glmb2.D93, infl = influence(glmb2.D93))
 rstandard(glmb2.D93)
 
 
-# Need Metods
+# Methods requiring dedicated handling
 
 ## Needs a method function
-# dfbetas(glmb2.D93,influence(glmb2.D93))
 dfbetas(glmb2.D93)
 dfbetas(glmb2.D93, influence(glmb2.D93, do.coef = TRUE))
 dfbetas(glmb2.D93$fit, influence(glmb2.D93))
@@ -131,8 +126,7 @@ cooks.distance(glmb2.D93$fit, influence(glmb2.D93))
 
 
 
-# Needs a method function (now works)
-# rstandard(glmb2.D93$fit,influence(glmb2.D93))
+# The rstandard method now works directly on glmb objects.
 
 
 # Needs a method function
@@ -153,9 +147,6 @@ covratio(glmb2.D93$fit, influence(glmb2.D93))
 # Needs a method function but requires a different approach
 # The influence function actually stores this measure
 ## This seems to require more work to create a method function
-## Should
-# hat(glmb2.D93,influence(glmb2.D93))
-# hat(glmb2.D93$fit,influence(glmb2.D93))
 
 infl <- influence(glmb2.D93)
 hat2 <- infl$hat

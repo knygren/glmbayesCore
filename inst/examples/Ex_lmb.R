@@ -6,9 +6,7 @@ group <- gl(2, 10, 20, labels = c("Ctl", "Trt"))
 weight <- c(ctl, trt)
 
 ps <- Prior_Setup(weight ~ group, gaussian())
-# mu <- ps$mu
-# V  <- ps$Sigma
-# mu[1, 1] <- mean(weight)
+# Prior_Setup supplies the prior mean and covariance components used below.
 
 ## Classical model
 lm.D9 <- lm(weight ~ group, x = TRUE, y = TRUE)
