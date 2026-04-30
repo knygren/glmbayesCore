@@ -23,13 +23,13 @@ Authors@R: c(
     )
 Description: Provides Bayesian linear and generalized linear model fitting
     with independent and identically distributed (iid) posterior samples. The
-    main functions mirror R's 'lm()' and 'glm()' interfaces while adding prior
+    main functions mirror R's lm() and glm() interfaces while adding prior
     family specifications for Gaussian, Poisson, binomial, and Gamma models
     with log-concave likelihoods. Sampling for supported non-conjugate models
     uses accept-reject methods based on likelihood subgradients as in Nygren
     and Nygren (2006) <doi:10.1198/016214506000000357>. The package also
     includes tools for prior setup, posterior summaries, prediction,
-    diagnostics, simulation, vignettes, and optional OpenCL acceleration for
+    diagnostics, simulation, vignettes, and optional 'OpenCL' acceleration for
     larger models.
 License: GPL-2
 URL: https://github.com/knygren/glmbayes, https://knygren.r-universe.dev/glmbayes
