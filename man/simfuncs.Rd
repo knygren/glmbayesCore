@@ -282,7 +282,7 @@ summary(out_cloglog)
 data(carinsca)
 carinsca$Merit <- ordered(carinsca$Merit)
 carinsca$Class <- factor(carinsca$Class)
-options(contrasts = c("contr.treatment", "contr.treatment"))
+oldopt <- options(contrasts = c("contr.treatment", "contr.treatment"))
 
 psg <- Prior_Setup(
   Cost / Claims ~ Merit + Class,
@@ -300,6 +300,7 @@ out_gamma <- rNormal_reg(
   weights = carinsca$Claims
 )
 summary(out_gamma)
+options(oldopt)
 ############################### Start of rNormalGamma_reg examples ####################
 ## Annette Dobson (1990) "An Introduction to Generalized Linear Models".
 ## Page 9: Plant Weight Data.

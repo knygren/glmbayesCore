@@ -315,7 +315,7 @@ DIC_Out
 data(carinsca)
 carinsca$Merit <- ordered(carinsca$Merit)
 carinsca$Class <- factor(carinsca$Class)
-options(contrasts=c("contr.treatment","contr.treatment"))
+oldopt <- options(contrasts = c("contr.treatment", "contr.treatment"))
 Claims=carinsca$Claims
 Insured=carinsca$Insured
 Merit=carinsca$Merit
@@ -335,6 +335,8 @@ out3 <- glmb(Cost/Claims~Merit+Class,family=Gamma(link="log"),
 
 summary(out)
 summary(out3)
+
+options(oldopt)
 
 
 ## glmb with dGamma prior (dispersion-only; coefficients fixed)

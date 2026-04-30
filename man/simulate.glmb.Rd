@@ -75,6 +75,7 @@ res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
 res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
 
 
+oldpar <- par(no.readonly = TRUE)
 par(mar = c(5, 4, 4, 2) + 0.1)  # Standard margin setup
 
 # Plot Credible Interval bounds for Deviance Residuals
@@ -87,6 +88,8 @@ lines(Age, res_low,lty=1)
 lines(Age, res_high,lty=1)
 lines(Age, res_low1,lty=2)
 lines(Age, res_high1,lty=2)
+
+par(oldpar)
 
 }
 \references{

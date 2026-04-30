@@ -167,6 +167,7 @@ mu_post <- colMeans(B)
 x_range <- range(B[, 1])  # Intercept values
 padding <- diff(x_range) * 0.1  # 10\% margin
 
+oldpar <- par(no.readonly = TRUE)
 par(mar = c(5, 6, 4, 2))  # bottom, left, top, right
 
 plot(
@@ -188,6 +189,8 @@ legend(
   col    = c("red", "blue", "black", "darkgreen"),
   pch    = c(19, 19, 4, 3)
 )
+
+par(oldpar)
 }
 \references{
 \insertAllCited{}

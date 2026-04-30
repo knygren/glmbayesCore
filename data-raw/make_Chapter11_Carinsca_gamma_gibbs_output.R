@@ -27,7 +27,8 @@ pkgload::load_all(export_all = FALSE)
 data(carinsca)
 carinsca$Merit <- ordered(carinsca$Merit)
 carinsca$Class <- factor(carinsca$Class)
-options(contrasts = c("contr.treatment", "contr.treatment"))
+oldopt <- options(contrasts = c("contr.treatment", "contr.treatment"))
+on.exit(options(oldopt), add = TRUE)
 Claims <- carinsca$Claims
 Merit <- carinsca$Merit
 Class <- carinsca$Class

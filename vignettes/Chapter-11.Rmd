@@ -741,7 +741,7 @@ Throughout:
 data(carinsca)
 carinsca$Merit <- ordered(carinsca$Merit)
 carinsca$Class <- factor(carinsca$Class)
-options(contrasts=c("contr.treatment","contr.treatment"))
+oldopt <- options(contrasts = c("contr.treatment", "contr.treatment"))
 Claims=carinsca$Claims
 Insured=carinsca$Insured
 Merit=carinsca$Merit
@@ -776,6 +776,8 @@ p<-ncol(x)
 ## Starting dispersion for beta | tau in the two-block Gibbs sampler: same quasi-likelihood
 ## estimate as used elsewhere for this Carinsca Gamma GLM (not the Dobson Gaussian ps).
 dispersion2 <- gamma.dispersion(glm.carinsca)
+
+options(oldopt)
 
 ```
 

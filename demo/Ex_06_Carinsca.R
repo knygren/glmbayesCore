@@ -1,7 +1,7 @@
 data(carinsca)
 carinsca$Merit <- ordered(carinsca$Merit)
 carinsca$Class <- factor(carinsca$Class)
-options(contrasts=c("contr.treatment","contr.treatment"))
+oldopt <- options(contrasts = c("contr.treatment", "contr.treatment"))
 Claims=carinsca$Claims
 Insured=carinsca$Insured
 Merit=carinsca$Merit
@@ -363,3 +363,4 @@ out3 <- rGamma_reg(n = 10000, y = out$y, x = out$x, prior_list = prior_list_disp
 summary(out3)
 
 
+options(oldopt)

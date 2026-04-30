@@ -236,7 +236,7 @@ We begin by preparing the data and setting appropriate factor levels and contras
     data(carinsca)
     carinsca$Merit <- ordered(carinsca$Merit)
     carinsca$Class <- factor(carinsca$Class)
-    options(contrasts = c("contr.treatment", "contr.treatment"))
+    oldopt <- options(contrasts = c("contr.treatment", "contr.treatment"))
 
     Claims  <- carinsca$Claims
     Insured <- carinsca$Insured
@@ -346,6 +346,7 @@ Bayesian summary:
 ```{r carinsca_sumamry_glmb}
 
     summary(out_glmb)
+    options(oldopt)
 ```
 
 The Bayesian summary will report:
