@@ -1,4 +1,6 @@
 // @provides ML_NEGINF, ML_POSINF, ML_NAN, give_log, R_FINITE, R_nonint, safe_log, safe_log1p, safe_expm1
+// Port/adaptation of R Mathlib probability support code for OpenCL.
+// See inst/COPYRIGHTS for copyright holders and derived-code notices.
 
 // OpenCL-safe definitions for constants - No longer needed as set on OPENCL.CL
 //#define ML_NEGINF   (-INFINITY)

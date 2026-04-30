@@ -1,4 +1,6 @@
 // Stub out R’s error/warning hooks for OpenCL
+// Port/adaptation of selected R Mathlib numerical support code for OpenCL.
+// See inst/COPYRIGHTS for copyright holders and derived-code notices.
 #ifndef MATHLIB_ERROR
   #define MATHLIB_ERROR(fmt, ...)     /* no-op or printf(fmt, __VA_ARGS__) */
 #endif

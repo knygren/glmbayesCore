@@ -6,11 +6,12 @@ copyright Kjell Nygren, except where otherwise noted below.
 R Mathlib and R Source Code
 ---------------------------
 
-The package includes local copies, adaptations, or translations of selected R
-Mathlib routines and R source code in src/, src/nmath/, and inst/cl/. These
-files retain the original copyright and license notices where present. OpenCL
-kernels in inst/cl/nmath/, inst/cl/dpq/, and inst/cl/rmath/ are derived from or
-adapted from corresponding R Mathlib routines and support files.
+The package includes local copies, adaptations, or translations of selected
+portions of R Mathlib and R source code in src/, src/nmath/, and inst/cl/. These
+files retain the original copyright and license notices where present. The
+OpenCL kernels in inst/cl/nmath/, inst/cl/dpq/, and inst/cl/rmath/ are ports or
+adaptations of relevant R Mathlib distribution routines, probability helper
+code, numerical support code, constants, and related headers.
 
 Relevant copyright holders and contributors include The R Core Team, The R
 Foundation, Ross Ihaka, Robert Gentleman, Morten Welinder, and Martin Maechler.
