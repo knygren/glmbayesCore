@@ -25,6 +25,8 @@
 #' @export 
 
 
+## These methods delegate to stats influence/diagnostic methods for the fitted
+## glm/lm component stored inside glmb objects. See inst/COPYRIGHTS.
 influence.glmb<-function(model,...){
   
   # Just tell function to use fit component

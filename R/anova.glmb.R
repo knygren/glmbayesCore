@@ -24,6 +24,8 @@
 #' @export
 #' @method anova glmb
 
+## This method follows stats::anova.glm() table conventions with Bayesian
+## extensions. See inst/COPYRIGHTS.
 ## Note: Currently only handles cased where 
 ## prior is multivariate normal. Need update.
 

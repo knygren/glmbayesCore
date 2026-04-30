@@ -150,6 +150,9 @@
 #' 
 #' @export
 
+## Portions of the model-frame/model-matrix setup, fitted-object structure,
+## and method conventions follow or adapt stats::lm() and related stats
+## methods. See inst/COPYRIGHTS for derived-code notices.
 lmb <- function (
     formula,
     pfamily,

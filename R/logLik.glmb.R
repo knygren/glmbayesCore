@@ -12,6 +12,8 @@
 #' @method logLik glmb
 
 
+## This method follows stats::logLik() method conventions for model objects,
+## returning draw-wise Bayesian log-likelihood values. See inst/COPYRIGHTS.
 logLik.glmb<-function(object,...){
   
   y<-object$y

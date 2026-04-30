@@ -23,6 +23,8 @@
 #' @export 
 #' @method residuals glmb
 
+## This method follows stats::residuals.glm() conventions while computing
+## residuals across posterior draws. See inst/COPYRIGHTS.
 residuals.glmb<-function(object,ysim=NULL,...)
 {
   y<-object$y	

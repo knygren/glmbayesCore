@@ -162,6 +162,9 @@
 #' 
 #' @export
 
+## Portions of the model-frame/model-matrix setup, fitted-object structure,
+## and method conventions follow or adapt stats::glm() and related stats
+## methods. See inst/COPYRIGHTS for derived-code notices.
 glmb<-function (formula, family = binomial,pfamily=dNormal(mu,Sigma,dispersion=1),n=1000,data, weights,
                 use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE,
                 subset,

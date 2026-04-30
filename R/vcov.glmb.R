@@ -19,6 +19,8 @@
 #' @export
 #' @method vcov glmb
 
+## This method follows stats::vcov() method conventions for fitted model
+## objects, returning the posterior covariance of draws. See inst/COPYRIGHTS.
 vcov.glmb<-function(object,...)
 {
   return(cov(object$coefficients))

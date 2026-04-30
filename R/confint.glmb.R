@@ -23,6 +23,8 @@
 #' @method confint glmb
 
 
+## This method follows stats::confint() method conventions while reporting
+## posterior credible intervals. See inst/COPYRIGHTS.
 confint.glmb<-function(object,parm,level=0.95,...)
 {
   a <- (1 - level)/2

@@ -13,6 +13,8 @@
 #' @method case.names glmb
 
 
+## These methods follow stats model-object naming conventions. See
+## inst/COPYRIGHTS for derived-code notices.
 case.names.glmb<-function(object,full=FALSE,...){
   w=weights(object)
   dn=rownames(object$x)

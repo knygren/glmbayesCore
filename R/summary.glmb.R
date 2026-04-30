@@ -43,6 +43,8 @@
 #' @method summary glmb
 
 
+## This method follows stats::summary.glm()/summary.lm() output conventions
+## while adding Bayesian posterior summaries and diagnostics. See inst/COPYRIGHTS.
 summary.glmb<-function(object,...){
   
     

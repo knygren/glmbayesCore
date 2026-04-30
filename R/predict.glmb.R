@@ -55,6 +55,8 @@
 #' @export
 #' @method predict glmb
 
+## This method follows the structure and conventions of stats::predict.glm()
+## while returning posterior-draw predictions. See inst/COPYRIGHTS.
 predict.glmb<-function(object,newdata=NULL,type="link",
                        se.fit = FALSE, dispersion = NULL, terms = NULL, 
                        na.action = na.pass,olddata=NULL,...)

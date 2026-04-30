@@ -24,6 +24,8 @@
 #' @export
 #' @method  simulate glmb
 
+## This method follows stats::simulate() method conventions while using
+## posterior predictive draws from glmb objects. See inst/COPYRIGHTS.
 simulate.glmb<-function(object,nsim=1,seed=NULL,...){
   if (!is.null(seed)) set.seed(seed)
 

@@ -26,6 +26,8 @@
 #' @rdname extractDIC
 #' @export
 #' @method extractAIC glmb
+## This method follows stats::extractAIC() conventions while returning DIC
+## components for Bayesian fits. See inst/COPYRIGHTS.
 extractAIC.glmb <- function(fit, ...) {
   c(pD = fit$pD, DIC = fit$DIC)
 }

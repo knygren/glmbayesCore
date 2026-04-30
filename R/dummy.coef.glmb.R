@@ -26,6 +26,8 @@
 #' @method dummy.coef glmb
 #' @export
 
+## This method adapts stats::dummy.coef.lm() behavior for glmb coefficient
+## draws, posterior means, and posterior modes. See inst/COPYRIGHTS.
 
 dummy.coef.glmb<-function (object, use.na = FALSE, ...) 
 {
