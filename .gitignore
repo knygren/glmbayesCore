@@ -22,6 +22,7 @@ glmbayes.Rcheck/
 # Ignore rendered vignette outputs
 vignettes/*.html
 vignettes/*.pdf
+CRAN-SUBMISSION
 
 # Maintainer-only scripts (VM / OpenCL / CRAN check helpers); not package source
 # Exception: r-hub workflow needs this file in the checked-out tree on GitHub Actions
