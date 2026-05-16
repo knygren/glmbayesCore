@@ -134,8 +134,8 @@ std::string load_kernel_library(
     bool verbose = false
 );
 
-// nmathopencl-style ex_glmbayes program (shims + nmath slice + src kernel)
-std::string load_ex_glmbayes_program_source(
+// OpenCL program source for standard-form f2/f3 (likelihood-subgradient envelope evaluation)
+std::string load_likelihood_subgradient_program(
     const std::string& family,
     const std::string& link,
     const std::string& package = "glmbayes"

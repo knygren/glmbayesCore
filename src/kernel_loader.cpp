@@ -320,7 +320,7 @@ std::string load_library_for_kernel(
   return combined;
 }
 
-std::string resolve_ex_glmbayes_kernel_file(
+std::string resolve_kernel_path(
     const std::string& family,
     const std::string& link)
 {
@@ -351,12 +351,12 @@ std::string resolve_ex_glmbayes_kernel_file(
 
 } // namespace
 
-std::string load_ex_glmbayes_program_source(
+std::string load_likelihood_subgradient_program(
     const std::string& family,
     const std::string& link,
     const std::string& package)
 {
-  const std::string kernel_file = resolve_ex_glmbayes_kernel_file(family, link);
+  const std::string kernel_file = resolve_kernel_path(family, link);
 
   std::string opencl_source = load_kernel_source("OPENCL.cl", package);
   std::string libr_shims_source =
