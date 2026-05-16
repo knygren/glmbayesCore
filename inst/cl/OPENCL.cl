@@ -1,57 +1,40 @@
-///*
-// * OPENCL.CL – Global OpenCL Extensions & Shared Utilities
-// * Stitch this at the top of every combined .cl module.
-// */
+/*
+ * OPENCL.cl - global OpenCL configuration header
+ *
+ * This file is intended to be stitched at the top of an assembled OpenCL
+ * program. Packages can copy and customize this header for their own kernels.
+ */
 
-#ifndef OPENCL_CL
-#define OPENCL_CL
+#ifndef OPENCLPORT_OPENCL_CL
+#define OPENCLPORT_OPENCL_CL
 
-// -----------------------------------------------------------------------------
-// 1. Enable OpenCL extensions
-//    - cl_khr_fp64   → double-precision math
-//    - cl_khr_printf → on-device printf debugging
-// -----------------------------------------------------------------------------
-#pragma OPENCL EXTENSION cl_khr_fp64   : enable
-#pragma OPENCL EXTENSION cl_khr_printf : enable
-
-// -----------------------------------------------------------------------------
-// 2. Constants
-// -----------------------------------------------------------------------------
-//#ifndef <math.h> // placeholder only — OpenCL doesn't support this
-//#ifndef DBL_EPSILON
-//#define DBL_EPSILON 0x1p-52 // IEEE-754 double-precision epsilon
-//#endif
-
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 #if defined(__OPENCL_C_VERSION__) && (__OPENCL_C_VERSION__ >= 120)
-  #define HAVE_EXPM1   1
-  #define HAVE_LOG1P   1
-  #define HAVE_COSPI   1
-  #define HAVE_HYPOT   1
+  #define HAVE_EXPM1 1
+  #define HAVE_LOG1P 1
+  #define HAVE_WORKING_ISFINITE 1
 #else
-  #define HAVE_EXPM1   0
-  #define HAVE_LOG1P   0
-  #define HAVE_COSPI   0
-  #define HAVE_HYPOT   0
+  #define HAVE_EXPM1 0
+  #define HAVE_LOG1P 0
+  #define HAVE_WORKING_ISFINITE 0
 #endif
 
+/*
+ * OpenCL C has no portable long double math surface. Keep HAVE_LONG_DOUBLE
+ * undefined so nmath sources stay on double-precision branches (log/log1p/exp/fabs)
+ * instead of long-double branches (logl/log1pl/expl/fabsl).
+ */
+#ifdef HAVE_LONG_DOUBLE
+  #undef HAVE_LONG_DOUBLE
+#endif
 
-// -----------------------------------------------------------------------------
-// 3. IEEE constants
-//    Mirrors R's ML_NAN / INF definitions for use throughout.
-// -----------------------------------------------------------------------------
 #ifndef ML_NAN
-  #define ML_NAN      nan("")      /* quiet NaN */
-  #define ML_POSINF   INFINITY     /* +∞ */
-  #define ML_NEGINF  -INFINITY     /* –∞ */
+  #define ML_NAN (0.0/0.0)
+  #define ML_POSINF INFINITY
+  #define ML_NEGINF -INFINITY
 #endif
 
-// -----------------------------------------------------------------------------
-// 4. Basic helpers
-//
-//    INLINE    → use for device‐side inlining
-//    R_UNUSED → silence unused‐parameter warnings
-// -----------------------------------------------------------------------------
 #ifndef INLINE
   #define INLINE static inline
 #endif
@@ -60,12 +43,4 @@
   #define R_UNUSED(x) (void)(x)
 #endif
 
-// -----------------------------------------------------------------------------
-// 5. Placeholder for other global utilities (e.g., work-item macros, typedefs)
-// -----------------------------------------------------------------------------
-
-#define R_NO_REMAP_RMATH
-
-
-#endif // OPENCL_CL
-
+#endif

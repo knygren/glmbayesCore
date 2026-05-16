@@ -59,7 +59,7 @@ Rcpp::List f2_f3_opencl(
   
   // Dispatch kernel name and source
   std::string kernel_name;
-  std::string kernel_file;
+  // std::string kernel_file;
   std::string all_src;
   
   
@@ -68,18 +68,15 @@ Rcpp::List f2_f3_opencl(
   if (family == "binomial"||family == "quasibinomial") {
     if (link == "logit") {
       kernel_name = "f2_f3_binomial_logit";
-      kernel_file = "src/f2_f3_binomial_logit.cl";
+      // kernel_file = "src/f2_f3_binomial_logit.cl";
     } 
     else if (link == "probit") {
       kernel_name = "f2_f3_binomial_probit";
-      kernel_file = "src/f2_f3_binomial_probit.cl";
-      
+      // kernel_file = "src/f2_f3_binomial_probit.cl";
     }
     else if (link == "cloglog") {
-      
       kernel_name = "f2_f3_binomial_cloglog";
-      kernel_file = "src/f2_f3_binomial_cloglog.cl";
-      
+      // kernel_file = "src/f2_f3_binomial_cloglog.cl";
     }
     else {
       Rcpp::stop("Unsupported link function for binomial family: " + link);
@@ -88,43 +85,37 @@ Rcpp::List f2_f3_opencl(
   
   else if (family =="poisson"||family =="quasipoisson"){
     kernel_name = "f2_f3_poisson";
-    kernel_file  = "src/f2_f3_poisson.cl";
-    
+    // kernel_file  = "src/f2_f3_poisson.cl";
   }
   
   else if (family=="Gamma"){
-    
     kernel_name = "f2_f3_gamma";
-    kernel_file  = "src/f2_f3_gamma.cl";
+    // kernel_file  = "src/f2_f3_gamma.cl";
   }
   
   else if (family=="gaussian"){
-    
     kernel_name = "f2_f3_gaussian";
-    kernel_file  = "src/f2_f3_gaussian.cl";
+    // kernel_file  = "src/f2_f3_gaussian.cl";
   }
   
   else {
     Rcpp::stop("Unsupported family: " + family);
   }
 
-  // Probe nmathopencl-style assembly (items 1–9); throws if any piece fails to load.
-  std::string ex_glmbayes_program_src =
-      load_ex_glmbayes_program_source(family, link, "glmbayes");
-  (void)ex_glmbayes_program_src;
+  all_src = load_ex_glmbayes_program_source(family, link, "glmbayes");
 
-  // Legacy glmbayes program (still used for OpenCL execution)
-  std::string OPENCL_source     = load_kernel_source("OPENCL.cl");
-  std::string rmath_source     = load_kernel_library("rmath","glmbayes", false);
-  std::string nmath_source     = load_kernel_library("nmath","glmbayes", false);
-  std::string dpq_source     = load_kernel_library("dpq","glmbayes", false);
-  std::string ksrc    = load_kernel_source(kernel_file);
-
-  all_src = OPENCL_source +
-    "\n" +   rmath_source + 
-    "\n" + dpq_source +
-    "\n" +nmath_source   
-  + "\n" +   ksrc;
+  // Legacy glmbayes program assembly (replaced by load_ex_glmbayes_program_source above)
+  // std::string OPENCL_source     = load_kernel_source("OPENCL.cl");
+  // std::string rmath_source     = load_kernel_library("rmath","glmbayes", false);
+  // std::string nmath_source     = load_kernel_library("nmath","glmbayes", false);
+  // std::string dpq_source     = load_kernel_library("dpq","glmbayes", false);
+  // std::string ksrc    = load_kernel_source(kernel_file);
+  //
+  // all_src = OPENCL_source +
+  //   "\n" +   rmath_source +
+  //   "\n" + dpq_source +
+  //   "\n" +nmath_source
+  // + "\n" +   ksrc;
   
   // Rcpp::Rcout << "Entering f2_f3_kernel runner \n";
   
