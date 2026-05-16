@@ -30,7 +30,7 @@ std::string load_kernel_source(const std::string& relative_path,
                                const std::string& package ) {
   // Retrieve full path via system.file()
   std::string path = Rcpp::as<std::string>(
-    Rcpp::Function("system.file")("cl", relative_path,
+    Rcpp::Function("system.file")(cl_inst_subdir(), relative_path,
                    Rcpp::Named("package") = package)
   );
   
@@ -64,7 +64,7 @@ std::string load_kernel_source(const std::string& relative_path,
 #ifdef USE_OPENCL
 std::string load_kernel_library(const std::string& subdir, const std::string& package , bool verbose ) {
   std::string dir_path = Rcpp::as<std::string>(
-    Rcpp::Function("system.file")("cl", subdir, Rcpp::Named("package") = package)
+    Rcpp::Function("system.file")(cl_inst_subdir(), subdir, Rcpp::Named("package") = package)
   );
   
   std::map<std::string, std::set<std::string>> provides_map;
@@ -274,7 +274,7 @@ std::string load_library_for_kernel(
 {
   std::string kernel_path = Rcpp::as<std::string>(
       Rcpp::Function("system.file")(
-          "cl", kernel_relative_path,
+          cl_inst_subdir(), kernel_relative_path,
           Rcpp::Named("package") = package));
   if (kernel_path.empty()) {
     throw std::runtime_error(
@@ -283,7 +283,7 @@ std::string load_library_for_kernel(
 
   std::string lib_dir = Rcpp::as<std::string>(
       Rcpp::Function("system.file")(
-          "cl", library_subdir,
+          cl_inst_subdir(), library_subdir,
           Rcpp::Named("package") = package));
   if (lib_dir.empty()) {
     throw std::runtime_error(
@@ -338,7 +338,7 @@ bool kernel_all_depends_nmath_includes_qDiscrete_search(
 {
   std::string kernel_path = Rcpp::as<std::string>(
       Rcpp::Function("system.file")(
-          "cl", kernel_relative_path,
+          cl_inst_subdir(), kernel_relative_path,
           Rcpp::Named("package") = package));
   if (kernel_path.empty()) {
     return false;

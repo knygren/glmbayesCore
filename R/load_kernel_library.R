@@ -1,7 +1,9 @@
 #' Load OpenCL Kernel Source Files
 #'
 #' These functions provide a user-facing interface for loading OpenCL kernel
-#' source files and kernel libraries from the package's `cl/` directory.
+#' source files and kernel libraries from the package's installed OpenCL tree
+#' (currently `inst/cl_old/` during migration; see `cl_inst_subdir()` in
+#' `openclPort.h`).
 #' They call internal C++ routines that perform file lookup, dependency
 #' resolution, and concatenation of kernel sources.
 #'
@@ -416,9 +418,10 @@
 #' generally leads to clearer code and more maintainable OpenCL integrations.
 #' }
 #' 
-#' @param relative_path A file path inside the package's `cl/` directory.
+#' @param relative_path A file path inside the package OpenCL directory
+#'   (e.g. `src/f2_f3_binomial_logit.cl` under `inst/cl_old/`).
 #'   Used by \code{load_kernel_source()} to load a single `.cl` file.
-#' @param subdir A subdirectory inside `cl/` containing a set of `.cl` files
+#' @param subdir A subdirectory inside the OpenCL tree (e.g. `nmath`, `dpq`)
 #'   annotated with \code{@provides} and \code{@depends} tags. Used by
 #'   \code{load_kernel_library()} to construct a dependency-resolved kernel
 #'   library.
@@ -453,14 +456,14 @@ load_kernel_library <- function(subdir, package = "glmbayes", verbose = FALSE) {
 #'
 #' Reads `@{depends_tag}` from a kernel `.cl` file (for example
 #' `@all_depends_nmath`) and concatenates the listed library stems from
-#' `inst/cl/<library_subdir>/` in the order given by
+#' `inst/cl_old/<library_subdir>/` in the order given by
 #' `kernel_dependency_index.tsv`. Intended for kernel-specific program
 #' assembly (see `f2_f3_opencl` in a future migration step).
 #'
-#' @param kernel_relative_path Path under `inst/cl/` to the kernel file.
-#' @param library_subdir Subdirectory of `inst/cl/` containing library `.cl`
+#' @param kernel_relative_path Path under the OpenCL tree to the kernel file.
+#' @param library_subdir Subdirectory (e.g. `nmath`) containing library `.cl`
 #'   files and `kernel_dependency_index.tsv`.
-#' @param package R package hosting `inst/cl/` (default `"glmbayes"`).
+#' @param package R package hosting the OpenCL tree (default `"glmbayes"`).
 #' @param depends_tag Annotation tag name without `@` (default
 #'   `"depends_nmath"`; use `"all_depends_nmath"` for precomputed transitive
 #'   stems on annotated kernels).

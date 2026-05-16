@@ -73,6 +73,13 @@ using namespace Rcpp;
 // -----------------------------------------------------------------------------
 namespace openclPort {
 
+// Installed OpenCL source tree during migration (legacy copy under inst/cl_old/).
+// All kernel loaders resolve paths via system.file(cl_inst_subdir(), ...).
+// When inst/cl/ is repopulated, switch this to "cl".
+inline const char* cl_inst_subdir() {
+  return "cl_old";
+}
+
 // -------------------------------------------------------------------------
 // Rcpp → std::vector conversion utilities
 // -------------------------------------------------------------------------
