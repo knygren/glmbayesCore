@@ -3,6 +3,7 @@
 
 test_that("OpenCL f2_f3_gaussian ING (Ex_Boston_centered)", {
   skip_if_no_opencl()
+  skip_on_cran()
 
   data("Boston_centered")
 

@@ -2,6 +2,7 @@
 
 test_that("OpenCL f2_f3_poisson (Ex_glmb Dobson RCT)", {
   skip_if_no_opencl()
+  skip_on_cran() # OpenCL: avoids R CMD check NOTE on CPU vs elapsed time
 
   set.seed(333)
   counts <- c(18, 17, 15, 20, 10, 20, 25, 13, 12)

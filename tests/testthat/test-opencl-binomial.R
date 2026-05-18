@@ -7,6 +7,7 @@
 
 test_that("OpenCL f2_f3_binomial_logit (Ex_Cleveland)", {
   skip_if_no_opencl()
+  skip_on_cran() # parallel/OpenCL: avoids R CMD check NOTE on CPU vs elapsed time
 
   data("Cleveland")
 
@@ -35,6 +36,7 @@ test_that("OpenCL f2_f3_binomial_logit (Ex_Cleveland)", {
 
 test_that("OpenCL f2_f3_binomial_probit (Ex_Cleveland setup, Ex_glmb link)", {
   skip_if_no_opencl()
+  skip_on_cran()
 
   data("Cleveland")
 
@@ -63,6 +65,7 @@ test_that("OpenCL f2_f3_binomial_probit (Ex_Cleveland setup, Ex_glmb link)", {
 
 test_that("OpenCL f2_f3_binomial_cloglog (Ex_Cleveland setup, Ex_glmb link)", {
   skip_if_no_opencl()
+  skip_on_cran()
 
   data("Cleveland")
 

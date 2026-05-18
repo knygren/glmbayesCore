@@ -1,24 +1,25 @@
-# CRAN submission comments — glmbayes 0.9.4
+# CRAN submission comments — glmbayes 0.9.5
 
 ## Summary
 
-Maintenance release. Most changes are internal (OpenCL source layout and program
-assembly, extra **testthat** coverage where OpenCL is enabled at compile time, one
-vignette switched to standard **R Markdown** machinery). **CRAN’s default
-builds remain CPU-only** (no OpenCL), so typical platform checks exercise the same
-code paths as before for end users installing binaries.
+Resubmission after CRAN feedback. **OpenCL-specific tests** now use **`skip_on_cran()`**
+(they already used **`skip_if_no_opencl()`**). CRAN’s default **CPU-only** builds are
+unchanged for end users; this release only avoids running parallel/OpenCL **testthat**
+code on CRAN (which could produce **CPU time vs elapsed time** NOTES on some
+configurations). OpenCL tests still run off CRAN when the package is built with
+OpenCL support.
 
-Optional GPU/OpenCL paths are unchanged from a packaging perspective: still
-conditional on building from source with OpenCL available.
+Other content relative to **0.9.4** remains as before (OpenCL layout, vignette
+machinery, binomial OpenCL fix, expanded coverage)—see **NEWS.md**.
 
 ## Test environments
 
-- Local (**Windows**): `R CMD check` — OK  
-- **Win-builder** (devel, release, and oldrel): OK  
-- **macOS builder**: OK  
-- **R-hub**: OK  
-- **R-Universe**: OK
-- OpenCL build/run smoke-tested on Linux + NVIDIA (Vast.ai): OK
+- Local (**Windows**): `R CMD check --as-cran` — OK  
+- **Win-builder** (devel, release, and oldrel): OK *(re-run after changes)*  
+- **macOS builder**: OK *(re-run after changes)*  
+- **R-hub**: OK *(optional re-run)*  
+- **R-Universe**: OK  
+- OpenCL build/run smoke-tested on Linux + NVIDIA (Vast.ai): OK  
 
 ---
 _This file is listed in `.Rbuildignore` and is not included in the built source

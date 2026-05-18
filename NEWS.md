@@ -1,3 +1,11 @@
+# glmbayes 0.9.5
+
+* **Tests / CRAN:** All **OpenCL**-specific **testthat** blocks now call
+  **`skip_on_cran()`** (in addition to **`skip_if_no_opencl()`**), consistent
+  with existing Boston/Cleveland OpenCL tests. OpenCL coverage remains for local
+  checks and source builds with OpenCL; CRAN checks avoid parallel/GPU-heavy
+  tests that could trigger **CPU time vs elapsed time** NOTES.
+
 # glmbayes 0.9.4
 
 * **Vignettes:** A vignette that previously used the `notangle` engine now

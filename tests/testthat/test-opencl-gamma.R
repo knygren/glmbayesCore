@@ -2,6 +2,7 @@
 
 test_that("OpenCL f2_f3_gamma (Ex_glmb carinsca)", {
   skip_if_no_opencl()
+  skip_on_cran()
 
   data(carinsca)
   carinsca$Merit <- ordered(carinsca$Merit)

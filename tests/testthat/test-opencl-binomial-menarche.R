@@ -34,18 +34,24 @@ menarche_opencl_ag_fit <- function(link) {
 
 test_that("OpenCL binomial logit with MASS menarche (cbind successes, failures)", {
   skip_if_no_opencl()
+  skip_on_cran() # parallel/OpenCL: avoids R CMD check NOTE on CPU vs elapsed time
+
   fit <- menarche_opencl_ag_fit("logit")
   expect_s3_class(fit, "glmb")
 })
 
 test_that("OpenCL binomial probit with MASS menarche (cbind successes, failures)", {
   skip_if_no_opencl()
+  skip_on_cran()
+
   fit <- menarche_opencl_ag_fit("probit")
   expect_s3_class(fit, "glmb")
 })
 
 test_that("OpenCL binomial cloglog with MASS menarche (cbind successes, failures)", {
   skip_if_no_opencl()
+  skip_on_cran()
+
   fit <- suppressWarnings(menarche_opencl_ag_fit("cloglog"))
   expect_s3_class(fit, "glmb")
 })
