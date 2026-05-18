@@ -17,10 +17,8 @@ conditional on building from source with OpenCL available.
 - **Win-builder** (devel, release, and oldrel): OK  
 - **macOS builder**: OK  
 - **R-hub**: OK  
-- **R-Universe**: OK  
-
-.
-“OpenCL build/run smoke-tested on Linux + NVIDIA (Vast.ai) — OK.”)_
+- **R-Universe**: OK
+- OpenCL build/run smoke-tested on Linux + NVIDIA (Vast.ai): OK
 
 ---
 _This file is listed in `.Rbuildignore` and is not included in the built source
