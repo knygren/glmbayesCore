@@ -1,12 +1,14 @@
 ---
-title: "Chapter 04: Reviewing Model Predictions, Deviance Residuals and Model Statistics"
+title: "Chapter 03: Tailoring Priors - Leveraging the Prior_Setup Function"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: 
+  rmarkdown::html_vignette:
+    dfprint:: default
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 04: Reviewing Model Predictions, Deviance Residuals and Model Statistics}
+  %\VignetteIndexEntry{Chapter 03: Tailoring Priors - Leveraging the Prior_Setup Function}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -14,759 +16,745 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  df_print = "default"
 )
+
 ```
 
-```{r setup,results="hide",echo = FALSE}
+```{r setup,echo = FALSE}
 library(glmbayes)
+## Annette Dobson (1990) "An Introduction to Generalized Linear Models".
+## Page 9: Plant Weight Data.
+ctl    <- c(4.17, 5.58, 5.18, 6.11, 4.50, 4.61, 5.17, 4.53, 5.33, 5.14)
+trt    <- c(4.81, 4.17, 4.41, 3.59, 5.87, 3.83, 6.03, 4.89, 4.32, 4.69)
+group  <- gl(2, 10, 20, labels = c("Ctl", "Trt"))
+weight <- c(ctl, trt)
+
+dat <- data.frame(weight, group)
+set.seed(333)
 ```
 
 
-```{r menarche data,results = "hide",echo = FALSE}
-## Load menarche data
-data(menarche,package="MASS")
-head(menarche, 5)
+## 1. Introductory Discussion
+
+In this chapter, we explore how the Prior_Setup function can be used to specify multivariate normal priors for both Bayesian linear models and the generalized linear models (GLMs) introduced in later chapters. In the previous chapter, we covered the minimal arguments required to invoke the function: a model formula and a family (with an optional link function). These define the structure of the model to which the prior will be applied—namely, the variables being modeled, the assumed distribution of the response, and the link function connecting the linear predictor to the data. Multivariate normal and g-prior structure connects to standard GLM treatments [@McCullagh1989; @VenablesRipley2002; @zellner1986gprior]. Prior–data conflict diagnostics (when used elsewhere in the package) relate to [@EvansMoshonov2006]. Envelope sampling builds on [@Nygren2006].
+
+For full technical derivations of the priors and calibrated quantities returned by `Prior_Setup()` (including Gaussian Normal--Gamma calibration), see **Chapter A12** (<https://knygren.r-universe.dev/articles/glmbayes/Chapter-A12.html>).
+
+In many cases, it is also helpful to provide a data frame to Prior_Setup, allowing the function to correctly identify and extract the relevant variables from the model environment.
+
+Now, let’s examine the remaining key arguments that enable the specification of multivariate normal priors. We begin by reviewing the function signature and a representative call—similar to the one used in the previous chapter, but now with visibility into the default settings:
+
+```{r Plant_Prior}
+ps = Prior_Setup(
+  weight ~ group, data = dat, family = gaussian(), pwt = 0.001,
+  n_prior = NULL, sd = NULL,
+  intercept_source = c("null_model", "full_model"),
+  effects_source = c("null_effects", "full_model"),
+  mu = NULL
+)
+
+#mu       = ps$mu
+#V        = ps$Sigma
+#disp_ML  = ps$dispersion
+```
+
+
+As shown above, we introduce six additional arguments beyond the core model specification:
+
+- pwt, n_prior, and sd: These control the strength of the prior—i.e., how much information the prior contributes relative to the likelihood.
+- intercept_source, effects_source, and mu: These govern the location or centering of the prior distribution.
+
+In the next section, we discuss the default settings and their implications for model interpretation. Section 3 focuses on the parameters that control prior strength, while Section 4 addresses how the prior is centered.
+
+
+# 2. The default prior specification
+
+
+When you call `Prior_Setup()` with a single `pwt` value, the prior on the coefficient vector  
+\(\beta = (\beta_0,\beta_1,\dots,\beta_{k})^\top\)  
+is set up to be
+
+\[
+  \beta \sim \mathcal{N}\bigl(\mu_{Prior},\;\Sigma_{Prior}\bigr),
+\]
+
+where \(\mu_{Prior}\) is the derived prior mean and \(\Sigma_{Prior}\) the derived prior covariance. 
+
+In this section,we will frst focus on how the `pwt` argument is used to set $\Sigma_{Prior}$ and how some of the other defaults help set $\mu_{Prior}$. We also take a look at how these together help determine the Posterior mean in Bayesian linear models.
+
+---
+
+## 2.1 Identifiability and Full–Rank Likelihood Covariance
+
+
+Before constructing the prior, `Prior_Setup()` fits the full GLM and extracts  
+ the maximum likelihood estimate $\widehat\beta_{\mathrm{MLE}}$ and the  variance–covariance of the maximum‐likelihood estimator.
+ \[
+  V_{MLE} \;=\;\mathrm{vcov}(\widehat\beta_{\mathrm{MLE}}).
+\]  
+
+The matrix \(V_{MLE}\) is checked to verify that it is a symmetric positive–definite (full rank).  If \(V_{MLE}\) is rank‐deficient, the classical GLM lacks identifiability and `Prior_Setup()` aborts with an error.  While it is possible to estimate Bayesian models even if the classical GLM lacks identifiability, it is not possible to specificy a g-prior for such a likelihood function and we urge the user to use caution with such models.
+
+---
+
+## 2.2 Canonical Precision Definitions and Scaling
+
+For enhanced understanding and to simplify derivations, let us now define the Likelihood precision, the Prior Precision, and the Posterior Precision as follows:
+
+\[
+  P_{MLE} = V_{MLE}^{-1},
+  \quad
+  P_{Prior} = \Sigma^{-1}, 
+  \quad
+  P_{Post} = P_0 + P_{Prior}.
+\]
+
+For `length(pwt)=1`, the `Prior_Setup()` uses the $pwt$ arguments to set the prior variance-covariance matrix as an inflated version of the likelihood variance–covariance matrix 
+
+\[
+  \Sigma_{Prior} = \frac{1 - pwt}{pwt}\;V_{MLE},
+  \quad
+  \Longrightarrow
+  P_{Prior} = \frac{pwt}{1 - pwt}\;P_{MLE},
+\]
+
+and therefore
+
+\[
+  P_{\mathrm{Post}}
+  = \Bigl(1 + \frac{pwt}{1 - pwt}\Bigr)\,P_0
+  = \frac{1}{1 - pwt}\;P_0.
+\]
+
+Thus both \(P_{\mathrm{Prior}}\) and \(P_{\mathrm{Post}}\) are simple scalar multiples of \(P_0\).  The scaling factor being applied to set $\Sigma_{Prior}$ is actually a Zellner g-prior:
+
+ \[
+    g \;=\;\frac{1 - \text{pwt}}{\text{pwt}}. \]
+
+It is worth noting that the default for `Pwt`is 0.05 which means that g=19 and the prior Variance is thus 19 times the likelihood variance (and the standard deviation is $\sqrt{19}$ times larger than the likelihood standard deviations).
+
+---
+
+## 2.3 Posterior Mean via Precision Matrices
+
+In the Gaussian‐data case, the posterior is
+
+\[
+  \beta\mid y \;\sim\;
+  \mathcal{N}\bigl(\mu_{\mathrm{Post}},\,\Sigma_{\mathrm{Post}}\bigr),
+\]
+
+with
+
+\[
+  \Sigma_{\mathrm{Post}}
+  = P_{\mathrm{Post}}^{-1},
+  \quad
+  \mu_{\mathrm{Post}}
+  = P_{\mathrm{Post}}^{-1}
+    \bigl(P_0\,\widehat\beta_{\mathrm{MLE}}
+         \;+\;P_{\mathrm{Prior}}\,\mu\bigr).
+\]
+
+Plugging in the scalar‐multiple forms:
+
+\[
+  P_{\mathrm{Post}}^{-1} = (1 - pwt)\,P_{MLE}^{-1},
+  \quad
+  P_{\mathrm{Prior}} = \frac{pwt}{1 - pwt}\,P_{MLE},
+\]
+
+we recover the familiar weighted‐average form:
+
+\[
+  \mu_{\mathrm{Post}}
+  = (1 - pwt)\,\widehat\beta_{\mathrm{MLE}}
+    \;+\;pwt\,\mu_{Prior}.
+\]
+
+Hence we can see that the pwt argument determine the relative weight on the prior in the formula for the posterior mean in these models. While technically, we don't have the same closed form solution for other models, the pwt still plays a role in how close the posterior will be to the prior mean.
+
+
+Since the default value for pwt is 0.01, we have a 1% weight on the prior for the default and the prior (when different from the Maximum likelihood estimate) hence pulls the posterior only minimally away from the maximum likelihood estimate.
+
+## 2.4 The impact of the "null_model" and "null_effects" defaults for the interpretation of model diagnostics
+
+In addition to the **pwt** arguments with its default, we also see from above that the default for the **`intercept_source`** is the "null_model" and the default for the **`effects_source`** is "null_effects". The former means that the default prior for the intercept defaults to the estimate from the intercept only model while the latter means that the default prior for all effects variables is set to 0. This is in many ways consistent with the reference model utilized in most implementations for classical models. In particular, in classical models:
+
+-The R^2 is defined relative to the null model (i.e., the R^2 is always zero for the null model)
+-The default F-test in a classical model is usally relative to the null model
+-The t-statistics usually are designed to measure how far estimates are from 0 and this is the default for how p-values are calculated.
+
+
+It is worthwhile to now take a look at what this default specification means for the posterior mean when `pwt` is a scalar and the posterior mean is simplified as in the earlier section. In that case, we have:
+
+- $\mu_{\mathrm{Post},1} = pwt \cdot \bar{y} + (1 - pwt) \cdot \widehat{\beta}_{\mathrm{MLE},\mathrm{Intercept}}$
+- $\mu_{\mathrm{Post},\mathrm{Effects}} = (1 - pwt) \cdot \widehat{\beta}_{\mathrm{MLE},\mathrm{Effects}}$
+
+
+Let us now re-examine the the Plant data from the previous chapter.
+
+
+```{r Plant_w_intercept}
+lm.D9 <- lm(weight ~ group)
+sumlm<-summary(lm.D9)
+sumlm$coefficients
+```
+The groupTrt estimate from the classical model is -0.371 with a two sided p-value of 0.2490 (which implies that the one sided p-value is 0.1245).
+
+
+```{r Plant_lmb_call1}
+lmb.D9=lmb(weight ~ group,dNormal(mu=ps$mu,Sigma=ps$Sigma,dispersion=ps$dispersion),n=1000)
+sumlmb<-summary(lmb.D9)
+sumlmb$coefficients
+```
+We can now see that the corresponding output from the Bayesian run in many ways mirror the output from the classical model. In particular, four out of the columns have outputs analogous to corresponding outputs from the classical  model. The Post.Mode and Post.Mean, both mirrors the Estimate column while the Post.sd column mirrors the Std. Error column. The Pr(tail), meanwhile is close  to half of the value for Pr(>|t|) column in the classical output.
+
+In addition to this, we have a column with MC Error which represents the error connected to the estimated Post. mean columns. This reflects the fact that we are using Monte Carlo simulation (in this case based on n=1000 draws) to estimate the mean. In the gaussian() case, the actual Post.Mean is the same as the Post.Mode so if we increase the number of draws, we are increasingly likely to observe a Post.Mean that is close to the Post.Mode column and the MC Error column shrinks (see below).   
+
+Finally, we also have a column SE(tail). This reflects the Standard error connected to the Pr(tail) column. Just like with the MC Error, we can reduce the error associated with this estimate by generating a larger number of draws (again, see below).
+
+
+```{r Plant_lmb_call2}
+lmb.D9=lmb(weight ~ group,dNormal(mu=ps$mu,Sigma=ps$Sigma,dispersion=ps$dispersion),n=100000)
+sumlmb<-summary(lmb.D9)
+sumlmb$coefficients
+```
+For the purposes of this vignette, we simply note that under our default assumptions for the intercept and effects,  the Pr(tail) for slope parameters in Bayesian linear models tend to be similar to the one-sided p-value in the classical models when we combineex them with our default value for our **pwt** (i.e., 0.01). While we don't explore it fully here, there are certain aspects in which these become more fully equivalent in the limit as **pwt** is pushed further towards zero. A later vignette provides more details on exactly how these tail probabilities relate to their classical counterparts, while also demonstrating some properties as **pwt**, **n_prior**, and the sample size approach certain limits.
+
+# 3. Adjusting the strength of priors using **pwt**, **n_prior**, and *sd*
+
+
+In setting the strength of priors, **pwt** serves as the default mechanism, blending the prior mean with the maximum likelihood estimates. When **pwt** is a scalar, it uniformly adjusts this blend across parameters. Alternatively, a vector form of **pwt** allows for more nuanced adjustments, deviating from a Zellner g-prior. **n_prior** offers an alternative approach, influencing the strength of priors based on sample size equivalence. Finally, **sd** directly sets the standard deviation, offering another layer of control over the priors' influence. Each of these parameters plays a crucial role in tailoring the prior to reflect the analyst's beliefs and the context of the data.
+
+To illustrate the role of these prior specifications, we will work with a model where the intercept dimension is orthogonal to the predictions as it makes interpretations clearer.
+
+## 3.1 Data Setup and Visualization
+
+
+```{r MTCars Data}
+data(mtcars)
+
+# Create gallons per mile
+mtcars$gpm <- 1 / mtcars$mpg
+```
+
+The mtcars dataset contains fuel efficiency and engine characteristics for 32 vehicles. We begin by preparing the mtcars dataset for modeling. To analyze fuel consumption, we define gallons per mile (gpm) as the reciprocal of miles per gallon (gpm = 1/mpg). This transformation allows us to treat fuel use as a direct cost per unit distance, which aligns more naturally with physical energy expenditure.
+
+```{r MeanCenter}
+# Mean-center predictors
+#mtcars$c_hp <- scale(mtcars$hp, center = TRUE, scale = FALSE)
+#mtcars$c_drat <- scale(mtcars$drat, center = TRUE, scale = FALSE)
+#mtcars$c_qsec <- scale(mtcars$qsec, center = TRUE, scale = FALSE)
+
+mtcars$c_wt  <- as.numeric(scale(mtcars$wt, center = TRUE, scale = FALSE))
+mtcars$c_cyl <- as.numeric(scale(mtcars$cyl, center = TRUE, scale = FALSE))
+```
+
+Next, we mean-center the predictors of interest—vehicle weight (wt) and number of cylinders (cyl)—to improve interpretability and reduce collinearity in the regression model. Mean-centering ensures that the intercept corresponds to the expected fuel consumption for a vehicle with average weight and cylinder count.
+
+
+```{r weight_v_gpm}
+
+# Fit linear model
+fit <- lm(gpm ~ c_wt, data = mtcars)
+
+# Create scatter plot
+plot(mtcars$c_wt, mtcars$gpm,
+     pch = 19, col = "steelblue",
+     xlab = "Mean-Centered Weight (c_wt)",
+     ylab = "Gallons per Mile (gpm)",
+     main = "Fuel Consumption vs. Mean-Centered Weight")
+
+# Add regression line
+abline(fit, col = "darkred", lwd = 2)
+
+# Optional: Add confidence band manually
+x_vals <- seq(min(mtcars$c_wt), max(mtcars$c_wt), length.out = 100)
+pred <- predict(fit, newdata = data.frame(c_wt = x_vals), interval = "confidence")
+
+lines(x_vals, pred[, "lwr"], col = "darkred", lty = 2)
+lines(x_vals, pred[, "upr"], col = "darkred", lty = 2)
 
 ```
 
-```{r Analysis Setup,echo = FALSE}
-## Number of variables in model
-Age=menarche$Age
-nvars=2
+To assess the plausibility of a linear relationship, we first plot gpm against mean-centered weight (c_wt). The scatter plot reveals a clear positive trend: heavier vehicles tend to consume more fuel per mile. The fitted regression line aligns well with the data, and the symmetric confidence band suggests that linearity and homoscedasticity are reasonable assumptions. This relationship is also physically motivated, as rolling resistance and energy demand scale approximately linearly with mass.
+
+
+```{r cyl_v_gpm}
+# Ensure gpm is defined
+mtcars$gpm <- 1 / mtcars$mpg
+
+# Create boxplot
+boxplot(gpm ~ factor(cyl), data = mtcars,
+        col = "lightblue", border = "darkblue",
+        xlab = "Number of Cylinders",
+        ylab = "Gallons per Mile (gpm)",
+        main = "Fuel Consumption by Number of Cylinders")
+
+# Add jittered points
+set.seed(123)  # for reproducibility
+points(jitter(as.numeric(factor(mtcars$cyl)), amount = 0.2), mtcars$gpm,
+       pch = 19, col = rgb(70/255, 130/255, 180/255, alpha = 0.6))
+
+```
+
+We then examine fuel consumption across cylinder categories using a boxplot. Treating cyl as a factor, we observe that vehicles with more cylinders tend to have higher median fuel consumption, with 8-cylinder cars showing the greatest fuel use. The jittered points reveal the distribution within each group and highlight the presence of outliers and some overlap acorss groups. This plot supports the inclusion of cyl as a categorical or mean-centered numeric predictor, depending on modeling goals.
+
+Together, these visualizations provide both empirical and theoretical justification for modeling gpm as a function of c_wt and c_cyl. The linear trend with weight is physically motivated, while the categorical differences in cylinder count suggest potential predictive value. These insights set the stage for exploring how prior strength influences inference in Bayesian regression
+
+
+## 3.2 Using the pwt argument to adjust the Zellner g-prior
+
+To illustrate the impact of prior strength on marginal predictors, we fit a sequence of Bayesian models using gpm as the response and two mean-centered predictors: c_wt and c_cyl. 
+
+To ensure reproducibility of posterior estimates and tail probabilities, we set a fixed random seed before simulation. This allows consistent interpretation across models and avoids misleading comparisons due to Monte Carlo variability.
+
+```{r Mt_cars_Default_Prior}
+# Use Prior_Setup to illustrate prior strength
+pscars  <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data = mtcars,pwt=0.01) ## pwt=0.01-->n_prior= 32/99
+pscars2 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data = mtcars,pwt=0.5)  ## pwt=0.5-->n_prior= 32
+pscars3 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data = mtcars,pwt=0.55) ## pwt=0.55-->n_prior= 39.111
+```
+
+
+```{r print_priors}
+pscars
+```
+
+With pwt = 0.01, the prior exerts minimal influence, resulting in wide prior standard deviations and broad credible intervals. For example, the prior SD for c_wt is approximately 0.0207, yielding a 95% credible interval of ±0.0406 around the prior mean. This reflects substantial uncertainty and allows the posterior to be largely driven by the data. The intercept’s prior interval spans nearly 0.05 units, indicating weak regularization and high flexibility in model fitting
+
+
+```{r print_priors2}
+pscars2
+```
+
+At pwt = 0.50, the prior and likelihood contribute equally to the posterior mean. This results in much tighter prior distributions: the prior SD for c_wt drops to ~0.00208, and its credible interval narrows to ±0.00408. The same pattern holds for c_cyl, whose prior interval shrinks to ±0.00223. These narrower intervals reflect stronger regularization, constraining the posterior estimates toward the prior mean and reducing sensitivity to noisy data.
+
+
+```{r print_priors3}
+pscars3
+```
+
+Increasing pwt slightly to 0.55 further tightens the prior distributions. The prior SD for c_cyl falls to ~0.00103, and its credible interval contracts to ±0.00202. This subtle shift can have meaningful diagnostic consequences—especially for marginal predictors—by reducing posterior variance and potentially pushing tail probabilities above conventional significance thresholds. The intercept’s interval also narrows slightly, reinforcing the model’s confidence in its prior location
+
+
+The prior standard deviations shown here are derived automatically from the specified pwt values, reflecting the degree of shrinkage toward the prior mean. While this default behavior is useful for regularization and empirical calibration, analysts may sometimes prefer to set prior uncertainty explicitly—especially when they have domain knowledge about plausible effect sizes. We explore that approach in a later section using the sd argument, which allows for direct control over the spread of each prior distribution.
+
+
+```{r run_lmb}
+
 set.seed(333)
 
-## Reference Ages for setting of priors and Age_Difference
-ref_age1=13  # user can modify this
-ref_age2=15  ## user can modify this
-
-## Define variables used later in analysis
-Age2=Age-ref_age1
-Age_Diff=ref_age2-ref_age1
-
-```
+lmb_cars<- lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars$mu,Sigma=pscars$Sigma, dispersion = pscars$dispersion),data =mtcars)
+lmb_cars2<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars2$mu,Sigma=pscars2$Sigma, dispersion = pscars2$dispersion),data =mtcars)
+lmb_cars3<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars3$mu,Sigma=pscars3$Sigma, dispersion = pscars3$dispersion),data =mtcars)
 
 
-```{r Prior Info,echo = FALSE}
-
-## Point estimates at reference ages
-m1=0.5  
-m2=0.9
-
-## Lower bound of prior credible intervals for point estimates
-m1_lower=0.3
-m2_lower=0.7
-
-## Assumed correlation between the two (on link scale)
-m_corr=0.4
-```
-
-
-```{r Logit: set up link function info and initialize prior matrices,echo = FALSE}
-
-## Set up link function and initialize prior mean and Variance-Covariance matrices
-bi_logit <- binomial(link="logit")
-mu1<-matrix(0,nrow=nvars,ncol=1)
-rownames(mu1)=c("Intercept","Age2")
-colnames(mu1)=c("Prior Mean")
-V1<-1*diag(nvars)
-rownames(V1)=c("Intercept","Age2")
-colnames(V1)=c("Intercept","Age2")
-```
-
-
-```{r Logit:set prior means,results = "hide",echo = FALSE}
-## Prior mean for intercept is set to point estimate 
-## at reference age1 (on logit scale)
-mu1[1,1]=bi_logit$linkfun(m1)
-
-## Prior mean for slope is set to difference in point estimates
-## on logit scale divided by Age_Diff
-
-mu1[2,1]=(bi_logit$linkfun(m2) -bi_logit$linkfun(m1))/Age_Diff 
-print(mu1)
-
-```
-
-```{r Logit:set prior Variance Covariance matrix,results = "hide",echo = FALSE}
-## Implied standard deviations for point estimates on logit scale
-
-sd_m1= (bi_logit$linkfun(m1) -bi_logit$linkfun(m1_lower))/1.96
-sd_m2= (bi_logit$linkfun(m2) -bi_logit$linkfun(m2_lower))/1.96
-
-## Also compute implied estimate for upper bound of confidence intervals
-
-m1_upper=bi_logit$linkinv(bi_logit$linkfun(m1)+sd_m1*1.96)
-m2_upper=bi_logit$linkinv(bi_logit$linkfun(m2)+sd_m2*1.96)
-print("m1_upper is:")
-m1_upper
-print("m2_upper is:")
-m2_upper
-
-
-## Implied Standard deviation for slope (using variance formula for difference between two variables)
-a=(1/Age_Diff)
-sd_slope=sqrt((a*sd_m1)^2+(a*sd_m2)^2-2*a*a*(sd_m1*sd_m2*m_corr))
-
-#Cov(m1,slope)=cov(m1, a*(m2-m1)) =a*E[(m1-E[m1])((m2-m1)-E[m2-m1])]
-#   =a*E[(m1-E[m1])(m2-E[m2])]- a* E[(m1-E[m1])(m1-E[m1])]
-##   =a*Cov[m1,m2] - a*Var[m1]
-##  =a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
-cov_V1=a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
-
-# Set covariance matrix
-V1[1,1]=sd_m1^2
-V1[2,2]=sd_slope^2
-V1[1,2]=cov_V1
-V1[2,1]=V1[1,2]
-print("V1 is:")
-print(V1)
-```
-
-```{r Run Logit,results = "hide",echo = FALSE}
-Menarche_Model_Data=data.frame(Age=menarche$Age,Total=menarche$Total,Menarche=menarche$Menarche,Age2)
-prior1=list(mu=mu1,Sigma=V1)
-#glmb.out1<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~ #Age2,family=binomial(logit),mu=mu1,Sigma=V1,data=Menarche_Model_Data)
-glmb.out1<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~ Age2,family=binomial(logit),pfamily=dNormal(mu=mu1,Sigma=V1),data=Menarche_Model_Data)
+sum_lmbcars<-summary(lmb_cars)  
+sum_lmbcars2<-summary(lmb_cars2)
+sum_lmbcars3<-summary(lmb_cars3)
 
 ```
 
 
-# Introduction
+```{r sumlmb_out}
+sum_lmbcars$coefficients
+```
+With minimal prior influence, the posterior closely tracks the classical estimates. Both c_wt and c_cyl show strong directional evidence, with c_cyl clearly significant (Pr(tail) = 0.008), suggesting a meaningful association with fuel consumption.
 
-In this section, we continue the discussion of the Bayesian model fit to the menarche data from the previous chapter. Recall that our main model (with the carefully specified prior) had the summary output below. The focus of this chapter will be to dig deeper and to examine model predictions/fit, residuals, outliers, and the DIC statistic for model comparisons [@Spiegelhalter2002]. GLM background appears in [@McCullagh1989]; the sampling approach follows [@Nygren2006].  
 
-```{r Summary Logit}
-summary(glmb.out1)
+```{r sumlmb_out2}
+sum_lmbcars2$coefficients
+```
+Moderate prior strength visibly shrinks both coefficients. c_wt remains decisively significant, while c_cyl hovers near the one-tailed threshold (Pr(tail) = 0.054), indicating borderline relevance under regularization.
+
+
+```{r sumlmb_out3}
+sum_lmbcars3$coefficients
 ```
 
 
-# Reviewing Model Predictions
+A slight increase in prior weight pushes c_cyl over the edge (Pr(tail) = 0.063), rendering it non-significant. This illustrates how modest prior adjustments can suppress marginal predictors and shift interpretive conclusions.
 
-We start with a look a model predictions, both in and out of sample. The *predict* function can be used for both of these purposes as we illustrate below.  
+Across models with increasing pwt, the posterior mean for c_cyl shrinks steadily toward zero, while its posterior standard deviation remains relatively stable. At low prior strength (pwt = 0.01), c_cyl is clearly significant (Pr(tail) = 0.005), closely tracking the classical estimate. As pwt increases to 0.50, the tail probability rises to 0.050—right on the edge of one-tailed significance. At pwt = 0.55, c_cyl crosses the threshold (Pr(tail) = 0.056), demonstrating how modest prior influence can suppress marginal effects. In contrast, c_wt remains robustly significant across all prior settings, with posterior means and tail probabilities consistently indicating strong evidence. This progression highlights the diagnostic sensitivity of Bayesian inference and the interpretive leverage offered by prior calibration, especially when dealing with predictors of borderline relevance.”
 
-## Predictions for Actual Data
+## 3.3 Using n_prior as an alternative
 
-Generating in-sample predictions requires just a simple call to the predict function in order to extract the required information of the *glmb* class object (in this case we choose to extract the predictions for the "response). Once extracted, the randomized draws for the predictions can be analyzed further. Here we choose to so for my just looking at the mean predictions (we look at other outputs for the out of sample prediction below) and we then plot those for comparison to the underlying data. 
-
-As we can see from this plot, the predictions in general seems visually to match the underlying data relatively well although there may be some extent to which it overstates the percentage of girls who have had their first period for the lower age range. It is also hard to judge from this plot whether some of the points are outliers or whether they fall within a range where we would expect the observations to fall. We explore both of those issues further later in this chapter.    
+An alternative to pwt is the n_prior argument, which allows users to specify the number of prior pseudo-observations. This framing is intuitive when the analyst views the prior as representing a hypothetical dataset. While less direct than pwt in controlling shrinkage, it offers a natural interpretation in terms of prior sample size. We revisit this idea later when splitting the dataset, but for now we illustrate its use and diagnostic implications.
 
 
-```{r Model_Preds1,fig.height = 5, fig.width = 7}
-## Predicting for original data
+```{r Mt_cars_Default_Prior2}
+# Use Prior_Setup to illustrate prior strength
+pscars4 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data = mtcars,n_prior=1)  ## n_prior=1--> pwt=0.0303
+pscars5 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data = mtcars,n_prior=10)  ## n_prior=10--> pwt=0.2381
+pscars6 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data = mtcars,n_prior=32)  ## n_prior=32--> pwt=0.5
 
-pred1=predict(glmb.out1,type="response")
-pred1_m=colMeans(pred1)
+set.seed(333)
 
-plot(Menarche/Total ~ Age, data=menarche,main="% of girls Who have had their first period")
-lines(menarche$Age, pred1_m,lty=1)
+lmb_cars4<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars4$mu,Sigma=pscars4$Sigma, dispersion = pscars4$dispersion),data =mtcars)
+lmb_cars5<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars5$mu,Sigma=pscars5$Sigma, dispersion = pscars5$dispersion),data =mtcars)
+lmb_cars6<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars6$mu,Sigma=pscars6$Sigma, dispersion = pscars6$dispersion),data =mtcars)
 
-
-```
-
-
-## Predictions for "New" Data
-
-In order to understand the remaining uncertainty tied to our model and predictions for "new" observations, we use simulated value for the coefficients in order to simulate new data over a range of different ages so that we can provide "credible sets" around the model. We use the median sample size for the underlying observations in the the model.  Let's us briefly touch on each of the steps below. 
-
-In order to perform the simulation, we first set up a new dataset for the independent variables by creating a new age variable and setting the number of observations to simulate. We store the new independent variable in a a new data frame with the same variable names as in the original dataset.
-
-```{r Setup_NewData}
-## Pull Model Info
-mod_Object=glmb.out1
-n=nrow(mod_Object$coefficients)
-obs_size=median(menarche$Total) ## Median of Total counts
-
-# Generate New Data for The Independent Variable
-Age_New <- seq(8, 20, 0.25)
-Age2_New=Age_New-13
-
-# olddata - Should contain all variables used in original model formula
-olddata=data.frame(Age=menarche$Age,
-Menarche=menarche$Menarche,Total=menarche$Total,Age2=Age2)
-
-# Should contain all variables used on RHS of model formula
-newdata=data.frame(Age=Age_New,Age2=Age2_New)
+sum_lmbcars4<-summary(lmb_cars4)
+sum_lmbcars5<-summary(lmb_cars5)
+sum_lmbcars6<-summary(lmb_cars6)
 
 ```
 
-In order to perform the simulation, we first pass the output from the *glmb*, the newdata, the olddata, and the type to the predict function.  We then set up a matrix into which we store the newly simulated values for the dependent variable and simulate from *rbinom* function using the predicted response values from the response function. 
+As we can see from above, we now specify the n_prior argument instead of the pwt argument when calling the Prior_Setup function, everything else essentially remains the same as in the case where we use the pwt argument. The one thing to note is that the call to the Prior_Setup function now triggers a printout to the screen of the pwt argument and the information from which it was derived.
 
-```{r Model_Sims}
-## Predict and Simulate for newdata
 
-pred_menarche=predict(mod_Object,newdata=newdata,olddata=olddata,type="response")
-pred_y=matrix(0,nrow=n,ncol=length(Age_New))
-for(i in 1:n){
-  pred_y[i,1:length(Age_New)]=rbinom(length(Age_New),size=obs_size,
-  prob=pred_menarche[i,1:length(Age_New)])
-}
+```{r sumlmb_out4}
+sum_lmbcars4$coefficients
+```
 
+With a very weak prior (n_prior = 1), the posterior remains close to the MLE. c_cyl retains directional significance, reinforcing its empirical signal when prior influence is minimal.
+
+
+```{r sumlmb_out5}
+sum_lmbcars5$coefficients
+```
+With a moderate prior (n_prior = 10), the posterior mean for c_cyl is visibly shrunk, and its tail probability increases, suggesting reduced confidence in its directional effect
+
+
+```{r sumlmb_out6}
+sum_lmbcars5$coefficients
+```
+
+At n_prior = 32 (equivalent to pwt = 0.5), the results mirror those from the earlier pwt-based model. This confirms the equivalence of the two approaches and reinforces the interpretive leverage offered by prior calibration.
+
+## 3.4 Directly Specifying Prior Standard Deviations with sd
+
+
+The previous examples illustrate how pwt indirectly determines the prior standard deviations by blending the prior mean with the maximum likelihood estimate. As shown in the output from Prior_Setup, increasing pwt results in tighter prior distributions—reflected in smaller Prior.SD values and narrower credible intervals.
+
+In contrast, the sd argument allows the analyst to explicitly set the prior standard deviation for each coefficient. This offers direct control over the spread of the prior distribution, independent of sample size or likelihood curvature. It is especially useful when the analyst has domain knowledge about plausible effect sizes or wants to impose regularization that is not tied to the data-driven scale of the MLE.
+We now illustrate how to use the sd argument to manually specify prior uncertainty and compare its behavior to the pwt-based default.
+
+
+
+```{r Mt_cars_sd_Prior1}
+pscars7 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data =mtcars,sd=c(0.005,0.010,0.0015),n_prior=(0.01/0.99)*32)  ## 
+pscars7
+```
+
+To impose differentiated prior strength across model coefficients, we manually specify a vector of prior standard deviations. The intercept and weight coefficients are assigned relatively weak priors (SDs of 0.005 and 0.010), allowing moderate flexibility while still exerting some regularization. In contrast, the cylinder coefficient receives a much tighter prior (SD = 0.0015), reflecting stronger skepticism about its effect size. This yields credible intervals of ±0.0196 for c_wt and ±0.00294 for c_cyl, and corresponds to implied pwt values of approximately 0.041 and 0.366 respectively. The result is a prior structure that allows the data to dominate where signal is strong, while constraining marginal predictors more aggressively. It is worth noting that the same kind of differentiated prior can be generated by passing pwt as a vector instead of as a scalar. This vectorized approach to prior specification offers a flexible alternative to scalar pwt, enabling analysts to encode domain-specific beliefs about relative effect plausibility directly into the prior structure—without relying on sample-size equivalence or uniform shrinkage.
+
+
+For this particular dataset, there are clear theoretical reasons to expect a near-proportional relationship between vehicle weight and fuel consumption. This aligns with physical models of rolling resistance and energy expenditure, which scale linearly with mass. In contrast, the theoretical basis for an effect from cylinder count is less direct. While cylinder number may proxy engine size or complexity, its impact on fuel consumption is mediated by design choices and driving conditions. As such, there is a compelling rationale for applying a more skeptical prior to the cylinder variable—reflecting weaker prior belief in its relevance. We now run the model using differentiated prior standard deviations and display the resulting output.
+
+
+```{r sumlmb_out7}
+
+set.seed(333)
+lmb_cars7<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars7$mu,Sigma=pscars7$Sigma, dispersion = pscars7$dispersion),data =mtcars)
+sum_lmbcars7<-summary(lmb_cars7)
+sum_lmbcars7
+```
+
+The posterior output reflects the impact of our manually specified prior standard deviations, which imposed differentiated regularization across coefficients. The prior for c_cyl was especially tight (SD = 0.0015), resulting in substantial shrinkage: the posterior mean dropped to 0.00050, well below the MLE of 0.00278. Despite this, the posterior standard deviation remained relatively large in proportion, and the tail probability rose to 0.265—clearly non-significant under a one-tailed test. This confirms that the skeptical prior effectively suppressed a marginal signal.
+In contrast, the prior for c_wt was much looser (SD = 0.010), allowing the posterior mean to remain close to the MLE (0.0136 vs. 0.01096) and yielding a highly significant tail probability (<2e-16). This reinforces the robustness of the weight effect, even under moderate regularization.
+The intercept, with a prior SD of 0.005, shows minimal shrinkage and remains centered near its MLE. The Mahalanobis distance (11.35) and directional tail probability (0.0000) indicate substantial prior-posterior conflict: the prior mean lies far from the posterior mean, and posterior draws almost never fall in the direction of the prior. This suggests that the prior structure is strongly contradicted by the data.
+
+This model demonstrates how targeted prior specification can clarify which predictors are robustly supported by the data and which are sensitive to prior skepticism. The differential shrinkage across dimensions is both diagnostically informative and theoretically justified.
+
+# 4. Adjusting the prior means using **intercept_source**, **effects_source**, and **mu**
+
+By default, Prior_Setup() centers the prior mean for the intercept at the value estimated from the null model (i.e., the mean of the outcome), and sets the prior means for all effects to zero. However, in many modeling contexts, it is useful to shift these prior means to reflect domain knowledge, empirical estimates, or structural expectations. This can be done in three ways: by using intercept_source, by using effects_source, or by manually specifying a prior mean vector via mu.
+
+### 4.1 Using intercept_source and effects_source
+
+These arguments allow the prior mean to be derived from fitted models:
+- intercept_source = "null_model": sets the prior mean for the intercept based on a model with no predictors (i.e., just the mean of the outcome).
+- intercept_source = "full_model": uses the intercept from the full model fit.
+- effects_source = "null_effects": sets prior means for predictors to zero.
+- effects_source = "full_model": uses the coefficients from the full model fit as prior means.
+
+This approach is useful when the analyst wants to regularize toward empirical estimates, especially in hierarchical or shrinkage settings.
+
+
+```{r Mt_cars_prior_full_model}
+pscars8 <- Prior_Setup(formula = gpm ~  c_wt+c_cyl,family=gaussian(),data =mtcars,intercept_source = "full_model",effects_source = "full_model")  ## 
+pscars8
+```
+
+From this output, we can see that the prior means is very close to the MLE estimate even with a diffuse prior.   Let's now estimate the model using that prior.
+
+
+```{r sumlmb_out8}
+
+set.seed(333)
+lmb_cars8<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars8$mu,Sigma=pscars8$Sigma, dispersion = pscars8$dispersion),data =mtcars)
+sum_lmbcars8<-summary(lmb_cars8)
+sum_lmbcars8$coefficients1
+sum_lmbcars8$coefficients
 ```
 
 
-The output is summarized by producing both means and *credible set* information for proportions based on the simulated coefficients and the simulated data (the intervals for the latter will be wider). The latter interval is more appropriate when examining if the actual data appears to correspond to outliers.
-
-```{r Mean_and_Quartile_Info}
-
-## Produce mean and quantile information
-
-pred_m=colMeans(pred_menarche)
-pred_y_m=colMeans(pred_y/obs_size)
-quant1_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-quant2_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-quant1_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-quant2_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-
-```
-
-We now plot most of these summarized measures and the original data together in order to get a visualization of the various predictions and data. This plot suggests that the individual observations in the original data generally tends to fall between the lower and upper bounds credible sets based on the simulated data although it is hard to tell at lower end of the age scale based on this chart. We will explore the latter issue a bit more later in this chapter.
-
-```{r Model_Plots,fig.height = 5, fig.width = 7}
-
-plot(Menarche/Total ~ Age, data=menarche,main="Percentage of girls Who have had their first period")
-lines(Age_New, pred_m,lty=1)
-lines(Age_New, quant1_m,lty=2)
-lines(Age_New, quant2_m,lty=2)
-lines(Age_New, quant1_m_y,lty=2)
-lines(Age_New, quant2_m_y,lty=2)
-
-```
-
-We close this section with a comparison of our prior and posterior credible intervals. We store the related information for our posterior simulated credible intervals in a data frame and then look at these in comparison o the prior credible intervals. What we see is that the prior credible interval at age 13 is wider than the posterior credible interval and in fact contains the posterior interval.  At age 15, the two posterior credible set is still contained within the prior credible set but skews heavily towards the upper end of the prior credible set.
-
-
-```{r Store_Preds}
-
-outdata=data.frame(Age=Age_New,Age2=Age2_New,pred_m=pred_m, quant1_m, quant2_m,quant1_m_y,quant2_m_y)
-
-print("Prior credible set at age 13 was")
-cbind(m1_lower,m1_upper)
-
-print("Prior credible set at age 15 was")
-cbind(m2_lower,m2_upper)
-
-print("Posterior Predictions between ages 13 and 15 are")
-outdata[which(outdata$Age >= 13&outdata$Age <= 15 ),]
-
-```
-
-# Reviewing Model Residuals
-
-We now turn to a more careful examination of the deviance residuals.  We first extract the residuals from the *glmb* object and then produce the mean and credible intervals so we can plot them later in this section.
-
-```{r Residual_Analysis}
-
-## Get Residuals for model, their means, and credible bounds
-res_out=residuals(glmb.out1)
-res_mean=colMeans(res_out)
-sqrt(mean(res_mean^2))
-
-res_low1=apply(res_out,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-res_high1=apply(res_out,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-```
-To understand whether any of the above residuals might be unexpected outliers, we now use the simulated predictions in order to simulate new data for each observation in the original dataset to see what construct a credible set for the residuals.  
-
-```{r Simulate_New_Residuals}
-## Simulate new data and get residuals for simulated data
-
-ysim1=simulate(glmb.out1,nsim=1,seed=10401L,pred=pred1,family="binomial",
-                        prior.weights=weights(glmb.out1))
-res_ysim_out1=residuals(glmb.out1,ysim=ysim1)
-res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-```
-
-Using the simulate credible sets, we now plot them together. This reveals that the expected value for the actual residuals all fall within the credible sets of the simulated residuals for the new data.  However, the credible sets for some of residuals at the lower age falls outside of those bounds. We will look at how alternate model specifications can avoid this later in this chapter.  
-
-```{r Residual_Plot,fig.height = 5, fig.width = 7}
-# Plot Credible Interval bounds for Deviance Residuals
-
-plot(res_mean~Age,ylim=c(-2.5,2.5),
-  main="Credible Interval Bounds for Logit Model Deviance Residuals",
-  xlab = "Age", ylab = "Dev. Residuals")
-lines(Age, 0*res_mean,lty=1)
-lines(Age, res_low,lty=1)
-lines(Age, res_high,lty=1)
-lines(Age, res_low1,lty=2)
-lines(Age, res_high1,lty=2)
-```
-
-## Posterior predictive checks with 'bayesplot'
-
-The 'glmbayes' package registers a `pp_check()` method for *glmb* fits (see `help(pp_check.glmb, package = "glmbayes")`), using 'bayesplot' on the same replicated responses produced by `simulate()`. For the menarche example (binomial proportions at a modest number of ages), histogram-style posterior predictive checks are often easier to read than density overlays, so we use `fun = "hist"` here.
-
-```{r PPC_bayesplot_menarche, fig.height = 5, fig.width = 7}
-suppressPackageStartupMessages(library(bayesplot))
-bayesplot::pp_check(glmb.out1, ndraws = 5L, fun = "hist")
+```{r Mt_cars_small}
+# Use Prior_Setup to illustrate prior strength
+lmcars_small <- lm(formula = gpm ~  c_wt,  data = mtcars)
+lmcars_small
 ```
 
 
-# Using the DIC Statistic
-
-The DIC Statistic is mainly useful when comparing the predictions from several models with the same likelihood function but with different specifications (say different link-functions or different model variables). Here, we will explore alternative link functions for the Menarche data by using the Probit and Clog-Log Models and will then compare the models using the DIC Statistic and related outputs.
-
-## Running The Probit Model
-
-The Probit model uses an alternative link function based on the cumulative distribution function for the normal distribution instead of the cumulative distribution function for logistic distribution. Below, we use a similar approach to the prior specification as we did in the earlier chapter for the Logit model and then produce the corresponding output. We will not comment further on those results and will hold off on further discussion until our subsection comparing the DIC statistic from the various models.
-
-
-```{r Probit_Model}
-## ----Probit: set up link function info and initialize prior matrices-----------
-
-## Set up link function and initialize prior mean and Variance-Covariance matrices
-bi_probit <- binomial(link="probit")
-mu2<-matrix(0,nrow=nvars,ncol=1)
-rownames(mu2)=c("Intercept","Age2")
-colnames(mu2)=c("Prior Mean")
-V2<-1*diag(nvars)
-rownames(V2)=c("Intercept","Age2")
-colnames(V2)=c("Intercept","Age2")
-
-
-## ----Probit:set prior means----------------------------------------------------
-## Prior mean for intercept is set to point estimate 
-## at reference age1 (on probit scale)
-mu2[1,1]=bi_probit$linkfun(m1)
-
-## Prior mean for slope is set to difference in point estimates
-## on probit scale divided by Age_Diff
-
-mu2[2,1]=(bi_probit$linkfun(m2) -bi_probit$linkfun(m1))/Age_Diff 
-print(mu2)
-
-
-## ----Probit:set prior Variance Covariance matrix-------------------------------
-## Implied standard deviations for point estimates on probit scale
-
-sd_m1= (bi_probit$linkfun(m1) -bi_probit$linkfun(m1_lower))/1.96
-sd_m2= (bi_probit$linkfun(m2) -bi_probit$linkfun(m2_lower))/1.96
-
-## Implied Standard deviation for slope (using variance formula for difference between two variables)
-a=(1/Age_Diff)
-sd_slope=sqrt((a*sd_m1)^2+(a*sd_m2)^2-2*a*a*(sd_m1*sd_m2*m_corr))
-
-#Cov(m1,slope)=cov(m1, a*(m2-m1)) =a*E[(m1-E[m1])((m2-m1)-E[m2-m1])]
-#   =a*E[(m1-E[m1])(m2-E[m2])]- a* E[(m1-E[m1])(m1-E[m1])]
-##   =a*Cov[m1,m2] - a*Var[m1]
-##  =a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
-cov_V2=a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
-
-# Set covariance matrix
-V2[1,1]=sd_m1^2
-V2[2,2]=sd_slope^2
-V2[1,2]=cov_V2
-V2[2,1]=V2[1,2]
-print(V2)
-
-
-## ----Run Probit,results = "hide"-----------------------------------------------
-Menarche_Model_Data=data.frame(Age=menarche$Age,Total=menarche$Total,
-                               Menarche=menarche$Menarche,Age2)
-
-glmb.out2<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~Age2,family=binomial(probit),
-                pfamily=dNormal(mu=mu2,Sigma=V2),data=Menarche_Model_Data)
-
-print(glmb.out2)
-summary(glmb.out2)
+```{r Mt_cars_Default_Prior5}
+# Use Prior_Setup to illustrate prior strength
+pscars9 <- Prior_Setup(  formula = gpm ~  c_wt+c_cyl,family=gaussian(),  data = mtcars,  pwt=0.01,mu=c(0.05423,0.01494,0))
+pscars9
 ```
 
-## Running The Clog-Log Model
-
-The Clog-Log models offers an additional alternative model for the binomial data. Here we set up a model using this link function. Unlike the Logit and Probit models, the Clog-Log link function is not symmetric so we run an alternative models below with the reverse sign. Again, we will hold off on interpretation until later in the chapter.
-
-
-
-```{r cloglog_Model}
-
-## ----cloglog: set up link function info and initialize prior matrices-----------
-
-## Set up link function and initialize prior mean and Variance-Covariance matrices
-bi_cloglog <- binomial(link="cloglog")
-mu3<-matrix(0,nrow=nvars,ncol=1)
-rownames(mu3)=c("Intercept","Age2")
-colnames(mu3)=c("Prior Mean")
-V3<-1*diag(nvars)
-rownames(V3)=c("Intercept","Age2")
-colnames(V3)=c("Intercept","Age2")
-
-
-## ----cloglog:set prior means----------------------------------------------------
-## Prior mean for intercept is set to point estimate 
-## at reference age1 (on cloglog scale)
-mu3[1,1]=bi_cloglog$linkfun(m1)
-
-## Prior mean for slope is set to difference in point estimates
-## on cloglog scale divided by Age_Diff
-
-mu3[2,1]=(bi_cloglog$linkfun(m2) -bi_cloglog$linkfun(m1))/Age_Diff 
-print(mu3)
-
-
-## ----Cloglog:set prior Variance Covariance matrix-------------------------------
-## Implied standard deviations for point estimates on clolog scale
-
-sd_m1= (bi_cloglog$linkfun(m1) -bi_cloglog$linkfun(m1_lower))/1.96
-sd_m2= (bi_cloglog$linkfun(m2) -bi_cloglog$linkfun(m2_lower))/1.96
-
-## Implied Standard deviation for slope (using variance formula for difference between two variables)
-a=(1/Age_Diff)
-sd_slope=sqrt((a*sd_m1)^2+(a*sd_m2)^2-2*a*a*(sd_m1*sd_m2*m_corr))
-
-#Cov(m1,slope)=cov(m1, a*(m2-m1)) =a*E[(m1-E[m1])((m2-m1)-E[m2-m1])]
-#   =a*E[(m1-E[m1])(m2-E[m2])]- a* E[(m1-E[m1])(m1-E[m1])]
-##   =a*Cov[m1,m2] - a*Var[m1]
-##  =a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
-cov_V3=a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
-
-# Set covariance matrix
-V3[1,1]=sd_m1^2
-V3[2,2]=sd_slope^2
-V3[1,2]=cov_V3
-V3[2,1]=V3[1,2]
-print(V3)
-
-
-## ----Run cloglog,results = "hide"-----------------------------------------------
-Menarche_Model_Data=data.frame(Age=menarche$Age,Total=menarche$Total,
-                               Menarche=menarche$Menarche,Age2)
-
-glmb.out3<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~Age2,family=binomial(cloglog),
-                pfamily=dNormal(mu=mu3,Sigma=V3),data=Menarche_Model_Data)
-
-print(glmb.out3)
-summary(glmb.out3)
-
-
-```
-## Running The Reverse Clog-Log Model
-
-Here we set up and run the reverse clog-log model. It models the opposite probability and is not equivalent to the earlier models because of the asymmetry of the distribution.
-
-
-```{r cloglog_Model2}
-
-## ----cloglog: set up link function info and initialize prior matrices-----------
-
-## Set up link function and initialize prior mean and Variance-Covariance matrices
-bi_cloglog <- binomial(link="cloglog")
-mu4<-matrix(0,nrow=nvars,ncol=1)
-rownames(mu4)=c("Intercept","Age2")
-colnames(mu4)=c("Prior Mean")
-V4<-1*diag(nvars)
-rownames(V4)=c("Intercept","Age2")
-colnames(V4)=c("Intercept","Age2")
-
-
-## ----cloglog:set prior means----------------------------------------------------
-## Prior mean for intercept is set to point estimate 
-## at reference age1 (on logit scale)
-mu4[1,1]=bi_cloglog$linkfun((1-m1))
-
-## Prior mean for slope is set to difference in point estimates
-## on logit scale divided by Age_Diff
-
-mu4[2,1]=(bi_cloglog$linkfun((1-m2))-bi_cloglog$linkfun((1-m1)))/Age_Diff 
-print(mu4)
-
-
-## ----Probit:set prior Variance Covariance matrix-------------------------------
-## Implied standard deviations for point estimates on logit scale
-
-sd_m1= (bi_cloglog$linkfun((1-m1_lower))-bi_cloglog$linkfun((1-m1)))/1.96
-sd_m2= (bi_cloglog$linkfun((1-m2_lower))-bi_cloglog$linkfun((1-m2)))/1.96
-
-## Implied Standard deviation for slope (using variance formula for difference between two variables)
-a=(1/Age_Diff)
-sd_slope=sqrt((a*sd_m1)^2+(a*sd_m2)^2-2*a*a*(sd_m1*sd_m2*m_corr))
-
-#Cov(m1,slope)=cov(m1, a*(m2-m1)) =a*E[(m1-E[m1])((m2-m1)-E[m2-m1])]
-#   =a*E[(m1-E[m1])(m2-E[m2])]- a* E[(m1-E[m1])(m1-E[m1])]
-##   =a*Cov[m1,m2] - a*Var[m1]
-##  =a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
-cov_V4=a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
-
-# Set covariance matrix
-V4[1,1]=sd_m1^2
-V4[2,2]=sd_slope^2
-V4[1,2]=cov_V4
-V4[2,1]=V4[1,2]
-print(V4)
-
-
-## ----Run cloglog,results = "hide"-----------------------------------------------
-Menarche_Model_Data=data.frame(Age=menarche$Age,Total=menarche$Total,
-                               Menarche=menarche$Menarche,Age2)
-
-glmb.out4<-glmb(n=1000,cbind(Total-Menarche,Menarche) ~Age2,family=binomial(cloglog),
-                pfamily=dNormal(mu=mu4,Sigma=V4),data=Menarche_Model_Data)
-
-print(glmb.out4)
-summary(glmb.out4)
-
-```
-
-## Comparing the DIC Statistics
-
-The Deviance Information Criterion (DIC) statistic is a Bayesian version of the AIC useful to compare different model specifications for the same likelihood function. Generally, smaller DIC statistic are preferred. Like other information criteria, the DIC favors models with a better but includes a penalty for model complexity. The DIC is computed from the Monte Carlo simulation output.  In addition to the DIC itself, the *extractAIC* function provides an "expected number of parameter" output (which tends to be more relevant for Hierarchical models).
-
-As we can see from the below output, the DIC for the two Clog-Log models are much worse than for the other two models suggesting they do a worse job of approximating the relationship between age and the percentage of girls who had experienced their first period. The difference in the DIC between the Logit and Probit models are smaller although the Probit model appears to have the lower DIC. Below the DIC table, the also provide the same kind of output from the Classical models and the associated AIC, which shows a similar pattern.
-
-```{r Compare_DIC}
-DIC_Out=rbind(
-  extractAIC(glmb.out1),
-  extractAIC(glmb.out2),
-  extractAIC(glmb.out3),
-  extractAIC(glmb.out4))
-
-rownames(DIC_Out)=c("Logit","Probit","Clog-Log","Reverse Clog-Log")
-DIC_Out
-```
-
-```{r Compare_AIC}
-
-glm.out1=glm(cbind(Menarche, Total-Menarche) ~Age2,family=binomial(logit),data=Menarche_Model_Data)
-glm.out2=glm(cbind(Menarche, Total-Menarche) ~Age2,family=binomial(probit),data=Menarche_Model_Data)
-glm.out3=glm(cbind(Menarche, Total-Menarche) ~Age2,family=binomial(cloglog),data=Menarche_Model_Data)
-glm.out4=glm(cbind(Total-Menarche,Menarche ) ~Age2,family=binomial(cloglog),data=Menarche_Model_Data)
-
-AIC_Out=rbind(extractAIC(glm.out1),
-extractAIC(glm.out2),
-extractAIC(glm.out3),
-extractAIC(glm.out4))
-
-rownames(AIC_Out)=c("Logit","Probit","Clog-Log","Reverse Clog-Log")
-colnames(AIC_Out)=c("edf","AIC")
-AIC_Out
-```
-
-## Plotting Predictions and Residuals For the Additional Models
-
-### Probit Model
-
-*Predictions*
-```{r Model_Sims2}
-## Predict and Simulate for newdata
-
-mod_Object=glmb.out2
-pred1=predict(glmb.out2,type="response")
-pred1_m=colMeans(pred1)
-n=nrow(mod_Object$coefficients)
-pred_menarche=predict(mod_Object,newdata=newdata,olddata=olddata,type="response")
-pred_y=matrix(0,nrow=n,ncol=length(Age_New))
-for(i in 1:n){
-  pred_y[i,1:length(Age_New)]=rbinom(length(Age_New),size=obs_size,
-  prob=pred_menarche[i,1:length(Age_New)])
-}
-
-```
-
-```{r Mean_and_Quartile_Info2}
-
-## Produce mean and quantile information
-
-pred_m=colMeans(pred_menarche)
-pred_y_m=colMeans(pred_y/obs_size)
-quant1_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-quant2_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-quant1_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-quant2_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-
+```{r sumlmb_out9}
+set.seed(333)
+lmb_cars9<-lmb(formula = gpm ~  c_wt+c_cyl,pfamily=dNormal(mu=pscars9$mu,Sigma=pscars9$Sigma, dispersion = pscars9$dispersion),data =mtcars)
+sum_lmbcars9<-summary(lmb_cars9)
+sum_lmbcars9$coefficients1
+sum_lmbcars9$coefficients
 ```
 
 
-```{r Model_Plots2,fig.height = 5, fig.width = 7}
 
-plot(Menarche/Total ~ Age, data=menarche,main="Percentage of girls Who have had their first period")
-lines(Age_New, pred_m,lty=1)
-lines(Age_New, quant1_m,lty=2)
-lines(Age_New, quant2_m,lty=2)
-lines(Age_New, quant1_m_y,lty=2)
-lines(Age_New, quant2_m_y,lty=2)
-
-```
-*Residuals*
-```{r Residual_Analysis2}
-## Get Residuals for model, their means, and credible bounds
-res_out=residuals(glmb.out2)
-res_mean=colMeans(res_out)
-sqrt(mean(res_mean^2))
-res_low1=apply(res_out,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-res_high1=apply(res_out,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```{r Mt_cars_Default_Prior4}
+# Use Prior_Setup to illustrate prior strength
+ps4 <- Prior_Setup(
+  formula = gpm ~  c_wt+c_cyl,
+  family=gaussian(),
+  data = mtcars,
+  n_prior=1
+##  ,pwt = c(0.1, 0.5),     # Example vector weights
+##  priorsd = c(5, 2),     # Custom SDs for each predictor
+##  priorN = NULL          # Leave NULL to focus on pwt and priorsd
+)
+ps4
 ```
 
-```{r Simulate_New_Residuals2}
-## Simulate new data and get residuals for simulated data
+---
+## 4.2  The role of the `intercept_source` in setting the prior mean for the intercept
 
-ysim1=simulate(glmb.out2,nsim=1,seed=10402L,pred=pred1,family="binomial",
-                        prior.weights=weights(glmb.out2))
-res_ysim_out1=residuals(glmb.out2,ysim=ysim1)
-res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+The `intercept_source` argument is used to initialize the prior mean for the intercept. Our Prior_Setup function provides two options for setting the prior mean for the intercept. The first (the default) is to initialize the prior mean to the intercept from a call to the **glm()** function for the null model, while the alternative is to initializes the prior mean to the intercept to the intercept from a a call to the **glm()** for a **null** intercept only model.  
+
+- **`intercept_source`**  
+  - `"null_model"`: \(\mu_0 = \widehat\beta_{0,\mathrm{null}}\)  
+  - `"full_model"`: \(\mu_0 = \widehat\beta_{0,\mathrm{MLE}}\)  
+
+The choice between these two specifications has some implications for the resulting estimates and standard errors for the effects parameters. Under the former, tail probabilities for effects under the default (discussed more below) are likely to be relatively close to one sided p-values in the classical frequentist model.  The other alternative can be a good choice if we want to test the hypothesis that the true model is an intercept only model.   The extent to which these two specifications are meaningfully different to a substantial degree from each other depends to a substantial degree on whether variables have been centered (in the case of continuous variables) and/or have been assigned reasonable reference levels (in the case of categorical variable).  
+
+The reason the null model is the default is because it tends to yield more reasonable predictions when combined with null effects.
+
+In `glmbayes`, the default prior centering reflects a pragmatic balance between statistical rigor and user convenience:
+
+### 4.2.1 Intercept Prior: Centered at Full Model MLE
+
+By default, the prior for the intercept is centered at the maximum likelihood estimate from the full model. This avoids unintended shrinkage caused by poor centering or unbalanced predictors—especially in models with categorical variables. When predictors are not scaled or centered, the intercept in a full model can diverge substantially from the null model baseline. Even a weak prior (small `pwt`) can exert disproportionate influence if the prior mean is misaligned.
+
+Centering the intercept prior at the full model MLE ensures:
+
+- Alignment with the model’s structural interpretation of the intercept  
+- Robustness to variable coding and imbalance  
+- Minimal distortion from prior miscentering  
+- A smoother user experience without requiring manual preprocessing
+
+### 4.2.2 Effect Priors: Centered at Zero
+
+By contrast, the default prior for effect coefficients is centered at zero. This reflects a common statistical convention: the null hypothesis typically assumes no effect. Centering at zero allows users to interpret posterior summaries in terms of deviation from no effect, and makes tail probabilities (e.g., \(\Pr(\beta < 0)\)) directly meaningful.
+
+This setup also makes it easy to specify informative priors centered at zero simply by adjusting:
+
+- `pwt`: the prior weight, interpreted as relative sample size  
+- `n_prior`: the number of pseudo-observations contributing to the prior
+
+### 4.2.3 Summary
+
+The default prior centering in `glmbayes` reflects two complementary principles:
+- For intercepts: center at the full model MLE to avoid misalignment and unintended shrinkage.
+- For effects: center at zero to reflect the null hypothesis and support intuitive posterior interpretation.
+
+This design ensures that default behavior is both statistically sound and user-friendly, while allowing flexible prior specification through `pwt` or `n_prior`.
+
+
+## 4.3 The role of the `effects_source` in setting the prior mean for the model effects
+
+ Like with the `intercept_source` argument, our Prior_Setup function provides two alternative options. 
+
+The default is to set them to be **null_effects** (in other words to equal zero). When combined with the default setting for the **intercept_source**, this tends to result in tail probabilities close to the one-sided p-values in the classical frequentist model (the same may or may not be true when the intercept_source is set equal to the null_model).
+
+The alternative is to set them equal to the estimates from the **full_model**. This is likely to be preferred if one wants to minimize the impact of the prior on the final estimates in the sense that they mirror the classical frequentist estimates. 
+
+
+- **`effects_source`**  
+  - `"null_effects"`: for each non-intercept \(j\), \(\mu_j = 0\)  
+  - `"full_model"`: for each non-intercept \(j\), \(\mu_j = \widehat\beta_{j,\mathrm{MLE}}\)  
+
+## 4.4 Manually Setting Prior Means Using `mu`
+
+In addition to the automated centering mechanisms provided by `intercept_source` and `effects_source`, users may directly specify the prior mean vector through the `mu` argument. When supplied, `mu` overrides all other centering logic and is used exactly as provided.
+
+### 4.4.1 How `mu` interacts with the other arguments
+
+The precedence rules in `Prior_Setup()` are:
+
+1. If `mu` is supplied, it is used verbatim, and `intercept_source` and `effects_source` are ignored.
+
+2. If `mu` is not supplied, the function constructs the prior mean vector using:
+   - `intercept_source` for the intercept
+   - `effects_source` for all non‑intercept coefficients
+
+3. The length of `mu` must match the number of coefficients in the model matrix.
+
+### 4.4.2 Requirements for user‑specified `mu`
+
+`mu` may be provided as:
+
+- a numeric vector of length equal to the number of coefficients, or
+- a matrix of dimension nvar × 1
+
+The function validates:
+
+- numeric type
+- correct length
+- correct dimensions
+- assigns coefficient names automatically
+
+If the dimensions do not match, the function stops with an informative error.
+
+### 4.4.3 When manual `mu` is useful
+
+Manually specifying `mu` is appropriate when:
+
+- domain knowledge suggests plausible effect sizes
+- the analyst wants to encode directional or magnitude expectations
+- the default centering (null model or full model) is inappropriate
+- different predictors require different prior locations
+- the model is part of a hierarchical or multi‑level structure
+- the analyst wants to reproduce a prior from an external study
+
+### 4.4.4 Example: specifying a custom prior mean
+
+A simple example using the `mtcars` data:
+
+```{r Custom_prior}
+
+ps_custom <- Prior_Setup(
+  gpm ~ c_wt + c_cyl,
+  data = mtcars,
+  pwt  = 0.01,
+  mu   = c(0.05423, 0.01494, 0)   # intercept, c_wt, c_cyl
+)
+
+ps_custom$mu
 ```
 
+This produces a prior centered at the user‑specified values, with the prior covariance still determined by `pwt` (or by `n_prior` or `sd`, if supplied).
 
-```{r Residual_Plot2,fig.height = 5, fig.width = 7}
-# Plot Credible Interval bounds for Deviance Residuals
+### 4.4.5 Relationship between `mu` and prior strength
 
-plot(res_mean~Age,ylim=c(-2.5,2.5),
-  main="Credible Interval Bounds for Probit Model Deviance Residuals",
-  xlab = "Age", ylab = "Dev. Residuals")
-lines(Age, 0*res_mean,lty=1)
-lines(Age, res_low,lty=1)
-lines(Age, res_high,lty=1)
-lines(Age, res_low1,lty=2)
-lines(Age, res_high1,lty=2)
-```
+It is important to distinguish:
 
-### clog-log Model
+- `mu` controls the location of the prior, while
+- `pwt`, `n_prior`, and `sd` control the strength of the prior.
 
-*Predictions*
-```{r Model_Sims3}
-## Predict and Simulate for newdata
-mod_Object=glmb.out3
-pred1=predict(glmb.out3,type="response")
-pred1_m=colMeans(pred1)
-n=nrow(mod_Object$coefficients)
-pred_menarche=predict(mod_Object,newdata=newdata,olddata=olddata,type="response")
-pred_y=matrix(0,nrow=n,ncol=length(Age_New))
-for(i in 1:n){
-  pred_y[i,1:length(Age_New)]=rbinom(length(Age_New),size=obs_size,
-  prob=pred_menarche[i,1:length(Age_New)])
-}
+Thus:
 
-```
+- A strongly informative prior mean will have minimal influence if `pwt` is small.
+- A weakly informative prior mean can have substantial influence if `pwt` is large.
 
-```{r Mean_and_Quartile_Info3}
+### 4.4.6 Summary
 
-## Produce mean and quantile information
+- Use `mu` when you want full control over prior centering.
+- Use `intercept_source` and `effects_source` when you want automatic empirical centering.
+- `mu` always overrides the other two.
+- Prior strength is controlled separately through `pwt`, `n_prior`, or `sd`.
 
-pred_m=colMeans(pred_menarche)
-pred_y_m=colMeans(pred_y/obs_size)
-quant1_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-quant2_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-quant1_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-quant2_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+## 5. Practical Considerations for Prior Means and Prior Strength
 
-```
+Specifying a prior involves two connected decisions:
 
+1. **Where to center the prior** (the prior mean)
+2. **How strongly the prior should pull the posterior** (the prior variance or weight)
 
-```{r Model_Plots3,fig.height = 5, fig.width = 7}
+The behavior of the posterior depends on both. This section summarizes practical considerations that help guide the choice of `intercept_source`, `effects_source`, `mu`, and the prior strength parameters `pwt`, `n_prior`, and `sd`.
 
-plot(Menarche/Total ~ Age, data=menarche,main="Percentage of girls Who have had their first period")
-lines(Age_New, pred_m,lty=1)
-lines(Age_New, quant1_m,lty=2)
-lines(Age_New, quant2_m,lty=2)
-lines(Age_New, quant1_m_y,lty=2)
-lines(Age_New, quant2_m_y,lty=2)
+### 5.1 Centering and Scaling of Predictors
 
-```
-*Residuals*
-```{r Residual_Analysis3}
-## Get Residuals for model, their means, and credible bounds
-res_out=residuals(glmb.out3)
-res_mean=colMeans(res_out)
-sqrt(mean(res_mean^2))
-res_low1=apply(res_out,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-res_high1=apply(res_out,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-```
+The effect of prior centering depends on how predictors are coded.
 
-```{r Simulate_New_Residuals3}
-## Simulate new data and get residuals for simulated data
+- Continuous predictors should ideally be centered. This aligns the null-model intercept with the full-model intercept and reduces unintended shrinkage.
+- Categorical predictors should have interpretable reference levels. Poor reference levels can cause the full-model intercept to differ substantially from the null-model intercept.
 
-ysim1=simulate(glmb.out3,nsim=1,seed=10403L,pred=pred1,family="binomial",
-                        prior.weights=weights(glmb.out3))
-res_ysim_out1=residuals(glmb.out3,ysim=ysim1)
-res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-```
+When predictors are not centered or reference levels are not meaningful, using `intercept_source = "full_model"` often produces more stable behavior.
 
+### 5.2 Choosing the Prior Mean for the Intercept
 
-```{r Residual_Plot3,fig.height = 5, fig.width = 7}
-# Plot Credible Interval bounds for Deviance Residuals
+- `intercept_source = "null_model"` (default)  
+  Appropriate when predictors are centered or balanced. Posterior tail probabilities resemble classical one-sided p-values.
 
-plot(res_mean~Age,ylim=c(-4.0,4.0),
-  main="Credible Interval Bounds for cloglog Model Deviance Residuals",
-  xlab = "Age", ylab = "Dev. Residuals")
-lines(Age, 0*res_mean,lty=1)
-lines(Age, res_low,lty=1)
-lines(Age, res_high,lty=1)
-lines(Age, res_low1,lty=2)
-lines(Age, res_high1,lty=2)
-```
+- `intercept_source = "full_model"`  
+  Preferable when predictors are uncentered or categorical. This avoids shrinkage toward an intercept that does not reflect the structure of the full model.
 
-### Reverse clog-log Model
+The intercept prior can have a noticeable influence when predictors are poorly centered, even when `pwt` is small.
 
-*Predictions*
-```{r Model_Sims4}
-## Predict and Simulate for newdata
-mod_Object=glmb.out4
-pred1=predict(glmb.out4,type="response")
-pred1_m=colMeans(pred1)
-n=nrow(mod_Object$coefficients)
-pred_menarche=predict(mod_Object,newdata=newdata,olddata=olddata,type="response")
-pred_y=matrix(0,nrow=n,ncol=length(Age_New))
-for(i in 1:n){
-  pred_y[i,1:length(Age_New)]=rbinom(length(Age_New),size=obs_size,
-  prob=pred_menarche[i,1:length(Age_New)])
-}
+### 5.3 Choosing the Prior Means for the Effects
 
-```
+- `effects_source = "null_effects"` (default)  
+  Centers all effects at zero. Appropriate for hypothesis testing or when the analyst wants posterior summaries relative to the classical null.
 
-```{r Mean_and_Quartile_Info4}
+- `effects_source = "full_model"`  
+  Centers the prior at the maximum likelihood estimates. Useful when the goal is regularization rather than hypothesis testing, or when the analyst wants the posterior to remain close to the classical estimates.
 
-## Produce mean and quantile information
+### 5.4 When to Specify `mu` Directly
 
-pred_m=colMeans(pred_menarche)
-pred_y_m=colMeans(pred_y/obs_size)
-quant1_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-quant2_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-quant1_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-quant2_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+Manual specification of `mu` is appropriate when:
 
-```
+- domain knowledge suggests plausible effect sizes
+- the analyst wants to encode directional expectations
+- the default centering mechanisms are inappropriate
+- different predictors require different prior locations
+- the model is part of a hierarchical or multi-level structure
 
+When `mu` is supplied, it overrides both `intercept_source` and `effects_source`.
 
-```{r Model_Plots4,fig.height = 5, fig.width = 7}
+### 5.5 Choosing the Strength of the Prior
 
-plot(Menarche/Total ~ Age, data=menarche,main="Percentage of girls Who have had their first period")
-lines(Age_New, 1-pred_m,lty=1)
-lines(Age_New, 1-quant1_m,lty=2)
-lines(Age_New, 1-quant2_m,lty=2)
-lines(Age_New, 1-quant1_m_y,lty=2)
-lines(Age_New, 1-quant2_m_y,lty=2)
+The strength of the prior is controlled by:
 
-```
-*Residuals*
-```{r Residual_Analysis4}
-## Get Residuals for model, their means, and credible bounds
-res_out=residuals(glmb.out4)
-res_mean=colMeans(res_out)
-sqrt(mean(res_mean^2))
-res_low1=apply(res_out,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-res_high1=apply(res_out,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-```
+- `pwt`: prior weight relative to the likelihood
+- `n_prior`: effective prior sample size
+- `sd`: prior standard deviations (converted internally to `pwt`)
 
-```{r Simulate_New_Residuals4}
-## Simulate new data and get residuals for simulated data
+These parameters determine how strongly the prior mean influences the posterior.
 
-ysim1=simulate(glmb.out4,nsim=1,seed=10404L,pred=pred1,family="binomial",
-                        prior.weights=weights(glmb.out4))
-res_ysim_out1=residuals(glmb.out4,ysim=ysim1)
-res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
-res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
-```
+- Small `pwt` (for example, 0.01)  
+  The posterior remains close to the maximum likelihood estimate unless the prior mean is far from the likelihood estimate.
 
+- Moderate or large `pwt` (for example, from `n_prior = 1` or small `sd`)  
+  The posterior is pulled more strongly toward the prior mean.
 
-```{r Residual_Plot4,fig.height = 5, fig.width = 7}
-# Plot Credible Interval bounds for Deviance Residuals
+- Vector `pwt` or vector `sd`  
+  Allows different predictors to have different prior strengths.
 
-plot(-res_mean~Age,ylim=c(-3.0,3.0),
-  main="Credible Interval Bounds - Rev. clog-log Model Deviance Residuals",
-  xlab = "Age", ylab = "Dev. Residuals")
-lines(Age, 0*res_mean,lty=1)
-lines(Age, -res_low,lty=1)
-lines(Age, -res_high,lty=1)
-lines(Age, -res_low1,lty=2)
-lines(Age, -res_high1,lty=2)
-```
+### 5.6 Interaction Between Prior Location and Prior Strength
+
+Prior location and prior strength must be considered together.
+
+- A well-chosen prior mean has little effect if the prior is weak.
+- A poorly chosen prior mean can have substantial influence if the prior is strong.
+- Using `"full_model"` centering with a strong prior can effectively reproduce the maximum likelihood estimates.
+- Using `"null_effects"` with a strong prior can shrink effects strongly toward zero.
+
+This interaction is especially important when predictors are uncentered or when the intercept differs substantially between the null and full models.
+
+### 5.7 Summary
+
+- Prior means (`intercept_source`, `effects_source`, `mu`) determine **where** the prior pulls.
+- Prior strength (`pwt`, `n_prior`, `sd`) determines **how strongly** it pulls.
+- Center and scale predictors when possible.
+- Choose prior centering based on the modeling goal:
+  - classical-like inference: `"null_model"` and `"null_effects"`
+  - regularization toward empirical estimates: `"full_model"`
+  - domain-informed priors: `mu`
+- Always consider prior strength when evaluating the impact of prior centering.
+
+These considerations help ensure that prior specification behaves predictably and supports the analyst's inferential goals.

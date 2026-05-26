@@ -1,10 +1,10 @@
 ---
-title: "Chapter 09: Models for the Gamma Family"
+title: "Chapter 07: Models for the Binomial Family"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 09: Models for the Gamma Family}
+  %\VignetteIndexEntry{Chapter 07: Models for the Binomial Family}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,395 +20,501 @@ knitr::opts_chunk$set(
 library(glmbayes)
 ```
 
+
 ## 1. Introductory Discussion
 
-Gamma regression models are used when the response variable is strictly positive and right‑skewed.  
-Typical applications include:
+Binomial generalized linear models (GLMs) are used when the response represents **binary outcomes** (success/failure) or **proportions** (successes out of trials). They are among the most widely used GLMs in applied statistics, powering models for:
 
-- insurance claim severities  
-- cost or expenditure data  
-- reaction times and waiting times  
-- positive continuous measurements with heteroskedasticity
+- clinical trial response rates  
+- yes/no survey outcomes  
+- conversion rates in marketing  
+- event occurrence indicators  
+- grouped binomial data (successes out of *n*)
 
-Gamma regression is a standard GLM for positive, right‑skewed responses [@NelderWedderburn1972; @McCullagh1989; @Agresti2015].
+Binomial regression is a standard generalized linear model [@NelderWedderburn1972; @McCullagh1989; @Agresti2015].
 
-In classical statistics, these models are fit using
+In classical statistics, these models are fit using:
 
-glm(..., family = Gamma(link = ...)).
+```r
+glm(..., family = binomial(link = ...))
+```
 
-In glmbayes, the Bayesian analogue is
+In **glmbayes**, the Bayesian analogue is:
 
-glmb(..., family = Gamma(link = ...), pfamily = dNormal(...))
+```r
+glmb(..., family = binomial(link = ...), pfamily = dNormal(mu, Sigma))
+```
 
-or, when dispersion is unknown and modeled,
+This chapter introduces:
 
-glmb(..., family = Gamma(link = ...), pfamily = dNormal_Gamma(...))
+1. the structure of binomial GLMs  
+2. the available link functions (logit, probit, cloglog)  
+3. how to specify these models in **glmbayes**  
+4. worked examples for each link function  
 
-or related pfamilies.
-
-This chapter:
-
-1. reviews the Gamma GLM structure and link functions  
-2. shows how to fit classical and Bayesian Gamma regression models  
-3. uses a realistic insurance example (carinsca)  
-4. demonstrates how to estimate dispersion using gamma.dispersion()  
-5. compares classical and Bayesian summaries, including DIC
+We build on the foundations from Chapters 05 and 06, especially the role of link functions, log‑concavity, and prior specification.
 
 
-## 2. Gamma Likelihood and Model Structure (Log Link, Fixed Dispersion)
 
-Gamma regression models strictly positive, right-skewed responses.  
-In a Gamma GLM with fixed dispersion, the response satisfies
+## 2. Binomial Likelihood and Weighted Formulation
 
-\[
-Y_i > 0, 
-\qquad 
-Y_i \sim \text{Gamma}(\text{mean}=\mu_i,\ \text{dispersion}=\phi),
-\]
+Binomial data arise in several equivalent representations:
 
-where the variance is
+- **Binary outcomes:** \(y_i \in \{0,1\}\)
+- **Proportions:** \(y_i = \text{successes}_i / n_i\) with weights \(w_i = n_i\)
+- **Two‑column matrix:** \(\text{cbind(successes, failures)}\)
+
+In all cases, the underlying sampling model is
 
 \[
-\mathrm{Var}(Y_i) = \phi\,\mu_i^2.
+Y_i \sim \text{Binomial}(n_i, \mu_i), \qquad 0 < \mu_i < 1,
 \]
 
-The mean is linked to a linear predictor through
+where:
+- \(n_i\) is the number of trials,
+- \(\mu_i = \Pr(Y_i = 1)\) is the success probability.
 
+### 2.1 Linear predictor and mean structure
+
+A binomial GLM links the mean \(\mu_i\) to a linear predictor through
+
+\[
+\eta_i = x_i^\top \beta, \qquad \mu_i = g^{-1}(\eta_i),
+\]
+
+where \(g(\cdot)\) is the chosen link function (logit, probit, cloglog, etc.).
+
+### 2.2 Weighted binomial log‑likelihood
+
+Using weights \(w_i = n_i\), the log‑likelihood (up to constants) becomes
+
+\[
+\ell(\beta)
+=
+\sum_{i=1}^n
+w_i\Big[
+y_i \log(\mu_i)
++
+(1-y_i)\log(1-\mu_i)
+\Big].
+\]
+
+This form is used by both `glm()` and the Bayesian functions `glmb()` and `rglmb()`.
+
+### 2.3 Exponential‑family representation
+
+The binomial likelihood belongs to the exponential family [@McCullagh1989; @Agresti2015].  
+For a model with linear predictor
 \[
 \eta_i = x_i^\top \beta,
+\]
+and mean
+\[
+\mu_i = g^{-1}(\eta_i),
+\]
+the contribution of observation \(i\) to the log‑likelihood can be written as
+\[
+\ell_i(\beta)
+=
+w_i\Big[
+y_i \log(\mu_i)
++
+(1-y_i)\log(1-\mu_i)
+\Big],
+\]
+where \(w_i\) is the number of trials (or a user‑supplied weight).
+
+This representation does **not** require the link to be canonical.  
+The variance of a binomial observation is always
+\[
+\mathrm{Var}(Y_i) = \mu_i(1-\mu_i),
+\]
+regardless of the link function.
+
+
+### 2.4 Link functions
+
+The link function determines how the mean response relates to the linear predictor:
+\[
+g(\mu_i) = \eta_i.
+\]
+
+The `binomial()` family in R supports several link functions:
+
+| Link Function | Formula | Notes |
+|---------------|---------|-------|
+| **logit** (canonical) | \( \eta = \log(\mu/(1-\mu)) \) | Most common; canonical link; induces log‑concavity in \(\eta\) |
+| **probit** | \( \eta = \Phi^{-1}(\mu) \) | Based on the standard normal CDF; induces log‑concavity in \(\eta\) |
+| **cloglog** | \( \eta = \log[-\log(1-\mu)] \) | Asymmetric; useful for rare events; induces log‑concavity in \(\eta\) |
+| **cauchit** | \( \eta = \tan[\pi(\mu - 1/2)] \) | Heavy‑tailed; does **not** preserve log‑concavity in general |
+| **identity** | \( \eta = \mu \) | Must ensure \(0 < \mu < 1\); does **not** preserve log‑concavity in general |
+
+In this chapter we focus on the three most commonly used links:
+
+- **logit** (Section 4)  
+- **probit** (Section 5)  
+- **cloglog** (Section 6)
+
+Each link produces a different transformation \(g^{-1}(\eta)\) and therefore a different expression for the log‑likelihood and its derivatives. For the logit, probit, and cloglog links, the resulting log‑likelihood is known to be log‑concave in the linear predictor \(\eta\), which is crucial for stable envelope construction and accept–reject sampling in *glmbayes*.
+
+The explicit formulas for each link are provided at the beginning of their respective sections.
+
+## 3. Specifying Binomial Models in glmbayes
+
+The general Bayesian call is:
+
+```r
+glmb(
+  formula,
+  family   = binomial(link = "logit" | "probit" | "cloglog"),
+  pfamily  = dNormal(mu = mu, Sigma = V),
+  data     = ...
+)
+```
+
+### 3.1 Prior Specification
+
+As in earlier chapters, the recommended workflow is:
+
+```r
+ps <- Prior_Setup(formula, family = binomial(link = "logit"), data = ...)
+mu <- ps$mu
+V  <- ps$Sigma
+```
+
+This produces:
+
+- a Zellner‑type g‑prior [@GriffinBrown2010]  
+- prior means aligned with the null model  
+- prior variances scaled relative to the likelihood curvature  
+
+You may override these defaults for more informative priors (see Chapter 14).
+
+---
+
+## 4. Logit Link: Likelihood, Prior, Posterior
+
+For the **logit link**:
+\[
+\eta_i = \log\!\left(\frac{\mu_i}{1-\mu_i}\right),
 \qquad
-\mu_i = g^{-1}(\eta_i).
+\mu_i = \frac{1}{1+e^{-\eta_i}}.
 \]
 
-In this chapter we focus exclusively on the **log link**, which is the standard choice for Gamma GLMs and the only link supported by `glmb()` when dispersion is fixed.
-
-
-### 2.1 Weighted Gamma Log-Likelihood (Log Link)
-
-Let \(w_i\) denote observation weights (e.g., claim counts or exposures).  
-Under the log link,
-
+### Weighted Log-Likelihood
 \[
-\mu_i = e^{\eta_i},
-\]
-
-and the Gamma log-likelihood (up to constants) is
-
-\[
-\ell(\beta)
+\ell_{\text{logit}}(\beta)
 =
 \sum_{i=1}^n
-w_i\left[
--\frac{1}{\phi}\,\eta_i
--
-\frac{1}{\phi}\,y_i e^{-\eta_i}
-\right].
+w_i\Big[
+y_i\,\eta_i - \log(1+e^{\eta_i})
+\Big].
 \]
 
-Terms not involving \(\beta\) have been absorbed into the constant.  
-This form is used by both `glm()` and the Bayesian functions `glmb()` and `rglmb()` when dispersion is fixed.
-
-
-### 2.2 Exponential-Family Representation
-
-The Gamma distribution belongs to the exponential family [@McCullagh1989; @Agresti2015] with canonical parameter
-
-\[
-\theta_i = -\frac{1}{\mu_i},
-\]
-
-and cumulant function
-
-\[
-b(\theta_i) = -\log(-\theta_i).
-\]
-
-The variance is
-
-\[
-\mathrm{Var}(Y_i) = \phi\,\mu_i^2.
-\]
-
-Under the **log link**, the canonical parameter is a monotone transformation of the linear predictor, and the resulting log-likelihood is **log-concave in \(\eta_i\)**.  
-This property is essential for stable envelope construction and accept–reject sampling in *glmbayes*.
-
-
-### 2.3 Log Link and Its Properties
-
-The log link is defined by
-
-\[
-g(\mu_i) = \log(\mu_i),
-\qquad
-\mu_i = e^{\eta_i}.
-\]
-
-It is the preferred link for Gamma GLMs because:
-
-- it automatically enforces \(\mu_i > 0\),
-- it yields multiplicative interpretations for coefficients,
-- it produces a log-concave likelihood in \(\eta_i\),
-- it is numerically stable for skewed data,
-- it is the only link supported by `glmb()` when dispersion is fixed.
-
-Other links (inverse, identity) do not preserve log-concavity and are therefore not used in this chapter.  
-Models with **estimated dispersion** or **non-log links** are covered in Chapter 11.
-
-
-### 2.4 Likelihood, Prior, and Posterior (Normal Prior on \(\beta\))
-
-With the log link, the weighted log-likelihood is
-
-\[
-\ell(\beta)
-=
-\sum_{i=1}^n
-w_i\left[
--\frac{1}{\phi}\,\eta_i
--
-\frac{1}{\phi}\,y_i e^{-\eta_i}
-\right].
-\]
-
-A multivariate normal prior is specified as
-
+### Normal Prior
 \[
 \log p(\beta)
 =
--\tfrac{1}{2}(\beta - \mu_0)^\top \Sigma_0^{-1}(\beta - \mu_0)
+-\tfrac12(\beta-\mu_0)^\top \Sigma_0^{-1}(\beta-\mu_0)
 + \text{const}.
 \]
 
-Combining likelihood and prior yields the log-posterior:
-
+### Log-Posterior
 \[
 \log p(\beta \mid y)
 =
 \sum_{i=1}^n
-w_i\left[
--\frac{1}{\phi}\,\eta_i
+w_i\Big[
+y_i\,\eta_i - \log(1+e^{\eta_i})
+\Big]
 -
-\frac{1}{\phi}\,y_i e^{-\eta_i}
-\right]
--
-\tfrac{1}{2}(\beta - \mu_0)^\top \Sigma_0^{-1}(\beta - \mu_0)
+\tfrac12(\beta-\mu_0)^\top \Sigma_0^{-1}(\beta-\mu_0)
 + \text{const}.
 \]
 
-Because both terms are concave in \(\beta\), the posterior is **log-concave**, enabling efficient iid sampling via the envelope-based accept–reject sampler implemented in *glmbayes*.
-## 3. Link Functions for Gamma GLMs
 
-The link function relates the mean \(\mu\) to the linear predictor \(\eta = X\beta\):
+The **logit** link is the canonical choice for binomial GLMs [@McCullagh1989; @Agresti2015]:
 
 \[
-g(\mu) = \eta.
+\eta = \log\left(\frac{\mu}{1-\mu}\right)
 \]
 
-The Gamma family in base R supports:
+It is symmetric and interpretable in terms of **log‑odds**.
 
-| Link      | Formula              | Notes                                   |
-|-----------|----------------------|-----------------------------------------|
-| inverse   | \(\eta = 1/\mu\)     | canonical link                          |
-| identity  | \(\eta = \mu\)       | must ensure \(\mu > 0\)                 |
-| log       | \(\eta = \log(\mu)\) | most common; ensures \(\mu > 0\)        |
+### 4.1 Example Data
 
-In practice, the log link is usually preferred because:
+We use the **Menarche** dataset introduced in Chapter 06:
 
-- it enforces \(\mu > 0\) automatically  
-- it gives multiplicative interpretations for coefficients  
-- it tends to be numerically stable  
-- it preserves log‑concavity of the likelihood
-
-At present (due to the need for log-concavity), only the log link is implemented in the **glmb** function.
-
-## 4. Gamma Regression Example: Insurance Claims
-
-We now consider a Gamma regression example based on the carinsca dataset.  
-The goal is to model average claim cost as a function of rating variables Merit and Class, using claim counts as weights.
-
-### 4.1 Data Setup
-
-We begin by preparing the data and setting appropriate factor levels and contrasts.
-
-
-```{r carinsca}
-
-    data(carinsca)
-    carinsca$Merit <- ordered(carinsca$Merit)
-    carinsca$Class <- factor(carinsca$Class)
-    oldopt <- options(contrasts = c("contr.treatment", "contr.treatment"))
-
-    Claims  <- carinsca$Claims
-    Insured <- carinsca$Insured
-    Merit   <- carinsca$Merit
-    Class   <- carinsca$Class
-    Cost    <- carinsca$Cost
-```  
-    
-The response Cost/Claims represents the **average claim cost** (severity) per claim.  
-The weights Claims reflect the number of claims on which each average is based, improving efficiency and aligning with standard GLM practice for rate or average models.
-
-
-### 4.2 Classical Gamma Regression Using glm()
-
-We fit a classical Gamma GLM with a log link. As `glm()` only crudely estimates the dispersion, we use `MASS::gamma.dispersion()` [@VenablesRipley2002] and pass the estimate to `summary()`.
-
-```{r carinsca_classical}
-
-
-    out <- glm(Cost/Claims ~ Merit + Class,
-               family  = Gamma(link = "log"),
-               weights = Claims,
-               x       = TRUE)
-
-    ## Estimate the dispersion using MLE
-    disp <- gamma.dispersion(out)
-    
-    summary(out,dispersion=disp)
-
-```  
-
-The summary shows:
-
-- regression coefficients on the log mean‑cost scale  
-- standard errors and z‑statistics  
-- deviance and AIC  
-- an estimated dispersion parameter (phi)
-
-Under the log link, exp(\(\beta_{j}\)) can be interpreted as a multiplicative factor on the expected cost ratio for a one‑unit change in the corresponding covariate (or a change in factor level).
-
-
-## 5. Bayesian Gamma Regression (fixed dispersion) with glmb()
-
-To fit the Bayesian analogue, we proceed in two steps:
-
-1. estimate the dispersion parameter \( \phi \) from the classical Gamma GLM,  
-2. construct a prior for the regression coefficients using \texttt{Prior\_Setup()},  
-3. call \texttt{glmb()} with a \texttt{dNormal} prior that incorporates the fixed dispersion \( \phi \).
-
-### 5.1 Estimating Dispersion via gamma.dispersion()
-
-The gamma.dispersion() helper estimates the dispersion parameter from a fitted classical Gamma GLM:
-
-```{r carinsca_disp}
-
-    ## better than the crude estimate from the summary function
-    disp <- gamma.dispersion(out)
-    disp
+```{r Menarche}
+data(menarche,package="MASS")
+Age2 <- menarche$Age - 13
+Menarche_Model_Data <- data.frame(
+  Age = menarche$Age,
+  Total = menarche$Total,
+  Menarche = menarche$Menarche,
+  Age2 = Age2
+)
+Menarche_Model_Data
 ```
 
-This value will be treated as known in our Bayesian model, so that the Bayesian and classical fits are directly comparable in terms of how they treat phi.
+### 4.2 Prior Setup
 
-
-### 5.2 Prior Setup Using Prior_Setup()
-
-Next we use `Prior_Setup()` to construct a Zellner‑type g‑prior [@GriffinBrown2010] for the coefficients, aligned with the Gamma log‑link model and weighting structure:
-
-```{r carinsca_prior}
-    ps <- Prior_Setup(Cost/Claims ~ Merit + Class,
-                      family  = Gamma(link = "log"),
-                      weights = Claims)
-
-    mu <- ps$mu
-    V  <- ps$Sigma
+```{r Menarche_Prior_Logit}
+ps <- Prior_Setup(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family = binomial(link = "logit"),
+  data = Menarche_Model_Data
+)
+mu <- ps$mu
+V  <- ps$Sigma
 ```
 
-The output from ps (if printed) will include:
+### 4.3 Fit the Model
 
-- prior means (intercept from a null model, effects centered at zero by default)  
-- prior standard deviations (scaled using the pwt argument and the Fisher information)  
-- any additional hyperparameters relevant for dispersion modeling
-
-With the default pwt = 0.01, the prior is weakly informative, and the posterior estimates typically remain close to the MLEs.
-
-
-### 5.3 Fitting the Bayesian Gamma Model
-
-We now call glmb(), specifying the same model and likelihood as in the classical fit, but adding a dNormal prior family that fixes dispersion at the value estimated above:
-
-```{r carinsca_glmb}
-    out_glmb <- glmb(Cost/Claims ~ Merit + Class,
-                 family  = Gamma(link = "log"),
-                 pfamily = dNormal(mu = mu, Sigma = V, dispersion = disp),
-                 weights = Claims)
+```{r Menarche_Model_Logit}
+glmb.logit <- glmb(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family  = binomial(link = "logit"),
+  pfamily = dNormal(mu = mu, Sigma = V),
+  data    = Menarche_Model_Data,
+  n       = 1000
+)
 ```
 
-The arguments mirror the glm() call, with pfamily providing the prior:
+### 4.4 Summary
 
-- family = Gamma(link = "log") specifies the likelihood and link  
-- pfamily = dNormal(...) specifies a multivariate normal prior for beta with known dispersion  
-- weights = Claims carries over the claim counts
-
-### 5.4 Summarizing the Bayesian Model
-
-Bayesian summary:
-
-```{r carinsca_sumamry_glmb}
-
-    summary(out_glmb)
-    options(oldopt)
+```{r Menarche_Summary_Logit}
+summary(glmb.logit)
 ```
 
-The Bayesian summary will report:
+This produces:
 
-- posterior modes and posterior means for each coefficient  
-- posterior standard deviations and Monte Carlo errors  
-- tail probabilities relative to the prior mean  
-- posterior percentiles (credible intervals)  
-- effective number of parameters pD  
-- expected residual deviance D  
-- DIC
+- posterior means and modes  
+- posterior standard deviations  
+- tail probabilities  
+- credible intervals  
+- DIC and effective parameter count [@Spiegelhalter2002]  
 
-Because dispersion is fixed at the same value in both models, differences between out and out_glmb reflect primarily the influence of the prior on \(\beta\), not differences in \(\phi\).
+The slope parameter typically shows strong evidence of increasing probability of menarche with age.
 
+---
 
-## 6. Interpretation and Model Diagnostics
+## 5. Probit Link: Likelihood, Prior, Posterior
 
-### 6.1 Coefficients
+The probit link is a common alternative to the logit when a latent normal formulation is convenient [@McCullagh1989; @Agresti2015].
 
-Under the log link, coefficient interpretations are multiplicative:
+For the **probit link**:
+\[
+\eta_i = \Phi^{-1}(\mu_i),
+\qquad
+\mu_i = \Phi(\eta_i),
+\]
+where \(\Phi\) is the standard normal CDF.
 
-- exp(\(\beta_{j}\)) is the multiplicative change in expected cost for a one‑unit change in the covariate (or for a change from baseline to a given factor level).
+### Weighted Log-Likelihood
+\[
+\ell_{\text{probit}}(\beta)
+=
+\sum_{i=1}^n
+w_i\Big[
+y_i \log\Phi(\eta_i)
++
+(1-y_i)\log\big(1-\Phi(\eta_i)\big)
+\Big].
+\]
 
-With a weak prior, posterior means in out_glmb will be close to the MLEs in out, but with slightly more regularization and smaller posterior standard deviations.
+### Normal Prior
+\[
+\log p(\beta)
+=
+-\tfrac12(\beta-\mu_0)^\top \Sigma_0^{-1}(\beta-\mu_0)
++ \text{const}.
+\]
 
-### 6.2 Dispersion
+### Log-Posterior
+\[
+\log p(\beta \mid y)
+=
+\sum_{i=1}^n
+w_i\Big[
+y_i \log\Phi(\eta_i)
++
+(1-y_i)\log\big(1-\Phi(\eta_i)\big)
+\Big]
+-
+\tfrac12(\beta-\mu_0)^\top \Sigma_0^{-1}(\beta-\mu_0)
++ \text{const}.
+\]
 
-By fixing dispersion at disp from the classical model, the Bayesian and classical fits share the same assumed level of variability.  
+It is similar to the logit link but has slightly thinner tails and a more Gaussian interpretation.
 
-This allows:
+### 5.1 Prior Setup
 
-- direct comparison of log‑likelihood based quantities,  
-- a clean assessment of how the prior affects coefficient estimates.
+```{r Menarche_Prior_Probit}
+ps2 <- Prior_Setup(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family = binomial(link = "probit"),
+  data = Menarche_Model_Data
+)
+mu2 <- ps2$mu
+V2  <- ps2$Sigma
+```
 
-If desired, a more advanced model can estimate dispersion by switching to a pfamily such as dNormal_Gamma, but that is covered in more detail in the dispersion‑focused vignettes.
+### 5.2 Fit the Model
 
+```{r Menarche_Model_Probit}
+glmb.probit <- glmb(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family  = binomial(link = "probit"),
+  pfamily = dNormal(mu = mu2, Sigma = V2),
+  data    = Menarche_Model_Data,
+  n       = 1000
+)
+```
 
-### 6.3 DIC and Model Fit
+### 5.3 Summary
 
-The Bayesian summary of out_glmb reports:
+```{r Menarche_Summary_Probit}
+summary(glmb.probit)
+```
 
-- the effective number of parameters pD,  
-- the expected residual deviance D,  
-- the DIC value [@Spiegelhalter2002].
+The probit model typically yields:
 
-These can be compared to AIC and deviance from the classical model, especially when considering alternative specifications (for example, reduced models, different covariate sets, or alternative link functions).
+- slightly smaller slope estimates  
+- slightly smaller posterior standard deviations  
+- similar fitted probabilities  
 
+The DIC often favors probit slightly for smooth S‑shaped curves (as seen in Chapter 04).
 
-## 7. Concluding Discussion
+---
 
-Gamma regression provides a flexible framework for modeling positive, skewed response variables [@McCullagh1989; @Gelman2013].  
-In this chapter, we have:
+## 6. Complementary Log-Log (cloglog) Link: Likelihood, Prior, Posterior
 
-- introduced the Gamma GLM and its link functions,  
-- shown how to fit a classical Gamma regression using glm(),  
-- demonstrated how to estimate dispersion with gamma.dispersion(),  
-- used Prior_Setup() to construct a default Zellner‑type prior,  
-- fit a Bayesian Gamma regression with glmb() using a dNormal prior with fixed dispersion,  
-- and compared classical and Bayesian summaries in a realistic insurance setting.
+The complementary log–log link is often used for asymmetric response curves and hazard‑type interpretations [@McCullagh1989; @Agresti2015].
 
-In later vignettes, we extend these ideas to:
+For the **cloglog link**:
+\[
+\eta_i = \log\!\big[-\log(1-\mu_i)\big],
+\qquad
+\mu_i = 1 - \exp\!\big(-e^{\eta_i}\big).
+\]
 
-- Gamma models with unknown dispersion and hierarchical priors,  
-- Gamma regression combined with other components in larger GLM systems,  
-- and specialized accept‑reject schemes for dispersion parameters.
+### Weighted Log-Likelihood
+\[
+\ell_{\text{cloglog}}(\beta)
+=
+\sum_{i=1}^n
+w_i\Big[
+y_i \log\!\big(1 - e^{-e^{\eta_i}}\big)
++
+(1-y_i)\big(-e^{\eta_i}\big)
+\Big].
+\]
+
+### Normal Prior
+\[
+\log p(\beta)
+=
+-\tfrac12(\beta-\mu_0)^\top \Sigma_0^{-1}(\beta-\mu_0)
++ \text{const}.
+\]
+
+### Log-Posterior
+\[
+\log p(\beta \mid y)
+=
+\sum_{i=1}^n
+w_i\Big[
+y_i \log\!\big(1 - e^{-e^{\eta_i}}\big)
++
+(1-y_i)\big(-e^{\eta_i}\big)
+\Big]
+-
+\tfrac12(\beta-\mu_0)^\top \Sigma_0^{-1}(\beta-\mu_0)
++ \text{const}.
+\]
+
+The **cloglog** link is asymmetric:
+
+It is useful when:
+
+- the event probability increases rapidly near 0  
+- the hazard interpretation is meaningful  
+- the response curve is skewed  
+
+### 6.1 Prior Setup
+
+```{r Menarche_Prior_cloglog}
+ps3 <- Prior_Setup(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family = binomial(link = "cloglog"),
+  data = Menarche_Model_Data
+)
+mu3 <- ps3$mu
+V3  <- ps3$Sigma
+```
+
+### 6.2 Fit the Model
+
+```{r Menarche_Model_Cloglog}
+glmb.cloglog <- glmb(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family  = binomial(link = "cloglog"),
+  pfamily = dNormal(mu = mu3, Sigma = V3),
+  data    = Menarche_Model_Data,
+  n       = 1000
+)
+```
+
+### 6.3 Summary
+
+```{r Menarche_Summary_cloglog}
+summary(glmb.cloglog)
+```
+
+The cloglog model often fits poorly for symmetric S‑shaped curves (as shown in Chapter 04), but it is valuable for:
+
+- rare events  
+- survival‑type interpretations  
+- asymmetric growth curves  
+
+---
+
+## 7. Comparing Link Functions
+
+The Deviance Information Criterion (DIC) provides a Bayesian analogue to AIC [@Spiegelhalter2002]:
+
+```{r Menarche_DIC_Compare}
+DIC_comp<-rbind(
+  extractAIC(glmb.logit),
+  extractAIC(glmb.probit),
+  extractAIC(glmb.cloglog))
+
+rownames(DIC_comp)<-c("logit","probit","cloglog")
+DIC_comp
+
+```
+Typical patterns:
+
+- **logit** and **probit** often perform similarly  
+- **probit** may slightly outperform logit for smooth curves  
+- **cloglog** is best when the response is asymmetric or hazard‑like  
+
+The effective number of parameters (pD) is part of the same framework [@Spiegelhalter2002] and helps diagnose model complexity.
+
+---
+
+## 8. Concluding Discussion
+
+Binomial GLMs are a core component of the glmbayes package. Their log‑concave likelihoods make them ideal for the envelope‑based accept‑reject sampler, and the familiar link functions allow analysts to choose models that match the scientific context [@McCullagh1989; @Gelman2013].
+
+This chapter demonstrated:
+
+- how binomial GLMs are structured  
+- how link functions differ  
+- how to specify priors using Prior_Setup  
+- how to fit logit, probit, and cloglog models  
+- how to compare models using DIC  
+
+In the next chapter, we extend these ideas to **Poisson models**, which share many structural similarities but introduce new considerations for count data.
+

@@ -1,670 +1,772 @@
 ---
-title: "Chapter 05: Foundations of GLMs – Families, Links, and Log-Concave Likelihoods"
+title: "Chapter 04: Reviewing Model Predictions, Deviance Residuals and Model Statistics"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 05: Foundations of GLMs – Families, Links, and Log-Concave Likelihoods}
+  %\VignetteIndexEntry{Chapter 04: Reviewing Model Predictions, Deviance Residuals and Model Statistics}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-# 1. Conceptual Overview
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
 
-Generalized linear models (GLMs) rest on two foundational ideas:  
-(1) **exponential family likelihoods**, which provide a unified mathematical structure for a wide range of data-generating processes, and  
-(2) **link functions**, which connect the mean of the response to a linear predictor.  
+```{r setup,results="hide",echo = FALSE}
+library(glmbayes)
+```
 
-This section reviews the core concepts behind exponential families, explains why canonical links play such an important role, and highlights the special role of **log-concavity** in both classical and Bayesian estimation.
-Standard references for GLM structure include [@McCullagh1989; @NelderWedderburn1972]; the original formulation of GLMs in **S** appears in [@Hastie1992].
-For Bayesian GLMs with normal priors, envelope-based iid posterior sampling in **glmbayes** builds on [@Nygren2006].
 
-## 1.1 Exponential Families: A Unifying Framework
+```{r menarche data,results = "hide",echo = FALSE}
+## Load menarche data
+data(menarche,package="MASS")
+head(menarche, 5)
 
-Many common statistical models belong to the exponential family, a class of distributions that can be written in the **weighted** form
+```
 
-\[
-f(y \mid \theta, \phi, w)
-= \exp\left\{
-  \sum_{i=1}^{n}
-    w_i \left[
-      \frac{y_i \theta_i - b(\theta_i)}{a(\phi)}
-      + c(y_i, \phi)
-    \right]
-\right\}.
-\]
+```{r Analysis Setup,echo = FALSE}
+## Number of variables in model
+Age=menarche$Age
+nvars=2
+set.seed(333)
 
-Here:
+## Reference Ages for setting of priors and Age_Difference
+ref_age1=13  # user can modify this
+ref_age2=15  ## user can modify this
 
-- \( \theta_i \) is the canonical (natural) parameter  
-- \( b(\theta_i) \) is the cumulant function  
-- \( a(\phi) \) is a dispersion or scale parameter  
-- \( c(y_i, \phi) \) collects terms not involving \( \theta_i \)  
-- \( w_i \) is an observation weight (typically nonnegative)
+## Define variables used later in analysis
+Age2=Age-ref_age1
+Age_Diff=ref_age2-ref_age1
 
-This formulation includes the Gaussian, Poisson, Binomial, Gamma, and many others.  
-The exponential-family form is not merely aesthetic: it guarantees several structural properties that GLMs rely on:
+```
 
-- The mean is \( \mu_i = b'(\theta_i) \).  
-- The variance is \( \mathrm{Var}(Y_i) = b''(\theta_i)\, a(\phi) \).  
-- Sufficient statistics are low-dimensional (often just the sample mean).  
-- Likelihoods are typically smooth and well-behaved.
 
-These properties make exponential-family models computationally stable and theoretically elegant, especially when combined with linear predictors.
+```{r Prior Info,echo = FALSE}
 
-## 1.2 Canonical Link Functions
+## Point estimates at reference ages
+m1=0.5  
+m2=0.9
 
-A GLM specifies a relationship between the mean `mu` and a linear predictor `eta = X beta` through a **link function**:
+## Lower bound of prior credible intervals for point estimates
+m1_lower=0.3
+m2_lower=0.7
 
-\[
-g(\mu) = \eta.
-\]
+## Assumed correlation between the two (on link scale)
+m_corr=0.4
+```
 
-When the link function is chosen so that $\theta = \eta$, the link is called **canonical**.  
-Canonical links have several advantages:
 
-- The score equations become linear in the sufficient statistics.  
-- Iteratively reweighted least squares (IRLS) takes a particularly simple form.  
-- The Fisher scoring and Newton–Raphson updates coincide.  
-- The log-likelihood is often concave in `beta` (a key point for Section 5).
+```{r Logit: set up link function info and initialize prior matrices,echo = FALSE}
 
-Examples:
+## Set up link function and initialize prior mean and Variance-Covariance matrices
+bi_logit <- binomial(link="logit")
+mu1<-matrix(0,nrow=nvars,ncol=1)
+rownames(mu1)=c("Intercept","Age2")
+colnames(mu1)=c("Prior Mean")
+V1<-1*diag(nvars)
+rownames(V1)=c("Intercept","Age2")
+colnames(V1)=c("Intercept","Age2")
+```
 
-- Gaussian with identity link  
-- Poisson with log link  
-- Binomial with logit link  
-- Gamma with inverse link
 
-Although noncanonical links are sometimes preferred for interpretability or domain-specific reasons, canonical links typically yield the most stable estimation behavior.
+```{r Logit:set prior means,results = "hide",echo = FALSE}
+## Prior mean for intercept is set to point estimate 
+## at reference age1 (on logit scale)
+mu1[1,1]=bi_logit$linkfun(m1)
 
-## 1.3 Why Log-Concavity Matters
+## Prior mean for slope is set to difference in point estimates
+## on logit scale divided by Age_Diff
 
-A function `f` is **log-concave** if `log f` is concave.  
-Most exponential-family likelihoods with canonical links are log-concave in the linear predictor, and often in the coefficients `beta` as well.
+mu1[2,1]=(bi_logit$linkfun(m2) -bi_logit$linkfun(m1))/Age_Diff 
+print(mu1)
 
-Log-concavity has several important implications:
+```
 
-### (a) Existence of gradients and subgradients
+```{r Logit:set prior Variance Covariance matrix,results = "hide",echo = FALSE}
+## Implied standard deviations for point estimates on logit scale
 
-For concave functions, the gradient exists almost everywhere, and when it does not, a **subgradient** always exists.  
-This is crucial for:
+sd_m1= (bi_logit$linkfun(m1) -bi_logit$linkfun(m1_lower))/1.96
+sd_m2= (bi_logit$linkfun(m2) -bi_logit$linkfun(m2_lower))/1.96
 
-- optimization algorithms  
-- envelope construction  
-- sampling methods based on tangencies  
-- the likelihood-subgradient densities introduced in your JASA paper
+## Also compute implied estimate for upper bound of confidence intervals
 
-Because GLM likelihoods are log-concave in many common cases, subgradient-based methods are guaranteed to work.
+m1_upper=bi_logit$linkinv(bi_logit$linkfun(m1)+sd_m1*1.96)
+m2_upper=bi_logit$linkinv(bi_logit$linkfun(m2)+sd_m2*1.96)
+print("m1_upper is:")
+m1_upper
+print("m2_upper is:")
+m2_upper
 
-### (b) Any local maximum is a global maximum
 
-Concavity implies:
+## Implied Standard deviation for slope (using variance formula for difference between two variables)
+a=(1/Age_Diff)
+sd_slope=sqrt((a*sd_m1)^2+(a*sd_m2)^2-2*a*a*(sd_m1*sd_m2*m_corr))
 
-- no spurious local optima  
-- stable convergence of Newton, Fisher scoring, and IRLS  
-- predictable behavior even in high dimensions
+#Cov(m1,slope)=cov(m1, a*(m2-m1)) =a*E[(m1-E[m1])((m2-m1)-E[m2-m1])]
+#   =a*E[(m1-E[m1])(m2-E[m2])]- a* E[(m1-E[m1])(m1-E[m1])]
+##   =a*Cov[m1,m2] - a*Var[m1]
+##  =a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
+cov_V1=a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
 
-This is one of the reasons GLMs are so widely used: the optimization landscape is benign.
+# Set covariance matrix
+V1[1,1]=sd_m1^2
+V1[2,2]=sd_slope^2
+V1[1,2]=cov_V1
+V1[2,1]=V1[1,2]
+print("V1 is:")
+print(V1)
+```
 
-### (c) Validity of envelope construction methods
+```{r Run Logit,results = "hide",echo = FALSE}
+Menarche_Model_Data=data.frame(Age=menarche$Age,Total=menarche$Total,Menarche=menarche$Menarche,Age2)
+prior1=list(mu=mu1,Sigma=V1)
+#glmb.out1<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~ #Age2,family=binomial(logit),mu=mu1,Sigma=V1,data=Menarche_Model_Data)
+glmb.out1<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~ Age2,family=binomial(logit),pfamily=dNormal(mu=mu1,Sigma=V1),data=Menarche_Model_Data)
 
-The envelope construction approach of [@Nygren2006] relies on:
+```
 
-- log-concavity of the likelihood  
-- existence of subgradients for the negative log-likelihood  
-- the ability to form tight tangent-based upper bounds
 
-For GLMs with canonical links, these conditions are naturally satisfied.  
-This makes GLMs an ideal setting for likelihood-subgradient densities, mixture envelopes, and accept–reject sampling strategies.
+# Introduction
 
-### (d) Simplified Bayesian computation
+In this section, we continue the discussion of the Bayesian model fit to the menarche data from the previous chapter. Recall that our main model (with the carefully specified prior) had the summary output below. The focus of this chapter will be to dig deeper and to examine model predictions/fit, residuals, outliers, and the DIC statistic for model comparisons [@Spiegelhalter2002]. GLM background appears in [@McCullagh1989]; the sampling approach follows [@Nygren2006].  
 
-Log-concave likelihoods interact especially well with:
+```{r Summary Logit}
+summary(glmb.out1)
+```
 
-- normal priors  
-- normal-gamma priors  
-- Laplace approximations  
-- adaptive rejection sampling  
-- convex optimization methods
-- envelope based accept-reject sampling
 
-Posterior modes are unique, posterior tails behave predictably, and envelope-based samplers remain efficient even in moderate dimensions.
+# Reviewing Model Predictions
 
----
+We start with a look a model predictions, both in and out of sample. The *predict* function can be used for both of these purposes as we illustrate below.  
 
-This conceptual foundation sets the stage for the rest of the chapter:
+## Predictions for Actual Data
 
-- Section 2 contrasts classical and Bayesian GLM workflows.  
-- Section 3 details the families and links supported in `glmb`.  
-- Section 4 shows how to specify families and links in practice.  
-- Section 5 returns to log-concavity and its role in estimation and sampling.
- 
-# 2. Generalized Linear Models in Practice: Formulas, Families, and Links
+Generating in-sample predictions requires just a simple call to the predict function in order to extract the required information of the *glmb* class object (in this case we choose to extract the predictions for the "response). Once extracted, the randomized draws for the predictions can be analyzed further. Here we choose to so for my just looking at the mean predictions (we look at other outputs for the out of sample prediction below) and we then plot those for comparison to the underlying data. 
 
-Section 1 introduced the exponential‑family structure underlying generalized linear models.  
-This section explains how that structure is implemented in practice through R’s glm function.  
-The goal is to show how formulas, families, and link functions work together inside glm, and how these components are passed to the model‑fitting machinery.
+As we can see from this plot, the predictions in general seems visually to match the underlying data relatively well although there may be some extent to which it overstates the percentage of girls who have had their first period for the lower age range. It is also hard to judge from this plot whether some of the points are outliers or whether they fall within a range where we would expect the observations to fall. We explore both of those issues further later in this chapter.    
 
-A GLM in R is defined by three user‑supplied components:
 
-1. a model formula that defines the linear predictor  
-2. a family specification that chooses the exponential‑family distribution  
-3. a link function that connects the mean of the response to the linear predictor  
+```{r Model_Preds1,fig.height = 5, fig.width = 7}
+## Predicting for original data
 
-Together, these components translate the theoretical framework of Section 1 into a practical modeling interface.
+pred1=predict(glmb.out1,type="response")
+pred1_m=colMeans(pred1)
 
-## 2.1 The Formula Interface and the Linear Predictor
+plot(Menarche/Total ~ Age, data=menarche,main="% of girls Who have had their first period")
+lines(menarche$Age, pred1_m,lty=1)
 
-In R, the linear predictor is defined using a formula such as:
 
-    y ~ x1 + x2 + x3
+```
 
-This corresponds to the linear predictor
 
-\[
-\eta = X \beta
-\]
+## Predictions for "New" Data
 
-where X is the model matrix constructed from the formula.  
-The formula interface automatically handles:
+In order to understand the remaining uncertainty tied to our model and predictions for "new" observations, we use simulated value for the coefficients in order to simulate new data over a range of different ages so that we can provide "credible sets" around the model. We use the median sample size for the underlying observations in the the model.  Let's us briefly touch on each of the steps below. 
 
-- dummy variables for factors  
-- interaction terms (for example, x1:x2 or x1 * x2)  
-- polynomial terms (for example, poly(x, 2))  
-- offsets and weights when supplied  
+In order to perform the simulation, we first set up a new dataset for the independent variables by creating a new age variable and setting the number of observations to simulate. We store the new independent variable in a a new data frame with the same variable names as in the original dataset.
 
-Thus, the formula defines the systematic component of the GLM.
+```{r Setup_NewData}
+## Pull Model Info
+mod_Object=glmb.out1
+n=nrow(mod_Object$coefficients)
+obs_size=median(menarche$Total) ## Median of Total counts
 
-## 2.2 Family Objects: How glm Receives the Distribution and Link
+# Generate New Data for The Independent Variable
+Age_New <- seq(8, 20, 0.25)
+Age2_New=Age_New-13
 
-The family argument in glm is not a character string.  
-It is a function call that constructs a family object.  
-For example:
+# olddata - Should contain all variables used in original model formula
+olddata=data.frame(Age=menarche$Age,
+Menarche=menarche$Menarche,Total=menarche$Total,Age2=Age2)
 
-    family = poisson(link = "log")
+# Should contain all variables used on RHS of model formula
+newdata=data.frame(Age=Age_New,Age2=Age2_New)
 
-When glm is called, this expression is evaluated first.  
-The result is a structured object containing:
+```
 
-- the name of the distribution  
-- the link function $g(\mu)$  
-- the inverse link $g^{-1}(\eta)$  
-- the variance function $V(\mu)$  
-- the derivative of the inverse link  
-- deviance and AIC functions  
-- initialization and validation rules  
+In order to perform the simulation, we first pass the output from the *glmb*, the newdata, the olddata, and the type to the predict function.  We then set up a matrix into which we store the newly simulated values for the dependent variable and simulate from *rbinom* function using the predicted response values from the response function. 
 
-glm then uses this object to:
+```{r Model_Sims}
+## Predict and Simulate for newdata
 
-- map between $\mu$ and $\eta$  
-- compute IRLS weights  
-- evaluate deviance residuals  
-- check that $\mu$ and $\eta$ lie in valid domains  
-- compute likelihood-based quantities when available
+pred_menarche=predict(mod_Object,newdata=newdata,olddata=olddata,type="response")
+pred_y=matrix(0,nrow=n,ncol=length(Age_New))
+for(i in 1:n){
+  pred_y[i,1:length(Age_New)]=rbinom(length(Age_New),size=obs_size,
+  prob=pred_menarche[i,1:length(Age_New)])
+}
 
-### Specifying a non‑default link
+```
 
-The link is modified by passing an argument to the family constructor.  
-Examples include:
 
-    family = binomial(link = "probit")
-    family = poisson(link = "identity")
-    family = Gamma(link = "log")
+The output is summarized by producing both means and *credible set* information for proportions based on the simulated coefficients and the simulated data (the intervals for the latter will be wider). The latter interval is more appropriate when examining if the actual data appears to correspond to outliers.
 
-In all cases, glm receives a family object with the appropriate link embedded inside it.
+```{r Mean_and_Quartile_Info}
 
-### Binomial response formats
+## Produce mean and quantile information
 
-The binomial and quasibinomial families accept responses in three forms:
+pred_m=colMeans(pred_menarche)
+pred_y_m=colMeans(pred_y/obs_size)
+quant1_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+quant2_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+quant1_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+quant2_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
 
-- a factor (success vs failure)  
-- a numeric vector of proportions with weights  
-- a two‑column matrix of successes and failures  
+```
 
-This flexibility is unique to the binomial family and reflects its exponential‑family structure.
+We now plot most of these summarized measures and the original data together in order to get a visualization of the various predictions and data. This plot suggests that the individual observations in the original data generally tends to fall between the lower and upper bounds credible sets based on the simulated data although it is hard to tell at lower end of the age scale based on this chart. We will explore the latter issue a bit more later in this chapter.
 
-### Quasi‑families
+```{r Model_Plots,fig.height = 5, fig.width = 7}
 
-The quasi, quasibinomial, and quasipoisson families:
+plot(Menarche/Total ~ Age, data=menarche,main="Percentage of girls Who have had their first period")
+lines(Age_New, pred_m,lty=1)
+lines(Age_New, quant1_m,lty=2)
+lines(Age_New, quant2_m,lty=2)
+lines(Age_New, quant1_m_y,lty=2)
+lines(Age_New, quant2_m_y,lty=2)
 
-- do not correspond to true exponential‑family likelihoods  
-- allow user‑specified variance functions  
-- allow over‑dispersion  
-- still use the same link‑function machinery  
+```
 
-They behave like GLMs but without a fixed likelihood.
+We close this section with a comparison of our prior and posterior credible intervals. We store the related information for our posterior simulated credible intervals in a data frame and then look at these in comparison o the prior credible intervals. What we see is that the prior credible interval at age 13 is wider than the posterior credible interval and in fact contains the posterior interval.  At age 15, the two posterior credible set is still contained within the prior credible set but skews heavily towards the upper end of the prior credible set.
 
-## 2.3 Link Functions: Connecting Means to Linear Predictors
 
-The link function $g(\mu) = \eta$ determines how the mean of the response relates to the linear predictor.  
-Each family has a canonical link, which ensures that:
+```{r Store_Preds}
 
-- the canonical parameter equals the linear predictor ($\theta = \eta$)  
-- the log-likelihood is often concave in $\beta$  
-- IRLS has a simple form  
-- the score equations are linear in the sufficient statistics
+outdata=data.frame(Age=Age_New,Age2=Age2_New,pred_m=pred_m, quant1_m, quant2_m,quant1_m_y,quant2_m_y)
 
-Examples of canonical links include:
+print("Prior credible set at age 13 was")
+cbind(m1_lower,m1_upper)
 
-- Gaussian: identity  
-- Binomial: logit  
-- Poisson: log  
-- Gamma: inverse  
-- Inverse Gaussian: $1 / \mu^{2}$
+print("Prior credible set at age 15 was")
+cbind(m2_lower,m2_upper)
 
-Noncanonical links (for example, probit, cloglog, identity for binomial) are also available.  
-They use the same family‑object machinery but may lose some of the computational advantages of canonical links.
+print("Posterior Predictions between ages 13 and 15 are")
+outdata[which(outdata$Age >= 13&outdata$Age <= 15 ),]
 
-## 2.4 How glm Combines Formulas, Families, and Links
+```
 
-The glm function brings together the components above in a way that mirrors the theory of Section 1:
+# Reviewing Model Residuals
 
-- The formula defines the linear predictor $\eta = X \beta$.  
-- The family object provides the variance function $V(\mu)$ and the exponential-family functions $b(\theta)$, $b'(\theta)$, and $b''(\theta)$.  
-- The link provides $g(\mu)$, $g^{-1}(\eta)$, and the derivative of the inverse link.  
-- The IRLS algorithm solves the likelihood equations using the curvature implied by $V(\mu)$.  
-- With canonical links, the log-likelihood is typically log-concave, ensuring a unique maximum and stable convergence.
+We now turn to a more careful examination of the deviance residuals.  We first extract the residuals from the *glmb* object and then produce the mean and credible intervals so we can plot them later in this section.
 
-### A critical example: how glm receives formula, family, and link
+```{r Residual_Analysis}
 
-A single line of code captures the entire GLM specification in R:
+## Get Residuals for model, their means, and credible bounds
+res_out=residuals(glmb.out1)
+res_mean=colMeans(res_out)
+sqrt(mean(res_mean^2))
 
-    glm(counts ~ outcome + treatment,
-        family = poisson(link = "log"))
+res_low1=apply(res_out,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+res_high1=apply(res_out,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```
+To understand whether any of the above residuals might be unexpected outliers, we now use the simulated predictions in order to simulate new data for each observation in the original dataset to see what construct a credible set for the residuals.  
 
-This line shows all three components working together:
+```{r Simulate_New_Residuals}
+## Simulate new data and get residuals for simulated data
 
-1. **Formula**  
-   `counts ~ outcome + treatment`  
-   tells glm how to build the model matrix X, and therefore the linear predictor $\eta = X \beta$.
+ysim1=simulate(glmb.out1,nsim=1,seed=10401L,pred=pred1,family="binomial",
+                        prior.weights=weights(glmb.out1))
+res_ysim_out1=residuals(glmb.out1,ysim=ysim1)
+res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```
 
-2. **Family**  
-   `poisson(...)`  
-   constructs a family object describing the Poisson distribution and its variance function $V(\mu) = \mu$.
+Using the simulate credible sets, we now plot them together. This reveals that the expected value for the actual residuals all fall within the credible sets of the simulated residuals for the new data.  However, the credible sets for some of residuals at the lower age falls outside of those bounds. We will look at how alternate model specifications can avoid this later in this chapter.  
 
-3. **Link**  
-   `link = "log"`  
-   is passed inside the family call, telling glm to use the log link  
-       $g(\mu) = \log(\mu)$,  
-   with inverse  
-       $\mu = \exp(\eta)$.
+```{r Residual_Plot,fig.height = 5, fig.width = 7}
+# Plot Credible Interval bounds for Deviance Residuals
 
-glm evaluates the family call first, constructs the family object, builds the model matrix from the formula, and then fits the model using IRLS under the Poisson log‑link specification.
+plot(res_mean~Age,ylim=c(-2.5,2.5),
+  main="Credible Interval Bounds for Logit Model Deviance Residuals",
+  xlab = "Age", ylab = "Dev. Residuals")
+lines(Age, 0*res_mean,lty=1)
+lines(Age, res_low,lty=1)
+lines(Age, res_high,lty=1)
+lines(Age, res_low1,lty=2)
+lines(Age, res_high1,lty=2)
+```
 
-This single line illustrates exactly how R combines the formula, the family, and the link to define and fit a GLM.
+## Posterior predictive checks with 'bayesplot'
 
-## 2.5 Transition to the Complete Family–Link Reference
+The 'glmbayes' package registers a `pp_check()` method for *glmb* fits (see `help(pp_check.glmb, package = "glmbayes")`), using 'bayesplot' on the same replicated responses produced by `simulate()`. For the menarche example (binomial proportions at a modest number of ages), histogram-style posterior predictive checks are often easier to read than density overlays, so we use `fun = "hist"` here.
 
-The concepts above describe how GLMs are specified and fitted in practice.  
-Section 3 now provides a complete reference of all families and link functions implemented in glm, expressed in the exponential‑family form introduced in Section 1.
+```{r PPC_bayesplot_menarche, fig.height = 5, fig.width = 7}
+suppressPackageStartupMessages(library(bayesplot))
+bayesplot::pp_check(glmb.out1, ndraws = 5L, fun = "hist")
+```
 
 
-# 3. Families and Link Functions in `glm()`
+# Using the DIC Statistic
 
-Section 2 explained how formulas, families, and link functions are passed to `glm()` and how they define the structure of a generalized linear model.  
-This section provides a concise overview of the families and link functions available in base R, and explains how they relate to the exponential‑family framework introduced in Section 1.
+The DIC Statistic is mainly useful when comparing the predictions from several models with the same likelihood function but with different specifications (say different link-functions or different model variables). Here, we will explore alternative link functions for the Menarche data by using the Probit and Clog-Log Models and will then compare the models using the DIC Statistic and related outputs.
 
-A complete, fully expanded reference of all family–link combinations—including canonical parameters, cumulant functions, and variance functions—is provided in **Appendix A**.
+## Running The Probit Model
 
-## 3.1 Families and Link Functions in Base R
+The Probit model uses an alternative link function based on the cumulative distribution function for the normal distribution instead of the cumulative distribution function for logistic distribution. Below, we use a similar approach to the prior specification as we did in the earlier chapter for the Logit model and then produce the corresponding output. We will not comment further on those results and will hold off on further discussion until our subsection comparing the DIC statistic from the various models.
 
-The table below summarizes the families available in base R’s `glm()` function and the link functions supported for each family. Canonical links are marked with “(canonical)”.
 
-| Family               | Description                                   | Supported Link Functions                                                                 |
-|----------------------|-----------------------------------------------|-------------------------------------------------------------------------------------------|
-| `gaussian()`         | Continuous outcomes with constant variance     | `identity` (canonical), `log`, `inverse`                                                  |
-| `binomial()`         | Binary data or proportions                    | `logit` (canonical), `probit`, `cauchit`, `cloglog`, `identity`                           |
-| `poisson()`          | Count data                                    | `log` (canonical), `identity`, `sqrt`                                                     |
-| `Gamma()`            | Positive continuous, skewed                   | `inverse` (canonical), `identity`, `log`                                                  |
-| `inverse.gaussian()` | Positive continuous with heavy tails          | `$1 / \mu^{2}$` (canonical), `identity`, `log`, `inverse`                                 |
-| `quasi()`            | User-specified mean-variance relationship     | Depends on user specification                                                             |
-| `quasibinomial()`    | Overdispersed binomial                        | Same as `binomial()`                                                                      |
-| `quasipoisson()`     | Overdispersed Poisson                         | Same as `poisson()`                                                                       |
+```{r Probit_Model}
+## ----Probit: set up link function info and initialize prior matrices-----------
 
-### Notes
+## Set up link function and initialize prior mean and Variance-Covariance matrices
+bi_probit <- binomial(link="probit")
+mu2<-matrix(0,nrow=nvars,ncol=1)
+rownames(mu2)=c("Intercept","Age2")
+colnames(mu2)=c("Prior Mean")
+V2<-1*diag(nvars)
+rownames(V2)=c("Intercept","Age2")
+colnames(V2)=c("Intercept","Age2")
 
-- Canonical links ensure that the canonical parameter $\theta$ equals the linear predictor $\eta$, which often yields concave log-likelihoods and stable IRLS updates.  
-- Quasi-families (`quasi`, `quasibinomial`, `quasipoisson`) do not correspond to true exponential-family distributions but retain the GLM mean-variance structure.  
-- All families listed above integrate cleanly with the formula interface described in Section 2.
 
-## 3.2 How Families and Links Fit the Exponential‑Family Structure
+## ----Probit:set prior means----------------------------------------------------
+## Prior mean for intercept is set to point estimate 
+## at reference age1 (on probit scale)
+mu2[1,1]=bi_probit$linkfun(m1)
 
-Each family in `glm()` corresponds to a specific exponential‑family distribution of the form
+## Prior mean for slope is set to difference in point estimates
+## on probit scale divided by Age_Diff
 
-\[
-f(y \mid \theta, \phi)
-= \exp\left\{
-\frac{y\theta - b(\theta)}{a(\phi)} + c(y,\phi)
-\right\}.
-\]
+mu2[2,1]=(bi_probit$linkfun(m2) -bi_probit$linkfun(m1))/Age_Diff 
+print(mu2)
 
-The choice of **family** determines:
 
-- the canonical parameter \( \theta \)  
-- the cumulant function \( b(\theta) \)  
-- the variance function \( V(\mu) = b''(\theta) a(\phi) \)  
+## ----Probit:set prior Variance Covariance matrix-------------------------------
+## Implied standard deviations for point estimates on probit scale
 
-The choice of **link function** determines:
+sd_m1= (bi_probit$linkfun(m1) -bi_probit$linkfun(m1_lower))/1.96
+sd_m2= (bi_probit$linkfun(m2) -bi_probit$linkfun(m2_lower))/1.96
 
-- how the mean \( \mu \) relates to the linear predictor \( \eta \)  
-- whether the canonical parameter equals the linear predictor (canonical links)  
-- the curvature of the log‑likelihood and the behavior of IRLS  
+## Implied Standard deviation for slope (using variance formula for difference between two variables)
+a=(1/Age_Diff)
+sd_slope=sqrt((a*sd_m1)^2+(a*sd_m2)^2-2*a*a*(sd_m1*sd_m2*m_corr))
 
-Canonical links (e.g., logit for binomial, log for Poisson) often yield:
+#Cov(m1,slope)=cov(m1, a*(m2-m1)) =a*E[(m1-E[m1])((m2-m1)-E[m2-m1])]
+#   =a*E[(m1-E[m1])(m2-E[m2])]- a* E[(m1-E[m1])(m1-E[m1])]
+##   =a*Cov[m1,m2] - a*Var[m1]
+##  =a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
+cov_V2=a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
 
-- concave log‑likelihoods  
-- simpler score equations  
-- stable IRLS updates  
+# Set covariance matrix
+V2[1,1]=sd_m1^2
+V2[2,2]=sd_slope^2
+V2[1,2]=cov_V2
+V2[2,1]=V2[1,2]
+print(V2)
 
-Noncanonical links remain valid but may alter curvature and convergence properties.
 
-## 3.3 Where to Find the Full Mathematical Forms
+## ----Run Probit,results = "hide"-----------------------------------------------
+Menarche_Model_Data=data.frame(Age=menarche$Age,Total=menarche$Total,
+                               Menarche=menarche$Menarche,Age2)
 
-The full exponential‑family expansions for **every** family–link combination—including:
+glmb.out2<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~Age2,family=binomial(probit),
+                pfamily=dNormal(mu=mu2,Sigma=V2),data=Menarche_Model_Data)
 
-- \( g(\mu) = \eta \)  
-- \( g^{-1}(\eta) \)  
-- canonical parameter \( \theta \)  
-- cumulant function \( b(\theta) \)  
-- variance function \( V(\mu) \)
+print(glmb.out2)
+summary(glmb.out2)
+```
 
-are provided in **Appendix A**.
+## Running The Clog-Log Model
 
-This keeps the main text focused on concepts while still giving advanced users access to the complete mathematical reference.
+The Clog-Log models offers an additional alternative model for the binomial data. Here we set up a model using this link function. Unlike the Logit and Probit models, the Clog-Log link function is not symmetric so we run an alternative models below with the reverse sign. Again, we will hold off on interpretation until later in the chapter.
 
-## 3.4 Why This Matters for Bayesian GLMs
 
-The Bayesian extensions used in `glmb()` and `Prior_Setup()` rely on the same structure:
 
-- The likelihood is exponential‑family, often log‑concave.  
-- The linear predictor is defined through the same formula interface.  
-- Canonical links ensure that gradients and subgradients exist, enabling envelope construction and efficient sampling.  
-- Normal and normal‑gamma priors interact cleanly with the likelihood because both live in a convex, well‑behaved parameter space.
+```{r cloglog_Model}
 
-In short, the classical GLM framework provides the mathematical and computational foundation on which the Bayesian methods in later chapters are built.
+## ----cloglog: set up link function info and initialize prior matrices-----------
 
+## Set up link function and initialize prior mean and Variance-Covariance matrices
+bi_cloglog <- binomial(link="cloglog")
+mu3<-matrix(0,nrow=nvars,ncol=1)
+rownames(mu3)=c("Intercept","Age2")
+colnames(mu3)=c("Prior Mean")
+V3<-1*diag(nvars)
+rownames(V3)=c("Intercept","Age2")
+colnames(V3)=c("Intercept","Age2")
 
-# 4. Bayesian GLMs with `glmb()`
 
-The function `glmb()` is a Bayesian extension of the classical `glm()` function.  
-Its interface mirrors `glm()` as closely as possible: users specify a model using a formula, choose a likelihood family, and then supply a prior distribution through the `pfamily` argument.  
-This design preserves the familiar GLM workflow while enabling full Bayesian inference.
+## ----cloglog:set prior means----------------------------------------------------
+## Prior mean for intercept is set to point estimate 
+## at reference age1 (on cloglog scale)
+mu3[1,1]=bi_cloglog$linkfun(m1)
 
-## 4.1 Relationship to Classical GLMs
+## Prior mean for slope is set to difference in point estimates
+## on cloglog scale divided by Age_Diff
 
-The setup for `glmb()` follows the same structure as `glm()`:
+mu3[2,1]=(bi_cloglog$linkfun(m2) -bi_cloglog$linkfun(m1))/Age_Diff 
+print(mu3)
 
-- the **formula** defines the linear predictor  
-- the **family** defines the likelihood and link function  
-- the **model frame**, **model matrix**, **offsets**, and **weights** are constructed identically  
-- the returned object inherits from `"glm"` and `"lm"`  
 
-This compatibility ensures that standard generics—`summary()`, `predict()`, `residuals()`, `extractAIC()`, and others—work naturally with `glmb` objects.
+## ----Cloglog:set prior Variance Covariance matrix-------------------------------
+## Implied standard deviations for point estimates on clolog scale
 
-## 4.2 The `pfamily` Argument: Specifying Priors
+sd_m1= (bi_cloglog$linkfun(m1) -bi_cloglog$linkfun(m1_lower))/1.96
+sd_m2= (bi_cloglog$linkfun(m2) -bi_cloglog$linkfun(m2_lower))/1.96
 
-The key addition in `glmb()` is the required `pfamily` argument, which specifies the prior distribution for the regression coefficients.  
-The `pfamily` system parallels how `glm()` uses `family`:
+## Implied Standard deviation for slope (using variance formula for difference between two variables)
+a=(1/Age_Diff)
+sd_slope=sqrt((a*sd_m1)^2+(a*sd_m2)^2-2*a*a*(sd_m1*sd_m2*m_corr))
 
-- `family` → likelihood and link  
-- `pfamily` → prior distribution and hyperparameters  
+#Cov(m1,slope)=cov(m1, a*(m2-m1)) =a*E[(m1-E[m1])((m2-m1)-E[m2-m1])]
+#   =a*E[(m1-E[m1])(m2-E[m2])]- a* E[(m1-E[m1])(m1-E[m1])]
+##   =a*Cov[m1,m2] - a*Var[m1]
+##  =a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
+cov_V3=a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
 
-The default prior is a multivariate normal:
+# Set covariance matrix
+V3[1,1]=sd_m1^2
+V3[2,2]=sd_slope^2
+V3[1,2]=cov_V3
+V3[2,1]=V3[1,2]
+print(V3)
 
-    pfamily = dNormal(mu, Sigma)
 
-The helper function `Prior_Setup()` constructs sensible defaults for `mu` and `Sigma`, using a reparameterized form of Zellner's g-prior.  
-Users may also fully customize the prior.
+## ----Run cloglog,results = "hide"-----------------------------------------------
+Menarche_Model_Data=data.frame(Age=menarche$Age,Total=menarche$Total,
+                               Menarche=menarche$Menarche,Age2)
 
-Supported prior families include:
+glmb.out3<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~Age2,family=binomial(cloglog),
+                pfamily=dNormal(mu=mu3,Sigma=V3),data=Menarche_Model_Data)
 
-- **dNormal** (all likelihood families)  
-- **dNormalGamma** (Gaussian family)  
-- **dIndependent_Normal_Gamma** (Gaussian family)
+print(glmb.out3)
+summary(glmb.out3)
 
-## 4.3 Supported Likelihood Families
 
-`glmb()` currently supports:
+```
+## Running The Reverse Clog-Log Model
 
-- **Gaussian** (identity link)  
-- **Poisson** and **quasipoisson** (log link)  
-- **Gamma** (log link)  
-- **Binomial** and **quasibinomial** (logit, probit, cloglog links)
+Here we set up and run the reverse clog-log model. It models the opposite probability and is not equivalent to the earlier models because of the asymmetry of the distribution.
 
-These match the most commonly used GLM families.
 
-## 4.4 A Direct Illustration: Calling `glmb()` with Formulas, Families, and Priors
+```{r cloglog_Model2}
 
-Just as a classical GLM is defined by a formula and a likelihood family:
+## ----cloglog: set up link function info and initialize prior matrices-----------
 
-    glm(counts ~ outcome + treatment,
-        family = poisson(link = "log"))
+## Set up link function and initialize prior mean and Variance-Covariance matrices
+bi_cloglog <- binomial(link="cloglog")
+mu4<-matrix(0,nrow=nvars,ncol=1)
+rownames(mu4)=c("Intercept","Age2")
+colnames(mu4)=c("Prior Mean")
+V4<-1*diag(nvars)
+rownames(V4)=c("Intercept","Age2")
+colnames(V4)=c("Intercept","Age2")
 
-a Bayesian GLM adds one additional component: the prior family.
 
-A typical workflow uses `Prior_Setup()` to construct prior parameters:
+## ----cloglog:set prior means----------------------------------------------------
+## Prior mean for intercept is set to point estimate 
+## at reference age1 (on logit scale)
+mu4[1,1]=bi_cloglog$linkfun((1-m1))
 
-    ps <- Prior_Setup(counts ~ outcome + treatment,
-                      family = poisson(link = "log"))
-    mu <- ps$mu
-    V  <- ps$Sigma
+## Prior mean for slope is set to difference in point estimates
+## on logit scale divided by Age_Diff
 
-The corresponding Bayesian call mirrors the classical one:
+mu4[2,1]=(bi_cloglog$linkfun((1-m2))-bi_cloglog$linkfun((1-m1)))/Age_Diff 
+print(mu4)
 
-    glmb.D93 <- glmb(counts ~ outcome + treatment,
-                     family  = poisson(link = "log"),
-                     pfamily = dNormal(mu = mu, Sigma = V))
 
-This single line shows how `glmb()` receives:
+## ----Probit:set prior Variance Covariance matrix-------------------------------
+## Implied standard deviations for point estimates on logit scale
 
-- the **formula** (to build the model matrix),  
-- the **family** (to define the likelihood and link),  
-- the **pfamily** (to define the prior distribution).
+sd_m1= (bi_cloglog$linkfun((1-m1_lower))-bi_cloglog$linkfun((1-m1)))/1.96
+sd_m2= (bi_cloglog$linkfun((1-m2_lower))-bi_cloglog$linkfun((1-m2)))/1.96
 
-The result is a set of independent posterior draws for coefficients, fitted values, linear predictors, and deviance, along with posterior summaries such as the posterior mode and DIC.
+## Implied Standard deviation for slope (using variance formula for difference between two variables)
+a=(1/Age_Diff)
+sd_slope=sqrt((a*sd_m1)^2+(a*sd_m2)^2-2*a*a*(sd_m1*sd_m2*m_corr))
 
-## 4.5 Posterior Sampling
+#Cov(m1,slope)=cov(m1, a*(m2-m1)) =a*E[(m1-E[m1])((m2-m1)-E[m2-m1])]
+#   =a*E[(m1-E[m1])(m2-E[m2])]- a* E[(m1-E[m1])(m1-E[m1])]
+##   =a*Cov[m1,m2] - a*Var[m1]
+##  =a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
+cov_V4=a*sd_m1*sd_m2*m_corr-a* sd_m1*sd_m1
 
-For any supported combination of likelihood family, link, and prior family, `glmb()` generates **independent draws** from the posterior distribution—no MCMC chains are required.
+# Set covariance matrix
+V4[1,1]=sd_m1^2
+V4[2,2]=sd_slope^2
+V4[1,2]=cov_V4
+V4[2,1]=V4[1,2]
+print(V4)
 
-- For the **Gaussian** family with normal or normal‑gamma priors, draws come from closed‑form conjugate posteriors.  
-- For all other cases, `glmb()` uses an accept–reject sampler based on likelihood‑subgradient envelopes.
 
-By default:
+## ----Run cloglog,results = "hide"-----------------------------------------------
+Menarche_Model_Data=data.frame(Age=menarche$Age,Total=menarche$Total,
+                               Menarche=menarche$Menarche,Age2)
 
-- `n = 1000` posterior draws are generated  
-- parallel CPU simulation is used  
-- OpenCL acceleration can be enabled for envelope construction
+glmb.out4<-glmb(n=1000,cbind(Total-Menarche,Menarche) ~Age2,family=binomial(cloglog),
+                pfamily=dNormal(mu=mu4,Sigma=V4),data=Menarche_Model_Data)
 
-## 4.6 Returned Object
+print(glmb.out4)
+summary(glmb.out4)
 
-A `glmb` object contains:
+```
 
-- posterior draws of coefficients, fitted values, linear predictors, and deviance  
-- posterior means and posterior mode  
-- DIC components (`pD`, `Dbar`, `Dthetabar`, `DIC`)  
-- the underlying `"glm"` object  
-- model frame, design matrix, response, and prior specification  
-- envelope diagnostics (`iters`)
+## Comparing the DIC Statistics
 
-Because `glmb` inherits from `"glm"` and `"lm"`, most classical methods apply directly.
+The Deviance Information Criterion (DIC) statistic is a Bayesian version of the AIC useful to compare different model specifications for the same likelihood function. Generally, smaller DIC statistic are preferred. Like other information criteria, the DIC favors models with a better but includes a penalty for model complexity. The DIC is computed from the Monte Carlo simulation output.  In addition to the DIC itself, the *extractAIC* function provides an "expected number of parameter" output (which tends to be more relevant for Hierarchical models).
 
-## 4.7 Related Functions
+As we can see from the below output, the DIC for the two Clog-Log models are much worse than for the other two models suggesting they do a worse job of approximating the relationship between age and the percentage of girls who had experienced their first period. The difference in the DIC between the Logit and Probit models are smaller although the Probit model appears to have the lower DIC. Below the DIC table, the also provide the same kind of output from the Classical models and the associated AIC, which shows a similar pattern.
 
-The package also includes:
+```{r Compare_DIC}
+DIC_Out=rbind(
+  extractAIC(glmb.out1),
+  extractAIC(glmb.out2),
+  extractAIC(glmb.out3),
+  extractAIC(glmb.out4))
 
-- **`lmb()`** — Bayesian version of `lm()` for Gaussian models  
-- **`rglmb()` and `rlmb()`** — minimal interfaces used internally by `glmb()`  
+rownames(DIC_Out)=c("Logit","Probit","Clog-Log","Reverse Clog-Log")
+DIC_Out
+```
 
-These functions share the same computational engine but expose fewer features.
+```{r Compare_AIC}
 
-# 5. Log‑Concavity, Envelopes, and Posterior Computation
+glm.out1=glm(cbind(Menarche, Total-Menarche) ~Age2,family=binomial(logit),data=Menarche_Model_Data)
+glm.out2=glm(cbind(Menarche, Total-Menarche) ~Age2,family=binomial(probit),data=Menarche_Model_Data)
+glm.out3=glm(cbind(Menarche, Total-Menarche) ~Age2,family=binomial(cloglog),data=Menarche_Model_Data)
+glm.out4=glm(cbind(Total-Menarche,Menarche ) ~Age2,family=binomial(cloglog),data=Menarche_Model_Data)
 
-The Bayesian methods implemented in `glmb()` rely on the exponential‑family structure described in Sections 1–3.  
-This section explains, at a high level, why the posterior distribution is well‑behaved for generalized linear models and how `glmb()` exploits this structure to generate independent posterior draws.
+AIC_Out=rbind(extractAIC(glm.out1),
+extractAIC(glm.out2),
+extractAIC(glm.out3),
+extractAIC(glm.out4))
 
-## 5.1 Why Log‑Concavity Matters
+rownames(AIC_Out)=c("Logit","Probit","Clog-Log","Reverse Clog-Log")
+colnames(AIC_Out)=c("edf","AIC")
+AIC_Out
+```
 
-For the likelihood families supported by `glmb()`, the log‑likelihood is **concave** in the canonical parameter.  
-When combined with a log‑concave prior (such as the multivariate normal used by default), the posterior density is also log‑concave.  
-This ensures:
+## Plotting Predictions and Residuals For the Additional Models
 
-- a **unique posterior mode**,  
-- stable numerical optimization,  
-- well‑behaved curvature around the mode,  
-- efficient envelope construction for accept–reject sampling.
+### Probit Model
 
-Canonical links (e.g., logit for binomial, log for Poisson) preserve concavity and are therefore especially convenient.
+*Predictions*
+```{r Model_Sims2}
+## Predict and Simulate for newdata
 
-## 5.2 Envelope Construction
+mod_Object=glmb.out2
+pred1=predict(glmb.out2,type="response")
+pred1_m=colMeans(pred1)
+n=nrow(mod_Object$coefficients)
+pred_menarche=predict(mod_Object,newdata=newdata,olddata=olddata,type="response")
+pred_y=matrix(0,nrow=n,ncol=length(Age_New))
+for(i in 1:n){
+  pred_y[i,1:length(Age_New)]=rbinom(length(Age_New),size=obs_size,
+  prob=pred_menarche[i,1:length(Age_New)])
+}
 
-For non‑Gaussian models, `glmb()` uses an accept–reject sampler based on **likelihood‑subgradient envelopes**.  
-The idea is to build a tight, convex upper bound on the negative log‑likelihood using tangent points.  
-This envelope:
+```
 
-- bounds the log‑likelihood everywhere,  
-- is easy to sample from,  
-- becomes tighter as more tangent points are added.
+```{r Mean_and_Quartile_Info2}
 
-The `Gridtype` and `n_envopt` arguments control how many tangent points are used, trading off envelope tightness against construction cost.  
-The component `iters` in the returned object reports how many candidate draws were generated before acceptance.
+## Produce mean and quantile information
 
-## 5.3 Posterior Computation Strategy
+pred_m=colMeans(pred_menarche)
+pred_y_m=colMeans(pred_y/obs_size)
+quant1_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+quant2_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+quant1_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+quant2_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
 
-Posterior sampling in `glmb()` proceeds in two stages:
+```
 
-1. **Mode finding**  
-   A classical GLM fit is used as the starting point, and the posterior mode is obtained by optimizing the sum of the log‑likelihood and log‑prior.
 
-2. **Independent sampling**  
-   - For Gaussian models with conjugate priors, draws come from closed‑form posterior distributions.  
-   - For all other supported families, the envelope‑based accept–reject sampler generates **independent** posterior draws.
+```{r Model_Plots2,fig.height = 5, fig.width = 7}
 
-Because the sampler produces independent draws, there are no chains, no burn‑in, and no convergence diagnostics.  
-This makes posterior summaries straightforward and computationally efficient.
+plot(Menarche/Total ~ Age, data=menarche,main="Percentage of girls Who have had their first period")
+lines(Age_New, pred_m,lty=1)
+lines(Age_New, quant1_m,lty=2)
+lines(Age_New, quant2_m,lty=2)
+lines(Age_New, quant1_m_y,lty=2)
+lines(Age_New, quant2_m_y,lty=2)
 
-## 5.4 Summary
+```
+*Residuals*
+```{r Residual_Analysis2}
+## Get Residuals for model, their means, and credible bounds
+res_out=residuals(glmb.out2)
+res_mean=colMeans(res_out)
+sqrt(mean(res_mean^2))
+res_low1=apply(res_out,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+res_high1=apply(res_out,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```
 
-The computational methods in `glmb()` leverage the structure of exponential‑family likelihoods and log‑concave priors to produce fast, reliable Bayesian inference for generalized linear models.  
-These methods ensure that the Bayesian extension behaves predictably across all supported families and links, while maintaining a workflow that closely parallels the classical `glm()` function.
+```{r Simulate_New_Residuals2}
+## Simulate new data and get residuals for simulated data
 
+ysim1=simulate(glmb.out2,nsim=1,seed=10402L,pred=pred1,family="binomial",
+                        prior.weights=weights(glmb.out2))
+res_ysim_out1=residuals(glmb.out2,ysim=ysim1)
+res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```
 
 
-# Appendix A. Full Exponential‑Family Forms for All `glm()` Families and Links
+```{r Residual_Plot2,fig.height = 5, fig.width = 7}
+# Plot Credible Interval bounds for Deviance Residuals
 
-This appendix provides a complete reference for the exponential‑family forms associated with every family–link combination implemented in base R’s `glm()` function.  
-These tables expand the conceptual overview in Section 3 by listing:
+plot(res_mean~Age,ylim=c(-2.5,2.5),
+  main="Credible Interval Bounds for Probit Model Deviance Residuals",
+  xlab = "Age", ylab = "Dev. Residuals")
+lines(Age, 0*res_mean,lty=1)
+lines(Age, res_low,lty=1)
+lines(Age, res_high,lty=1)
+lines(Age, res_low1,lty=2)
+lines(Age, res_high1,lty=2)
+```
 
-- the family  
-- the link function  
-- the mean–link relationship \( g(\mu) = \eta \)  
-- the inverse link \( \mu = g^{-1}(\eta) \)  
-- the canonical parameter \( \theta \)  
-- the cumulant function \( b(\theta) \)  
-- the variance function \( V(\mu) \)
+### clog-log Model
 
-All expressions follow the exponential‑family form introduced in Section 1:
+*Predictions*
+```{r Model_Sims3}
+## Predict and Simulate for newdata
+mod_Object=glmb.out3
+pred1=predict(glmb.out3,type="response")
+pred1_m=colMeans(pred1)
+n=nrow(mod_Object$coefficients)
+pred_menarche=predict(mod_Object,newdata=newdata,olddata=olddata,type="response")
+pred_y=matrix(0,nrow=n,ncol=length(Age_New))
+for(i in 1:n){
+  pred_y[i,1:length(Age_New)]=rbinom(length(Age_New),size=obs_size,
+  prob=pred_menarche[i,1:length(Age_New)])
+}
 
-\[
-f(y \mid \theta, \phi)
-= \exp\left\{
-\frac{y\theta - b(\theta)}{a(\phi)} + c(y,\phi)
-\right\}.
-\]
+```
 
----
+```{r Mean_and_Quartile_Info3}
 
-## Appendix A. Exponential-family and link reference tables
+## Produce mean and quantile information
 
-## A.1 Gaussian Family
+pred_m=colMeans(pred_menarche)
+pred_y_m=colMeans(pred_y/obs_size)
+quant1_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+quant2_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+quant1_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+quant2_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
 
-| Family | Link | \( g(\mu)=\eta \) | \( \mu=g^{-1}(\eta) \) | \( \theta \) | \( b(\theta) \) | \( V(\mu) \) |
-|--------|-------|-------------------|-------------------------|--------------|------------------|--------------|
-| Gaussian | identity (canonical) | \( \eta=\mu \) | \( \mu=\eta \) | \( \theta=\mu \) | \( \theta^2/2 \) | \( 1 \) |
-| Gaussian | log | \( \eta=\log(\mu) \) | \( \mu=e^\eta \) | \( \theta=\mu \) | \( \theta^2/2 \) | \( 1 \) |
-| Gaussian | inverse | \( \eta=1/\mu \) | \( \mu=1/\eta \) | \( \theta=\mu \) | \( \theta^2/2 \) | \( 1 \) |
+```
 
----
 
-## A.2 Binomial Family
+```{r Model_Plots3,fig.height = 5, fig.width = 7}
 
-Exponential‑family core:
+plot(Menarche/Total ~ Age, data=menarche,main="Percentage of girls Who have had their first period")
+lines(Age_New, pred_m,lty=1)
+lines(Age_New, quant1_m,lty=2)
+lines(Age_New, quant2_m,lty=2)
+lines(Age_New, quant1_m_y,lty=2)
+lines(Age_New, quant2_m_y,lty=2)
 
-\[
-b(\theta)=\log(1+e^\theta), \quad
-\mu=\frac{e^\theta}{1+e^\theta}, \quad
-V(\mu)=\mu(1-\mu).
-\]
+```
+*Residuals*
+```{r Residual_Analysis3}
+## Get Residuals for model, their means, and credible bounds
+res_out=residuals(glmb.out3)
+res_mean=colMeans(res_out)
+sqrt(mean(res_mean^2))
+res_low1=apply(res_out,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+res_high1=apply(res_out,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```
 
-| Family | Link | \( g(\mu)=\eta \) | \( \mu=g^{-1}(\eta) \) | \( \theta \) | \( b(\theta) \) | \( V(\mu) \) |
-|--------|-------|-------------------|-------------------------|--------------|------------------|--------------|
-| Binomial | logit (canonical) | \( \eta=\log(\mu/(1-\mu)) \) | \( \mu=\frac{e^\eta}{1+e^\eta} \) | \( \theta=\eta \) | \( \log(1+e^\theta) \) | \( \mu(1-\mu) \) |
-| Binomial | probit | \( \eta=\Phi^{-1}(\mu) \) | \( \mu=\Phi(\eta) \) | \( \theta=\log(\mu/(1-\mu)) \) | same | same |
-| Binomial | cloglog | \( \eta=\log[-\log(1-\mu)] \) | \( \mu=1-e^{-e^\eta} \) | \( \theta=\log(\mu/(1-\mu)) \) | same | same |
-| Binomial | cauchit | \( \eta=\tan\{\pi(\mu-1/2)\} \) | \( \mu=\frac{1}{2}+\frac{1}{\pi}\arctan(\eta) \) | \( \theta=\log(\mu/(1-\mu)) \) | same | same |
-| Binomial | identity | \( \eta=\mu \) | \( \mu=\eta \) | \( \theta=\log(\mu/(1-\mu)) \) | same | same |
+```{r Simulate_New_Residuals3}
+## Simulate new data and get residuals for simulated data
 
----
+ysim1=simulate(glmb.out3,nsim=1,seed=10403L,pred=pred1,family="binomial",
+                        prior.weights=weights(glmb.out3))
+res_ysim_out1=residuals(glmb.out3,ysim=ysim1)
+res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```
 
-## A.3 Poisson Family
 
-\[
-b(\theta)=e^\theta, \quad
-\mu=e^\theta, \quad
-V(\mu)=\mu.
-\]
+```{r Residual_Plot3,fig.height = 5, fig.width = 7}
+# Plot Credible Interval bounds for Deviance Residuals
 
-| Family | Link | \( g(\mu)=\eta \) | \( \mu=g^{-1}(\eta) \) | \( \theta \) | \( b(\theta) \) | \( V(\mu) \) |
-|--------|-------|-------------------|-------------------------|--------------|------------------|--------------|
-| Poisson | log (canonical) | \( \eta=\log(\mu) \) | \( \mu=e^\eta \) | \( \theta=\eta \) | \( e^\theta \) | \( \mu \) |
-| Poisson | identity | \( \eta=\mu \) | \( \mu=\eta \) | \( \theta=\log(\mu) \) | same | same |
-| Poisson | sqrt | \( \eta=\sqrt{\mu} \) | \( \mu=\eta^2 \) | \( \theta=\log(\mu) \) | same | same |
+plot(res_mean~Age,ylim=c(-4.0,4.0),
+  main="Credible Interval Bounds for cloglog Model Deviance Residuals",
+  xlab = "Age", ylab = "Dev. Residuals")
+lines(Age, 0*res_mean,lty=1)
+lines(Age, res_low,lty=1)
+lines(Age, res_high,lty=1)
+lines(Age, res_low1,lty=2)
+lines(Age, res_high1,lty=2)
+```
 
----
+### Reverse clog-log Model
 
-## A.4 Gamma Family
+*Predictions*
+```{r Model_Sims4}
+## Predict and Simulate for newdata
+mod_Object=glmb.out4
+pred1=predict(glmb.out4,type="response")
+pred1_m=colMeans(pred1)
+n=nrow(mod_Object$coefficients)
+pred_menarche=predict(mod_Object,newdata=newdata,olddata=olddata,type="response")
+pred_y=matrix(0,nrow=n,ncol=length(Age_New))
+for(i in 1:n){
+  pred_y[i,1:length(Age_New)]=rbinom(length(Age_New),size=obs_size,
+  prob=pred_menarche[i,1:length(Age_New)])
+}
 
-\[
-b(\theta)=-\log(-\theta), \quad
-\mu=-1/\theta, \quad
-V(\mu)=\mu^2.
-\]
+```
 
-| Family | Link | \( g(\mu)=\eta \) | \( \mu=g^{-1}(\eta) \) | \( \theta \) | \( b(\theta) \) | \( V(\mu) \) |
-|--------|-------|-------------------|-------------------------|--------------|------------------|--------------|
-| Gamma | inverse (canonical) | \( \eta=1/\mu \) | \( \mu=1/\eta \) | \( \theta=-1/\mu \) | \( -\log(-\theta) \) | \( \mu^2 \) |
-| Gamma | identity | \( \eta=\mu \) | \( \mu=\eta \) | \( \theta=-1/\mu \) | same | same |
-| Gamma | log | \( \eta=\log(\mu) \) | \( \mu=e^\eta \) | \( \theta=-1/\mu \) | same | same |
+```{r Mean_and_Quartile_Info4}
 
----
+## Produce mean and quantile information
 
-## A.5 Inverse Gaussian Family
+pred_m=colMeans(pred_menarche)
+pred_y_m=colMeans(pred_y/obs_size)
+quant1_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+quant2_m=apply(pred_menarche,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+quant1_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+quant2_m_y=apply(pred_y/obs_size,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
 
-\[
-b(\theta)=\sqrt{-2\theta}, \quad
-\mu=\frac{1}{\sqrt{-2\theta}}, \quad
-V(\mu)=\mu^3.
-\]
+```
 
-| Family | Link | \( g(\mu)=\eta \) | \( \mu=g^{-1}(\eta) \) | \( \theta \) | \( b(\theta) \) | \( V(\mu) \) |
-|--------|-------|-------------------|-------------------------|--------------|------------------|--------------|
-| Inverse Gaussian | \( 1/\mu^2 \) (canonical) | \( \eta=1/\mu^2 \) | \( \mu=1/\sqrt{\eta} \) | \( \theta=-1/(2\mu^2) \) | \( \sqrt{-2\theta} \) | \( \mu^3 \) |
-| Inverse Gaussian | identity | \( \eta=\mu \) | \( \mu=\eta \) | \( \theta=-1/(2\mu^2) \) | same | same |
-| Inverse Gaussian | log | \( \eta=\log(\mu) \) | \( \mu=e^\eta \) | \( \theta=-1/(2\mu^2) \) | same | same |
-| Inverse Gaussian | inverse | \( \eta=1/\mu \) | \( \mu=1/\eta \) | \( \theta=-1/(2\mu^2) \) | same | same |
 
----
+```{r Model_Plots4,fig.height = 5, fig.width = 7}
 
-## A.6 Quasi Families
+plot(Menarche/Total ~ Age, data=menarche,main="Percentage of girls Who have had their first period")
+lines(Age_New, 1-pred_m,lty=1)
+lines(Age_New, 1-quant1_m,lty=2)
+lines(Age_New, 1-quant2_m,lty=2)
+lines(Age_New, 1-quant1_m_y,lty=2)
+lines(Age_New, 1-quant2_m_y,lty=2)
 
-These are not true exponential families, but `glm()` allows them.
+```
+*Residuals*
+```{r Residual_Analysis4}
+## Get Residuals for model, their means, and credible bounds
+res_out=residuals(glmb.out4)
+res_mean=colMeans(res_out)
+sqrt(mean(res_mean^2))
+res_low1=apply(res_out,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+res_high1=apply(res_out,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```
 
-| Family | Link Functions | Variance Function |
-|--------|----------------|-------------------|
-| quasi | any link | user‑specified |
-| quasibinomial | same as binomial | \( \mu(1-\mu) \) up to scale |
-| quasipoisson | same as poisson | \( \mu \) up to scale |
+```{r Simulate_New_Residuals4}
+## Simulate new data and get residuals for simulated data
 
----
+ysim1=simulate(glmb.out4,nsim=1,seed=10404L,pred=pred1,family="binomial",
+                        prior.weights=weights(glmb.out4))
+res_ysim_out1=residuals(glmb.out4,ysim=ysim1)
+res_low=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.025),na.rm=TRUE)
+res_high=apply(res_ysim_out1,2,FUN=quantile,probs=c(0.975),na.rm=TRUE)
+```
+
+
+```{r Residual_Plot4,fig.height = 5, fig.width = 7}
+# Plot Credible Interval bounds for Deviance Residuals
+
+plot(-res_mean~Age,ylim=c(-3.0,3.0),
+  main="Credible Interval Bounds - Rev. clog-log Model Deviance Residuals",
+  xlab = "Age", ylab = "Dev. Residuals")
+lines(Age, 0*res_mean,lty=1)
+lines(Age, -res_low,lty=1)
+lines(Age, -res_high,lty=1)
+lines(Age, -res_low1,lty=2)
+lines(Age, -res_high1,lty=2)
+```

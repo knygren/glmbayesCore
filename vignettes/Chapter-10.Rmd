@@ -1,0 +1,328 @@
+---
+title: "Chapter 08: Models for the Poisson Family"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
+vignette: >
+  %\VignetteIndexEntry{Chapter 08: Models for the Poisson Family}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(glmbayes)
+```
+
+
+## 1. Introductory Discussion
+
+Poisson regression is the canonical GLM for modeling count data [@McCullagh1989].  
+The Poisson likelihood is log‑concave under the log link, making it an ideal setting for envelope‑based Bayesian sampling [@Nygren2006].  
+This chapter mirrors the structure used for the Binomial vignette: we begin with the classical glm() fit, then introduce the Bayesian glmb() version, discuss prior specification, and compare posterior summaries to their classical counterparts.
+
+We use the well‑known randomized controlled trial dataset of [@Dobson1990], which appears in many GLM textbooks and is included in the base R documentation for glm().  
+The dataset contains counts of subjects classified by treatment group and outcome category.
+
+## 2. Poisson Likelihood and Model Structure
+
+Poisson regression models count data of the form
+
+\[
+Y_i \in \{0,1,2,\ldots\}, 
+\qquad 
+Y_i \sim \text{Poisson}(\mu_i),
+\]
+
+where \(\mu_i > 0\) is the expected count.  
+Observation weights \(w_i\) (e.g., exposure times) enter the likelihood through
+
+\[
+Y_i \sim \text{Poisson}(w_i \mu_i).
+\]
+
+The mean is linked to a linear predictor via
+
+\[
+\eta_i = x_i^\top \beta,
+\qquad
+\mu_i = g^{-1}(\eta_i).
+\]
+
+
+### 2.1 Weighted Poisson Log‑Likelihood
+
+Up to constants, the weighted log‑likelihood is
+
+\[
+\ell(\beta)
+=
+\sum_{i=1}^n 
+\left[
+w_i y_i \log(\mu_i)
+-
+w_i \mu_i
+\right].
+\]
+
+Under the **log link**, the mean is
+
+\[
+\mu_i = e^{\eta_i},
+\]
+
+and the log‑likelihood simplifies to
+
+\[
+\ell(\beta)
+=
+\sum_{i=1}^n 
+\left[
+w_i y_i \eta_i
+-
+w_i e^{\eta_i}
+\right].
+\]
+
+This is the form used by both `glm()` and the Bayesian functions `glmb()` and `rglmb()`.
+
+
+### 2.2 Exponential‑Family Representation
+
+The Poisson distribution belongs to the exponential family with canonical parameter
+
+\[
+\theta_i = \log(\mu_i),
+\]
+
+and cumulant function
+
+\[
+b(\theta_i) = e^{\theta_i}.
+\]
+
+The variance is
+
+\[
+\mathrm{Var}(Y_i) = \mu_i.
+\]
+
+Under the log link, the linear predictor equals the canonical parameter:
+
+\[
+\eta_i = \theta_i.
+\]
+
+This identity ensures that the Poisson log‑likelihood is **globally log‑concave in the linear predictor**, which is ideal for envelope construction and accept–reject sampling in *glmbayes*.
+
+
+### 2.3 Log Link and Its Properties
+
+The canonical link for the Poisson family is the **log link**:
+
+\[
+g(\mu_i) = \log(\mu_i),
+\qquad
+\mu_i = e^{\eta_i}.
+\]
+
+Key properties:
+
+- automatically enforces \(\mu_i > 0\)  
+- yields a concave log‑likelihood in \(\eta_i\)  
+- ensures stable IRLS updates in classical GLMs  
+- supports efficient envelope‑based iid sampling in *glmbayes*
+
+Noncanonical links (identity, square‑root) do **not** preserve log‑concavity and are not supported in `glmb()`.
+
+
+### 2.4 Likelihood, Prior, and Posterior (Normal Prior on beta)
+
+With the log link, the weighted log‑likelihood is
+
+\[
+\ell(\beta)
+=
+\sum_{i=1}^n 
+\left[
+w_i y_i \eta_i
+-
+w_i e^{\eta_i}
+\right].
+\]
+
+A multivariate normal prior is specified as
+
+\[
+\log p(\beta)
+=
+-\tfrac{1}{2}(\beta - \mu_0)^\top \Sigma_0^{-1} (\beta - \mu_0)
++ \text{const}.
+\]
+
+Combining likelihood and prior yields the log‑posterior:
+
+\[
+\log p(\beta \mid y)
+=
+\sum_{i=1}^n 
+\left[
+w_i y_i \eta_i
+-
+w_i e^{\eta_i}
+\right]
+-
+\tfrac{1}{2}(\beta - \mu_0)^\top \Sigma_0^{-1} (\beta - \mu_0)
++ \text{const}.
+\]
+
+Because both terms are concave in \(\beta\), the posterior is **log‑concave**, enabling efficient iid sampling via the envelope‑based accept–reject sampler implemented in *glmbayes*.
+
+## 3. Data Setup
+
+We reproduce Dobson’s example exactly.  
+The data consist of 9 observations: three outcome levels crossed with three treatment groups.
+
+```{r dobson}
+    ## Dobson (1990) Page 93: Randomized Controlled Trial :
+    set.seed(333)
+    counts <- c(18,17,15,20,10,20,25,13,12)
+    outcome <- gl(3,1,9)
+    treatment <- gl(3,3)
+    print(d.AD <- data.frame(treatment, outcome, counts))
+```
+
+The table shows the observed counts for each treatment–outcome combination.
+
+## 4. Classical Poisson Regression
+
+The classical glm() call uses the Poisson family with the canonical log link:
+
+```{r glm_call}
+
+    glm.D93 <- glm(counts ~ outcome + treatment,
+                   family = poisson(link = "log"))
+    summary(glm.D93)
+```
+
+### 4.1 Interpretation of the Classical Output
+
+The glm summary reports:
+
+- **Coefficient estimates** on the log‑scale  
+- **Standard errors** derived from the Fisher information  
+- **Residual deviance** and **null deviance**  
+- **AIC**, which penalizes model complexity
+
+The coefficients represent multiplicative effects on the expected count.  
+For example, \(\exp(\beta)\) gives the rate ratio associated with a one-unit change in a predictor.
+
+The residual deviance (approximately 5.13) indicates a good fit relative to the null deviance (approximately 10.58), consistent with Dobson's original analysis.
+
+## 5. Bayesian Poisson Regression with glmb()
+
+To fit the Bayesian analogue, we must specify a prior distribution for the regression coefficients.  
+The recommended workflow uses Prior_Setup(), which constructs a Zellner‑type g‑prior aligned with the model matrix.
+
+### 5.1 Setting the Prior
+
+```{r Prior_Setup}
+
+    ps <- Prior_Setup(counts ~ outcome + treatment,
+                      family = poisson())
+    mu <- ps$mu
+    V  <- ps$Sigma
+```
+    
+The printed Prior_Setup() output shows:
+
+- prior means (intercept from null model, effects centered at 0)  
+- prior standard deviations (scaled by \( g = (1 - pwt) / pwt \))  
+- the implied pseudo-sample size \( n_{\text{prior}} \)
+
+With the default pwt = 0.01, the prior is weakly informative.
+
+### 5.2 Calling glmb()
+
+```{r Call_glmb}
+
+    glmb.D93 <- glmb(counts ~ outcome + treatment,
+                     family = poisson(),
+                     pfamily = dNormal(mu = mu, Sigma = V))
+```
+
+This call mirrors glm() but adds the pfamily argument.
+
+## 6. Printing and Summarizing the Bayesian Output
+
+```{r summary_glmb}
+    print(glmb.D93)
+    summary(glmb.D93)
+```
+
+The summary includes:
+
+- **Posterior means** and **posterior modes**  
+- **Posterior standard deviations**  
+- **Monte Carlo error estimates**  
+- **Tail probabilities** relative to the prior mean  
+- **Effective number of parameters (pD)**  
+- **Expected residual deviance (\(\bar{D}\))**
+- **DIC**, the Bayesian analogue of AIC  
+
+### 6.1 Posterior Mean Coefficients
+
+Posterior means are close to the classical MLEs because:
+
+- the prior is weak (pwt = 0.01)  
+- the Poisson likelihood is strongly log‑concave  
+- the sample size is modest but informative  
+
+### 6.2 Effective Number of Parameters
+
+The pD value is typically slightly below the nominal number of coefficients, reflecting mild shrinkage from the prior.
+
+### 6.3 DIC
+
+DIC is approximately 56.4, very close to the classical AIC value of 56.76.  
+This agreement is expected when the prior is weak and the posterior distribution is close to Gaussian.
+
+## 7. Comparison of Classical and Bayesian Estimates
+
+| Quantity       | Classical glm     | Bayesian glmb        |
+|----------------|-------------------|------------------------|
+| Point estimate | MLE               | Posterior mean         |
+| Uncertainty    | SE                | Posterior SD           |
+| Model fit      | Deviance, AIC     | \(\bar{D}\), \(p_D\), DIC |
+| Interpretation | log-rate ratios   | same, with shrinkage   |
+
+The Bayesian model provides richer diagnostics (tail probabilities, posterior quantiles) while preserving the familiar GLM structure.
+
+## 8. Credible Intervals and Posterior Interpretation
+
+Posterior percentiles (2.5%, 50%, 97.5%) provide Bayesian credible intervals for each coefficient.  
+These intervals closely track the classical Wald intervals because the posterior is nearly normal.
+
+## 9. Concluding Remarks
+
+This vignette demonstrates that:
+
+- Poisson GLMs with log links are ideal for envelope‑based Bayesian sampling  
+- glmb() mirrors glm() while providing full posterior inference  
+- Prior_Setup() offers a principled default prior  
+- Posterior summaries align closely with classical results under weak priors  
+
+In later chapters, we extend these ideas to:
+
+- overdispersed quasi‑Poisson models  
+- informative priors  
+- prediction and posterior predictive checks  
+- GPU‑accelerated Poisson models for large datasets
