@@ -270,6 +270,48 @@ glmb<-function (formula, family = binomial,pfamily=dNormal(mu,Sigma,dispersion=1
   }
   
     wtin<-fit$prior.weights	
+
+  ## Scalar conjugate Gamma prior paths: intercept-only design (mirrors `rglmb()` safeguards).
+  conj_gamma_scalar <- (
+    identical(pfamily$pfamily, "dGamma_Conjugate") &&
+      fit$family$family %in% c("Gamma", "poisson", "quasipoisson")
+  ) || (
+    identical(pfamily$pfamily, "dGamma") &&
+      identical(fit$family$family, "poisson")
+  )
+
+  if (conj_gamma_scalar) {
+    x_ck <- if (is.matrix(x)) x else as.matrix(x)
+    n_ck <- nrow(x_ck)
+    if (length(y) != n_ck) {
+      stop("`glmb()`: length(y) differs from nrow(x) for conjugate prior path.", call. = FALSE)
+    }
+    alp <- offset
+    if (is.null(alp)) {
+      alp <- rep(0, n_ck)
+    } else if (!is.numeric(alp)) {
+      stop("`glmb()`: offset must be numeric for conjugate Gamma path.", call. = FALSE)
+    } else if (length(alp) == 1L) {
+      alp <- rep(alp, n_ck)
+    }
+    wg <- wtin
+    if (is.null(wg)) {
+      wg <- rep(1, n_ck)
+    } else if (length(wg) == 1L) {
+      wg <- rep(wg, n_ck)
+    }
+    if (length(wg) != n_ck) {
+      stop("`glmb()`: prior weights length must match number of observations for conjugate Gamma path.", call. = FALSE)
+    }
+    .check_gamma_conjugate_scalar_design(
+      x_ck,
+      prior_list$beta,
+      alp,
+      wg,
+      family_label = fit$family$family,
+      ctx = "`glmb()`"
+    )
+  }
   
   # NEW: normalize n_envopt (default to n, ensure integer >= 1)
   if (is.null(n_envopt)) n_envopt <- n

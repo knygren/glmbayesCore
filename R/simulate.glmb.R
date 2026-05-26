@@ -16,7 +16,7 @@
 #' @seealso \code{\link{predict.glmb}}, \code{\link{glmb}}, \code{\link{glmbayes-package}};
 #'   \code{\link{rglmb}}, \code{\link{rlmb}}, \code{\link{lmb}};
 #'   \code{\link[stats]{simulate}} (e.g. \code{simulate.glm}, \code{simulate.lm} for classical fits);
-#'   see \insertCite{glmbayesChapter04}{glmbayes} for model statistics.
+#'   see \insertCite{glmbayesChapter06}{glmbayes} for model statistics.
 #' @references
 #' \insertAllCited{}
 #' @importFrom Rdpack reprompt

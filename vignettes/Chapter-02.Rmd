@@ -1,0 +1,119 @@
+---
+title: "Chapter 02: Simple Bayesian models — conjugate inference for single parameters"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
+vignette: >
+  %\VignetteIndexEntry{Chapter 02: Simple Bayesian models — conjugate inference for single parameters}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+## No tidyverse required: uses base R densities and RNG (stats).
+```
+
+## 1. Goal of this vignette
+
+**glmbayes** shines when posterior exploration needs **IID simulation** beyond textbook conjugacy.  
+Nevertheless, closed-form conjugate updates for **one-parameter** setups remain the quickest way to see how **prior \(\times\) likelihood \(\Rightarrow\) posterior** works before moving to **`lmb()`** and **`glmb()`** in later chapters [@Gelman2013]. This vignette collects three prototypes.
+
+Notation below uses **density** kernels up to constants; interpretations follow standard exponential-family intuitions [@McCullagh1989].
+
+---
+
+## 2. Beta–Binomial conjugacy for one proportion \(\theta\)
+
+Suppose \(y \mid \theta \sim \mathrm{Binomial}(n,\theta)\) with prior \(\theta \sim \mathrm{Beta}(a,b)\).
+
+Then the conjugate posterior is \[
+  \theta \mid y \sim \mathrm{Beta}(a + y,\, b + n-y).
+\]  
+The posterior mean is \(\mathbb{E}[\theta\mid y] = \frac{a+y}{a+b+n}\), a convex combination of prior and data frequencies.
+
+```{r beta-binomial}
+a0 <- 2; b0 <- 2 ## mild prior emphasizing interior of (0,1)
+y  <- 7; n <- 25
+post_a <- a0 + y
+post_b <- b0 + (n - y)
+c(prior_mean = a0 / (a0 + b0), post_mean = post_a / (post_a + post_b))
+## 90% equal-tailed credible interval for theta
+qbeta(c(0.05, 0.95), post_a, post_b)
+```
+
+This is the building block behind **logistic/binomial regression** (Part 3), where \(\theta\) becomes a function of covariates.
+
+---
+
+## 3. Gamma–Poisson for one Poisson rate \(\lambda\)
+
+Let \(y_1,\dots,y_n \mid \lambda \stackrel{\text{iid}}{\sim} \mathrm{Poisson}(\lambda)\) and take a **Gamma** prior on the rate in **shape--rate** form \(\lambda \sim \mathrm{Gamma}(\alpha,\beta)\) with mean \(\alpha/\beta\).
+
+Then \[
+  \lambda \mid y \sim \mathrm{Gamma}\!\left(\alpha + \sum_i y_i,\; \beta + n\right).
+\]
+
+```{r gamma-poisson}
+alpha0 <- 1.5; beta0 <- 1.0
+y <- c(2, 0, 3, 1, 4)
+n <- length(y)
+post_shape <- alpha0 + sum(y)
+post_rate  <- beta0 + n
+c(prior_mean = alpha0 / beta0, post_mean = post_shape / post_rate)
+## 90% equal-tailed interval for lambda
+qgamma(c(0.05, 0.95), shape = post_shape, rate = post_rate)
+```
+
+This foreshadows **Poisson regression** (Part 3), where \(\log \lambda\) is modeled through a linear predictor.
+
+---
+
+## 4. Normal–Normal for one mean \(\mu\) with known sampling variance
+
+Suppose \(\bar y \mid \mu \sim \mathcal{N}(\mu,\, \sigma^2/m)\) with **known** \(\sigma^2\) and sample size contribution \(m\) (e.g. \(m=n\) for an average of \(n\) i.i.d. Gaussian observations with variance \(\sigma^2\)).  
+Prior \(\mu \sim \mathcal{N}(\mu_0,\tau_0^2)\). The posterior is Gaussian with precision-weighted combination of prior and likelihood means.
+
+```{r normal-normal}
+mu0 <- 10; tau0 <- 2         ## prior SD for mu
+ybar <- 11.3; sigma <- 1.2; m <- 10L
+## Posterior normal under conjugate normal-normal with known sampling SD
+prec_prior <- 1 / tau0^2
+prec_like  <- m / sigma^2
+post_prec <- prec_prior + prec_like
+post_mean <- (prec_prior * mu0 + prec_like * ybar) / post_prec
+post_sd   <- sqrt(1 / post_prec)
+c(post_mean = post_mean, post_sd = post_sd)
+## 90% credible interval
+post_mean + qnorm(c(0.05, 0.95)) * post_sd
+```
+
+This is the scalar template behind **Gaussian linear models** with **`lmb()`** (Part 2, Chapter 3), where the unknown shifts from a single \(\mu\) to an entire coefficient vector.
+
+---
+
+## 5. Roadmap in this package
+
+| Idea here | Where it generalizes in **glmbayes** |
+|-----------|--------------------------------------|
+| Beta–Binomial | Binomial **`glmb()`** with normal priors on coefficients (Chapters 7–9) |
+| Gamma–Poisson | Poisson **`glmb()`** (Chapter 10) |
+| Normal–Normal | **`lmb()`** for multivariate regression (Chapter 3) |
+
+When conjugacy is lost or when you want **IID draws** with flexible priors, **glmbayes** uses envelope-based accept–reject sampling [@Nygren2006].
+
+---
+
+## See also
+
+- **Chapter 01** — first **`glmb()`** fits at regression scale.  
+- **Chapter 03** — **`lmb()`** for multivariate Gaussian linear models.  
+- **Chapter 07** — GLM foundations (families, links, log-concavity).

@@ -1,5 +1,5 @@
 ---
-title: "Chapter 03: Tailoring Priors - Leveraging the Prior_Setup Function"
+title: "Chapter 04: Tailoring priors — leveraging the Prior_Setup function"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: 
@@ -8,7 +8,7 @@ output:
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 03: Tailoring Priors - Leveraging the Prior_Setup Function}
+  %\VignetteIndexEntry{Chapter 04: Tailoring priors — leveraging the Prior_Setup function}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

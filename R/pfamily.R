@@ -133,7 +133,7 @@
 #'   \code{pfamily} may be used.}
 #' \item{plinks}{Function of one \code{family} argument returning allowed link names for that family.}
 #' \item{simfun}{Function used to generate posterior draws (e.g., \code{\link{rNormal_reg}},
-#'   \code{\link{rGamma_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rindepNormalGamma_reg}});
+#'   \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rindepNormalGamma_reg}});
 #'   for standard use these produce i.i.d.\ posterior samples for the implemented settings.}
 #' 
 #' @author The design of the \code{pfamily} set of functions was developed by Kjell Nygren and was 
@@ -144,7 +144,7 @@
 #' @seealso
 #' \code{\link{glmb}}, \code{\link{rlmb}}, \code{\link{lmb}}, \code{\link{rglmb}} for modeling functions that consume \code{pfamily} objects.
 #'
-#' \code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}} for lower-level sampling functions used by \code{pfamily} constructors.
+#' \code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rindepNormalGamma_reg}} for lower-level sampling functions used by \code{pfamily} constructors.
 #'
 #' \code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for initializing and validating prior specifications.
 #'
@@ -178,7 +178,7 @@ pfamily.default <- function(object, ...){
 #' @export
 #' @method print pfamily
 #' @rdname pfamily
-#' @order 6
+#' @order 7
 
 print.pfamily <- function(x, ...)
 {
@@ -292,11 +292,54 @@ dGamma<-function(shape,rate,beta,max_disp_perc = 0.99,disp_lower=NULL,disp_upper
 
 }
 
+#' Conjugate Gamma prior family (stub; cloned from \code{\link{dGamma}} pending specialization).
+#'
+#' @export
+#' @rdname pfamily
+#' @order 4
+
+dGamma_Conjugate<-function(shape,rate,beta,max_disp_perc = 0.99,disp_lower=NULL,disp_upper=NULL){
+
+  if(is.numeric(shape)==FALSE||is.numeric(rate)==FALSE||is.numeric(beta)==FALSE) stop("non-numeric argument to numeric function")
+
+  if(length(shape)>1) stop("shape is not of length 1")
+  if(length(shape)>1) stop("rate is not of length 1")
+  if(shape<=0) stop("shape must be>0")
+  if(rate<=0) stop("rate must be>0")
+
+  beta=as.matrix(beta,ncol=1)
+
+  okfamilies <- c("poisson", "Gamma")
+
+  ## rglmb() calls pfamily$plinks(family); return allowed links by family (conjugate / identity scale).
+  plinks <- function(family) {
+    oklinks <- NULL
+    if (family$family %in% c("poisson", "quasipoisson")) oklinks <- c("identity")
+    if (family$family == "Gamma") oklinks <- c("identity")
+    if (family$family %in% c("binomial", "quasibinomial")) oklinks <- NULL
+    ## gaussian / other families: oklinks stays NULL until supported here
+    oklinks
+  }
+
+  prior_list=list(shape=shape,rate=rate,beta=beta,max_disp_perc = max_disp_perc,disp_lower=disp_lower,disp_upper=disp_upper)
+  attr(prior_list,"Prior Type")="dGamma_Conjugate"  
+  outlist=list(pfamily="dGamma_Conjugate",prior_list=prior_list,okfamilies=okfamilies,
+               plinks=plinks,             
+               simfun=rGamma_Conjugate_reg)
+
+  attr(outlist,"Prior Type")="dGamma_Conjugate"
+  class(outlist)="pfamily"
+  outlist$call<-match.call()
+
+  return(outlist)
+
+}
+
 
 
 #' @export 
 #' @rdname pfamily
-#' @order 4
+#' @order 5
 
 dNormal_Gamma <- function(mu, Sigma_0, shape, rate) {
   Sigma <- Sigma_0
@@ -358,7 +401,7 @@ dNormal_Gamma <- function(mu, Sigma_0, shape, rate) {
 
 #' @export 
 #' @rdname pfamily
-#' @order 5
+#' @order 6
 
 dIndependent_Normal_Gamma <- function(mu, Sigma, shape, rate, max_disp_perc = 0.99,disp_lower=NULL,disp_upper=NULL) {
 

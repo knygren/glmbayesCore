@@ -32,8 +32,11 @@ explicit how the returned quantities—`mu`, `Sigma`, `Sigma_0`, `dispersion`, `
 fields—arise from the **weighted Gaussian likelihood**, the **Normal–Gamma algebra**, and the
 **Zellner‑type calibration** used by the package.
 
-Unlike Chapter 11, which focuses on modeling workflow and examples, this chapter focuses on the
-**mathematical structure** underlying the priors:
+This appendix contrasts with applied chapters such as **Chapter&nbsp;03**
+(Bayesian linear models with **`lmb()`**), **Chapter&nbsp;04**
+(`Prior_Setup()` workflow), **Chapter&nbsp;07** (GLM foundations), and **Chapter&nbsp;08**
+(estimating Bayesian GLMs), where the emphasis is intuitive model building rather than proofs.
+Instead, here we focus on **mathematics**:
 
 - the weighted Gaussian likelihood and its precision form,
 - the conjugate Normal–Gamma posterior and the derivation of its conditional and marginal components,
@@ -42,9 +45,7 @@ Unlike Chapter 11, which focuses on modeling workflow and examples, this chapt
 - the independent Normal–Gamma prior and its log‑concavity,
 - and the shared **weak‑prior limit** to which all Gaussian prior families converge.
 
-All formulas needed by the main vignettes are derived here from first principles. No results are imported
-from Chapter 11; instead, Chapter 11 now serves as a conceptual overview, while this appendix provides the
-full algebraic details.
+All formulas needed by the main vignettes are derived here from first principles, without relying on other vignettes purely as prerequisites.
 
 The goal is to make the calibration used by `Prior_Setup()` transparent, reproducible, and extensible, so
 that users can confidently interpret or modify the priors supplied to `dNormal()`, `dNormal_Gamma()`,

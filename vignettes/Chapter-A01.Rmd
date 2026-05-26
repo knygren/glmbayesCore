@@ -28,17 +28,18 @@ For users who are interested in the details of how the simulation is performed t
 | **Prior Setup function**| **Prior_Setup** | Chapter 01 — Getting Started with glmbayes  |
 |**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 01 — Getting Started with glmbayes |
 |**Methods**|**print.glmb** | Chapter 01 — Getting Started with glmbayes |
-| **pfamilies** | **dNormal**|Chapter 02 — Estimating Bayesian Linear Models|
-| **Main Model Interfaces (GLM / LM)**| **lmb**  |Chapter 02 — Estimating Bayesian Linear Models |
-| **Methods**| **summary.lmb**  |Chapter 02 — Estimating Bayesian Linear Models |
-| **Prior Setup function**| **Prior_Setup** | Chapter 03 — Tailoring Priors - Leveraging the Prior_Setup Function; Chapter A12 — Technical Derivations for Priors Returned by Prior_Setup  |
-| **Methods** | **print.PriorSetup** | Chapter 03 - Tailoring Priors - Leveraging the Prior_Setup Function  |
-| **Methods**| **predict.glmb, residuals.glmb, extractAIC.glmb** | Chapter 04 — Predictions, Deviance Residuals, Model Statistics |
-|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 06 — Estimating Bayesian Generalized Linear Models |
-|**Methods**|**summary.glmb** | Chapter 06 — Estimating Bayesian Generalized Linear Models |
-|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 07 — Models for the Binomial Family|
-|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 08 — Models for the Poisson Family |
-|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 09 — Models for the Gamma Family |
+| **pfamilies** | **dNormal**|Chapter 03 — Estimating Bayesian linear models|
+| **Main Model Interfaces (GLM / LM)**| **lmb**  |Chapter 03 — Estimating Bayesian linear models |
+| **Methods**| **summary.lmb**  |Chapter 03 — Estimating Bayesian linear models |
+| **Prior Setup function**| **Prior_Setup** | Chapter 04 — Tailoring priors — leveraging the Prior_Setup function; Chapter A12 — Technical Derivations for Priors Returned by Prior_Setup  |
+| **Methods** | **print.PriorSetup** | Chapter 04 — Tailoring priors — leveraging the Prior_Setup function |
+| **Methods**| **predict.glmb** | Chapter 05 — Model predictions and posterior predictive checks (+ bayesplot `ppc_*`) |
+| **Methods**| **residuals.glmb, extractAIC.glmb** | Chapter 06 — Deviance residuals, model statistics and posterior inference (+ bayestestR) |
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 08 — Estimating Bayesian generalized linear models |
+|**Methods**|**summary.glmb** | Chapter 08 — Estimating Bayesian generalized linear models |
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 09 — Models for the Binomial family|
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 10 — Models for the Poisson family |
+|**Main Model Interfaces (GLM / LM)**|**glmb** | Chapter 11 — Models for the Gamma family |
 | **Lower-Level Interfaces (GLM / LM)** | **rlmb** | Chapter 17 — Linear mixed-effects models |
 | **Lower-Level Interfaces (GLM / LM)** | **rglmb** | Chapter 18 — Generalized linear mixed-effects models |
 | **Model-Specific Simulation Functions** | **rNormal_reg, rGamma_reg, rNormal_Gamma_reg, rindependent_norm_gamma_reg** | Chapter A02: Overview of Estimation Procedures |

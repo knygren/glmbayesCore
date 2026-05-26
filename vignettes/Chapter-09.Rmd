@@ -1,10 +1,10 @@
 ---
-title: "Chapter 07: Models for the Binomial Family"
+title: "Chapter 09: Models for the Binomial family"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 07: Models for the Binomial Family}
+  %\VignetteIndexEntry{Chapter 09: Models for the Binomial family}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -52,7 +52,7 @@ This chapter introduces:
 3. how to specify these models in **glmbayes**  
 4. worked examples for each link function  
 
-We build on the foundations from Chapters 05 and 06, especially the role of link functions, log‑concavity, and prior specification.
+We build on the foundations from Chapters 07 and 08, especially the role of link functions, log‑concavity, and prior specification.
 
 
 
@@ -243,7 +243,7 @@ It is symmetric and interpretable in terms of **log‑odds**.
 
 ### 4.1 Example Data
 
-We use the **Menarche** dataset introduced in Chapter 06:
+We use the **Menarche** dataset introduced in Chapter 08:
 
 ```{r Menarche}
 data(menarche,package="MASS")
@@ -384,7 +384,7 @@ The probit model typically yields:
 - slightly smaller posterior standard deviations  
 - similar fitted probabilities  
 
-The DIC often favors probit slightly for smooth S‑shaped curves (as seen in Chapter 04).
+The DIC often favors probit slightly for smooth S‑shaped curves (as seen in Chapter 05).
 
 ---
 
@@ -472,7 +472,7 @@ glmb.cloglog <- glmb(
 summary(glmb.cloglog)
 ```
 
-The cloglog model often fits poorly for symmetric S‑shaped curves (as shown in Chapter 04), but it is valuable for:
+The cloglog model often fits poorly for symmetric S‑shaped curves (as shown in Chapter 05), but it is valuable for:
 
 - rare events  
 - survival‑type interpretations  

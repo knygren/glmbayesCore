@@ -1,12 +1,12 @@
 ---
-title: "Chapter 02: Estimating Bayesian Linear Models"
+title: "Chapter 03: Estimating Bayesian linear models"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 02: Estimating Bayesian Linear Models}
+  %\VignetteIndexEntry{Chapter 03: Estimating Bayesian linear models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -130,7 +130,7 @@ This ensures:
 - the prior affects only the regression coefficients,  
 - the posterior remains exactly Normal.
 
-Models that **estimate** \(\sigma^2\) or place a prior on it are covered in Chapter 11.
+Models that **estimate** \(\sigma^2\) or place a prior on it are covered in Chapter 15.
 
 
 # 3. Sample Data - Dobson's Plant weight data

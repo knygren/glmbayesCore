@@ -1,12 +1,12 @@
 ---
-title: "Chapter 05: Foundations of GLMs – Families, Links, and Log-Concave Likelihoods"
+title: "Chapter 07: Foundations of GLMs — families, links, and log-concave likelihoods"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 05: Foundations of GLMs – Families, Links, and Log-Concave Likelihoods}
+  %\VignetteIndexEntry{Chapter 07: Foundations of GLMs — families, links, and log-concave likelihoods}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

@@ -1,12 +1,12 @@
 ---
-title: "Chapter 06: Estimating Bayesian Generalized Linear Models"
+title: "Chapter 08: Estimating Bayesian generalized linear models"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 06: Estimating Bayesian Generalized Linear Models}
+  %\VignetteIndexEntry{Chapter 08: Estimating Bayesian generalized linear models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

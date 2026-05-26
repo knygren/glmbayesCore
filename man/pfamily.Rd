@@ -4,6 +4,7 @@
 \alias{pfamily}
 \alias{dNormal}
 \alias{dGamma}
+\alias{dGamma_Conjugate}
 \alias{dNormal_Gamma}
 \alias{dIndependent_Normal_Gamma}
 \alias{print.pfamily}
@@ -14,6 +15,15 @@ pfamily(object, ...)
 dNormal(mu, Sigma, dispersion = NULL)
 
 dGamma(
+  shape,
+  rate,
+  beta,
+  max_disp_perc = 0.99,
+  disp_lower = NULL,
+  disp_upper = NULL
+)
+
+dGamma_Conjugate(
   shape,
   rate,
   beta,
@@ -107,7 +117,7 @@ relevant low-level routine receives the prior in a fixed list form. Contents dep
 \code{pfamily} may be used.}
 \item{plinks}{Function of one \code{family} argument returning allowed link names for that family.}
 \item{simfun}{Function used to generate posterior draws (e.g., \code{\link{rNormal_reg}},
-\code{\link{rGamma_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rindepNormalGamma_reg}});
+\code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rindepNormalGamma_reg}});
 for standard use these produce i.i.d.\ posterior samples for the implemented settings.}
 }
 \description{
@@ -256,7 +266,7 @@ pfamily(lmb.D9_v3)
 \seealso{
 \code{\link{glmb}}, \code{\link{rlmb}}, \code{\link{lmb}}, \code{\link{rglmb}} for modeling functions that consume \code{pfamily} objects.
 
-\code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}} for lower-level sampling functions used by \code{pfamily} constructors.
+\code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rindepNormalGamma_reg}} for lower-level sampling functions used by \code{pfamily} constructors.
 
 \code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for initializing and validating prior specifications.
 

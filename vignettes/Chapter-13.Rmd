@@ -1,0 +1,75 @@
+---
+title: "Chapter 13: Bayesian inference and decision making with bayestestR"
+author: "Kjell Nygren"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Chapter 13: Bayesian inference and decision making with bayestestR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+```{r setup}
+library(glmbayes)
+library(bayestestR)
+```
+
+## 1. Purpose
+
+[**bayestestR**](https://easystats.github.io/bayestestR/) implements a wide range **indices** for posterior description and decision-oriented summaries (probability of direction, ropes, equivalence tests, etc.). Here we treat the **`coefficients`** component of a **`glmb`** fit as stored **i.i.d.** draws and summarize them using **bayestestR**.
+
+This complements **Chapter 12** (**bayesplot** graphics) with tabular summaries you can cite in applied reports.
+
+## 2. Example: logistic regression posterior for coefficients
+
+```{r menarche-fit}
+data(menarche, package = "MASS")
+
+Age2 <- menarche$Age - 13
+Menarche_Model_Data <- data.frame(
+  Menarche  = menarche$Menarche,
+  Total     = menarche$Total,
+  Age2      = Age2
+)
+
+ps <- Prior_Setup(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family = binomial(link = "logit"),
+  data   = Menarche_Model_Data
+)
+
+fit_logit <- glmb(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family  = binomial(link = "logit"),
+  pfamily = dNormal(mu = ps$mu, Sigma = ps$Sigma),
+  data    = Menarche_Model_Data,
+  n             = 800,
+  use_parallel  = FALSE
+)
+
+coef_draws <- as.data.frame(fit_logit$coefficients)
+```
+
+## 3. Point and interval summaries
+
+```{r describe}
+bayestestR::describe_posterior(coef_draws)
+bayestestR::hdi(coef_draws, ci = 0.89)
+bayestestR::rope(coef_draws, range = c(-0.02, 0.02))
+bayestestR::p_direction(coef_draws)
+```
+
+Tune **`rope(..., range = ...)`** to match substantive “practical equivalence” hypotheses on the **logit** scale (see also the binomial likelihood discussion in **Chapter 09**). For richer reporting pipelines (**parameters**, **performance**, …), see the **easystats** ecosystem linking out from **`?bayestestR`**.
+
+## See also
+
+- **Chapter 12** — **`bayesplot`** visualizations including **`pp_check()`** for **`glmb`**.  
+- **Chapter 08** — prior-to-posterior workflow and **`summary.glmb()`** defaults.

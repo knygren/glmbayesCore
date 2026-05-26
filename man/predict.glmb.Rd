@@ -156,5 +156,5 @@ lines(Age_New, quant2_m_y,lty=2)
 \code{\link{simulate.glmb}}, \code{\link{residuals.glmb}}, \code{\link{glmb}},
 \code{\link{glmbayes-package}}; \code{\link{rglmb}}, \code{\link{rlmb}}, \code{\link{lmb}};
 \code{\link[stats]{predict.glm}}.
-See \insertCite{glmbayesChapter04}{glmbayes} for predictions and model statistics.
+See \insertCite{glmbayesChapter05}{glmbayes} for predictions and predictive checks.
 }

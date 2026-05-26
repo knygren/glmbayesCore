@@ -48,6 +48,9 @@ Depends: MASS, R (>= 3.5.0)
 Suggests:
     knitr,
     rmarkdown,
+    ggplot2,
+    bayesrules,
+    bayestestR,
     testthat (>= 3.0.0),
     spelling
 SystemRequirements: Optional OpenCL support. If available, GPU acceleration will be used; otherwise, computation runs on CPU. 

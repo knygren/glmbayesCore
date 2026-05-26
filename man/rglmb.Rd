@@ -165,7 +165,9 @@ summary(rglmb.D93)
 
 ## Menarche model with informative prior. See \code{\link{glmb}} and \code{\link{Prior_Setup}}
 ## for default g-priors; for data and fitted curves using \code{predict.glmb}, see the
-## menarche block in \code{\link{glmb}} and \code{vignette("Chapter-04", package = "glmbayes")}.
+## menarche block in \code{\link{glmb}};
+## see \code{vignette("Chapter-05", package = "glmbayes")}
+## and \code{vignette("Chapter-06", package = "glmbayes")}.
 data(menarche, package = "MASS")
 
 summary(menarche)

@@ -40,7 +40,7 @@ supports:
 
 Full derivations for Gaussian dispersion, shape, and rate calibration from `Prior_Setup()` / `compute_gaussian_prior()`—and how those objects connect to conjugate and independent Normal--Gamma priors—are given in **Chapter A12** (<https://knygren.r-universe.dev/articles/glmbayes/Chapter-A12.html>).
 
-All Gaussian examples use the **Dobson** plant‑weight data [@Dobson1990], first introduced in Chapter 02.
+All Gaussian examples use the **Dobson** plant‑weight data [@Dobson1990], first introduced in Chapter 03.
 
 
 ```{r dobson}

@@ -278,7 +278,7 @@ family=binomial(logit),pfamily=dNormal(mu=ps1$mu,Sigma=ps1$Sigma), data=menarche
 summary(glmb.out1)
 
 ## Posterior mean fitted probabilities on the response scale (see also
-## \code{vignette("Chapter-04", package = "glmbayes")})
+## \code{vignette("Chapter-05", package = "glmbayes")})
 require(graphics)
 pred1 <- predict(glmb.out1, type = "response")
 pred1_m <- colMeans(pred1)

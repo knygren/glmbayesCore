@@ -1,0 +1,106 @@
+---
+title: "Chapter 12: Visualizing posteriors with bayesplot"
+author: "Kjell Nygren"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Chapter 12: Visualizing posteriors with bayesplot}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+```{r setup}
+library(glmbayes)
+library(bayesplot)
+suppressPackageStartupMessages(library(ggplot2))
+theme_set(bayesplot::theme_default())
+```
+
+## 1. Purpose
+
+[**bayesplot**](https://mc-stan.org/bayesplot/) provides **ggplot2**-based plotting for Markov chains and Bayesian workflow diagnostics. Package **glmbayes** is built with **bayesplot** as a dependency and supplies an S3 **`pp_check()`** method for **`glmb`** objects (posterior predictive checks using **`simulate.glmb()`** outputs).
+
+After fitting models in earlier chapters (**Chapters 07–08** overview; **Chapter 09** binomial illustration), visual summaries help assess mixing, posterior shape, and how well replicated data match the observed responses.
+
+## 2. Minimal binomial fit (Menarche)
+
+We reuse the **Menarche** grouped binomial illustration with default **`Prior_Setup()`** machinery.
+
+```{r menarche-fit}
+data(menarche, package = "MASS")
+
+Age2 <- menarche$Age - 13
+Menarche_Model_Data <- data.frame(
+  Menarche  = menarche$Menarche,
+  Total     = menarche$Total,
+  Age2      = Age2
+)
+
+ps <- Prior_Setup(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family = binomial(link = "logit"),
+  data   = Menarche_Model_Data
+)
+
+fit_logit <- glmb(
+  cbind(Menarche, Total - Menarche) ~ Age2,
+  family  = binomial(link = "logit"),
+  pfamily = dNormal(mu = ps$mu, Sigma = ps$Sigma),
+  data    = Menarche_Model_Data,
+  n             = 800,
+  use_parallel  = FALSE
+)
+coef_draws <- as.matrix(fit_logit$coefficients)
+```
+
+## 3. Coefficient trace and density overlays
+
+Because **`glmb()`** returns **i.i.d.** draws, you can think of the coefficient matrix as **one** posterior sample stream. **bayesplot** functions that require **multiple MCMC chains** (for example **`mcmc_dens_overlay()`**) are not appropriate here; **`mcmc_trace()`** and **`mcmc_dens()`** still provide useful **univariate** views of the simulated coefficients.
+
+```{r mcmc-views, fig.height = 5}
+bayesplot::mcmc_trace(coef_draws)
+bayesplot::mcmc_dens(coef_draws)
+```
+
+## 4. Posterior predictive checks
+
+For **binomial** models **`glmbayes`** works on **proportions** so **`y`** and **`yrep`** line up (**`?pp_check.glmb`**). In practice you usually call **`bayesplot::pp_check(fit, ...)`**; here we assemble **`y`** and **`yrep`** once so this vignette knits cleanly even alongside older installed builds (**Chapter 05** uses the **`pp_check()`** wrapper directly).
+
+```{r ppc-setup}
+## Observed success proportions (aligned with simulate.glmb for binomial)
+y_obs <- Menarche_Model_Data$Menarche / Menarche_Model_Data$Total
+
+pred_resp <- predict(fit_logit, type = "response")
+nd <- max(1L, min(50L, nrow(pred_resp)))
+pred_sub <- pred_resp[seq_len(nd), , drop = FALSE]
+
+y_rep <- stats::simulate(
+  fit_logit,
+  pred = pred_sub,
+  prior.weights = fit_logit$prior.weights
+)
+
+stopifnot(nrow(y_rep) == nd, ncol(y_rep) == length(y_obs))
+```
+
+```{r ppc, fig.height = 4}
+bayesplot::ppc_hist(y = y_obs, yrep = y_rep)
+```
+
+Try other **`ppc_*`** helpers via the **`fun`** argument (see **`?bayesplot-helpers`**).
+
+
+## See also
+
+- **Chapter 08** — full **`glmb()`** walk-through and interpretation of printed summaries.  
+- **`?simulate.glmb`**, **`?predict.glmb`**, **`?pp_check.glmb`** — mechanics behind replicated responses.

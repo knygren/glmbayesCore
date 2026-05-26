@@ -1,12 +1,12 @@
 ---
-title: "Chapter 08: Models for the Poisson Family"
+title: "Chapter 10: Models for the Poisson family"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 08: Models for the Poisson Family}
+  %\VignetteIndexEntry{Chapter 10: Models for the Poisson family}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

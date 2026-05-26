@@ -98,7 +98,7 @@ The returned list includes default settings for the following:
   - `shape_ING` and `rate` for use with `dIndependent_Normal_Gamma()` prior 
   - `shape`, `rate_gamma` and `coefficients` for use with the `dGamma()` prior  
 
-Optional arguments adjust prior weight, centering, and related settings (see the function help and vignette Chapter 03).
+Optional arguments adjust prior weight, centering, and related settings (see the function help and vignette Chapter 04).
 
 ### Typical Prior_Setup wiring
 
@@ -199,9 +199,8 @@ These vignettes guide users from introductory material through applied modeling,
 and the underlying simulation methods that support the package.
 
 ### Part 1: An Introduction
-Overview of the package, its design philosophy, and the basic workflow for
-fitting Bayesian linear and generalized linear models. It introduces the core functions, model
-objects, and the structure of the modeling interface.
+
+Overview of the package, its design philosophy, single-parameter conjugate models, and the basic workflow for fitting Bayesian linear and generalized linear models.
 
 - **Chapter 00 - Introduction**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-00.html
@@ -209,40 +208,51 @@ https://knygren.r-universe.dev/articles/glmbayes/Chapter-00.html
 - **Chapter 01 - Getting Started with glmbayes**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-01.html
 
-### Part 2: Estimating Bayesian Linear Models
-These chapters focus on Bayesian linear regression using the Gaussian family. Topics include
-model fitting, prior construction, posterior summaries, predictions, and deviance residuals.
-This part establishes the foundation for understanding the Bayesian GLM framework used throughout
-the package.
-
-- **Chapter 02 - Estimating Bayesian Linear Models**  
+- **Chapter 02 — Simple Bayesian models — conjugate inference for single parameters**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-02.html
 
-- **Chapter 03 - Tailoring Priors - Leveraging the Prior_Setup Function**  
+### Part 2: Bayesian regression models
+
+These chapters focus on Bayesian **linear** regression (Gaussian family). Topics include **`lmb()`** fitting, **`Prior_Setup()`**, posterior predictive checks (**bayesplot**), deviance residuals and model summaries, **bayestestR**-style summaries, and the bridge to Bayesian GLMs in Part 3.
+
+- **Chapter 03 — Estimating Bayesian linear models**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-03.html
 
-- **Chapter 04 - Reviewing Model Predictions, Deviance Residuals and Model Statistics**  
+- **Chapter 04 — Tailoring priors — leveraging the Prior_Setup function**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-04.html
+
+- **Chapter 05 — Model predictions and posterior predictive checks (+ bayesplot `ppc_*`)**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-05.html
+
+- **Chapter 06 — Deviance residuals, model statistics and posterior inference (+ bayestestR)**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-06.html
 
 ### Part 3: Generalized Linear Models
 This part presents Bayesian GLMs across the major likelihood families, including binomial,
 quasi-binomial, Poisson, quasi-Poisson, and Gamma models. It covers model specification,
-link functions, log-concavity, diagnostics, and interpretation of posterior results.
+link functions, log-concavity, diagnostics, interpretation of posterior results, and tooling
+(**bayesplot**, **bayestestR**) for visualization and summaries.
 
-- **Chapter 05 - Foundations of GLMs - Families, Links, and Log-Concave Likelihoods**  
-https://knygren.r-universe.dev/articles/glmbayes/Chapter-05.html
-
-- **Chapter 06 - Estimating Bayesian Generalized Linear Models**  
-https://knygren.r-universe.dev/articles/glmbayes/Chapter-06.html
-
-- **Chapter 07 - Models for the Binomial Family**  
+- **Chapter 07 — Foundations of GLMs — families, links, and log-concave likelihoods**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-07.html
 
-- **Chapter 08 - Models for the Poisson Family**  
+- **Chapter 08 — Estimating Bayesian generalized linear models**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-08.html
 
-- **Chapter 09 - Models for the Gamma Family**  
+- **Chapter 09 — Models for the Binomial family**  
 https://knygren.r-universe.dev/articles/glmbayes/Chapter-09.html
+
+- **Chapter 10 — Models for the Poisson family**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-10.html
+
+- **Chapter 11 — Models for the Gamma family**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-11.html
+
+- **Chapter 12 — Visualizing posteriors with bayesplot**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-12.html
+
+- **Chapter 13 — Bayesian inference and decision making with bayestestR**  
+https://knygren.r-universe.dev/articles/glmbayes/Chapter-13.html
 
 ### Part 4: Advanced Topics
 These chapters explore more complex modeling scenarios and computational strategies, such as

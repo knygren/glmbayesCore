@@ -33,7 +33,7 @@ library(glmbayes)
 
 # 1. Introductory Discussion
 
-The **glmb()** family of functions provides fully Bayesian analogues to **glm()** and its standard methods [@McCullagh1989; @VenablesRipley2002]. This vignette demonstrates how to set up and call **glmb()**, compares its syntax and output to **glm()**, and highlights the additional arguments required for prior specification. A specialized **lmb()** function for Bayesian linear regression is bundled in the package and will be explored in Chapter 2. For Bayesian regression perspective, see [@Gelman2013]. Separate vignettes cover all complementary methods for both **lmb()** and **glmb()**.
+The **glmb()** family of functions provides fully Bayesian analogues to **glm()** and its standard methods [@McCullagh1989; @VenablesRipley2002]. This vignette demonstrates how to set up and call **glmb()**, compares its syntax and output to **glm()**, and highlights the additional arguments required for prior specification. If you want a refresher on **conjugate**, **single-parameter** updating (Beta–Binomial, Gamma–Poisson, Normal–Normal), see **Chapter 02** first; a specialized **lmb()** function for Bayesian linear regression is bundled in the package and is developed starting in Chapter 3. For Bayesian regression perspective, see [@Gelman2013]. Separate vignettes cover complementary methods for both **lmb()** and **glmb()**.
 
 
 

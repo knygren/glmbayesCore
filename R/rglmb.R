@@ -125,6 +125,30 @@ rglmb<-function(n=1,y,x,family=gaussian(),pfamily,offset=NULL,
   if (is.null(n_envopt)) n_envopt <- n
   n_envopt <- as.integer(n_envopt)
   
+  ## Resolve family before pfamily checks (needed for Poisson + dGamma coercion)
+  if (is.character(family))
+    family <- get(family, mode = "function", envir = parent.frame())
+  if (is.function(family))
+    family <- family()
+  if (is.null(family$family)) {
+    print(family)
+    stop("'family' not recognized")
+  }
+  ## family = Poisson + prior from dGamma() -> conjugate Poisson–Gamma rate prior
+  if (inherits(pfamily, "pfamily") && identical(pfamily$pfamily, "dGamma") &&
+      identical(family$family, "poisson")) {
+    pl <- pfamily$prior_list
+    pfamily <- dGamma_Conjugate(
+      shape          = pl$shape,
+      rate           = pl$rate,
+      beta           = pl$beta,
+      max_disp_perc  = pl$max_disp_perc,
+      disp_lower     = pl$disp_lower,
+      disp_upper     = pl$disp_upper
+    )
+  }
+  
+  
   
   ## Pull in information from the pfamily  
   pf=pfamily$pfamily
@@ -133,20 +157,62 @@ rglmb<-function(n=1,y,x,family=gaussian(),pfamily,offset=NULL,
   prior_list=pfamily$prior_list 
   simfun=pfamily$simfun
   
-  ## Pull in information on families  
-  
-  if (is.character(family)) 
-    family <- get(family, mode = "function", envir = parent.frame())
-  if (is.function(family)) 
-    family <- family()
-  if (is.null(family$family)) {
-    print(family)
-    stop("'family' not recognized")
+  ## dGamma_Conjugate + Gamma / Poisson: scalar conjugate requires intercept-only designs
+  if (identical(pf, "dGamma_Conjugate") &&
+      family$family %in% c("Gamma", "poisson", "quasipoisson")) {
+    x_ck <- if (is.matrix(x)) x else as.matrix(x)
+    n_ck <- nrow(x_ck)
+    if (length(y) != n_ck) {
+      stop("`rglmb()`: length(y) differs from nrow(x); cannot validate intercept-only conjugate layout.", call. = FALSE)
+    }
+    alp <- offset
+    if (is.null(alp)) {
+      alp <- rep(0, n_ck)
+    } else if (!is.numeric(alp)) {
+      stop("`rglmb()`: offset must be numeric for dGamma_Conjugate models.", call. = FALSE)
+    } else if (length(alp) == 1L) {
+      alp <- rep(alp, n_ck)
+    } else if (length(alp) != n_ck) {
+      stop("`rglmb()`: offset must be scalar or length nrow(x) when using dGamma_Conjugate.", call. = FALSE)
+    }
+    wg <- weights
+    if (!is.numeric(wg))
+      stop("`rglmb()`: weights must be numeric.", call. = FALSE)
+    if (length(wg) == 1L) wg <- rep(wg, n_ck)
+    if (length(wg) != n_ck) {
+      stop("`rglmb()`: weights must be scalar or length nrow(x) when using dGamma_Conjugate.", call. = FALSE)
+    }
+    .check_gamma_conjugate_scalar_design(
+      x_ck,
+      prior_list$beta,
+      alp,
+      wg,
+      family_label = family$family,
+      ctx = "`rglmb()`"
+    )
   }
+
+  ## Pull in information on families  
+  # if (is.character(family)) 
+  #   family <- get(family, mode = "function", envir = parent.frame())
+  # if (is.function(family)) 
+  #   family <- family()
+  # if (is.null(family$family)) {
+  #   print(family)
+  #   stop("'family' not recognized")
+  # }
   
   ## Check that the family is implemented for the pfamily
-  
-  if(family$family %in% okfamilies){
+  ##
+  ## `dGamma_Conjugate()` keeps a narrow `okfamilies` in `pfamily.R` while `plinks()` still
+  ## advertises conjugate-compatible links for Poisson / quasi-Poisson; allow those families here.
+  family_ok <- family$family %in% okfamilies
+  if (identical(pf, "dGamma_Conjugate") &&
+      family$family %in% c("poisson", "quasipoisson")) {
+    family_ok <- TRUE
+  }
+
+  if(family_ok){
     oklinks=plinks(family)
     if(!family$link %in% oklinks){      
       stop(gettextf("link \"%s\" not available for selected pfamily/family combination; available links are %s", 

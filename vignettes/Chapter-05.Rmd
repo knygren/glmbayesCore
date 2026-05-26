@@ -1,12 +1,12 @@
 ---
-title: "Chapter 04: Reviewing Model Predictions, Deviance Residuals and Model Statistics"
+title: "Chapter 05: Model predictions and posterior predictive checks (+ bayesplot ppc_*)"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter 04: Reviewing Model Predictions, Deviance Residuals and Model Statistics}
+  %\VignetteIndexEntry{Chapter 05: Model predictions and posterior predictive checks (+ bayesplot ppc_*)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -134,7 +134,7 @@ glmb.out1<-glmb(n=1000,cbind(Menarche, Total-Menarche) ~ Age2,family=binomial(lo
 
 # Introduction
 
-In this section, we continue the discussion of the Bayesian model fit to the menarche data from the previous chapter. Recall that our main model (with the carefully specified prior) had the summary output below. The focus of this chapter will be to dig deeper and to examine model predictions/fit, residuals, outliers, and the DIC statistic for model comparisons [@Spiegelhalter2002]. GLM background appears in [@McCullagh1989]; the sampling approach follows [@Nygren2006].  
+In this section, we continue the discussion of the Bayesian model fit to the menarche data from Chapter 08 (Estimating Bayesian generalized linear models). Recall that our main model (with the carefully specified prior) had the summary output below. The focus of this chapter will be to dig deeper and to examine model predictions/fit, residuals, outliers, and the DIC statistic for model comparisons [@Spiegelhalter2002]. GLM background appears in [@McCullagh1989]; the sampling approach follows [@Nygren2006].  
 
 ```{r Summary Logit}
 summary(glmb.out1)
@@ -294,7 +294,7 @@ lines(Age, res_high1,lty=2)
 
 ## Posterior predictive checks with 'bayesplot'
 
-The 'glmbayes' package registers a `pp_check()` method for *glmb* fits (see `help(pp_check.glmb, package = "glmbayes")`), using 'bayesplot' on the same replicated responses produced by `simulate()`. For the menarche example (binomial proportions at a modest number of ages), histogram-style posterior predictive checks are often easier to read than density overlays, so we use `fun = "hist"` here.
+The 'glmbayes' package registers a `pp_check()` method for *glmb* fits (see `help(pp_check.glmb, package = "glmbayes")`), using 'bayesplot' on the same replicated responses produced by `simulate()`. For the menarche example (binomial proportions at a modest number of ages), histogram-style posterior predictive checks are often easier to read than density overlays, so we use `fun = "hist"` here. (Planned spin-off: **`bayesplot`** `ppc_*` patterns are summarized in Chapter 12.)
 
 ```{r PPC_bayesplot_menarche, fig.height = 5, fig.width = 7}
 suppressPackageStartupMessages(library(bayesplot))
