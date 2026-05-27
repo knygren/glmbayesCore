@@ -10,6 +10,7 @@
 \alias{print.rGamma_reg}
 \alias{print.simfunction}
 \alias{rGamma_Conjugate_reg}
+\alias{rBeta_reg}
 \title{Simulation Functions for Bayesian Generalized Linear Models}
 \usage{
 simfunction(object, ...)
@@ -38,6 +39,11 @@ rGamma_reg(n, y, x, prior_list, offset = NULL, weights = 1, family = gaussian(),
 rGamma_Conjugate_reg(n, y, x, prior_list, offset = NULL, weights = 1, family = gaussian(),
            Gridtype = 2,n_envopt = NULL,
             use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE,progbar=FALSE)
+
+rBeta_reg(n, y, x, prior_list, offset = NULL, weights = 1,
+                family = gaussian(), Gridtype = 2, n_envopt = NULL,
+                use_parallel = TRUE, use_opencl = FALSE,
+                verbose = FALSE, progbar = FALSE)
 }
 \arguments{
 \item{object}{A fitted model object containing a \code{pfamily} component. The generic function \code{simfunction()} accesses the simulation metadata stored within such objects.}

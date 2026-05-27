@@ -76,6 +76,7 @@ NULL
 #'     \code{binomial}, \code{quasibinomial} \tab \code{logit} \cr
 #'     \code{binomial}, \code{quasibinomial} \tab \code{probit} \cr
 #'     \code{binomial}, \code{quasibinomial} \tab \code{cloglog} \cr
+#'     \code{binomial}, \code{quasibinomial} \tab \code{identity} \cr
 #'     \code{Gamma}                       \tab \code{log} \cr
 #'     \code{Gamma}                       \tab \code{identity} \cr
 #'   }
@@ -416,6 +417,51 @@ glmbfamfunc<-function(family, lik_shape = 1){
     
     
   }
+  ## Binomial / quasi-Binomial with identity link: theta = Xb in (0,1).
+  ## Coefficient is the probability directly (not log-odds).
+  if (family$family %in% c("binomial", "quasibinomial") && family$link == "identity") {
+
+    f1 <- function(b, y, x, alpha = 0, wt = 1) {
+      theta <- as.vector(alpha + x %*% b)
+      -sum(stats::dbinom(round(wt * y), round(wt), theta, log = TRUE))
+    }
+
+    f2 <- function(b, y, x, mu, P, alpha = 0, wt = 1) {
+      theta <- as.vector(alpha + x %*% b)
+      -sum(stats::dbinom(round(wt * y), round(wt), theta, log = TRUE)) +
+        0.5 * t(b - mu) %*% P %*% (b - mu)
+    }
+
+    ## Gradient of f2 w.r.t. b.
+    ## ∂(-log L)/∂b = X' diag(wt) (θ − y) / (θ(1−θ)),  with θ = Xb.
+    f3 <- function(b, y, x, mu, P, alpha = 0, wt = 1) {
+      theta <- as.vector(alpha + x %*% b)
+      t(x) %*% ((theta - y) / (theta * (1 - theta)) * wt) + P %*% (b - mu)
+    }
+
+    ## Deviance: 2 × (fitted NLL − saturated NLL).
+    f4 <- function(b, y, x, alpha = 0, wt = 1, dispersion = 1) {
+      (2 * f1(b, y, x, alpha, wt / dispersion) +
+         2 * sum(stats::dbinom(round((wt / dispersion) * y),
+                               round(wt / dispersion), y, log = TRUE)))
+    }
+
+    ## Fisher information: I(b) = X' diag(wt / (θ(1−θ))) X.
+    f7 <- function(b, y, x, mu, P, alpha = 0, wt = 1) {
+      theta  <- as.vector(alpha + x %*% b)
+      l1     <- length(b)
+      l2     <- length(y)
+      wt_vec <- if (length(wt) == 1L) rep(wt, l2) else as.vector(wt)
+      Pout   <- matrix(0, nrow = l1, ncol = l1)
+      for (i in seq_len(l2)) {
+        xi   <- x[i, , drop = FALSE]
+        Pout <- Pout + (wt_vec[i] / (theta[i] * (1 - theta[i]))) * (t(xi) %*% xi)
+      }
+      Pout
+    }
+
+  }
+
   if(family$family=="Gamma" && family$link=="log")
   {
     

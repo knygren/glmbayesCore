@@ -67,6 +67,7 @@ directional-tail output.
 \code{binomial}, \code{quasibinomial} \tab \code{logit} \cr
 \code{binomial}, \code{quasibinomial} \tab \code{probit} \cr
 \code{binomial}, \code{quasibinomial} \tab \code{cloglog} \cr
+\code{binomial}, \code{quasibinomial} \tab \code{identity} \cr
 \code{Gamma}                       \tab \code{log} \cr
 \code{Gamma}                       \tab \code{identity} \cr
 }

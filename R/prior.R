@@ -939,6 +939,87 @@ if (!is.null(sd)) {
   }
 
   ## ---------------------------------------------------------------------------
+  ## Step 10c: Beta–Binomial conjugate θ prior (intercept-only Binomial(link = "identity"))
+  ##
+  ## Effective prior observation count:
+  ##   n_prior / (n_prior + n_eff) = pwt  <=>  n_prior = (pwt / (1 - pwt)) * n_eff
+  ## Weighted proportion p̄_w = Σ w_i y_i / Σ w_i.  Choosing
+  ##   θ ~ Beta(shape1 = n_prior * p̄, shape2 = n_prior * (1 - p̄))
+  ## gives E[θ] = p̄ so the conjugate Binomial posterior mean starts at p̄.
+  ## ---------------------------------------------------------------------------
+
+  conj_binomial <- NULL
+
+  beta_binom_conj_ok <- (
+    identical(family$family, "binomial") &&
+      identical(family$link, "identity") &&
+      ncol(x) == 1L &&
+      length(pwt) == 1L
+  )
+
+  if (beta_binom_conj_ok && !is.null(offset)) {
+    of <- suppressWarnings(as.numeric(offset))
+    if (length(of) != n_obs || any(!is.finite(of)) ||
+        max(abs(of), na.rm = TRUE) > sqrt(.Machine$double.eps)) {
+      beta_binom_conj_ok <- FALSE
+    }
+  }
+
+  if (beta_binom_conj_ok) {
+    ww <- glm_full$prior.weights
+    if (is.null(ww) || length(ww) != n_obs) ww <- rep(1, n_obs)
+
+    y_num <- as.numeric(Y)
+    if (any(y_num < 0, na.rm = TRUE) || any(y_num > 1, na.rm = TRUE)) {
+      stop(
+        "`Prior_Setup()` Binomial(identity) conjugate calibration requires response in [0, 1].",
+        call. = FALSE
+      )
+    }
+
+    pbar <- sum(y_num * as.numeric(ww)) / sum(as.numeric(ww))
+    if (!(is.finite(pbar) && pbar > 0 && pbar < 1)) {
+      warning(
+        "Binomial(link='identity') intercept-only: skipping `conj_binomial` Beta prior ",
+        "calibration because the weighted proportion is not strictly in (0, 1); ",
+        "weighted proportion = ", paste0("`", prettyNum(pbar), "`."),
+        call. = FALSE
+      )
+    } else if (is.null(n_prior) || length(n_prior) != 1L || !is.finite(n_prior) || n_prior <= 0) {
+      warning(
+        "Binomial(link='identity') intercept-only: skipping `conj_binomial` Beta prior ",
+        "calibration because scalar `n_prior` is unavailable or non-positive; supply finite positive ",
+        "`pwt` or `n_prior`.",
+        call. = FALSE
+      )
+    } else {
+      np <- as.numeric(n_prior)
+      conj_shape1 <- np * pbar
+      conj_shape2 <- np * (1 - pbar)
+
+      bm <- matrix(as.numeric(pbar), nrow = 1L, ncol = 1L,
+                   dimnames = list(NULL, var_names))
+
+      conj_binomial <- list(
+        shape1             = conj_shape1,
+        shape2             = conj_shape2,
+        beta               = bm,
+        weighted_mean_prop = pbar,
+        n_prior_eff        = np
+      )
+
+      ## Moment-matched surrogate Normal mu/Sigma for single intercept
+      if (mu_arg_missing && nvar == 1L && is.finite(pbar) && is.finite(np) && np > 0) {
+        mu[1, 1] <- as.numeric(pbar)
+        Sigma[1, 1] <- as.numeric(pbar * (1 - pbar) / np)
+        rownames(mu) <- var_names
+        colnames(mu) <- "mu"
+        rownames(Sigma) <- colnames(Sigma) <- var_names
+      }
+    }
+  }
+
+  ## ---------------------------------------------------------------------------
   ## Step 11: Assemble and return PriorSetup object.
   ## ---------------------------------------------------------------------------
   prior_list <- list(
@@ -951,7 +1032,8 @@ if (!is.null(sd)) {
     rate = rate,
     rate_gamma = rate_gamma,
     coefficients = coefficients,
-    conj_poisson = conj_poisson,
+    conj_poisson  = conj_poisson,
+    conj_binomial = conj_binomial,
     model = mf,
     x = x,
     y = Y,
@@ -1125,6 +1207,23 @@ print.PriorSetup <- function(x, ...) {
       round(as.numeric(cp$weighted_mean_rate), 6),
       "; n_prior = ",
       round(as.numeric(cp$n_prior_eff), 6),
+      ")\n\n",
+      sep = ""
+    )
+  }
+
+  if (!is.null(x$conj_binomial)) {
+    cb <- x$conj_binomial
+    cat("Binomial probability prior (Beta conjugate; pass to dBeta()):\n")
+    cat(
+      "  shape1 = ",
+      round(as.numeric(cb$shape1), 6),
+      "; shape2 = ",
+      round(as.numeric(cb$shape2), 6),
+      " (prior mean theta = ",
+      round(as.numeric(cb$weighted_mean_prop), 6),
+      "; n_prior = ",
+      round(as.numeric(cb$n_prior_eff), 6),
       ")\n\n",
       sep = ""
     )

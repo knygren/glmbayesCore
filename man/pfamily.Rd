@@ -5,9 +5,10 @@
 \alias{dNormal}
 \alias{dGamma}
 \alias{dGamma_Conjugate}
+\alias{dBeta}
+\alias{print.pfamily}
 \alias{dNormal_Gamma}
 \alias{dIndependent_Normal_Gamma}
-\alias{print.pfamily}
 \title{Prior Family Objects for Bayesian Models}
 \usage{
 pfamily(object, ...)
@@ -33,6 +34,10 @@ dGamma_Conjugate(
   disp_upper = NULL
 )
 
+dBeta(shape1, shape2, beta)
+
+\method{print}{pfamily}(x, ...)
+
 dNormal_Gamma(mu, Sigma_0, shape, rate)
 
 dIndependent_Normal_Gamma(
@@ -44,8 +49,6 @@ dIndependent_Normal_Gamma(
   disp_lower = NULL,
   disp_upper = NULL
 )
-
-\method{print}{pfamily}(x, ...)
 }
 \arguments{
 \item{object}{the function \code{pfamily} accesses the \code{pfamily} objects which
@@ -72,10 +75,8 @@ When taking defaults from \code{\link{Prior_Setup}}, use \code{ps$shape} with
 use \code{ps$rate}; for \code{\link{dGamma}()} with fixed \code{beta}, prefer \code{ps$rate_gamma}
 when that field is non-\code{NULL} (see Details).}
 
-\item{beta}{the regression coefficients to be assumed when it is not given a prior.
-Needs to be provided when the Gamma prior is used for the dispersion. This
-specification is typically only used as part of Gibbs sampling where the beta and
-dispersion parameters are updated separately.}
+\item{beta}{Initial coefficient matrix (1 \eqn{\times} 1); typically set to the prior mean
+\code{shape1/(shape1+shape2)}.}
 
 \item{max_disp_perc}{Specifies the percentile used to truncate the posterior dispersion
 distribution when constructing the envelope for accept-reject sampling. This determines
@@ -94,11 +95,15 @@ is then the Gamma \emph{rate} \eqn{\beta}, and the conjugate posterior is
 \eqn{\beta \mid y \sim \mathrm{Gamma}(\alpha_0 + n k,\; \beta_0 + \sum y_i)}.
 Defaults to \code{1} (exponential distribution). Ignored for Poisson families.}
 
+\item{shape1}{First shape parameter \eqn{\alpha > 0} of the Beta prior (prior successes + 1).}
+
+\item{shape2}{Second shape parameter \eqn{\beta > 0} of the Beta prior (prior failures + 1).}
+
+\item{x}{an object, a pfamily function that is to be printed}
+
 \item{Sigma_0}{prior variance-covariance on the precision-weighted coefficient scale for
 \code{dNormal_Gamma()} only (Gaussian). Stored in \code{prior_list$Sigma} for compatibility
 with downstream samplers.}
-
-\item{x}{an object, a pfamily function that is to be printed}
 
 \item{\ldots}{additional argument(s) for methods.}
 }
@@ -135,6 +140,12 @@ takes place.
 
 \code{mu} / \code{Sigma}: under R's Gamma(shape, rate), each marginal has mean \code{shape/rate} and
 variance \code{shape/(rate^2)}, taken independent across \code{nrow(mu)} coefficient rows matching \code{beta}.
+
+Under a Beta(\code{shape1}, \code{shape2}) prior on the binomial probability \eqn{\theta}
+and a Binomial(\eqn{n_i}, \eqn{\theta}) likelihood with identity link (\eqn{\theta = \beta}
+directly), the posterior is:
+\deqn{\theta \mid y \sim \mathrm{Beta}(\texttt{shape1} + \sum n_i y_i,\;
+  \texttt{shape2} + \sum n_i (1 - y_i)).}
 }
 \details{
 \code{pfamily} is a generic with methods for fitted objects such as \code{\link{glmb}} and
@@ -206,6 +217,10 @@ Each \code{pfamily} object includes:
 \item \code{pfamily}, \code{prior_list}, \code{okfamilies}, \code{plinks}, and \code{simfun} (see Value).
 }
 }
+
+\code{mu} / \code{Sigma}: the surrogate Normal mean is \code{shape1/(shape1+shape2)} and
+the surrogate variance is the Beta variance
+\code{shape1*shape2/((shape1+shape2)^2*(shape1+shape2+1))}.
 }
 \examples{
 ## Dobson (1990) Page 93: Randomized Controlled Trial :

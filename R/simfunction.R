@@ -927,6 +927,184 @@ rGamma_Conjugate_reg <- function(
 }
 
 
+## ---------------------------------------------------------------------------
+## rBeta_reg: IID conjugate sampler for Beta–Binomial(identity) models.
+##
+## Model:  Y_i | θ ~ Binomial(n_i, θ),  θ = Xβ  (identity link, intercept only)
+##         θ ~ Beta(shape1, shape2)
+## Posterior: θ | y ~ Beta(shape1 + Σ n_i y_i,  shape2 + Σ n_i (1 − y_i))
+## ---------------------------------------------------------------------------
+
+#' @family simfuncs
+#' @usage rBeta_reg(n, y, x, prior_list, offset = NULL, weights = 1,
+#'                 family = gaussian(), Gridtype = 2, n_envopt = NULL,
+#'                 use_parallel = TRUE, use_opencl = FALSE,
+#'                 verbose = FALSE, progbar = FALSE)
+#' @export
+#' @rdname simfuncs
+
+rBeta_reg <- function(
+    n,
+    y,
+    x,
+    prior_list,
+    offset       = NULL,
+    weights      = 1,
+    family       = gaussian(),
+    Gridtype     = 2,
+    n_envopt     = NULL,
+    use_parallel = TRUE,
+    use_opencl   = FALSE,
+    verbose      = FALSE,
+    progbar      = FALSE
+) {
+  call <- match.call()
+
+  wt    <- weights
+  alpha <- offset
+
+  ## Basic checks on y and x
+  n1 <- length(y)
+  if (!is.matrix(x)) x <- as.matrix(x)
+  if (nrow(x) != n1)
+    stop("Number of rows in x must match length of y.")
+
+  ## Normalize offset
+  if (is.null(alpha)) {
+    alpha <- rep(0, n1)
+  } else {
+    if (!is.numeric(alpha))
+      stop("offset (alpha) must be numeric if supplied.")
+    if (length(alpha) == 1L) alpha <- rep(alpha, n1)
+    else if (length(alpha) != n1)
+      stop("offset (alpha) must be scalar or have length equal to length(y).")
+  }
+
+  ## Normalize weights (= number of trials for binomial)
+  if (!is.numeric(wt)) stop("weights must be numeric.")
+  if (length(wt) == 1L) {
+    wt <- rep(wt, n1)
+  } else if (length(wt) != n1) {
+    stop("weights must be either a scalar or have length equal to length(y).")
+  }
+  if (any(wt < 0)) stop("weights must be nonneg.")
+
+  ## Extract prior hyperparameters
+  shape1 <- prior_list$shape1
+  shape2 <- prior_list$shape2
+  b      <- prior_list$beta
+
+  if (is.null(shape1) || is.null(shape2))
+    stop("`rBeta_reg()`: prior_list must contain `shape1` and `shape2`.")
+  s1 <- as.numeric(shape1)[[1L]]
+  s2 <- as.numeric(shape2)[[1L]]
+
+  ## Family handling
+  if (is.character(family))
+    family <- get(family, mode = "function", envir = parent.frame())
+  if (is.function(family)) family <- family()
+  if (is.null(family$family)) stop("'family' not recognized")
+
+  ## Family / link guard
+  if (!family$family %in% c("binomial", "quasibinomial"))
+    stop("`rBeta_reg()`: only binomial / quasibinomial families are supported.")
+  if (family$link != "identity")
+    stop("`rBeta_reg()`: only the identity link is supported (theta = Xbeta).")
+
+  ## Scalar design guard (intercept-only, zero offset, constant weights)
+  if (ncol(x) != 1L)
+    stop("`rBeta_reg()`: dBeta supports only intercept-only models (ncol(x) == 1). Use dNormal() for multiple predictors.")
+  bb <- tryCatch(as.matrix(b, ncol = 1L), error = function(e) NULL)
+  if (is.null(bb) || nrow(bb) != 1L || ncol(bb) != 1L)
+    stop("`rBeta_reg()`: prior_list$beta must be a 1x1 matrix for the intercept-only model.")
+  if (any(!is.finite(alpha)) || max(abs(as.numeric(alpha))) > 1e-12)
+    stop("`rBeta_reg()`: non-zero offset is not implemented for dBeta models.")
+  if (n1 > 1L &&
+      (max(as.numeric(wt)) - min(as.numeric(wt))) > 1e-12 * max(1, mean(as.numeric(wt))))
+    stop("`rBeta_reg()`: non-constant weights are not implemented for dBeta. Use dNormal() if trial counts vary.")
+
+  ## Response guard: y must be proportions in [0, 1]
+  y_num <- as.numeric(y)
+  if (any(!is.finite(y_num)))
+    stop("`rBeta_reg()`: response y contains non-finite values.")
+  if (any(y_num < 0) || any(y_num > 1))
+    stop("`rBeta_reg()`: response y must be in [0, 1] (proportions) for binomial(identity).")
+
+  ## Conjugate posterior update
+  ## With constant weights n (number of trials):
+  ##   shape1_post = shape1 + sum(n * y) = shape1 + total successes
+  ##   shape2_post = shape2 + sum(n * (1-y)) = shape2 + total failures
+  sum_successes <- sum(y_num * wt)
+  sum_failures  <- sum((1 - y_num) * wt)
+
+  shape1_post <- s1 + sum_successes
+  shape2_post <- s2 + sum_failures
+
+  n_draw    <- as.integer(n)
+  coef_out  <- matrix(
+    stats::rbeta(n_draw, shape1 = shape1_post, shape2 = shape2_post),
+    nrow = n_draw, ncol = 1L
+  )
+  disp_out  <- rep(1, n_draw)          ## binomial dispersion = 1
+  draws_out <- matrix(1L, nrow = n_draw, ncol = 1L)
+
+  ## Posterior mode: (shape1_post - 1) / (shape1_post + shape2_post - 2) when both > 1
+  s12_post <- shape1_post + shape2_post
+  if (shape1_post > 1 && shape2_post > 1) {
+    mode_val <- (shape1_post - 1) / (s12_post - 2)
+  } else {
+    mode_val <- shape1_post / s12_post   ## fall back to posterior mean
+  }
+  coef_mode_out <- matrix(mode_val, nrow = 1L, ncol = 1L)
+  rownames(coef_mode_out) <- "(Mode)"
+
+  ## Prior moments for output Prior slot
+  cn_x <- colnames(x)
+  if (is.null(cn_x)) cn_x <- paste0("V", seq_len(ncol(x)))
+  prior_mean_val <- s1 / (s1 + s2)
+  prior_var_val  <- s1 * s2 / ((s1 + s2)^2 * (s1 + s2 + 1))
+  prior_prec_val <- 1 / prior_var_val
+  prior_mean_vec <- stats::setNames(rep(prior_mean_val, ncol(x)), cn_x)
+  prior_precision <- diag(rep(prior_prec_val, ncol(x)), nrow = ncol(x), ncol = ncol(x))
+  dimnames(prior_precision) <- list(cn_x, cn_x)
+
+  outlist <- list(
+    coefficients  = coef_out,
+    coef.mode     = coef_mode_out,
+    dispersion    = disp_out,
+    Prior         = list(
+      shape1     = shape1,
+      shape2     = shape2,
+      mean       = prior_mean_vec,
+      Precision  = prior_precision
+    ),
+    prior.weights = wt,
+    y             = y,
+    x             = x,
+    famfunc       = glmbfamfunc(family),
+    iters         = draws_out,
+    Envelope      = NULL
+  )
+
+  colnames(outlist$coefficients) <- colnames(x)
+
+  offset2  <- alpha
+  rglmb_df <- as.data.frame(cbind(y, x))
+  rglmb_f  <- DF2formula(rglmb_df)
+  rglmb_mf <- stats::model.frame(rglmb_f, rglmb_df)
+  outlist$family  <- family
+  outlist$offset2 <- offset2
+  outlist$formula <- rglmb_f
+  outlist$model   <- rglmb_mf
+  outlist$data    <- rglmb_df
+
+  outlist$call <- call
+  class(outlist) <- c(outlist$class, "rglmb", "glmb", "glm", "lm")
+
+  return(outlist)
+}
+
+
 
 #' @family simfuncs
 #' @example inst/examples/Ex_rindepNormalGamma_reg.R

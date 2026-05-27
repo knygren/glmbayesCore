@@ -374,9 +374,94 @@ dGamma_Conjugate<-function(shape,rate,beta,lik_shape=1,max_disp_perc = 0.99,disp
 
 
 
-#' @export 
+#' Conjugate Beta prior family (\code{dBeta}: closed-form IID updates for intercept-only
+#' Binomial models with an identity link).
+#'
+#' Under a Beta(\code{shape1}, \code{shape2}) prior on the binomial probability \eqn{\theta}
+#' and a Binomial(\eqn{n_i}, \eqn{\theta}) likelihood with identity link (\eqn{\theta = \beta}
+#' directly), the posterior is:
+#' \deqn{\theta \mid y \sim \mathrm{Beta}(\texttt{shape1} + \sum n_i y_i,\;
+#'   \texttt{shape2} + \sum n_i (1 - y_i)).}
+#'
+#' \code{mu} / \code{Sigma}: the surrogate Normal mean is \code{shape1/(shape1+shape2)} and
+#' the surrogate variance is the Beta variance
+#' \code{shape1*shape2/((shape1+shape2)^2*(shape1+shape2+1))}.
+#'
+#' @param shape1 First shape parameter \eqn{\alpha > 0} of the Beta prior (prior successes + 1).
+#' @param shape2 Second shape parameter \eqn{\beta > 0} of the Beta prior (prior failures + 1).
+#' @param beta Initial coefficient matrix (1 \eqn{\times} 1); typically set to the prior mean
+#'   \code{shape1/(shape1+shape2)}.
+#' @export
 #' @rdname pfamily
 #' @order 5
+
+dBeta <- function(shape1, shape2, beta) {
+
+  if (!is.numeric(shape1) || !is.numeric(shape2) || !is.numeric(beta))
+    stop("non-numeric argument to numeric function")
+  if (length(shape1) != 1L) stop("shape1 must be a single positive number")
+  if (length(shape2) != 1L) stop("shape2 must be a single positive number")
+  if (!is.finite(shape1) || shape1 <= 0) stop("shape1 must be a finite positive number")
+  if (!is.finite(shape2) || shape2 <= 0) stop("shape2 must be a finite positive number")
+
+  beta <- as.matrix(beta, ncol = 1L)
+
+  ## Normal-style surrogate for glmb() pre-simulation and downstream Prior$mean/Variance.
+  ## Beta(shape1, shape2): mean = shape1/(shape1+shape2),
+  ##   variance = shape1*shape2 / ((shape1+shape2)^2 * (shape1+shape2+1)).
+  s1  <- as.numeric(shape1)[[1L]]
+  s2  <- as.numeric(shape2)[[1L]]
+  s12 <- s1 + s2
+  prior_mean_val <- s1 / s12
+  prior_var_val  <- s1 * s2 / (s12^2 * (s12 + 1))
+
+  p      <- nrow(as.matrix(beta, ncol = 1L))
+  mu     <- beta * 0 + prior_mean_val
+  Sigma  <- diag(rep.int(prior_var_val, times = p), nrow = p, ncol = p)
+
+  coef_nm <- rownames(beta)
+  if (is.null(coef_nm)) coef_nm <- colnames(beta)
+  if (!is.null(coef_nm) && length(coef_nm) == p) {
+    rownames(mu) <- coef_nm
+    if (!is.null(colnames(beta))) colnames(mu) <- colnames(beta)
+    dimnames(Sigma) <- list(coef_nm, coef_nm)
+  }
+
+  okfamilies <- c("binomial", "quasibinomial")
+
+  plinks <- function(family) {
+    oklinks <- NULL
+    if (family$family %in% c("binomial", "quasibinomial")) oklinks <- c("identity")
+    oklinks
+  }
+
+  prior_list <- list(
+    shape1 = shape1,
+    shape2 = shape2,
+    beta   = beta,
+    mu     = mu,
+    Sigma  = Sigma
+  )
+  attr(prior_list, "Prior Type") <- "dBeta"
+
+  outlist <- list(
+    pfamily    = "dBeta",
+    prior_list = prior_list,
+    okfamilies = okfamilies,
+    plinks     = plinks,
+    simfun     = rBeta_reg
+  )
+  attr(outlist, "Prior Type") <- "dBeta"
+  class(outlist) <- "pfamily"
+  outlist$call   <- match.call()
+
+  return(outlist)
+}
+
+
+#' @export
+#' @rdname pfamily
+#' @order 7
 
 dNormal_Gamma <- function(mu, Sigma_0, shape, rate) {
   Sigma <- Sigma_0
@@ -438,7 +523,7 @@ dNormal_Gamma <- function(mu, Sigma_0, shape, rate) {
 
 #' @export 
 #' @rdname pfamily
-#' @order 6
+#' @order 8
 
 dIndependent_Normal_Gamma <- function(mu, Sigma, shape, rate, max_disp_perc = 0.99,disp_lower=NULL,disp_upper=NULL) {
 
