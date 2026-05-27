@@ -901,7 +901,7 @@ rGamma_Conjugate_reg <- function(
     prior.weights  = wt,
     y              = y,
     x              = x,
-    famfunc        = glmbfamfunc(family),
+    famfunc        = glmbfamfunc(family, lik_shape = lik_shape),
     iters          = draws_out,
     Envelope       = NULL
   )

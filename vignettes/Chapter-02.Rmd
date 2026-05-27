@@ -72,11 +72,12 @@ The normalizing constant is worked out by whatever method ensures the posterior 
 
 For most likelihood–prior combinations, the posterior has no simple closed form — you need numerical methods (like the sampling done by **`glmb()`**).  But for a special set of **conjugate** prior–likelihood pairs, the posterior is in the **same family** as the prior: only the parameters change.  This makes hand calculation possible and builds the geometric intuition you need before tackling regression.
 
-This vignette works through three conjugate pairs:
+This vignette works through four conjugate pairs:
 
 1. **Beta–Binomial** — for a single proportion \(\theta\).
 2. **Gamma–Poisson** — for a single count rate \(\lambda\).
-3. **Normal–Normal** — for a single mean \(\mu\) with known variance.
+3. **Gamma–Gamma** — for the rate \(\beta\) of a Gamma-distributed response with known shape.
+4. **Normal–Normal** — for a single mean \(\mu\) with known variance.
 
 Each section explains the setup intuitively, derives the posterior update rule, works a numerical example in R, and shows how the idea generalizes to the regression models in **glmbayes**.
 
@@ -390,9 +391,167 @@ summary(fit_ps)
 
 ---
 
-## 4. Normal–Normal conjugacy for one mean \(\mu\) with known variance
+## 4. Gamma–Gamma conjugacy for one response rate \(\beta\)
 
 ### 4.1 The setting
+
+The Gamma distribution is not only a useful prior for a Poisson rate — it is also a natural model for **continuous positive responses** such as waiting times, survival times, or monetary amounts.  When the response \(Y\) is itself Gamma-distributed, the Gamma prior on the rate parameter is conjugate, yielding another closed-form posterior.
+
+The model is:
+
+\[
+  Y_i \mid \beta \;\sim\; \mathrm{Gamma}(k,\, \beta), \qquad i = 1,\dots,n,
+\]
+
+where \(k > 0\) is the **known shape** of the response distribution and \(\beta > 0\) is the unknown **rate**.  The mean response is \(\mu = k/\beta\) and the variance is \(k/\beta^2\).
+
+**Why fix the shape?**  Conjugacy only holds when \(k\) is treated as a known constant.  In practice you either know \(k\) from the problem structure (e.g., exponential data has \(k = 1\)) or you estimate it from the data using a method-of-moments formula \(\hat k = \bar y^2 / s^2\) and then treat it as fixed.  When both \(k\) and \(\beta\) are unknown you need a different, non-conjugate strategy — that is handled by the **`Gamma(log)`** family with `glmbdisp()`.
+
+**The special case \(k = 1\)** is the **Exponential distribution**: waiting times between events, inter-arrival times, or survival times with a constant hazard.  The rate \(\beta = 1/\mu\) is the reciprocal of the mean.
+
+**The "identity" link.**  When you pass `family = Gamma(link = "identity")` to **`glmb()`**, the regression coefficient is the **rate** \(\beta\) directly — not the mean and not \(\log(\beta)\).  This matches the parameterization of the conjugate update and is what `dGamma_Conjugate()` expects.
+
+### 4.2 Choosing a prior: Gamma on the rate
+
+Because \(\beta > 0\), the Gamma distribution is again the natural prior:
+
+\[
+  \beta \;\sim\; \mathrm{Gamma}(\alpha_0,\, b_0),
+\]
+
+with prior mean \(\alpha_0 / b_0\) and variance \(\alpha_0 / b_0^2\).  The interpretation is the same as in Section 3: think of \(\alpha_0 - 1\) as a "prior total weighted count" and \(b_0\) as "prior sum of observations".  The prior mean \(\alpha_0/b_0\) is your best guess for the rate before collecting data.
+
+**Relationship to the dispersion.**  In GLM terms the dispersion of the Gamma family is \(\phi = 1/k\), so the shape \(k\) is the **precision** \(1/\phi\).  Specifying `lik_shape = k` in `dGamma_Conjugate()` is equivalent to specifying a known dispersion \(\phi = 1/k\).
+
+### 4.3 Deriving the posterior
+
+The log-likelihood for \(n\) observations with weights \(w_i\) is proportional to:
+
+\[
+  \ell(\beta) \;\propto\; n k \log\beta - \beta \sum_i y_i.
+\]
+
+Multiplying by the prior kernel \(\beta^{\alpha_0 - 1} e^{-b_0 \beta}\):
+
+\[
+  p(\beta \mid y)
+  \;\propto\;
+  \beta^{(\alpha_0 + n k) - 1}\,e^{-(b_0 + \sum_i y_i)\,\beta}.
+\]
+
+This is again a Gamma kernel, so:
+
+\[
+  \boxed{\beta \mid y \;\sim\; \mathrm{Gamma}\!\left(\alpha_0 + n k,\;\; b_0 + \textstyle\sum_i y_i\right).}
+\]
+
+The update rule:
+
+- Add \(n \times k\) to the shape (if \(k = 1\), simply add the sample size \(n\)).
+- Add the **sum of observations** \(\sum_i y_i\) to the rate.
+
+The posterior mean rate is
+
+\[
+  \mathbb{E}[\beta \mid y]
+  \;=\; \frac{\alpha_0 + n k}{b_0 + \sum_i y_i},
+\]
+
+and the posterior mean **response** (the quantity most practitioners care about) is:
+
+\[
+  \mathbb{E}[\mu \mid y]
+  \;\approx\; \frac{k}{\mathbb{E}[\beta \mid y]}
+  \;=\; \frac{k(b_0 + \sum_i y_i)}{\alpha_0 + n k}.
+\]
+
+For the exponential case \(k = 1\) this simplifies to \((b_0 + \sum_i y_i)/(\alpha_0 + n)\), a familiar "prior pseudo-data plus observed data" form.
+
+### 4.4 Numerical example
+
+We simulate \(n = 30\) exponential observations with true rate \(\beta = 0.5\) (mean waiting time = 2) and place a \(\Gamma(2, 4)\) prior on \(\beta\) (prior mean rate = 0.5).
+
+```{r gamma-gamma-setup}
+set.seed(42)
+n_gg      <- 30L
+beta_true <- 0.5                        ## true rate; mean = 1/0.5 = 2
+y_gg      <- rexp(n_gg, rate = beta_true)
+
+alpha0_gg <- 2;  b0_gg <- 4             ## Gamma(2, 4) prior on rate beta
+
+## Analytic conjugate posterior (k = 1):
+shape_post_gg <- alpha0_gg + n_gg * 1   ## 2 + 30 = 32
+rate_post_gg  <- b0_gg + sum(y_gg)      ## 4 + sum(y)
+
+c(prior_mean_rate     = alpha0_gg / b0_gg,
+  data_mean_response  = mean(y_gg),
+  post_mean_rate      = shape_post_gg / rate_post_gg,
+  post_mean_response  = rate_post_gg  / shape_post_gg)  ## k/E[beta] = 1/E[beta]
+
+## 90% credible interval for the rate beta
+qgamma(c(0.05, 0.95), shape_post_gg, rate_post_gg)
+```
+
+**Reading the output.**
+
+- The prior mean rate is 0.5, matching the true rate.
+- The posterior mean rate is close to 0.5, pulled slightly by the data.
+- The posterior mean **response** (mean waiting time) is close to 2.
+- The 90% credible interval for the rate \(\beta\) is a direct probability statement: there is a 90% posterior probability that the true rate lies in that interval.
+
+### 4.5 Fitting with **`glmb()`** using **`dGamma_Conjugate()`**
+
+```{r gamma-gamma-glmb}
+library(glmbayes)
+
+## Initial coefficient matrix — prior mean of the rate
+gg_beta <- matrix(alpha0_gg / b0_gg, nrow = 1, ncol = 1)
+colnames(gg_beta) <- "(Intercept)"
+
+## dGamma_Conjugate with lik_shape = 1 (exponential / Gamma shape k = 1)
+gg_pf <- dGamma_Conjugate(
+  shape     = alpha0_gg,
+  rate      = b0_gg,
+  beta      = gg_beta,
+  lik_shape = 1           ## k = 1: exponential likelihood
+)
+
+data_gg <- data.frame(y = y_gg)
+set.seed(2026)
+fit_gg <- glmb(
+  n       = 20000,
+  y ~ 1,
+  data    = data_gg,
+  family  = Gamma(link = "identity"),
+  pfamily = gg_pf
+)
+summary(fit_gg)
+```
+
+**Reading the summary.**  The `(Intercept)` coefficient is the Gamma **rate** \(\beta\).  The posterior mean should be close to the analytic value \((\alpha_0 + n)/( b_0 + \sum y)\) computed above, and the posterior SD should match \(\sqrt{\alpha_0 + n}/(b_0 + \sum y)\).  Because `dGamma_Conjugate()` implements the exact conjugate family, the 20 000 draws agree with the analytic posterior up to small Monte Carlo noise.
+
+**Verifying the match.**
+
+```{r gamma-gamma-verify}
+smp_gg <- fit_gg$coefficients[, 1L]
+
+c(glmb_mean     = mean(smp_gg),
+  analytic_mean = shape_post_gg / rate_post_gg,
+  glmb_sd       = sd(smp_gg),
+  analytic_sd   = sqrt(shape_post_gg) / rate_post_gg)
+```
+
+### 4.6 Connection to glmbayes
+
+The scalar Gamma–Gamma model is the conjugate prototype for **Gamma `glmb()` with `family = Gamma(link = "identity")`**.  In that setting the single coefficient is the rate \(\beta\), the prior is `dGamma_Conjugate(shape, rate, beta, lik_shape = k)`, and the posterior update is exactly the closed form above.
+
+When the shape \(k\) is **unknown**, the Gamma prior on \(k\) is no longer conjugate and a rejection sampler is needed.  That more general case is handled by **`Gamma(link = "log")`** with `dNormal()` priors on the regression coefficients plus **`glmbdisp()`** for the dispersion \(\phi = 1/k\).
+
+---
+
+## 5. Normal–Normal conjugacy for one mean \(\mu\) with known variance
+
+### 5.1 The setting
 
 Now suppose you are estimating a mean — for example, the mean systolic blood pressure in a population.  You observe a sample of \(m\) measurements with sample mean \(\bar y\), and you assume the observations are drawn from a normal distribution with **known** standard deviation \(\sigma\):
 
@@ -404,7 +563,7 @@ Now suppose you are estimating a mean — for example, the mean systolic blood p
 
 In practice \(\sigma\) is rarely truly known, but this case is the cleanest template for understanding the Normal–Normal update.  The full treatment — unknown mean **and** unknown variance — is handled in Chapter 3 with `lmb()`.
 
-### 4.2 Choosing a prior: the Normal distribution
+### 5.2 Choosing a prior: the Normal distribution
 
 Since \(\mu\) can take any real value, the **Normal distribution** is the natural prior:
 
@@ -414,7 +573,7 @@ Since \(\mu\) can take any real value, the **Normal distribution** is the natura
 
 Here \(\mu_0\) is your prior best guess for the mean, and \(\tau_0\) is the prior standard deviation — how uncertain you are about that guess.
 
-### 4.3 Precision: a helpful rewrite
+### 5.3 Precision: a helpful rewrite
 
 The Normal–Normal update is most elegantly expressed using **precision**, which is simply the reciprocal of variance: \(\kappa = 1/\sigma^2\).  High precision means low variance (tight distribution); low precision means high variance (diffuse distribution).
 
@@ -425,7 +584,7 @@ Define:
 | \(\kappa_0 = 1/\tau_0^2\) | Prior precision | How much information is in the prior |
 | \(\kappa_L = m/\sigma^2\) | Likelihood precision | How much information is in the data |
 
-### 4.4 Deriving the posterior
+### 5.4 Deriving the posterior
 
 The posterior is also Normal:
 
@@ -453,7 +612,7 @@ The posterior mean \(\mu_n\) is again a weighted average, but now the weights ar
 - If the data are very **noisy** (\(\sigma\) large) or the sample is **small** (\(m\) small): the prior receives more relative weight, shrinking the estimate toward \(\mu_0\).
 - As \(m \to \infty\): the posterior mean approaches \(\bar y\) and the posterior variance approaches 0 — the data overwhelm any finite prior, and the Bayesian estimate converges to the classical MLE.
 
-### 4.5 Numerical example
+### 5.5 Numerical example
 
 ```{r normal-normal}
 mu0   <- 10;  tau0  <- 2     ## prior: mean 10, SD 2
@@ -481,13 +640,13 @@ post_mean + qnorm(c(0.05, 0.95)) * post_sd
 - The posterior mean falls between the prior mean (10) and the data mean (11.3), but much closer to 11.3 because the ten observations with a tight SD of 1.2 are quite informative.
 - The posterior SD of about 0.38 is much smaller than the prior SD of 2, showing how much we have learned.
 
-### 4.6 Connection to glmbayes
+### 5.6 Connection to glmbayes
 
 This scalar case is the template for **Gaussian linear models with `lmb()`** (Chapter 3).  In regression, the single unknown \(\mu\) is replaced by a coefficient vector \(\beta \in \mathbb{R}^p\), the scalar prior variance \(\tau_0^2\) becomes a \(p \times p\) prior covariance matrix, and the precision-weighted average becomes a matrix expression — but the logic is identical.
 
 ---
 
-## 5. Putting it together: from simple models to regression
+## 6. Putting it together: from simple models to regression
 
 Before moving on, it is worth pausing to appreciate what these three examples share:
 
@@ -499,12 +658,13 @@ Before moving on, it is worth pausing to appreciate what these three examples sh
 
 4. **Credible intervals have the interpretation you want**: they are genuine probability statements about where the parameter is, given the data and prior.
 
-### 5.1 Roadmap in this package
+### 6.1 Roadmap in this package
 
 | Conjugate prototype | Where it generalizes in **glmbayes** |
 |---------------------|--------------------------------------|
 | Beta–Binomial | Binomial **`glmb()`** with normal priors on regression coefficients (Chapters 7–9) |
 | Gamma–Poisson | Conjugate \(\Gamma\) rate prior + **`glmb()`** (§3.1–§3.2); general Poisson regression (Chapter 10) |
+| Gamma–Gamma | **`glmb()`** with `Gamma(link="identity")` and `dGamma_Conjugate(lik_shape=k)` (§4); non-conjugate Gamma regression with `Gamma(log)` (Chapter 10) |
 | Normal–Normal | **`lmb()`** for multivariate Gaussian regression (Chapter 3) |
 
 When conjugacy is lost or when you want **IID draws** with flexible priors, **glmbayes** uses envelope-based accept–reject sampling [@Nygren2006].

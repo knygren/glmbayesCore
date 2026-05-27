@@ -5,12 +5,17 @@
 \alias{print.glmbfamfunc}
 \title{Return family functions used during simulation and post processing}
 \usage{
-glmbfamfunc(family)
+glmbfamfunc(family, lik_shape = 1)
 
 \method{print}{glmbfamfunc}(x, ...)
 }
 \arguments{
 \item{family}{an object of class \code{\link{family}}}
+
+\item{lik_shape}{Known shape parameter of the Gamma likelihood; used only for the
+\code{Gamma(link = "identity")} branch where the regression coefficient is the
+Gamma \emph{rate}.  Ignored for all other family/link combinations.
+Defaults to \code{1} (i.e.\ exponential likelihood).}
 
 \item{x}{an object of class \code{"glmbfamfunc"} for which a printed output is desired.}
 
@@ -63,12 +68,13 @@ directional-tail output.
 \code{binomial}, \code{quasibinomial} \tab \code{probit} \cr
 \code{binomial}, \code{quasibinomial} \tab \code{cloglog} \cr
 \code{Gamma}                       \tab \code{log} \cr
+\code{Gamma}                       \tab \code{identity} \cr
 }
 
 Any family/link not in this table will fall through all branches silently and produce
-the error above at the point of first use.  The \code{Gamma(link = "identity")} combination
-(used by \code{\link{dGamma_Conjugate}} for the conjugate rate prior) is not yet registered
-here; DIC and log-likelihood are therefore not available for that path until a branch is added.
+the error above at the point of first use.  For \code{Gamma(link = "identity")}, pass the
+known Gamma likelihood shape \code{lik_shape} (default \code{1}) so that \code{f1}--\code{f4}
+and \code{f7} use the correct parameterization (coefficient = Gamma rate \eqn{\beta}).
 
 \strong{Relationship to C++ simulation paths.}  Many simulation procedures in the package have
 been fully or partially migrated to \code{*.cpp} routines, which receive their own

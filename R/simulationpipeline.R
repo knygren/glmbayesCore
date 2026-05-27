@@ -31,6 +31,10 @@ NULL
 #' glmbfamfunc
 #' print.glmbfamfunc
 #' @param family an object of class \code{\link{family}}
+#' @param lik_shape Known shape parameter of the Gamma likelihood; used only for the
+#'   \code{Gamma(link = "identity")} branch where the regression coefficient is the
+#'   Gamma \emph{rate}.  Ignored for all other family/link combinations.
+#'   Defaults to \code{1} (i.e.\ exponential likelihood).
 #' @param x an object of class \code{"glmbfamfunc"} for which a printed output is desired.
 #' @param \ldots additional optional arguments
 #' @return A list (class \code{"glmbfamfunc"}) whose first four components are **always**
@@ -73,12 +77,13 @@ NULL
 #'     \code{binomial}, \code{quasibinomial} \tab \code{probit} \cr
 #'     \code{binomial}, \code{quasibinomial} \tab \code{cloglog} \cr
 #'     \code{Gamma}                       \tab \code{log} \cr
+#'     \code{Gamma}                       \tab \code{identity} \cr
 #'   }
 #'
 #'   Any family/link not in this table will fall through all branches silently and produce
-#'   the error above at the point of first use.  The \code{Gamma(link = "identity")} combination
-#'   (used by \code{\link{dGamma_Conjugate}} for the conjugate rate prior) is not yet registered
-#'   here; DIC and log-likelihood are therefore not available for that path until a branch is added.
+#'   the error above at the point of first use.  For \code{Gamma(link = "identity")}, pass the
+#'   known Gamma likelihood shape \code{lik_shape} (default \code{1}) so that \code{f1}--\code{f4}
+#'   and \code{f7} use the correct parameterization (coefficient = Gamma rate \eqn{\beta}).
 #'
 #'   **Relationship to C++ simulation paths.**  Many simulation procedures in the package have
 #'   been fully or partially migrated to \code{*.cpp} routines, which receive their own
@@ -93,7 +98,7 @@ NULL
 #' @rdname glmbfamfunc
 #' @order 1
 
-glmbfamfunc<-function(family){
+glmbfamfunc<-function(family, lik_shape = 1){
   
   # need to add handling for offsets 
   
@@ -471,7 +476,56 @@ glmbfamfunc<-function(family){
     
     
   }	
-  
+
+  ## Gamma with identity link: coefficient IS the Gamma rate β.
+  ## Y_i | β ~ Gamma(shape = k, rate = β),  mean = k/β,  Var = k/β².
+  ## lik_shape k is the known Gamma shape parameter (default 1 = exponential).
+  if (family$family == "Gamma" && family$link == "identity") {
+
+    k <- lik_shape   # capture in closures
+
+    f1 <- function(b, y, x, alpha = 0, wt = 1) {
+      beta <- as.vector(alpha + x %*% b)   # rate = Xb
+      -sum(stats::dgamma(y, shape = k, rate = beta, log = TRUE) * wt)
+    }
+
+    f2 <- function(b, y, x, mu, P, alpha = 0, wt = 1) {
+      beta <- as.vector(alpha + x %*% b)
+      -sum(stats::dgamma(y, shape = k, rate = beta, log = TRUE) * wt) +
+        0.5 * t(b - mu) %*% P %*% (b - mu)
+    }
+
+    ## Gradient of f2 w.r.t. b.
+    ## ∂(-log L)/∂b  =  X' diag(wt) (y - k/β),  with β = Xb.
+    f3 <- function(b, y, x, mu, P, alpha = 0, wt = 1) {
+      beta <- as.vector(alpha + x %*% b)
+      t(x) %*% ((y - k / beta) * wt) + P %*% (b - mu)
+    }
+
+    ## Deviance: 2 × (saturated NLL − fitted NLL).
+    ## Saturated rate for obs i: β_sat,i = k / y_i  →  dgamma(y_i, k, k/y_i).
+    f4 <- function(b, y, x, alpha = 0, wt = 1, dispersion = 1) {
+      wt_eff <- wt / dispersion
+      2 * f1(b, y, x, alpha, wt_eff) +
+        2 * sum(stats::dgamma(y, shape = k, rate = k / y, log = TRUE) * wt_eff)
+    }
+
+    ## Fisher information: I(b) = X' diag(wt × k/β²) X.
+    f7 <- function(b, y, x, mu, P, alpha = 0, wt = 1) {
+      beta   <- as.vector(alpha + x %*% b)
+      l1     <- length(b)
+      l2     <- length(y)
+      wt_vec <- if (length(wt) == 1L) rep(wt, l2) else as.vector(wt)
+      Pout   <- matrix(0, nrow = l1, ncol = l1)
+      for (i in seq_len(l2)) {
+        xi   <- x[i, , drop = FALSE]
+        Pout <- Pout + (wt_vec[i] * k / beta[i]^2) * (t(xi) %*% xi)
+      }
+      Pout
+    }
+
+  }
+
   out=list(f1=f1,f2=f2,f3=f3,f4=f4,
            #f5=f5,
            #f6=f6,
