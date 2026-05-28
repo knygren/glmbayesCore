@@ -418,3 +418,71 @@ The tables below map vignette sections to chapters in @Agresti2015.
 | 4.2.6 Deviance Information Criterion (DIC)     | 10.3 Bayesian Generalized Linear Models               | Derivation of \(\text{DIC} = \bar{D} + p_D\); guidelines for using DIC to compare Bayesian models under a common prior. |
 | 4.2.7 Expected mean dispersion                | 10.2 Bayesian Linear Models                            | Bayesian estimation of the Gaussian error variance \((\sigma^2)\) via conjugate priors; posterior mean of \(\sigma^2\). |
 | 4.2.8 Square-root of expected mean dispersion | 10.2 Bayesian Linear Models                            | Transformation of posterior \(\sigma^2\) into \(\sigma\) (residual standard-error analogue); direct comparison to classical RSE. |
+
+## 6.2 Bayes Rules!
+
+The main example above uses Dobson plant weight data.  For the Capital Bikeshare Normal regression in [@JohnsonLauEtAl2022] Chapter 9 (`rides ~ temp_feel` with informative priors), see **Appendix A** below.
+
+---
+
+# Appendix A. Bayes Rules! companion — simple Normal regression
+
+**Book:** [@JohnsonLauEtAl2022], Chapter 9 — *Simple Normal regression*  
+**Data:** `bayesrules::bikes`  
+**Informative book priors (used here):** \(\beta_{0c} \sim N(5000, 1000^2)\), \(\beta_1 \sim N(100, 40^2)\) on the centered intercept / `temp_feel` scale (book Eq. 9.7).  
+**glmbayes:** `lmb()` with matching `dNormal(mu, Sigma)`; **fixed** dispersion at the MLE (book also models \(\sigma\); see Chapter 15).
+
+> Requires suggested package **`bayesrules`**.  Comparison values are taken from the book's `tidy(bike_model)` table (Ch. 9), not from a live **`rstanarm`** fit.
+
+```{r br03-setup, eval = requireNamespace("bayesrules", quietly = TRUE)}
+library(bayesrules)
+bikes_br <- within(bayesrules::bikes, {
+  temp_feel_c <- temp_feel - mean(temp_feel)
+})
+
+ps_bikes <- Prior_Setup(rides ~ temp_feel_c, family = gaussian(), data = bikes_br)
+coef_br03 <- rownames(ps_bikes$mu)   ## Prior_Setup: names on rows, not colnames(mu)
+mu_br <- matrix(c(5000, 100), nrow = 1)
+colnames(mu_br) <- coef_br03
+Sigma_br <- diag(c(1000^2, 40^2))
+dimnames(Sigma_br) <- list(coef_br03, coef_br03)
+
+## Posterior summaries reported in Bayes Rules! Ch. 9 (rides ~ temp_feel; stan_glm output)
+book_br03 <- data.frame(
+  parameter = c("(Intercept)", "temp_feel_c"),
+  book_mean = c(-2194, 82.2),
+  book_sd   = c(362, 5.15),
+  note = c(
+    "Book fits rides ~ temp_feel (uncentered); intercept not comparable to centered fit",
+    "Slope matches book temp_feel coefficient (Ch. 9 tidy table)"
+  ),
+  check.names = FALSE
+)
+```
+
+```{r br03-lmb, eval = requireNamespace("bayesrules", quietly = TRUE)}
+set.seed(2026)
+lmb_bikes <- lmb(
+  rides ~ temp_feel_c,
+  data = bikes_br,
+  pfamily = dNormal(mu = mu_br, Sigma = Sigma_br, dispersion = ps_bikes$dispersion),
+  n = 2000
+)
+print(lmb_bikes)
+```
+
+```{r br03-compare, eval = requireNamespace("bayesrules", quietly = TRUE)}
+br03_compare <- data.frame(
+  parameter = book_br03$parameter,
+  `Book mean` = book_br03$book_mean,
+  `Book SD`   = book_br03$book_sd,
+  `lmb Post.Mean` = as.numeric(lmb_bikes$coef.means[book_br03$parameter]),
+  `lmb Post.Sd`   = sapply(book_br03$parameter, function(p)
+    sd(lmb_bikes$coefficients[, p, drop = TRUE])),
+  check.names = FALSE
+)
+knitr::kable(br03_compare, digits = 2,
+  caption = "Bayes Rules! Ch. 9 posterior vs. lmb() (informative priors; fixed sigma)")
+```
+
+The **`temp_feel_c`** row should be close to the book's **`temp_feel`** row (82.2, 5.15).  The intercept row differs because the book's reported `(Intercept)` is on the **uncentered** temperature scale.  With fixed \(\sigma^2\), posterior means need not match MCMC exactly but should be in the same ballpark.

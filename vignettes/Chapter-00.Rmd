@@ -171,6 +171,23 @@ The appendices document the mathematical and algorithmic foundations of the samp
   Full mathematical derivations for Gaussian calibration, Normal--Gamma and independent Normal--Gamma prior pieces, and the objects returned by `Prior_Setup()` (including `compute_gaussian_prior`).  
   <https://knygren.r-universe.dev/articles/glmbayes/Chapter-A12.html>
 
+## Companion textbooks
+
+Several vignettes include optional **appendices** that reproduce examples from [@JohnsonLauEtAl2022] using **glmbayes** syntax (`lmb()`, `glmb()`, `Prior_Setup()`, `dNormal()`).  Those appendices require the suggested package **`bayesrules`** (for data only); the main chapter body knits without it.  Posterior **comparison tables** use coefficient summaries **printed in the book** (not live `rstanarm` fits).
+
+| glmbayes vignette | Main teaching example | Bayes Rules! book | Appendix |
+|-------------------|----------------------|-------------------|----------|
+| **Chapter 02-S04** | Gamma–Poisson conjugacy (daily counts) | Ch. 12 (conjugate illustration) | **Appendix A** — Albert / LearnBayes heart transplants |
+| **Chapter 03** | Dobson plant weight (`lmb`) | **Ch. 9** — `bikes`, `rides ~ temp_feel` | **Appendix A** |
+| **Chapter 08** | Menarche (`glmb`, prior construction) | **Ch. 13** — `weather_perth`, logistic priors | **Appendix A** |
+| **Chapter 09** | Menarche (logit / probit / cloglog) | **Ch. 13** — `weather_perth`, `raintomorrow ~ humidity9am` | **Appendix A** |
+| **Chapter 10** | Dobson RCT Poisson counts | **Ch. 12** — `equality_index`, `laws ~ percent_urban + historical` | **Appendix A** |
+| **Chapter 11** | `carinsca` Gamma regression | *(no full Gamma-regression chapter)* | **Appendix A** — scope note + Ch. 02-S05 pointer |
+
+**Priors.**  Use **informative** Bayes Rules! priors only where the book is **fully** informative on the coefficients you fit (e.g. Ch. 9 bike ridership, Ch. 13 Perth rain).  Where the book is **only partially** informative (e.g. Ch. 12 Poisson intercept informative, slopes weak / autoscale), the appendix uses **`Prior_Setup()`** defaults for **`glmb()`** / **`lmb()`**.  Encode fully informative book beliefs on the **link scale** as `dNormal(mu, Sigma)`; fixed dispersion at the MLE where the main chapter does (see Chapters 03, 08, 11).
+
+**Other texts.**  Chapter 01 and Chapter 03 §6.1 map sections to @Agresti2015.  Chapter 02-S04 Appendix A maps to @Albert2009 / **LearnBayes**.  Additional textbook appendices may be added in the same pattern.
+
 ---
 
 Together, these chapters and appendices form a coherent progression: from basic usage and model specification, through applied Bayesian GLMs, to the mathematical and computational details that underlie the envelope-based samplers and GPU-accelerated implementations in **glmbayes**.

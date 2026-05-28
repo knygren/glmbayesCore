@@ -20,6 +20,7 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(glmbayes)
+if (requireNamespace("bayesrules", quietly = TRUE)) library(bayesrules)
 ```
 
 ---
@@ -43,7 +44,7 @@ The joint likelihood is
 
 Everything relevant for updating beliefs about \(\lambda\) is captured by two sufficient statistics: \(n\) (number of observations) and \(\sum_i y_i\) (total observed count).
 
-**With exposure.**  In many applications the counts are observed over different exposure periods \(e_i\) (time, area, number of opportunities).  The model becomes \(Y_i \mid \lambda \sim \mathrm{Poisson}(e_i \lambda)\), and the sufficient statistics become \(\sum_i e_i\) and \(\sum_i y_i\).  This extension is used in Section 3 with the heart transplant data.
+**With exposure.**  In many applications the counts are observed over different exposure periods \(e_i\) (time, area, number of opportunities).  The model becomes \(Y_i \mid \lambda \sim \mathrm{Poisson}(e_i \lambda)\), and the sufficient statistics become \(\sum_i e_i\) and \(\sum_i y_i\).  An exposure-weighted example appears in **Appendix A** ([@Albert2009]).
 
 ### 1.2 Prior
 
@@ -95,7 +96,7 @@ again a weighted average of the prior mean and the data mean.
 
 ## 2. BayesRules! illustration
 
-The **`bayesrules`** package [@JohnsonLauEtAl2022] provides `plot_gamma_poisson()` and `summarize_gamma_poisson()` for visualizing the Gamma–Poisson update.
+The **`bayesrules`** package [@JohnsonLauEtAl2022] provides `plot_gamma_poisson()` and `summarize_gamma_poisson()` for visualizing the Gamma–Poisson update.  The same scenario appears in the Bayes Rules! conjugate vignette and in Chapter 12 of the book.
 
 **Scenario.**  You observe daily bicycle rental counts \(y_1, \dots, y_9\) from the first nine days of a year.  The data are \(y = (1, 1, 1, 0, 0, 0, 0, 0, 0)\), giving \(\sum y = 3\) across \(n = 9\) days.  Your prior belief is a **\(\Gamma(3, 4)\)** distribution on the daily rate \(\lambda\) (prior mean = 0.75 rentals/day).
 
@@ -112,7 +113,6 @@ post_rate_br  <- br_rate  + br_n              ## 4 + 9 = 13
 
 ```{r gp-br-plot, eval = requireNamespace("bayesrules", quietly = TRUE)}
 library(bayesrules)
-## Overlay prior, scaled likelihood, and posterior
 plot_gamma_poisson(
   shape      = br_shape,
   rate       = br_rate,
@@ -125,16 +125,76 @@ plot_gamma_poisson(
 ```
 
 ```{r gp-br-summary, eval = requireNamespace("bayesrules", quietly = TRUE)}
-## Tabular summary of prior, likelihood, and posterior
 summarize_gamma_poisson(shape = br_shape, rate = br_rate,
                         sum_y = sum(br_y_df$y), n = br_n)
 ```
 
 **Reading the output.**  The posterior is \(\Gamma(6, 13)\) with mean \(6/13 \approx 0.46\).  The data (mean \(\bar y = 0.33\)) have pulled the posterior mean down from the prior mean (0.75), and the posterior is noticeably tighter.
 
+```{r gp-analytic}
+gp_analytic <- data.frame(
+  Example = "Bayes Rules! daily counts",
+  n = br_n,
+  `sum(y)` = sum(br_y_df$y),
+  Posterior = sprintf("Gamma(%d, %d)", post_shape_br, post_rate_br),
+  Mean = post_shape_br / post_rate_br,
+  SD = sqrt(post_shape_br) / post_rate_br,
+  check.names = FALSE
+)
+knitr::kable(gp_analytic, digits = 4,
+  caption = "Conjugate Gamma--Poisson posterior (Bayes Rules! scenario)")
+```
+
 ---
 
-## 3. Real data: heart transplant mortality (@Albert2009)
+## 3. Fitting with **`glmb()`**
+
+The scalar Gamma–Poisson model maps to **`glmb()`** with `family = poisson(link = "identity")` and `dGamma(shape, rate, beta, Inv_Dispersion = FALSE)`.  The single coefficient is the rate \(\lambda\).
+
+```{r gp-glmb}
+gp_beta <- matrix(br_shape / br_rate, 1L, 1L, dimnames = list(NULL, "(Intercept)"))
+gp_pf   <- dGamma(shape = br_shape, rate = br_rate,
+                  beta = gp_beta, Inv_Dispersion = FALSE)
+
+set.seed(2026)
+fit_gp <- glmb(
+  n       = 20000,
+  y ~ 1,
+  data    = br_y_df,
+  weights = rep(1L, br_n),
+  family  = poisson(link = "identity"),
+  pfamily = gp_pf
+)
+print(fit_gp)
+```
+
+```{r gp-compare}
+gp_compare <- data.frame(
+  Example = "Bayes Rules! daily counts",
+  Posterior = gp_analytic$Posterior,
+  `Analytic Mean` = gp_analytic$Mean,
+  `Analytic SD`   = gp_analytic$SD,
+  `glmb Post.Mean` = fit_gp$coef.means["(Intercept)"],
+  `glmb Post.Sd`   = sd(fit_gp$coefficients[, "(Intercept)", drop = TRUE]),
+  check.names = FALSE
+)
+knitr::kable(gp_compare, digits = 4,
+  caption = "Analytic vs. glmb() posterior mean and SD")
+```
+
+The **`glmb Post.Mean`** and **`glmb Post.Sd`** columns should match the analytic **Mean** and **SD** to Monte Carlo error because `dGamma(Inv_Dispersion = FALSE)` implements the exact conjugate update.
+
+---
+
+## 4. Connection to glmbayes
+
+The scalar Gamma–Poisson model is the conjugate prototype for **Poisson `glmb()` with `family = poisson(link = "identity")`**.  In that setting the single coefficient is the rate \(\lambda\), the prior is `dGamma(shape, rate, beta, Inv_Dispersion = FALSE)`, and the posterior update is the closed form above.
+
+For general Poisson **regression** with covariates (log link), conjugacy is lost and `glmb()` uses envelope-based accept–reject sampling with a `dNormal()` prior on the regression coefficients (Chapter 10).  The Bayes Rules! **equality_index** Poisson regression example is worked in **Chapter 10, Appendix A**.
+
+---
+
+# Appendix A. Heart transplant mortality (@Albert2009)
 
 The **`hearttransplants`** dataset [@Albert2020LearnBayes; @ChristiansenMorris1995] records, for each of 94 U.S. hospitals, the **exposure** `e` (expected deaths under the national baseline rate) and **observed deaths** `y` within 30 days of surgery.  The model is \(y_i \mid \lambda_i \sim \mathrm{Poisson}(e_i \lambda_i)\) where \(\lambda_i\) is the hospital's standardized mortality ratio.
 
@@ -178,13 +238,11 @@ knitr::kable(ht_albert, digits = 6,
   caption = "Albert Ch. 3.2: analytic posterior mean and SD (shape--rate Gamma)")
 ```
 
-### 3.1 Fitting with **`glmb()`**
+### A.1 Fitting with **`glmb()`**
 
 The exposure enters as `weights`.  The conjugate sampler updates \(\Gamma(\alpha_0 + y,\; \beta_0 + e)\) exactly.
 
-**Hospital A.**
-
-```{r ht-glmb-A}
+```{r ht-glmb-A, eval = requireNamespace("LearnBayes", quietly = TRUE)}
 ht_beta <- matrix(alpha0_ht / beta0_ht, 1L, 1L, dimnames = list(NULL, "(Intercept)"))
 ht_pf   <- dGamma(shape = alpha0_ht, rate = beta0_ht,
                   beta = ht_beta, Inv_Dispersion = FALSE)
@@ -195,16 +253,14 @@ fit_A <- glmb(n = 20000, y ~ 1, data = data.frame(y = yobs_A),
 print(fit_A)
 ```
 
-**Hospital B.**
-
-```{r ht-glmb-B}
+```{r ht-glmb-B, eval = requireNamespace("LearnBayes", quietly = TRUE)}
 set.seed(2026)
 fit_B <- glmb(n = 20000, y ~ 1, data = data.frame(y = yobs_B),
               weights = ex_B, family = poisson(link = "identity"), pfamily = ht_pf)
 print(fit_B)
 ```
 
-```{r ht-glmb-compare}
+```{r ht-glmb-compare, eval = requireNamespace("LearnBayes", quietly = TRUE)}
 ht_compare <- data.frame(
   Hospital = c("A", "B"),
   e = c(ex_A, ex_B),
@@ -222,15 +278,7 @@ knitr::kable(ht_compare, digits = 6,
   caption = "Albert analytic vs. glmb() posterior mean and SD")
 ```
 
-Each fit is for **one hospital**: `(Intercept)` is the posterior draw for that hospital's rate \(\lambda\).  The **`glmb Post.Mean`** and **`glmb Post.Sd`** columns should match Albert's **Mean** and **SD** to Monte Carlo error.  Other `summary.glmb` lines (null mode, deviance, DIC) use generic GLM output and are not part of Albert's summaries.
-
----
-
-## 4. Connection to glmbayes
-
-The scalar Gamma–Poisson model is the conjugate prototype for **Poisson `glmb()` with `family = poisson(link = "identity")`**.  In that setting the single coefficient is the rate \(\lambda\), the prior is `dGamma(shape, rate, beta, Inv_Dispersion = FALSE)`, and the posterior update is the closed form above.
-
-For general Poisson **regression** with covariates (log link), conjugacy is lost and `glmb()` uses envelope-based accept–reject sampling with a `dNormal()` prior on the regression coefficients (Chapter 10).
+Each fit is for **one hospital**: `(Intercept)` is the posterior draw for that hospital's rate \(\lambda\).  The **`glmb Post.Mean`** and **`glmb Post.Sd`** columns should match Albert's **Mean** and **SD** to Monte Carlo error.
 
 ---
 
@@ -240,5 +288,5 @@ For general Poisson **regression** with covariates (log link), conjugacy is lost
 - **Chapter-02-S02** — Normal–Normal conjugacy for one mean.
 - **Chapter-02-S03** — Beta–Binomial conjugacy for one proportion.
 - **Chapter-02-S05** — Gamma–Gamma conjugacy for a Gamma response rate.
+- **Chapter 10, Appendix A** — Bayes Rules! Poisson regression (`equality_index`).
 - **Chapter 18** — hierarchical Poisson mixed model (BikeSharing; block Gibbs with `rglmb`).
-- **Chapter 10** — Poisson regression with **`glmb()`**.

@@ -518,3 +518,58 @@ This chapter demonstrated:
 
 In the next chapter, we extend these ideas to **Poisson models**, which share many structural similarities but introduce new considerations for count data.
 
+---
+
+# Appendix A. Bayes Rules! companion — Perth rain (`weather_perth`)
+
+**Book:** [@JohnsonLauEtAl2022], Chapter 13 — same model and **informative** priors as Chapter 08, Appendix A.  
+**Model:** `raintomorrow ~ humidity9am` (logit link)
+
+> Requires **`bayesrules`**.
+
+```{r br09-setup, eval = requireNamespace("bayesrules", quietly = TRUE)}
+library(bayesrules)
+weather <- bayesrules::weather_perth
+weather$raintomorrow <- as.integer(weather$raintomorrow == "Yes")
+mu_w <- matrix(c(-1.4, 0.07), nrow = 1)
+colnames(mu_w) <- c("(Intercept)", "humidity9am")
+Sigma_w <- diag(c(0.7^2, 0.035^2))
+dimnames(Sigma_w) <- list(colnames(mu_w), colnames(mu_w))
+book_br09 <- data.frame(
+  parameter = c("(Intercept)", "humidity9am"),
+  book_lo   = c(-5.08785, 0.04147),
+  book_hi   = c(-4.13450, 0.05487),
+  book_mid  = c(-4.611175, 0.04817),
+  check.names = FALSE
+)
+```
+
+```{r br09-fit, eval = requireNamespace("bayesrules", quietly = TRUE)}
+set.seed(2026)
+glmb_rain <- glmb(
+  raintomorrow ~ humidity9am,
+  family  = binomial(),
+  pfamily = dNormal(mu = mu_w, Sigma = Sigma_w),
+  data    = weather,
+  n       = 2000
+)
+print(glmb_rain)
+```
+
+```{r br09-compare, eval = requireNamespace("bayesrules", quietly = TRUE)}
+br09_compare <- data.frame(
+  parameter = book_br09$parameter,
+  `Book 80% lo` = book_br09$book_lo,
+  `Book 80% hi` = book_br09$book_hi,
+  `Book midpoint` = book_br09$book_mid,
+  `glmb Post.Mean` = as.numeric(glmb_rain$coef.means[book_br09$parameter]),
+  `glmb Post.Sd`   = sapply(book_br09$parameter, function(p)
+    sd(glmb_rain$coefficients[, p, drop = TRUE])),
+  check.names = FALSE
+)
+knitr::kable(br09_compare, digits = 4,
+  caption = "Bayes Rules! Ch. 13 vs. glmb() (informative priors)")
+```
+
+Multivariable extensions (`humidity3pm`, `raintoday`) use **`Prior_Setup()`** defaults on extra coefficients unless you add further **informative** book priors (Chapter 14).
+

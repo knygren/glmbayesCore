@@ -326,3 +326,59 @@ In later chapters, we extend these ideas to:
 - informative priors  
 - prediction and posterior predictive checks  
 - GPU‑accelerated Poisson models for large datasets
+
+---
+
+# Appendix A. Bayes Rules! companion — `equality_index` Poisson regression
+
+**Book:** [@JohnsonLauEtAl2022], Chapter 12 — *Poisson regression*  
+**Data:** `bayesrules::equality_index` (California removed, as in the book)  
+**Model:** `laws ~ percent_urban + historical` (log link)  
+**Priors in this appendix:** **`Prior_Setup()`** defaults only.  The book uses an informative intercept prior plus weak / autoscaling priors on slopes (partially informative specification); we do not mix in the book intercept prior here.
+
+> Requires **`bayesrules`**.  The table below compares **book** posterior summaries (`tidy(equality_model)`, Ch. 12) to **`glmb()`** under **glmbayes** default priors.
+
+```{r br10-setup, eval = requireNamespace("bayesrules", quietly = TRUE)}
+library(bayesrules)
+equality <- bayesrules::equality_index
+equality <- equality[equality$laws < max(equality$laws), ]
+
+ps_eq <- Prior_Setup(laws ~ percent_urban + historical,
+                     family = poisson(), data = equality)
+
+## Bayes Rules! Ch. 12 tidy(equality_model) posterior estimates (log link)
+book_br10 <- data.frame(
+  parameter = c("(Intercept)", "percent_urban", "historicalgop", "historicalswing"),
+  book_mean = c(1.71, 0.0164, -1.52, -0.610),
+  book_sd   = c(0.303, 0.00353, 0.134, 0.103),
+  check.names = FALSE
+)
+```
+
+```{r br10-glmb, eval = requireNamespace("bayesrules", quietly = TRUE)}
+set.seed(2026)
+glmb_eq <- glmb(
+  laws ~ percent_urban + historical,
+  family  = poisson(),
+  pfamily = dNormal(mu = ps_eq$mu, Sigma = ps_eq$Sigma),
+  data    = equality,
+  n       = 2000
+)
+print(glmb_eq)
+```
+
+```{r br10-compare, eval = requireNamespace("bayesrules", quietly = TRUE)}
+br10_compare <- data.frame(
+  parameter = book_br10$parameter,
+  `Book mean` = book_br10$book_mean,
+  `Book SD`   = book_br10$book_sd,
+  `glmb Post.Mean` = as.numeric(glmb_eq$coef.means[book_br10$parameter]),
+  `glmb Post.Sd`   = sapply(book_br10$parameter, function(p)
+    sd(glmb_eq$coefficients[, p, drop = TRUE])),
+  check.names = FALSE
+)
+knitr::kable(br10_compare, digits = 4,
+  caption = "Bayes Rules! Ch. 12 (informative + weak book priors) vs. glmb() with Prior_Setup() defaults")
+```
+
+Posterior means will differ from the book because the book's fit combines an informative intercept with weakly informative slope priors, while this fit uses a single weak **`Prior_Setup()`** specification throughout.

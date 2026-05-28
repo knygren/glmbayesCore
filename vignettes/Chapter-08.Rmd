@@ -239,6 +239,64 @@ This table providence credible interval information at several significance leve
 
 As we noted above, the posterior estimates for the intercept appear broadly consistent with the prior specification, so in a sense our prior beliefs are "validated" for the 13 year old girls. As the slope is substantially larger than in our prior specification, however, it seems like we underestimated the % of girls at age 15 who had already had their first period.  The percentage is apparently substantially higher than the 90% we specificed using our prior and if we are Bayesians we should hence update our beliefs substantially based on the data. To understand exactly how much requires us to look at the model predictions(in particular predictions on the inverse link scale). We will do so in a later chapter.
 
+# Appendix A. Bayes Rules! companion — logistic priors on `weather_perth`
+
+**Book:** [@JohnsonLauEtAl2022], Chapter 13 — *Logistic regression* (model 13.5)  
+**Data:** `bayesrules::weather_perth`  
+**Informative book priors (used here):** \(\beta_0 \sim N(-1.4, 0.7^2)\), \(\beta_1 \sim N(0.07, 0.035^2)\) on the logit scale.  
+**glmbayes:** `glmb()` with the same prior means and SDs in `dNormal(mu, Sigma)`.
+
+> Requires suggested package **`bayesrules`**.  Book comparison uses **80% posterior intervals** from Ch. 13 (`posterior_interval(rain_model_1)`); midpoints are shown as a rough book "mean."
+
+```{r br08-setup, eval = requireNamespace("bayesrules", quietly = TRUE)}
+library(bayesrules)
+weather <- bayesrules::weather_perth
+weather$raintomorrow <- as.integer(weather$raintomorrow == "Yes")
+
+mu_w <- matrix(c(-1.4, 0.07), nrow = 1)
+colnames(mu_w) <- c("(Intercept)", "humidity9am")
+Sigma_w <- diag(c(0.7^2, 0.035^2))
+dimnames(Sigma_w) <- list(colnames(mu_w), colnames(mu_w))
+
+## Bayes Rules! Ch. 13: 80% posterior intervals on log-odds scale (rain_model_1)
+book_br08 <- data.frame(
+  parameter = c("(Intercept)", "humidity9am"),
+  book_lo   = c(-5.08785, 0.04147),
+  book_hi   = c(-4.13450, 0.05487),
+  book_mid  = c(-4.611175, 0.04817),
+  check.names = FALSE
+)
+```
+
+```{r br08-glmb, eval = requireNamespace("bayesrules", quietly = TRUE)}
+set.seed(2026)
+glmb_w <- glmb(
+  raintomorrow ~ humidity9am,
+  family  = binomial(),
+  pfamily = dNormal(mu = mu_w, Sigma = Sigma_w),
+  data    = weather,
+  n       = 2000
+)
+print(glmb_w)
+```
+
+```{r br08-compare, eval = requireNamespace("bayesrules", quietly = TRUE)}
+br08_compare <- data.frame(
+  parameter = book_br08$parameter,
+  `Book 80% lo` = book_br08$book_lo,
+  `Book 80% hi` = book_br08$book_hi,
+  `Book midpoint` = book_br08$book_mid,
+  `glmb Post.Mean` = as.numeric(glmb_w$coef.means[book_br08$parameter]),
+  `glmb Post.Sd`   = sapply(book_br08$parameter, function(p)
+    sd(glmb_w$coefficients[, p, drop = TRUE])),
+  check.names = FALSE
+)
+knitr::kable(br08_compare, digits = 4,
+  caption = "Bayes Rules! Ch. 13 (80% intervals) vs. glmb() with informative priors")
+```
+
+The prior intercept \(-1.4\) on the logit scale corresponds to \(\mathrm{logit}^{-1}(-1.4) \approx 0.20\), matching the book's "about 20% chance of rain on a typical day."  **`glmb Post.Mean`** for `humidity9am` should fall between the book's 80% bounds (0.0415, 0.0549) and below the prior mean 0.07.
+
 # Concluding Discussion
 
 In this note, we walked through an example illustrating a process for setting of the prior in the case of the *Age of Menarche* model based on the data in [@VenablesRipley2002]. There are several approaches taken here the we believe analysts can find useful in setting reasonable priors. These include:

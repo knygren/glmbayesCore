@@ -412,3 +412,19 @@ In later vignettes, we extend these ideas to:
 - Gamma models with unknown dispersion and hierarchical priors,  
 - Gamma regression combined with other components in larger GLM systems,  
 - and specialized accept‑reject schemes for dispersion parameters.
+
+---
+
+# Appendix A. Bayes Rules! companion
+
+[@JohnsonLauEtAl2022] does **not** include a dedicated chapter on Gamma regression.  Chapter 12.7 notes that `stan_glm()` can use `family = Gamma`, but the book's worked positive-response examples (e.g. `cherry_blossom_sample` finishing times) are analyzed with **Gaussian** models in Chapters 15 and 17.
+
+**In this package:**
+
+| Topic | Where to read |
+|-------|----------------|
+| Gamma **regression** (`Gamma` family, log link, `carinsca`) | Main body of this chapter |
+| Scalar **Gamma–Gamma** conjugate rate | **Chapter 02-S05** (`cherry_blossom_sample` with `dGamma(Inv_Dispersion = FALSE)`) |
+| Unknown Gamma dispersion | **Chapter 15** (`dNormal_Gamma`, `glmbdisp`) |
+
+If you are following Bayes Rules! sequentially, complete Chapter 12 (Poisson) and the **Chapter 10, Appendix A** example before Gamma regression here; use Chapter 02-S05 when you need conjugate intuition for a Gamma-distributed rate with known shape.

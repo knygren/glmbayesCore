@@ -120,7 +120,7 @@ After working through the four sub-vignettes, the following table summarizes how
 | Conjugate prototype | Where it generalizes in **glmbayes** |
 |---------------------|--------------------------------------|
 | Beta–Binomial | Binomial **`glmb()`** with normal priors on regression coefficients (Chapters 7–9) |
-| Gamma–Poisson | Conjugate \(\Gamma\) rate prior + **`glmb()`** (Chapter-02-S04); general Poisson regression (Chapter 10) |
+| Gamma–Poisson | Conjugate \(\Gamma\) rate prior + **`glmb()`** (Chapter-02-S04, Bayes Rules! main example); general Poisson regression (Chapter 10, Appendix A) |
 | Gamma–Gamma | **`glmb()`** with `Gamma(link="identity")` and `dGamma(Inv_Dispersion=FALSE, lik_shape=k)` (Chapter-02-S05); non-conjugate Gamma regression with `Gamma(log)` (Chapter 10) |
 | Normal–Normal | **`lmb()`** for multivariate Gaussian regression (Chapter 3) |
 
