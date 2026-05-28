@@ -34,3 +34,4 @@
 ^rds_check\.txt$
 ^Rplots\.pdf$
 ^legacy_c_code$
+^inst/DESIGN_RGLM_BLOCKS\.md$
