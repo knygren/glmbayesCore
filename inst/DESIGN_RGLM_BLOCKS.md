@@ -56,8 +56,7 @@ Aligned with existing simfuncs (`rNormal_reg`, `rNormalGamma_reg`,
 | **R (internal)** | `.rNormalGLMBlocks_cpp()` | `R/rcpp_wrappers.R` |
 | **R helpers** | `normalize_block()`, `normalize_prior_for_blocks()` | **`R/simfunction_block_utils.R`** (or top of `simfunction_block.R` until small) |
 | **C++ (export)** | `rNormalGLMBlocks_cpp_export()` | `src/export_wrappers.cpp` |
-| **C++ (core, multi)** | `rNormalGLMBlocks()` | `src/rNormalGLMBlocks.cpp` (or extend `rNormalGLM.cpp`) |
-| **C++ (core, one block)** | `rNormalGLMBlock()` | same; extracted from `rNormalGLM()` |
+| **C++ (core)** | `rNormalGLMBlocks()` | `src/rNormalGLMBlocks.cpp` — loops blocks, calls `rNormalGLM()` each time |
 
 **R file pairing:** **`R/simfunction.R`** holds **`pfamily$simfun`** IID samplers
 (`rNormal_reg`, …). **`R/simfunction_block.R`** holds block **full conditionals**
@@ -128,7 +127,6 @@ rNormalGLM_reg_block(
   Gridtype = 2L,
   n_envopt = NULL,
   use_parallel = TRUE,     # within-block draw parallelism (n > 1)
-  parallel_blocks = FALSE, # across-block parallelism (Gibbs-friendly)
   use_opencl = FALSE,
   verbose = FALSE,
   progbar = FALSE
@@ -269,7 +267,7 @@ no preprocessing (same contract as `.rNormalGLM_cpp()`).
   f2, f3, start,
   family, link,
   Gridtype, n_envopt,
-  use_parallel, parallel_blocks,
+  use_parallel,
   use_opencl, verbose
 )
 ```
@@ -280,41 +278,39 @@ for minimal SEXP payload.
 
 ### `f2` / `f3`
 
-Still required for **R `optim`** inside each `rNormalGLMBlock()` until Phase 4.
+Still required for **R `optim`** inside each per-block `rNormalGLM()` call until Phase 4.
 Passed once from `glmbfamfunc(family)` on the R side.
 
 ---
 
 ## 7. C++ structure
 
-### Refactor
+### Implementation
 
-1. Extract **`rNormalGLMBlock()`** from body of **`rNormalGLM()`** (single block,
-   full pipeline).
-2. Implement **`rNormalGLMBlocks()`**:
-   - loop `b = 0 .. k-1`
-   - build Armadillo views / slices for `y`, `x`, `offset`, `wt` via `row_blocks[b]`
-   - `mu_b`, `P_b` from `mu.col(b)` or shared
-   - `out_b = rNormalGLMBlock(...)`
-   - cbind `coefficients`; collect `Envelope[[b]]` if returned
-3. **`rNormalGLM()`** remains: `k == 1` equivalent (no behaviour change).
+**`rNormalGLMBlocks()`** only (no separate single-block C++ wrapper):
+
+- loop `b = 0 .. k-1`
+- slice `y`, `x`, `offset`, `wt` via `row_blocks[b]`
+- `mu_b`, `P_b` from `mu.col(b)` or shared
+- `out_b = rNormalGLM(...)` — the existing non-block sampler
+- stack `coefficients` / `coef.mode` as `k × l1` matrices
+
+**`rNormalGLM()`** is unchanged; a single-block call is just `k == 1`.
 
 ### Parallelism
 
 | Flag | Effect |
 |------|--------|
-| `use_parallel && n > 1` | `rNormalGLM_std_parallel` inside block |
-| `parallel_blocks` | `RcppParallel::parallelFor` over block index `b` |
+| `use_parallel && n > 1` | `rNormalGLM_std_parallel` inside a block only |
+| Block loop | **Serial** over `b = 0 .. k-1` (no across-block parallelism) |
 
-Do not parallelize both levels without a thread budget policy (document:
-default `parallel_blocks = FALSE`).
+Across-block parallelism is intentionally omitted for Gibbs-friendly, reproducible chains.
 
 ### Files to touch
 
 | File | Change |
 |------|--------|
-| `src/rNormalGLM.cpp` | Extract `rNormalGLMBlock()` |
-| `src/rNormalGLMBlocks.cpp` | New (optional split) |
+| `src/rNormalGLMBlocks.cpp` | `rNormalGLMBlocks()` loop → `rNormalGLM()` |
 | `src/simfuncs.h` | Declarations |
 | `src/export_wrappers.cpp` | `rNormalGLMBlocks_cpp_export` |
 | `R/RcppExports.R` | Generated |
@@ -334,9 +330,9 @@ Run **`Rcpp::compileAttributes()`** after adding exports.
 |-------|-------------|
 | **0** | This document (done) |
 | **1** | **Done (R):** `normalize_block`, `normalize_prior_for_blocks`, `rNormalGLM_reg_block` → **`rNormal_reg(n=1)`** per block; return **`k × l1`** matrices |
-| **2** | C++: `rNormalGLMBlock`, `rNormalGLMBlocks`, wire `.Call` |
+| **2** | C++: `rNormalGLMBlocks`, wire `.Call` |
 | **3** | Tests: `k == 1` vs `rNormal_reg`; two-block toy; offset slicing; shared vs per-block prior |
-| **4** | Perf: `parallel_blocks`; optional C++ mode finder (`f2_f3_*`) replacing per-block `optim` |
+| **4** | Perf: optional C++ mode finder (`f2_f3_*`) replacing per-block `optim` |
 | **5** | Docs: roxygen, `NEWS.md`, vignette cross-link (Chapter 17 / Eight Schools) |
 
 ---
@@ -385,5 +381,5 @@ samplers live in **`simfunction_block.R`** only (Section 4b).
 
 | Date | Note |
 |------|------|
-| 2026-05-28 | Initial design; R: `rNormalGLM_reg_block`; C++: `rNormalGLMBlock`, `rNormalGLMBlocks`. |
+| 2026-05-28 | Initial design; R: `rNormalGLM_reg_block`; C++: `rNormalGLMBlocks` (loop → `rNormalGLM`). |
 | 2026-05-28 | R files: `simfunction_block.R`, `simfunction_block_utils.R`; integration policy (no `rglmb`/`rlmb` v1); future `rglmb_block` / `lmerb` noted. |

@@ -10,6 +10,7 @@
  * @section ImplementedIn
  *   These declarations are implemented in:
  *     - rNormalGLM.cpp
+ *     - rNormalGLMBlocks.cpp
  *     - rIndepNormalGammaReg.cpp
  *     - rNormalGammaReg.cpp
  *     - rGammaGaussian.cpp
@@ -81,6 +82,30 @@ Rcpp::List rNormalGLM(
     NumericVector start,
     std::string family = "binomial",
     std::string link = "logit",
+    int Gridtype = 2,
+    int n_envopt = -1,
+    bool use_parallel = true,
+    bool use_opencl = false,
+    bool verbose = false
+);
+
+/// C++ counterpart to R \c rNormalGLM_reg_block(): loop over \c row_blocks,
+/// call \c rNormalGLM() per block. Not exported to R until Phase 2.
+Rcpp::List rNormalGLMBlocks(
+    int n,
+    NumericVector y,
+    NumericMatrix x,
+    NumericVector offset,
+    NumericVector wt,
+    NumericVector dispersion,
+    NumericMatrix mu,
+    List P_blocks,
+    bool prior_by_block,
+    List row_blocks,
+    Function f2,
+    Function f3,
+    std::string family,
+    std::string link,
     int Gridtype = 2,
     int n_envopt = -1,
     bool use_parallel = true,
