@@ -5,6 +5,10 @@ rNormalGLM_cpp_export <- function(n, y, x, mu, P, offset, wt, dispersion, f2, f3
     .Call(`_glmbayes_rNormalGLM_cpp_export`, n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
 }
 
+rNormalGLMBlocks_cpp_export <- function(n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, family = "binomial", link = "logit", Gridtype = 2L, n_envopt = -1L, use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE) {
+    .Call(`_glmbayes_rNormalGLMBlocks_cpp_export`, n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
+}
+
 rNormalReg_cpp_export <- function(n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family = "gaussian", link = "identity", Gridtype = 2L) {
     .Call(`_glmbayes_rNormalReg_cpp_export`, n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family, link, Gridtype)
 }
