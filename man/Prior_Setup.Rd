@@ -531,7 +531,6 @@ use with \code{\link{multi_lmb}} or \code{\link{multi_rlmb}}
 
 Other prior: 
 \code{\link{Prior_Check}()},
-\code{\link{block_prior_setup}()},
 \code{\link{multi_rlmb}()}
 }
 \concept{prior}

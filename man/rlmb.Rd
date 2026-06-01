@@ -243,8 +243,6 @@ inherited from class \code{glmb} and the methods and generic functions for class
 \code{lm} from which class \code{lmb} also inherits.
 
 glmbayes Modeling Functions
-\code{\link{block_glmb}()},
-\code{\link{block_lmb}()},
 \code{\link{glmb}()},
 \code{\link{lmb}()},
 \code{\link{multi_lmb}()},

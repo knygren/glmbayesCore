@@ -243,8 +243,6 @@ OpenCL/GPU: \insertCite{glmbayesChapter12,glmbayesChapterA10}{glmbayes}.
 and the methods and generic functions for classes \code{glm} and \code{lm} from which class \code{glmb} inherits.
 
 glmbayes Modeling Functions
-\code{\link{block_glmb}()},
-\code{\link{block_lmb}()},
 \code{\link{glmb}()},
 \code{\link{lmb}()},
 \code{\link{multi_lmb}()},

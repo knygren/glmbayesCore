@@ -1,4 +1,4 @@
-#' Summarize and print mlmb fits
+#' Summarize and print \code{mlmb} fits
 #'
 #' @description
 #' Methods for multi-response \code{\link{lmb}} fits (class \code{"mlmb"}).

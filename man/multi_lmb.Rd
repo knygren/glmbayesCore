@@ -113,7 +113,8 @@ This is the formula / \code{data} interface counterpart to
 \code{\link{multi_rlmb}} (matrix \code{y}, \code{x}). Each response column
 uses its own \code{pfamily_list[[j]]}. Use \code{\link{multi_prior_setup}}
 to build aligned priors, then \code{\link{summary.mlmb}} or
-\code{\link{print.mlmb}} for output styled like \code{\link[stats]{mlm}}.
+\code{\link{print.mlmb}} for output styled like \code{\link[stats]{summary.mlm}}
+(cf.\ \code{\link[stats]{lm}} with a matrix response via \code{cbind(...)}).
 }
 \examples{
 ## Multi-response lmb (iris): formula interface, mlmb class
@@ -152,8 +153,6 @@ summary(out_lmb)
 \code{\link[stats]{lm}} with \code{cbind} responses.
 
 glmbayes Modeling Functions
-\code{\link{block_glmb}()},
-\code{\link{block_lmb}()},
 \code{\link{glmb}()},
 \code{\link{lmb}()},
 \code{\link{multi_rlmb}()},

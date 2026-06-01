@@ -4,7 +4,7 @@
 \alias{summary.mlmb}
 \alias{print.mlmb}
 \alias{print.summary.mlmb}
-\title{Summarize and print mlmb fits}
+\title{Summarize and print \code{mlmb} fits}
 \usage{
 \method{summary}{mlmb}(object, ...)
 

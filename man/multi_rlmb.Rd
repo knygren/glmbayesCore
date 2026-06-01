@@ -338,8 +338,6 @@ summary(out_ing)
 \code{\link{rindepNormalGamma_reg}}
 
 glmbayes Modeling Functions
-\code{\link{block_glmb}()},
-\code{\link{block_lmb}()},
 \code{\link{glmb}()},
 \code{\link{lmb}()},
 \code{\link{multi_lmb}()},
@@ -357,8 +355,7 @@ glmbayes Simulation Functions
 
 Other prior: 
 \code{\link{Prior_Check}()},
-\code{\link{Prior_Setup}()},
-\code{\link{block_prior_setup}()}
+\code{\link{Prior_Setup}()}
 }
 \concept{modelfuns}
 \concept{prior}

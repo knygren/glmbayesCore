@@ -11,7 +11,8 @@
 #' \code{\link{multi_rlmb}} (matrix \code{y}, \code{x}). Each response column
 #' uses its own \code{pfamily_list[[j]]}. Use \code{\link{multi_prior_setup}}
 #' to build aligned priors, then \code{\link{summary.mlmb}} or
-#' \code{\link{print.mlmb}} for output styled like \code{\link[stats]{mlm}}.
+#' \code{\link{print.mlmb}} for output styled like \code{\link[stats]{summary.mlm}}
+#' (cf.\ \code{\link[stats]{lm}} with a matrix response via \code{cbind(...)}).
 #'
 #' @param formula A \code{\link{formula}} with a matrix response on the left-hand
 #'   side (typically \code{cbind(...)}).
