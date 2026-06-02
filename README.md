@@ -77,14 +77,38 @@ https://knygren.r-universe.dev/articles/glmbayes/Chapter-16.html
 As with `glm()`, models are defined by a formula for the linear predictor and a `family()` describing the likelihood and 
 link. In addition, `glmb()` requires a **pfamily** object specifying the prior.
 
-The supported likelihood families, link functions, and compatible pfamilies are:
+### Priors on regression coefficients
 
-| Likelihood family           | Link functions                    | Compatible pfamilies                                      |
-|-----------------------------|------------------------------------|------------------------------------------------------------|
-| Gaussian                    | identity                           | dNormal, dGamma, dNormal_Gamma, dIndependent_Normal_Gamma |
-| Poisson / Quasi-Poisson     | log                                | dNormal                                                    |
-| Binomial / Quasi-Binomial   | logit, probit, cloglog             | dNormal                                                    |
-| Gamma                       | log                                | dNormal, dGamma                                            |
+The primary table below covers priors on the regression coefficients **β**. The standard prior for
+all families is `dNormal`. The conjugate priors `dBeta` and `dGamma(Inv_Dispersion = FALSE)` provide
+closed-form IID posterior draws for intercept-only models with an identity link.
+
+| Likelihood family           | Link functions                         | Compatible pfamilies (coefficient priors)                            |
+|-----------------------------|----------------------------------------|----------------------------------------------------------------------|
+| Gaussian                    | identity                               | dNormal, dNormal_Gamma, dIndependent_Normal_Gamma                    |
+| Poisson / Quasi-Poisson     | log                                    | dNormal                                                              |
+| Poisson                     | identity *(intercept-only)*            | dGamma(Inv_Dispersion = FALSE) — conjugate Gamma–Poisson rate prior  |
+| Binomial / Quasi-Binomial   | logit, probit, cloglog                 | dNormal                                                              |
+| Binomial                    | identity *(intercept-only)*            | dBeta — conjugate Beta–Binomial probability prior                    |
+| Gamma                       | log                                    | dNormal                                                              |
+| Gamma                       | identity *(intercept-only)*            | dGamma(Inv_Dispersion = FALSE) — conjugate Gamma–Gamma rate prior    |
+
+`dNormal_Gamma` and `dIndependent_Normal_Gamma` also model precision jointly with the coefficients;
+see the precision/dispersion table below.
+
+### Priors on precision / dispersion
+
+`dGamma(Inv_Dispersion = TRUE)` (the default when `Inv_Dispersion` is omitted) places a Gamma prior
+on the inverse dispersion **1/φ** with the regression coefficients **β** held fixed. This is the
+precision prior used in Gibbs sampling steps for dispersion estimation.
+
+| Likelihood family | Link     | Compatible pfamilies (precision prior)      |
+|-------------------|----------|---------------------------------------------|
+| Gaussian          | identity | dGamma — prior on 1/σ² (precision)          |
+| Gamma             | log      | dGamma — prior on 1/φ (shape / dispersion)  |
+
+`dNormal_Gamma` and `dIndependent_Normal_Gamma` model **β** and precision jointly in a single
+conjugate step, avoiding the need for a separate Gibbs precision update.
 
 ### Prior_Setup
 
@@ -96,7 +120,10 @@ The returned list includes default settings for the following:
   - `dispersion` for use with the `dNormal()` prior (gaussian and Gamma families)
   - `Sigma_0`, `shape` and `rate` for use with the `dNormal_Gamma()` prior  
   - `shape_ING` and `rate` for use with `dIndependent_Normal_Gamma()` prior 
-  - `shape`, `rate_gamma` and `coefficients` for use with the `dGamma()` prior  
+  - `shape`, `rate_gamma` and `coefficients` for use with the `dGamma()` precision prior  
+- **Conjugate prior calibration components** (intercept-only models):  
+  - `conj_beta` (`shape1`, `shape2`, `beta`) for use with `dBeta()` (Binomial/identity)  
+  - `conj_poisson` (`shape`, `rate`, `beta`) for use with `dGamma(Inv_Dispersion = FALSE)` (Poisson/identity)  
 
 Optional arguments adjust prior weight, centering, and related settings (see the function help and vignette Chapter 04).
 
@@ -104,9 +131,15 @@ Optional arguments adjust prior weight, centering, and related settings (see the
 
 Assuming `ps <- Prior_Setup(...)`:
 
-- **All non‑Gaussian families:**  
+- **Non‑Gaussian families (log/logit/probit/cloglog links):**  
   Use `dNormal(mu = ps$mu, Sigma = ps$Sigma)`.  
   (For Gamma GLMs, also supply `dispersion` from the fitted GLM or from `ps`; see `example("glmb")`.)
+
+- **Binomial — conjugate Beta prior (identity link, intercept-only):**  
+  Use `dBeta(shape1 = ps$conj_beta$shape1, shape2 = ps$conj_beta$shape2, beta = ps$conj_beta$beta)`.
+
+- **Poisson — conjugate Gamma rate prior (identity link, intercept-only):**  
+  Use `dGamma(shape = ps$conj_poisson$shape, rate = ps$conj_poisson$rate, beta = ps$conj_poisson$beta, Inv_Dispersion = FALSE)`.
 
 - **Gaussian — normal prior with known dispersion:**  
   Use `dNormal(mu = ps$mu, Sigma = ps$Sigma, dispersion = ps$dispersion)`.
@@ -117,7 +150,7 @@ Assuming `ps <- Prior_Setup(...)`:
 - **Gaussian — independent Normal–Gamma:**  
   Use `dIndependent_Normal_Gamma(mu = ps$mu, Sigma = ps$Sigma, shape = ps$shape_ING, rate = ps$rate)`.
 
-- **Gaussian — dispersion via dGamma (coefficients fixed):**  
+- **Gaussian / Gamma — precision prior (coefficients fixed, for Gibbs):**  
   With `rate_dg <- if (!is.null(ps$rate_gamma)) ps$rate_gamma else ps$rate`, use  
   `dGamma(shape = ps$shape, rate = rate_dg, beta = ps$coefficients)`.
 
@@ -137,6 +170,15 @@ Use `example()` and `demo()` to explore built-in examples and demos for supporte
 
     ## Bayesian generalized linear models
     example("glmb")
+
+    ## Beta-Binomial conjugacy: dBeta() prior; Bechdel test (requires bayesrules)
+    ## See also: vignette("Chapter-02-S03", package = "glmbayes")
+    demo("Ex_12_BetaBinomial")
+
+    ## Gamma-Poisson conjugacy: dGamma(Inv_Dispersion=FALSE); bike counts + heart
+    ## transplant mortality (requires bayesrules; Appendix A requires LearnBayes)
+    ## See also: vignette("Chapter-02-S04", package = "glmbayes")
+    demo("Ex_13_GammaPoisson")
 
     ## Predictions for fitted glmb objects (newdata, type, etc.)
     example("predict.glmb")

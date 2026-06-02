@@ -58,14 +58,18 @@
 #' @param \ldots additional argument(s) for methods.
 #' @details
 #' \code{pfamily} is a generic with methods for fitted objects such as \code{\link{glmb}} and
-#' \code{\link{lmb}}. Many \code{glmb} models currently only implement the \code{dNormal()}
-#' prior family. The \code{Gamma()} response family works with \code{dGamma()}; the
-#' \code{gaussian()} family works with \code{dGamma()} and \code{dNormal_Gamma()}.
+#' \code{\link{lmb}}. The \code{dNormal()} prior is supported for all response families.
+#' The \code{gaussian()} family additionally supports \code{dNormal_Gamma()},
+#' \code{dIndependent_Normal_Gamma()}, and \code{dGamma()} (precision prior).
+#' Intercept-only models with an identity link support two closed-form conjugate priors:
+#' \code{dBeta()} for \code{binomial(link = "identity")} and
+#' \code{dGamma(Inv_Dispersion = FALSE)} for \code{poisson(link = "identity")} and
+#' \code{Gamma(link = "identity")}.
 #'
-#' A `pfamily` object represents a structured prior specification for use in Bayesian generalized linear modeling. 
-#' Each constructor function (e.g., `dNormal()`, `dGamma()`, `dNormal_Gamma()`) returns an object of class `"pfamily"` 
-#' containing the prior parameters, supported likelihood families, compatible link functions, and a simulation function 
-#' for posterior sampling.
+#' A `pfamily` object represents a structured prior specification for use in Bayesian generalized linear modeling.
+#' Each constructor function (e.g., `dNormal()`, `dGamma()`, `dNormal_Gamma()`, `dBeta()`) returns an object of
+#' class `"pfamily"` containing the prior parameters, supported likelihood families, compatible link functions,
+#' and a simulation function for posterior sampling.
 #'
 #' These priors are designed to integrate seamlessly with modeling functions such as `glmb()` and `rlmb()` in the 
 #' \pkg{glmbayes} package, which consume the `pfamily` object to define the prior distribution over model parameters. 
@@ -108,41 +112,64 @@
 #'   The concept of conjugate priors was first formalized by \insertCite{Raiffa1961}{glmbayes}, and further 
 #'   developed for regression models using g-prior structures by \insertCite{zellner1986gprior}{glmbayes}.
 #'
-#' - **`dGamma()`**: Defines a gamma prior over a scalar precision parameter, often used in hierarchical models 
-#'   or variance components. This prior is particularly relevant for Gamma likelihoods and dispersion modeling 
-#'   in exponential families \insertCite{Gelman2013,Dobson1990,McCullagh1989}{glmbayes}.
-#'   With Gaussian \code{\link{Prior_Setup}} output, prefer \code{rate_gamma} for \code{rate} when updating
-#'   dispersion with fixed \code{beta} (see Details above).
+#' - **`dGamma()`**: A Gamma prior with two distinct roles controlled by \code{Inv_Dispersion}:
+#'   \itemize{
+#'     \item \code{Inv_Dispersion = TRUE} (default): prior on the inverse dispersion (precision
+#'       \eqn{1/\phi} or shape \eqn{k}). Used for dispersion estimation in Gaussian and
+#'       Gamma(log) models, typically in a Gibbs step with \code{beta} held fixed
+#'       \insertCite{Gelman2013,Dobson1990,McCullagh1989}{glmbayes}.
+#'       With Gaussian \code{\link{Prior_Setup}} output, prefer \code{rate_gamma} for \code{rate}
+#'       (see Details above).
+#'     \item \code{Inv_Dispersion = FALSE}: conjugate Gamma prior on the rate parameter
+#'       \eqn{\beta} directly. Supports intercept-only models with an identity link:
+#'       Poisson (Gamma–Poisson conjugacy) and Gamma (Gamma–Gamma conjugacy).
+#'       Posterior draws are closed-form IID samples via \code{\link{rGamma_Conjugate_reg}}.
+#'       The \code{lik_shape} argument specifies the known Gamma likelihood shape (default 1,
+#'       i.e.\ exponential). \code{\link{Prior_Setup}} returns calibrated \code{conj_poisson}
+#'       hyperparameters for this path.
+#'   }
 #'
-#' - **`dNormal_Gamma()`**: Combines a multivariate normal prior on coefficients with a gamma prior on precision, 
+#' - **`dBeta()`**: A Beta prior on the binomial probability \eqn{\theta} for intercept-only
+#'   \code{binomial(link = "identity")} models. The posterior is a closed-form Beta draw
+#'   (Beta–Binomial conjugacy) produced by \code{\link{rBeta_reg}}. Arguments \code{shape1}
+#'   and \code{shape2} are the prior pseudo-success and pseudo-failure counts.
+#'   \code{\link{Prior_Setup}} returns calibrated \code{conj_beta} hyperparameters for this path.
+#'
+#' - **`dNormal_Gamma()`**: Combines a multivariate normal prior on coefficients with a gamma prior on precision,
 #'   forming a conjugate structure for Gaussian models with unknown variance. The second argument is \code{Sigma_0}
 #'   (precision-weighted scale); it is aliased internally to \code{Sigma} in \code{prior_list}.
-#'   This formulation parallels classical Normal-Gamma models and is compatible with hierarchical extensions \insertCite{Gelman2013,Raiffa1961}{glmbayes}.
-#'   
+#'   This formulation parallels classical Normal-Gamma models and is compatible with hierarchical extensions
+#'   \insertCite{Gelman2013,Raiffa1961}{glmbayes}.
 #'
-#' - **`dIndependent_Normal_Gamma()`**: Similar to `dNormal_Gamma()`, but assumes independence between the 
-#'   coefficient and precision priors. This structure is useful for models where prior independence is desired 
-#'   or analytically convenient. With \code{\link{Prior_Setup}} on a Gaussian model, pass \code{shape_ING} as the
-#'   \code{shape} argument (see Details above).
+#' - **`dIndependent_Normal_Gamma()`**: Similar to `dNormal_Gamma()`, but assumes independence between the
+#'   coefficient and precision priors. This structure is useful for models where prior independence is desired
+#'   or analytically convenient. With \code{\link{Prior_Setup}} on a Gaussian model, pass \code{shape_ING} as
+#'   the \code{shape} argument (see Details above).
 #'
 #' Each `pfamily` object includes:
 #' - `pfamily`, `prior_list`, `okfamilies`, `plinks`, and `simfun` (see Value).
 #'
 #' @return An object of class \code{"pfamily"} (with a concise \code{print} method). A list with elements:
 #' \item{pfamily}{Character string: the constructor name (\code{"dNormal"}, \code{"dGamma"},
-#'   \code{"dNormal_Gamma"}, or \code{"dIndependent_Normal_Gamma"}).}
+#'   \code{"dNormal_Gamma"}, \code{"dIndependent_Normal_Gamma"}, or \code{"dBeta"}).}
 #' \item{prior_list}{Named list of prior hyperparameters. It is passed into \code{simfun} when sampling so the
 #'   relevant low-level routine receives the prior in a fixed list form. Contents depend on the constructor:
 #'   \describe{
 #'     \item{\code{dNormal}:}{\code{mu}, \code{Sigma}, \code{dispersion}, and logical \code{ddef}
 #'       (\code{TRUE} if \code{dispersion} was omitted or \code{NULL}, so the default \code{1} was used;
 #'       \code{FALSE} if set explicitly).}
-#'     \item{\code{dGamma}:}{\code{shape}, \code{rate}, \code{beta}, \code{max_disp_perc},
-#'       \code{disp_lower}, \code{disp_upper}.}
+#'     \item{\code{dGamma}:}{\code{shape}, \code{rate}, \code{beta}, \code{Inv_Dispersion},
+#'       \code{max_disp_perc}, \code{disp_lower}, \code{disp_upper}. When \code{Inv_Dispersion = FALSE},
+#'       also includes surrogate \code{mu} and \code{Sigma} (computed from the Gamma prior moments)
+#'       and \code{lik_shape}.}
 #'     \item{\code{dNormal_Gamma}:}{\code{mu}, \code{Sigma} (the \code{Sigma_0} precision-weighted input),
 #'       \code{shape}, \code{rate}.}
 #'     \item{\code{dIndependent_Normal_Gamma}:}{\code{mu}, \code{Sigma} (coefficient-scale covariance),
 #'       \code{shape}, \code{rate}, \code{max_disp_perc}, \code{disp_lower}, \code{disp_upper}.}
+#'     \item{\code{dBeta}:}{\code{shape1}, \code{shape2}, \code{beta}, and surrogate \code{mu} and
+#'       \code{Sigma} computed from the Beta prior moments
+#'       (\code{mu = shape1/(shape1+shape2)},
+#'        \code{Sigma = shape1*shape2/((shape1+shape2)^2*(shape1+shape2+1))}).}
 #'   }
 #' }
 #' \item{okfamilies}{Character vector of implemented \code{\link[stats]{family}} names for which this

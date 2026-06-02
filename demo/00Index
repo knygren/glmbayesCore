@@ -11,3 +11,5 @@ Ex_A1_Methods          Illustrates the methods used in building the envelope
 Ex_A2_BG_vs_rindep_norm_gamma_reg         Illustrates the methods used in building the envelope
 Ex_10_Prior_Setup_gaussian_calibration   Prior_Setup: same Gamma calibration for dNormal_Gamma and dIndependent_Normal_Gamma
 Ex_11_Cars                   mtcars: default Prior_Setup; dNormal_Gamma vs dIndependent_Normal_Gamma (shape_ING)
+Ex_12_BetaBinomial           Beta-Binomial conjugacy: dBeta() with glmb() (Bechdel test; requires bayesrules)
+Ex_13_GammaPoisson           Gamma-Poisson conjugacy: dGamma(Inv_Dispersion=FALSE) with glmb() (requires bayesrules, LearnBayes)
