@@ -1282,6 +1282,7 @@ print.PriorSetup <- function(x, ...) {
 #' prior-data conflict checks \insertCite{EvansMoshonov2006}{glmbayesCore}.
 #'
 #' @param level the confidence level at which the Prior-data conflict should be checked.
+#' @param pfamily a \code{\link{pfamily}} object specifying the prior distribution to check against the data.
 #' @inheritParams stats::glm
 #' @return A vector where each item provided the ratio of the absolue value for the difference between the 
 #' prior and maximum likelihood estimate divided by the length of the sum of half of the two intervals 

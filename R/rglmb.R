@@ -19,6 +19,8 @@
 #' @param use_parallel Logical. Whether to use parallel processing during simulation.
 #' @param use_opencl Logical. Whether to use OpenCL acceleration during Envelope construction.
 #' @param verbose Logical. Whether to print progress messages.
+#' @param digits the number of significant digits to use when printing.
+#' @param ... further arguments passed to or from other methods.
 #' @return \code{rglmb} returns a object of class \code{"rglmb"}.
 #' The generic accessor functions \code{\link{coefficients}} and \code{\link{fitted.values}}
 #' can be used to extract useful features of the value returned by \code{\link{rglmb}}.

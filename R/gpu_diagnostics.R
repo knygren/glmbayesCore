@@ -27,7 +27,7 @@
 #'
 #' @details
 #' GPU acceleration speeds up envelope construction and grid evaluation when you pass
-#' \code{use_opencl = TRUE} in \code{\link{glmb}} and related functions. CPU-only
+#' \code{use_opencl = TRUE} in \code{\link{rglmb}}, \code{\link{rlmb}}, and related functions. CPU-only
 #' builds remain fully usable for standard modelling.
 #'
 #' Start with \code{\link{diagnose_glmbayes}()} for a single readable report;
@@ -37,7 +37,7 @@
 #'
 #' @seealso
 #' \code{\link{diagnose_glmbayes}}, \code{\link{has_opencl}}, \pkg{opencltools},
-#' \code{\link{glmb}}, \code{\link{rglmb}}.
+#' \code{\link{rglmb}}, \code{\link{rlmb}}.
 #'
 #' @references
 #' \insertAllCited{}

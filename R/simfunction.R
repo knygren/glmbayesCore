@@ -156,7 +156,7 @@
 #' The simulation framework was developed by Kjell Nygren as part of the \pkg{glmbayes} package. It builds on the likelihood subgradient approach described in \insertCite{Nygren2006}{glmbayesCore}, and extends classical Bayesian GLM sampling techniques.
 #'
 #' @seealso
-#' \code{\link{pfamily}}, \code{\link{glmb}}, \code{\link{lmb}}, \code{\link{rglmb}}, \code{\link{rlmb}}
+#' \code{\link{pfamily}}, \code{\link{rglmb}}, \code{\link{rlmb}}
 #' for modeling functions that consume simulation functions.
 #'
 #' \code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}} for individual simulation functions.

@@ -24,7 +24,7 @@ NULL
 #'
 #' This function takes as input a \code{\link{family}} object and returns a 
 #' set of functions that are used during simulation and summarization of models 
-#' using the \code{\link{glmb}}, and \code{\link{rglmb}} functions.
+#' using the \code{\link{rglmb}} and \code{\link{rlmb}} functions.
 #' 
 #' @name glmbfamfunc
 #' @aliases
@@ -1197,7 +1197,7 @@ EnvelopeOpt<-function(a1,n,core_cnt=1L){
 #' }
 #'
 #' @seealso \code{\link{EnvelopeSize}}, \code{\link{EnvelopeEval}}, \code{\link{EnvelopeSort}},
-#' \code{\link{glmb_Standardize_Model}}; \code{\link{rNormal_reg}}, \code{\link{rglmb}}, \code{\link{glmb}}.
+#' \code{\link{glmb_Standardize_Model}}; \code{\link{rNormal_reg}}, \code{\link{rglmb}}, \code{\link{rlmb}}.
 #' Theory and vignettes: \insertCite{Nygren2006}{glmbayesCore};
 #' \insertCite{glmbayesChapterA08,glmbayesSimmethods,glmbayesChapterA10,glmbayesChapter12}{glmbayesCore}.
 #'
@@ -1640,7 +1640,7 @@ EnvelopeEval <- function(G4, y, x, mu, P, alpha, wt,
 #' @seealso \code{\link{EnvelopeBuild}}, \code{\link{EnvelopeOrchestrator}},
 #'   \code{\link{EnvelopeCentering}} (for obtaining \code{RSS_post} and anchored dispersion),
 #'   \code{\link{rindepNormalGamma_reg}}, \code{\link{rlmb}};
-#'   \code{\link{glmb}}, \code{\link{glmbfamfunc}}.
+#'   \code{\link{rglmb}}, \code{\link{glmbfamfunc}}.
 #' @references
 #' \insertAllCited{}
 #' @example inst/examples/Ex_EnvelopeDispersionBuild.R

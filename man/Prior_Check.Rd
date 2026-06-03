@@ -39,6 +39,8 @@ Prior_Check(
     third option is supported.  (See \code{\link[stats]{family}} for details of
     family functions.)}
 
+\item{pfamily}{a \code{\link{pfamily}} object specifying the prior distribution to check against the data.}
+
 \item{level}{the confidence level at which the Prior-data conflict should be checked.}
 
 \item{data}{an optional data frame, list or environment (or object

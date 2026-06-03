@@ -48,6 +48,10 @@ envelopes.}
 \item{use_opencl}{Logical. Whether to use OpenCL acceleration during Envelope construction.}
 
 \item{verbose}{Logical. Whether to print progress messages.}
+
+\item{digits}{the number of significant digits to use when printing.}
+
+\item{...}{further arguments passed to or from other methods.}
 }
 \value{
 \code{rglmb} returns a object of class \code{"rglmb"}.
@@ -126,7 +130,7 @@ print(d.AD <- data.frame(treatment, outcome, counts))
 glm.D93 <- glm(counts ~ outcome + treatment, family = poisson(link = log))
 summary(glm.D93)
 
-## Poisson prior and rglmb (same prior as \code{\link{glmb}} with \code{\link{Prior_Setup}})
+## Poisson prior and rglmb (Prior_Setup supplies default g-prior hyperparameters)
 ps <- Prior_Setup(counts ~ outcome + treatment, family = poisson(), data = d.AD)
 rglmb.D93 <- rglmb(
   n = 1000,
@@ -139,10 +143,9 @@ rglmb.D93 <- rglmb(
 print(rglmb.D93)
 
 
-## Menarche model with informative prior. See \code{\link{glmb}} and \code{\link{Prior_Setup}}
-## for default g-priors; for data and fitted curves using \code{predict.glmb}, see the
-## menarche block in \code{\link{glmb}};
-## see \code{vignette("Chapter-05", package = "glmbayes")}
+## Menarche model with informative prior. See \code{\link{Prior_Setup}}
+## for default g-priors; fitted curves for the menarche data are shown below.
+## See \code{vignette("Chapter-05", package = "glmbayes")}
 ## and \code{vignette("Chapter-06", package = "glmbayes")}.
 data(menarche, package = "MASS")
 

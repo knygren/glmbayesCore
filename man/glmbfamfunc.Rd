@@ -44,7 +44,7 @@ C++-aligned likelihood/posterior routines and remain commented out in the implem
 \description{
 This function takes as input a \code{\link{family}} object and returns a
 set of functions that are used during simulation and summarization of models
-using the \code{\link{glmb}}, and \code{\link{rglmb}} functions.
+using the \code{\link{rglmb}} and \code{\link{rlmb}} functions.
 }
 \details{
 \code{glmbfamfunc} is the canonical R closure bundle for likelihood, posterior, gradient, and

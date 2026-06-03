@@ -19,7 +19,10 @@
 #' @param n_envopt Effective sample size passed to EnvelopeOpt for grid construction.
 #' @param use_parallel Logical. Whether to use parallel processing during simulation.
 #' @param use_opencl Logical. Whether to use OpenCL acceleration during Envelope construction.
+#' @param offset an optional numeric vector of known offset to be included in the linear predictor.
+#' @param weights an optional numeric vector of prior weights for the observations.
 #' @param verbose Logical. Whether to print progress messages.
+#' @param ... further arguments passed to or from other methods.
 #' @return \code{rlmb} returns a object of class \code{"rlmb"}.
 #' The generic accessor functions \code{\link{coefficients}} and \code{\link{fitted.values}}
 #' can be used to extract useful features of the value returned by \code{\link{rlmb}}.

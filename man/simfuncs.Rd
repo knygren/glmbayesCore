@@ -393,7 +393,7 @@ summary(out)
 \insertAllCited{}
 }
 \seealso{
-\code{\link{pfamily}}, \code{\link{glmb}}, \code{\link{lmb}}, \code{\link{rglmb}}, \code{\link{rlmb}}
+\code{\link{pfamily}}, \code{\link{rglmb}}, \code{\link{rlmb}}
 for modeling functions that consume simulation functions.
 
 \code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}} for individual simulation functions.

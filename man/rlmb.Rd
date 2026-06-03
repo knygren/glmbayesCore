@@ -33,6 +33,10 @@ rlmb(
 \item{pfamily}{a description of the prior distribution and associated constants to be used in the model. This
 should be a pfamily function (see \code{\link{pfamily}} for details of pfamily functions.)}
 
+\item{offset}{an optional numeric vector of known offset to be included in the linear predictor.}
+
+\item{weights}{an optional numeric vector of prior weights for the observations.}
+
 \item{Gridtype}{an optional argument specifying tangent points for envelope construction.}
 
 \item{n_envopt}{Effective sample size passed to EnvelopeOpt for grid construction.}
@@ -46,6 +50,8 @@ should be a pfamily function (see \code{\link{pfamily}} for details of pfamily f
 \item{progbar}{Logical. Whether to display a progress base during simulation.}
 
 \item{digits}{the number of significant digits to use when printing.}
+
+\item{...}{further arguments passed to or from other methods.}
 }
 \value{
 \code{rlmb} returns a object of class \code{"rlmb"}.
