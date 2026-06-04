@@ -15,5 +15,4 @@ To use locally:
 3. Call `bayesplot::pp_check(fit, ...)` or register the method by sourcing the file
 
 Vignette chunks that previously called this method are commented out; see
-`vignettes/Chapter-05.Rmd`, `Chapter-06.Rmd`, `Chapter-12.Rmd`, and
-`inst/examples/Ex_residuals.glmb.R`.
+`vignettes/Chapter-05.Rmd`, `Chapter-06.Rmd`, and `Chapter-12.Rmd` (in **glmbayes**).
