@@ -33,7 +33,7 @@
 * **`opencltools` import:** Core host/runtime OpenCL discovery and diagnostics
   (`detect_*`, PATH helpers, environment checks) now live in the **`opencltools`**
   package (`Imports`, >= 0.8.0). **glmbayes** keeps package-specific entry
-  points (`has_opencl()`, `diagnose_glmbayes()`) that report compile-time
+  points (`glmbayesCore_has_opencl()`, `diagnose_glmbayes()`) that report compile-time
   OpenCL status for this build while delegating shared GPU/runtime checks—reducing
   duplicated maintenance in **glmbayes**.
 

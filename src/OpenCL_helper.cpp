@@ -1,5 +1,6 @@
 #include "openclPort.h"
 #include <Rcpp.h>
+#include <algorithm>
 
 using namespace Rcpp;
 
@@ -28,12 +29,24 @@ std::vector<double> copyVector(const Rcpp::NumericVector& vec) {
 
 
 
-bool has_opencl() {
+bool glmbayesCore_has_opencl() {
 #ifdef USE_OPENCL
   return true;
 #else
   return false;
 #endif
+}
+
+// Delegate to opencltools (single implementation for compute-unit counting).
+int opencl_core_count_for_scaling() {
+  try {
+    Rcpp::Environment pkg = Rcpp::Environment::namespace_env("opencltools");
+    Rcpp::Function f = pkg["get_opencl_core_count"];
+    int n = Rcpp::as<int>(f());
+    return std::max(1, n);
+  } catch (...) {
+    return 1;
+  }
 }
 
 }

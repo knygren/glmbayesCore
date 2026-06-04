@@ -81,20 +81,8 @@ glmb_Standardize_Model_cpp_export <- function(y, x, P, bstar, A1) {
     .Call(`_glmbayesCore_glmb_Standardize_Model_cpp_export`, y, x, P, bstar, A1)
 }
 
-load_kernel_source_wrapper_cpp_export <- function(relative_path, package = "glmbayesCore") {
-    .Call(`_glmbayesCore_load_kernel_source_wrapper_cpp_export`, relative_path, package)
-}
-
-load_kernel_library_wrapper_cpp_export <- function(subdir, package = "glmbayesCore", verbose = FALSE) {
-    .Call(`_glmbayesCore_load_kernel_library_wrapper_cpp_export`, subdir, package, verbose)
-}
-
-has_opencl_cpp_export <- function() {
-    .Call(`_glmbayesCore_has_opencl_cpp_export`)
-}
-
-get_opencl_core_count_cpp_export <- function() {
-    .Call(`_glmbayesCore_get_opencl_core_count_cpp_export`)
+glmbayesCore_has_opencl_cpp_export <- function() {
+    .Call(`_glmbayesCore_glmbayesCore_has_opencl_cpp_export`)
 }
 
 gpu_names_cpp_export <- function() {

@@ -61,7 +61,7 @@ For systems with an OpenCL-capable device, envelope construction can be offloade
 - **`libR_shims/`, `R_ext_*/`, `R_shims/`** — Shim headers that make the nmath kernels compile cleanly under OpenCL's C99-based dialect.
 - **`OPENCL.cl`** — Top-level kernel entry point that assembles the above into a single compilable unit.
 
-Kernel loading and GPU detection are handled by `load_kernel_library.R`, `kernel_loader.cpp`, and `kernel_runners.cpp`, building on the `opencltools` and `nmathopencl` packages.
+Kernel loading for exploration uses **opencltools** (`load_kernel_source`, `load_kernel_library` with `package = "glmbayesCore"`); runtime GPU assembly uses `kernel_loader.cpp` and `kernel_runners.cpp`, building on **opencltools** and **nmathopencl**.
 
 ### R-level infrastructure (`R/`)
 
@@ -242,7 +242,7 @@ The file `inst/ADDING_PFAMILY.md` contains a step-by-step guide. In summary:
 1. Write a constructor in `pfamily.R` that builds `prior_list` and sets `simfun`.
 2. Implement or reuse a simulation function in `simfunction.R`.
 3. If a new C++ sampler is needed, add it under `src/`, register it via `RcppExports`, and expose it through `export_wrappers.cpp`.
-4. For GPU support, add the corresponding `f2`/`f3` OpenCL kernel under `inst/cl/src/` and register it in `load_kernel_library.R`.
+4. For GPU support, add the corresponding `f2`/`f3` OpenCL kernel under `inst/cl/src/` and register it in the assembly path in `kernel_loader.cpp`.
 
 ### Block Gibbs ergodicity
 

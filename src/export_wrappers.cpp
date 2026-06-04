@@ -571,36 +571,15 @@ Rcpp::List glmb_Standardize_Model_cpp_export(
 
 // =============================================================================
 // Tier 5: OpenCL / GPU
-// Callers: load_kernel_source, load_kernel_library, has_opencl,
-//          get_opencl_core_count, gpu_names
-// User:    Advanced users - GPU diagnostics, kernel loading for use_opencl
+// Callers: glmbayesCore_has_opencl, gpu_names
+// User:    Advanced users - GPU diagnostics for use_opencl
+// Kernel loading: opencltools::load_kernel_source / load_kernel_library
+// Core count:     opencltools::get_opencl_core_count
 // =============================================================================
 
 // [[Rcpp::export]]
-std::string load_kernel_source_wrapper_cpp_export(
-    const std::string& relative_path,
-    const std::string& package = "glmbayesCore"
-) {
-  return load_kernel_source_wrapper(relative_path, package);
-}
-
-// [[Rcpp::export]]
-std::string load_kernel_library_wrapper_cpp_export(
-    const std::string& subdir,
-    const std::string& package = "glmbayesCore",
-    bool verbose = false
-) {
-  return load_kernel_library_wrapper(subdir, package, verbose);
-}
-
-// [[Rcpp::export]]
-bool has_opencl_cpp_export() {
-  return has_opencl();
-}
-
-// [[Rcpp::export]]
-int get_opencl_core_count_cpp_export() {
-  return get_opencl_core_count();
+bool glmbayesCore_has_opencl_cpp_export() {
+  return glmbayesCore_has_opencl();
 }
 
 // [[Rcpp::export]]

@@ -3,7 +3,7 @@
 #' @description
 #' Compile-time OpenCL probing for \pkg{glmbayes}, plus \code{diagnose_glmbayes()}
 #' --- a readable report that combines \pkg{opencltools} host/runtime checks with
-#' this package's OpenCL build status (\code{\link{has_opencl}}).
+#' this package's OpenCL build status (\code{\link{glmbayesCore_has_opencl}}).
 #'
 #' Workstation probes (GPU vendor detection, drivers, ICD/PATH, and related helpers)
 #' live in \pkg{opencltools}; call \code{opencltools::…} or see \code{?opencltools}.
@@ -12,8 +12,9 @@
 #' \itemize{
 #'   \item \code{\link{diagnose_glmbayes}()} --- full report including compile-time
 #'     OpenCL status for this package.
-#'   \item \code{\link{has_opencl}()} --- \code{TRUE} if this build was compiled
+#'   \item \code{\link{glmbayesCore_has_opencl}()} --- \code{TRUE} if this build was compiled
 #'     with OpenCL support.
+#'   \item \code{opencltools::has_opencl()} --- compile-time flag for \pkg{opencltools} (distinct).
 #' }
 #'
 #' @section Host / runtime checks (\pkg{opencltools}):
@@ -22,6 +23,10 @@
 #'   \item \code{\link[opencltools:gpu_diagnostics]{detect_compute_runtimes}()}
 #'   \item \code{\link[opencltools:gpu_diagnostics]{verify_opencl_runtime}()}
 #'   \item \code{\link[opencltools:gpu_diagnostics]{check_runtime_env}()}
+#'   \item \code{\link[opencltools:gpu_diagnostics]{get_opencl_core_count}()}
+#'   \item \code{\link[opencltools:load_kernel_source]{load_kernel_source}()},
+#'     \code{\link[opencltools:load_kernel_source]{load_kernel_library}()}
+#'     (pass \code{package = "glmbayesCore"} for kernels under \code{inst/cl/})
 #'   \item \code{\link[opencltools:add_to_path]{add_to_path_windows}()} and related PATH helpers
 #' }
 #'
@@ -31,12 +36,12 @@
 #' builds remain fully usable for standard modelling.
 #'
 #' Start with \code{\link{diagnose_glmbayes}()} for a single readable report;
-#' use \code{\link{has_opencl}()} for a quick boolean when scripting. Full install
+#' use \code{\link{glmbayesCore_has_opencl}()} for a quick boolean when scripting. Full install
 #' notes: \code{vignette("Chapter-16", package = "glmbayes")}
 #' (\insertCite{glmbayesChapter12}{glmbayesCore}).
 #'
 #' @seealso
-#' \code{\link{diagnose_glmbayes}}, \code{\link{has_opencl}}, \pkg{opencltools},
+#' \code{\link{diagnose_glmbayes}}, \code{\link{glmbayesCore_has_opencl}}, \pkg{opencltools},
 #' \code{\link{rglmb}}, \code{\link{rlmb}}.
 #'
 #' @references
@@ -135,7 +140,7 @@ diagnose_glmbayes <- function() {
     cat("[FAIL] No supported GPU detected. glmbayes will run in CPU-only mode.\n")
   }
 
-  opencl_enabled <- has_opencl()
+  opencl_enabled <- glmbayesCore_has_opencl()
   if (opencl_enabled) {
     cat("\n[OK] glmbayes was compiled with OpenCL support.\n")
   } else {
@@ -189,6 +194,6 @@ diagnose_glmbayes <- function() {
 #' @export
 #' @rdname gpu_diagnostics
 #' @order 2
-has_opencl <- function() {
-  .has_opencl_cpp()
+glmbayesCore_has_opencl <- function() {
+  .glmbayesCore_has_opencl_cpp()
 }

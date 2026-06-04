@@ -401,39 +401,3 @@ std::string load_likelihood_subgradient_program(
 } // namespace glmbayes
 #endif // USE_OPENCL
 
-
-namespace openclPort {
-
-int get_opencl_core_count() {
-#ifdef USE_OPENCL
-  return std::max(1, detect_num_gpus_internal());  // ensure at least 1
-#else
-  return 1;  // fallback when OpenCL is not available
-#endif
-}
-
-
-
-std::string load_kernel_source_wrapper(std::string relative_path,
-                                       std::string package ) {
-#ifdef USE_OPENCL
-  return load_kernel_source(relative_path, package);
-#else
-  Rcpp::stop("OpenCL support is not available in this build of glmbayes.");
-#endif
-}
-
-
-
-
-std::string load_kernel_library_wrapper(std::string subdir,
-                                        std::string package ,
-                                        bool verbose ) {
-#ifdef USE_OPENCL
-  return load_kernel_library(subdir, package, verbose);
-#else
-  Rcpp::stop("OpenCL support is not available in this build of glmbayes.");
-#endif
-}
-
-}

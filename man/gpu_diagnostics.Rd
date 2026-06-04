@@ -2,18 +2,18 @@
 % Please edit documentation in R/gpu_diagnostics.R
 \name{diagnose_glmbayes}
 \alias{diagnose_glmbayes}
-\alias{has_opencl}
+\alias{glmbayesCore_has_opencl}
 \alias{gpu_diagnostics}
 \title{GPU and OpenCL diagnostics for \pkg{glmbayes}}
 \usage{
 diagnose_glmbayes()
 
-has_opencl()
+glmbayesCore_has_opencl()
 }
 \description{
 Compile-time OpenCL probing for \pkg{glmbayes}, plus \code{diagnose_glmbayes()}
 --- a readable report that combines \pkg{opencltools} host/runtime checks with
-this package's OpenCL build status (\code{\link{has_opencl}}).
+this package's OpenCL build status (\code{\link{glmbayesCore_has_opencl}}).
 
 Workstation probes (GPU vendor detection, drivers, ICD/PATH, and related helpers)
 live in \pkg{opencltools}; call \code{opencltools::…} or see \code{?opencltools}.
@@ -24,7 +24,7 @@ GPU acceleration speeds up envelope construction and grid evaluation when you pa
 builds remain fully usable for standard modelling.
 
 Start with \code{\link{diagnose_glmbayes}()} for a single readable report;
-use \code{\link{has_opencl}()} for a quick boolean when scripting. Full install
+use \code{\link{glmbayesCore_has_opencl}()} for a quick boolean when scripting. Full install
 notes: \code{vignette("Chapter-16", package = "glmbayes")}
 (\insertCite{glmbayesChapter12}{glmbayesCore}).
 }
@@ -33,8 +33,9 @@ notes: \code{vignette("Chapter-16", package = "glmbayes")}
 \itemize{
 \item \code{\link{diagnose_glmbayes}()} --- full report including compile-time
 OpenCL status for this package.
-\item \code{\link{has_opencl}()} --- \code{TRUE} if this build was compiled
+\item \code{\link{glmbayesCore_has_opencl}()} --- \code{TRUE} if this build was compiled
 with OpenCL support.
+\item \code{opencltools::has_opencl()} --- compile-time flag for \pkg{opencltools} (distinct).
 }
 }
 
@@ -45,6 +46,10 @@ with OpenCL support.
 \item \code{\link[opencltools:gpu_diagnostics]{detect_compute_runtimes}()}
 \item \code{\link[opencltools:gpu_diagnostics]{verify_opencl_runtime}()}
 \item \code{\link[opencltools:gpu_diagnostics]{check_runtime_env}()}
+\item \code{\link[opencltools:gpu_diagnostics]{get_opencl_core_count}()}
+\item \code{\link[opencltools:load_kernel_source]{load_kernel_source}()},
+\code{\link[opencltools:load_kernel_source]{load_kernel_library}()}
+(pass \code{package = "glmbayesCore"} for kernels under \code{inst/cl/})
 \item \code{\link[opencltools:add_to_path]{add_to_path_windows}()} and related PATH helpers
 }
 }
@@ -53,7 +58,7 @@ with OpenCL support.
 \insertAllCited{}
 }
 \seealso{
-\code{\link{diagnose_glmbayes}}, \code{\link{has_opencl}}, \pkg{opencltools},
+\code{\link{diagnose_glmbayes}}, \code{\link{glmbayesCore_has_opencl}}, \pkg{opencltools},
 \code{\link{rglmb}}, \code{\link{rlmb}}.
 }
 \keyword{diagnostics}

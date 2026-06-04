@@ -40,7 +40,7 @@ Rcpp::List EnvelopeSize(const arma::vec& a,
   
   
   // core count for scaling
-  int core_CNT = get_opencl_core_count();
+  int core_CNT = opencl_core_count_for_scaling();
   if (verbose) {
     Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSize] OpenCL core count = "
                 << core_CNT << "\n";

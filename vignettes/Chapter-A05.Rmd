@@ -353,7 +353,7 @@ The optimizer selects the configuration that minimizes this total. Intuitively:
 When GPU acceleration is available through OpenCL, the Grid construction can be performed in parallel, reducing the amount of time that components takes. To that end, we modify the call to the function to reflect the lower Grid contruction cost by passing a scaled up sample size (which yields the same optimization result).
 
 ```cpp
-  int core_CNT=get_opencl_core_count();
+  int core_CNT = opencl_core_count_for_scaling();  // opencltools::get_opencl_core_count()
   
   if (verbose) {
     Rcpp::Rcout << "[INFO] OpenCL core count = " << core_CNT << "\n";

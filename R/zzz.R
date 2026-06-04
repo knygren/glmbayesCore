@@ -38,7 +38,7 @@
   }
   options(glmbayes.opencl_startup_checked = TRUE)
 
-  if (isTRUE(tryCatch(has_opencl(), error = function(e) FALSE))) {
+  if (isTRUE(tryCatch(glmbayesCore_has_opencl(), error = function(e) FALSE))) {
     return(invisible())
   }
 

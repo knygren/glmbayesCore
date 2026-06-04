@@ -19,12 +19,13 @@
  *   These functions are consumed by:
  *     - Envelope construction routines (EnvelopeBuild, EnvelopeEval,
  *       EnvelopeDispersionBuild) when OpenCL acceleration is enabled
- *     - R wrappers that expose GPU availability and kernel loading to users
+ *     - R wrappers that expose GPU availability (glmbayesCore_has_opencl); kernel loading
+ *       is provided by opencltools at the R level
  *
  * @section Responsibilities
  *   Provides:
  *     - Rcpp → std::vector conversion utilities for kernel argument buffers
- *     - GPU/device enumeration and capability checks (gpu_names, has_opencl)
+ *     - GPU/device enumeration and capability checks (gpu_names, glmbayesCore_has_opencl)
  *     - Kernel source and library loading from inst/cl/ directories
  *       (generic loaders; full likelihood-subgradient program assembly is in
  *       glmbayes::opencl::load_likelihood_subgradient_program — see inst/cl/README.md)
@@ -90,27 +91,14 @@ Rcpp::CharacterVector gpu_names();
 // Internal-only GPU detection (used by envelope scaling)
 int detect_num_gpus_internal();
 
-
-// -------------------------------------------------------------------------
-// R-facing wrappers for kernel source loading
-// -------------------------------------------------------------------------
-std::string load_kernel_source_wrapper(
-    std::string relative_path,
-    std::string package = GLMBAYES_R_NS
-);
-
-std::string load_kernel_library_wrapper(
-    std::string subdir,
-    std::string package = GLMBAYES_R_NS,
-    bool verbose = false
-);
+// OpenCL compute units via opencltools::get_opencl_core_count() (envelope scaling)
+int opencl_core_count_for_scaling();
 
 // -------------------------------------------------------------------------
 // Device / OpenCL utilities
 // -------------------------------------------------------------------------
 
-bool has_opencl();
-int get_opencl_core_count();
+bool glmbayesCore_has_opencl();
 
 
 // -------------------------------------------------------------------------

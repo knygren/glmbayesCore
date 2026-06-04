@@ -23,7 +23,7 @@ Formula interfaces \code{glmb} and \code{lmb} live in \pkg{glmbayes};
 \section{OpenCL startup checks}{
 
 In interactive sessions, attaching the package with \code{library(glmbayesCore)}
-may emit a short \code{\link{packageStartupMessage}} when \code{has_opencl()}
+may emit a short \code{\link{packageStartupMessage}} when \code{glmbayesCore_has_opencl()}
 is \code{FALSE} but a GPU or OpenCL stack appears available on the host.
 Set \code{options(glmbayes.quiet_opencl_startup = TRUE)} to suppress attach
 notes (recommended for CI and \command{R CMD check}).

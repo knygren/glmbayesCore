@@ -43,7 +43,7 @@ That string is passed to **`clCreateProgramWithSource`** (see `glmbayes::opencl:
 
 ## Relation to R helpers
 
-- **`load_kernel_source()`** / **`load_kernel_library()`** (R / `openclPort`) are **generic**: load one file or an entire subdirectory with `@provides` / `@depends` sorting. Useful for exploration and small examples.
+- **`opencltools::load_kernel_source()`** / **`opencltools::load_kernel_library()`** (with `package = "glmbayesCore"`) are **generic** R helpers for exploration; production assembly uses **`openclPort`** C++ in `kernel_loader.cpp`.
 - **`load_likelihood_subgradient_program()`** is **application-specific**: it is the exact recipe the package uses for envelope GPU evaluation. It uses **`openclPort::load_kernel_*`** internally plus a **TSV-driven subset** of `nmath/` tied to each entry kernel.
 
 ---

@@ -162,7 +162,7 @@ message("Block 2: multivariate coef vector per neighborhood (NOT x_one / listing
 message("use_opencl_fixed (Block 1 hyper / rglmb_update): ", use_opencl_fixed)
 message("Main Gibbs run: use_opencl_fixed = FALSE, use_opencl_random = FALSE")
 if (requireNamespace("glmbayes", quietly = TRUE)) {
-  message("OpenCL available (package): ", glmbayes::has_opencl())
+  message("OpenCL available (glmbayesCore): ", glmbayesCore::glmbayesCore_has_opencl())
 }
 if (!run_legacy) {
   message("Legacy per-neighborhood rNormal_reg loop skipped (append 'legacy').")
