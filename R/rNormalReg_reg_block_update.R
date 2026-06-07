@@ -98,14 +98,9 @@ block_rNormalReg_update <- function(mu_all,
   b_draws <- out$coefficients[, cols, drop = FALSE]
 
   list(
-    b_draws        = b_draws,
-    coefficients   = out$coefficients,
-    coef.mode      = out$coef.mode,
-    block_rNormalReg = out,
-    rNormalReg_reg_block = out
+    b_draws          = b_draws,
+    coefficients     = out$coefficients,
+    coef.mode        = out$coef.mode,
+    block_rNormalReg = out
   )
 }
-
-#' @rdname block_reg_simfuncs
-#' @export
-rNormalReg_reg_block_update <- block_rNormalReg_update

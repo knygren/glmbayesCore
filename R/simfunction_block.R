@@ -38,7 +38,7 @@
 #'   \code{\link{normalize_block}}, \code{inst/DESIGN_RGLM_BLOCKS.md}
 #' @example inst/examples/Ex_block_rNormalGLM.R
 #' @name block_simfuncs
-#' @aliases block_rNormalGLM rNormalGLM_reg_block
+#' @aliases block_rNormalGLM
 #' @family block_simfuncs
 NULL
 
@@ -199,10 +199,7 @@ block_rNormalGLM <- function(n,
     prior_lists = prior_block,
     call = match.call()
   )
-  class(outlist) <- c("block_rNormalGLM", "rNormalGLM_reg_block", "list")
+  class(outlist) <- c("block_rNormalGLM", "list")
   outlist
 }
 
-#' @rdname block_simfuncs
-#' @export
-rNormalGLM_reg_block <- block_rNormalGLM

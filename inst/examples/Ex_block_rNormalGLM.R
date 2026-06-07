@@ -25,4 +25,3 @@ out <- block_rNormalGLM(
 
 out$coefficients
 out$coef.mode
-stopifnot(identical(block_rNormalGLM, rNormalGLM_reg_block))

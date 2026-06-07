@@ -31,4 +31,3 @@ out <- block_rNormalReg(
 
 out$coefficients   ## k x l1 matrix: one row of b_j draws per school
 out$coef.mode
-stopifnot(identical(block_rNormalReg, rNormalReg_reg_block))

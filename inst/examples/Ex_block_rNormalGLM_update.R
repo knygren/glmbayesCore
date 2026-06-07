@@ -19,5 +19,3 @@ upd <- block_rNormalGLM_update(
 
 upd$theta
 upd$coefficients
-
-stopifnot(identical(block_rNormalGLM_update, rNormalGLM_reg_block_update))

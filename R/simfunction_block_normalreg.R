@@ -52,7 +52,7 @@
 #'   \code{\link{normalize_block}}
 #' @example inst/examples/Ex_block_rNormalReg.R
 #' @name block_reg_simfuncs
-#' @aliases block_rNormalReg rNormalReg_reg_block
+#' @aliases block_rNormalReg
 #' @family block_simfuncs
 NULL
 
@@ -160,10 +160,7 @@ block_rNormalReg <- function(n,
     prior_lists   = prior_block,
     call          = match.call()
   )
-  class(outlist) <- c("block_rNormalReg", "rNormalReg_reg_block", "list")
+  class(outlist) <- c("block_rNormalReg", "list")
   outlist
 }
 
-#' @rdname block_reg_simfuncs
-#' @export
-rNormalReg_reg_block <- block_rNormalReg

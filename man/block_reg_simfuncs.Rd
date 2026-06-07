@@ -3,10 +3,8 @@
 %   R/simfunction_block_normalreg.R
 \name{block_rNormalReg_update}
 \alias{block_rNormalReg_update}
-\alias{rNormalReg_reg_block_update}
 \alias{block_reg_simfuncs}
 \alias{block_rNormalReg}
-\alias{rNormalReg_reg_block}
 \title{One Gibbs block update via \code{block_rNormalReg}}
 \usage{
 block_rNormalReg_update(
@@ -25,35 +23,7 @@ block_rNormalReg_update(
   coef_cols = NULL
 )
 
-rNormalReg_reg_block_update(
-  mu_all,
-  P = NULL,
-  dispersion = NULL,
-  y,
-  x,
-  block,
-  prior_list = NULL,
-  prior_lists = NULL,
-  offset = NULL,
-  weights = 1,
-  Gridtype = 2L,
-  seed = NULL,
-  coef_cols = NULL
-)
-
 block_rNormalReg(
-  n,
-  y,
-  x,
-  block,
-  prior_list = NULL,
-  prior_lists = NULL,
-  offset = NULL,
-  weights = 1,
-  Gridtype = 2L
-)
-
-rNormalReg_reg_block(
   n,
   y,
   x,
@@ -191,7 +161,6 @@ out <- block_rNormalReg_update(
 
 out$b_draws         ## k x l1 matrix of updated random effects
 out$coefficients    ## same content (all columns)
-stopifnot(identical(block_rNormalReg_update, rNormalReg_reg_block_update))
 ## Conditionally independent block Gaussian draw (3 school groups)
 
 set.seed(42)
@@ -225,7 +194,6 @@ out <- block_rNormalReg(
 
 out$coefficients   ## k x l1 matrix: one row of b_j draws per school
 out$coef.mode
-stopifnot(identical(block_rNormalReg, rNormalReg_reg_block))
 }
 \seealso{
 \code{\link{block_rNormalReg}}, \code{\link{normalize_block}}

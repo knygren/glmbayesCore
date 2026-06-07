@@ -93,11 +93,6 @@ block_rNormalGLM_update <- function(mu_all,
     theta = theta,
     coefficients = out$coefficients,
     coef.mode = out$coef.mode,
-    block_rNormalGLM = out,
-    rNormalGLM_reg_block = out
+    block_rNormalGLM = out
   )
 }
-
-#' @rdname block_simfuncs
-#' @export
-rNormalGLM_reg_block_update <- block_rNormalGLM_update

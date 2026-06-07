@@ -30,4 +30,3 @@ out <- block_rNormalReg_update(
 
 out$b_draws         ## k x l1 matrix of updated random effects
 out$coefficients    ## same content (all columns)
-stopifnot(identical(block_rNormalReg_update, rNormalReg_reg_block_update))

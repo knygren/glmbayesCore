@@ -29,7 +29,7 @@
 # =============================================================================
 #  Tier 1: Core Simulation
 #  Callers: rNormal_reg, rNormalGamma_reg, rindepNormalGamma_reg, rGamma_reg,
-#           rNormalGLM_reg_block
+#           block_rNormalGLM, block_rNormalReg
 #  User:    All users – primary paths via rglmb, rlmb, glmb, pfamily
 # =============================================================================
 

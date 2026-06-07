@@ -3,10 +3,8 @@
 %   R/simfunction_block.R
 \name{block_rNormalGLM_update}
 \alias{block_rNormalGLM_update}
-\alias{rNormalGLM_reg_block_update}
 \alias{block_simfuncs}
 \alias{block_rNormalGLM}
-\alias{rNormalGLM_reg_block}
 \title{One Gibbs block update via \code{block_rNormalGLM}}
 \usage{
 block_rNormalGLM_update(
@@ -30,46 +28,7 @@ block_rNormalGLM_update(
   theta_coef_col = 1L
 )
 
-rNormalGLM_reg_block_update(
-  mu_all,
-  sigma_theta_sq = NULL,
-  y,
-  x,
-  block,
-  family = poisson(),
-  prior_list = NULL,
-  prior_lists = NULL,
-  offset = NULL,
-  weights = 1,
-  Gridtype = 2L,
-  n_envopt = 1L,
-  use_parallel = TRUE,
-  use_opencl = FALSE,
-  verbose = FALSE,
-  progbar = FALSE,
-  seed = NULL,
-  theta_coef_col = 1L
-)
-
 block_rNormalGLM(
-  n,
-  y,
-  x,
-  block,
-  prior_list = NULL,
-  prior_lists = NULL,
-  offset = NULL,
-  weights = 1,
-  family = gaussian(),
-  Gridtype = 2L,
-  n_envopt = NULL,
-  use_parallel = TRUE,
-  use_opencl = FALSE,
-  verbose = FALSE,
-  progbar = FALSE
-)
-
-rNormalGLM_reg_block(
   n,
   y,
   x,
@@ -186,8 +145,6 @@ upd <- block_rNormalGLM_update(
 
 upd$theta
 upd$coefficients
-
-stopifnot(identical(block_rNormalGLM_update, rNormalGLM_reg_block_update))
 ## Conditionally independent block GLM draw (Poisson, 3 outcome groups)
 
 set.seed(42)
@@ -215,7 +172,6 @@ out <- block_rNormalGLM(
 
 out$coefficients
 out$coef.mode
-stopifnot(identical(block_rNormalGLM, rNormalGLM_reg_block))
 }
 \seealso{
 \code{\link{block_rNormalGLM}}, \code{\link{normalize_block}}
