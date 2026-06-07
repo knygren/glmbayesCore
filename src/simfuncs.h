@@ -11,6 +11,7 @@
  *   These declarations are implemented in:
  *     - rNormalGLM.cpp
  *     - rNormalGLMBlocks.cpp
+ *     - rNormalRegBlocks.cpp
  *     - rIndepNormalGammaReg.cpp
  *     - rNormalGammaReg.cpp
  *     - rGammaGaussian.cpp
@@ -122,6 +123,25 @@ Rcpp::List rNormalReg(int n,NumericVector y,NumericMatrix x,
                          std::string family="gaussian",
                          std::string link="identity",
                          int Gridtype=2      
+);
+
+/// C++ block loop for Gaussian regression: calls rNormalReg() per block.
+/// Used for Block 1 of the lmebayes Gibbs sampler (school-level b_j draws).
+/// mu is l1 x J with one column per block when prior_by_block = TRUE.
+Rcpp::List rNormalRegBlocks(
+    int n,
+    NumericVector y,
+    NumericMatrix x,
+    NumericVector offset,
+    NumericVector wt,
+    NumericVector dispersion,
+    NumericMatrix mu,
+    List P_blocks,
+    bool prior_by_block,
+    List row_blocks,
+    Function f2,
+    Function f3,
+    int Gridtype = 2
 );
 
 

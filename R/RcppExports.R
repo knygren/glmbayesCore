@@ -9,6 +9,10 @@ rNormalGLMBlocks_cpp_export <- function(n, y, x, offset, wt, dispersion, mu, P_b
     .Call(`_glmbayesCore_rNormalGLMBlocks_cpp_export`, n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
 }
 
+rNormalRegBlocks_cpp_export <- function(n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, Gridtype = 2L) {
+    .Call(`_glmbayesCore_rNormalRegBlocks_cpp_export`, n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, Gridtype)
+}
+
 rNormalReg_cpp_export <- function(n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family = "gaussian", link = "identity", Gridtype = 2L) {
     .Call(`_glmbayesCore_rNormalReg_cpp_export`, n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family, link, Gridtype)
 }

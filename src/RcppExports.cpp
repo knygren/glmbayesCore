@@ -68,6 +68,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rNormalRegBlocks_cpp_export
+Rcpp::List rNormalRegBlocks_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& offset, const Rcpp::NumericVector& wt, const Rcpp::NumericVector& dispersion, const Rcpp::NumericMatrix& mu, const Rcpp::List& P_blocks, bool prior_by_block, const Rcpp::List& row_blocks, const Rcpp::Function& f2, const Rcpp::Function& f3, int Gridtype);
+RcppExport SEXP _glmbayesCore_rNormalRegBlocks_cpp_export(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP offsetSEXP, SEXP wtSEXP, SEXP dispersionSEXP, SEXP muSEXP, SEXP P_blocksSEXP, SEXP prior_by_blockSEXP, SEXP row_blocksSEXP, SEXP f2SEXP, SEXP f3SEXP, SEXP GridtypeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type dispersion(dispersionSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type P_blocks(P_blocksSEXP);
+    Rcpp::traits::input_parameter< bool >::type prior_by_block(prior_by_blockSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type row_blocks(row_blocksSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f2(f2SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f3(f3SEXP);
+    Rcpp::traits::input_parameter< int >::type Gridtype(GridtypeSEXP);
+    rcpp_result_gen = Rcpp::wrap(rNormalRegBlocks_cpp_export(n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, Gridtype));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rNormalReg_cpp_export
 Rcpp::List rNormalReg_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& mu, const Rcpp::NumericMatrix& P, const Rcpp::NumericVector& offset, const Rcpp::NumericVector& wt, double dispersion, const Rcpp::Function& f2, const Rcpp::Function& f3, const Rcpp::NumericVector& start, const std::string& family, const std::string& link, int Gridtype);
 RcppExport SEXP _glmbayesCore_rNormalReg_cpp_export(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP offsetSEXP, SEXP wtSEXP, SEXP dispersionSEXP, SEXP f2SEXP, SEXP f3SEXP, SEXP startSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP GridtypeSEXP) {
@@ -493,6 +516,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_glmbayesCore_rNormalGLM_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalGLM_cpp_export, 18},
     {"_glmbayesCore_rNormalGLMBlocks_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalGLMBlocks_cpp_export, 19},
+    {"_glmbayesCore_rNormalRegBlocks_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalRegBlocks_cpp_export, 13},
     {"_glmbayesCore_rNormalReg_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalReg_cpp_export, 14},
     {"_glmbayesCore_rIndepNormalGammaReg_cpp_export", (DL_FUNC) &_glmbayesCore_rIndepNormalGammaReg_cpp_export, 18},
     {"_glmbayesCore_rNormalGammaReg_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalGammaReg_cpp_export, 13},

@@ -22,7 +22,8 @@ using namespace glmbayes::sim;
 // =============================================================================
 // Tier 1: Core Simulation
 // Callers: rNormal_reg, rNormalGamma_reg, rindepNormalGamma_reg, rGamma_reg,
-//          rNormalGLM_reg_block (via .rNormalGLMBlocks_cpp when wired)
+//          rNormalGLM_reg_block (via .rNormalGLMBlocks_cpp),
+//          rNormalReg_reg_block (via .rNormalRegBlocks_cpp)
 // User:    All users - primary paths via rglmb, rlmb, glmb, pfamily
 // =============================================================================
 
@@ -85,6 +86,31 @@ Rcpp::List rNormalGLMBlocks_cpp_export(
     f2, f3,
     family, link, Gridtype,
     n_envopt, use_parallel, use_opencl, verbose
+  );
+}
+
+// [[Rcpp::export]]
+Rcpp::List rNormalRegBlocks_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::NumericVector& dispersion,
+    const Rcpp::NumericMatrix& mu,
+    const Rcpp::List& P_blocks,
+    bool prior_by_block,
+    const Rcpp::List& row_blocks,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    int Gridtype = 2
+) {
+  return rNormalRegBlocks(
+    n, y, x, offset, wt,
+    dispersion,
+    mu, P_blocks, prior_by_block, row_blocks,
+    f2, f3,
+    Gridtype
   );
 }
 

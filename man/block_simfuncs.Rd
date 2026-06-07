@@ -222,5 +222,8 @@ stopifnot(identical(block_rNormalGLM, rNormalGLM_reg_block))
 
 \code{\link{rNormal_reg}}, \code{\link{simfunction}},
 \code{\link{normalize_block}}, \code{inst/DESIGN_RGLM_BLOCKS.md}
+
+Other block_simfuncs: 
+\code{\link{block_rNormalReg_update}()}
 }
 \concept{block_simfuncs}
