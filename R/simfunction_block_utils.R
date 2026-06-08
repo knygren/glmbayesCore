@@ -51,10 +51,30 @@ normalize_block <- function(block, l2) {
     ))
   }
 
+  # If block is already a factor, preserve its level order before any coercion.
+  # as.vector() on a factor returns integer indices, and re-calling factor() on
+  # those integers sorts the labels lexicographically, silently destroying the
+  # caller-supplied level order.
+  if (is.factor(block) && length(block) == l2) {
+    blk <- block
+    k <- nlevels(blk)
+    rows <- split(seq_len(l2), blk)
+    ids <- levels(blk)
+    l2_blocks <- vapply(rows, length, integer(1L))
+    starts <- c(1L, cumsum(l2_blocks)[-k] + 1L)
+    return(list(
+      k = k,
+      ids = ids,
+      l2_blocks = l2_blocks,
+      starts = starts,
+      rows = rows
+    ))
+  }
+
   block <- as.vector(block)
 
   if (length(block) == l2) {
-    blk <- if (is.factor(block)) block else factor(block)
+    blk <- factor(block)
     k <- nlevels(blk)
     rows <- split(seq_len(l2), blk)
     ids <- levels(blk)
