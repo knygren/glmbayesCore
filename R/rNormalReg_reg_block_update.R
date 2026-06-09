@@ -26,7 +26,6 @@
 #' @param prior_lists List of length \code{k} (or 1) of per-block prior specifications.
 #' @param offset Optional numeric vector (length \code{1} or \code{length(y)}).
 #' @param weights Optional weights vector.
-#' @param Gridtype Passed to each block's sampler (Armadillo Gridtype).
 #' @param seed Optional; passed to \code{\link{set.seed}} before sampling.
 #' @param coef_cols Column indices of \code{coefficients} to return as
 #'   \code{b_draws} (default \code{NULL} returns all columns).
@@ -38,7 +37,7 @@
 #'   }
 #' @seealso \code{\link{block_rNormalReg}}, \code{\link{normalize_block}}
 #' @example inst/examples/Ex_block_rNormalReg_update.R
-#' @rdname block_reg_simfuncs
+#' @rdname block_simfuncs
 #' @export
 block_rNormalReg_update <- function(mu_all,
                                     P          = NULL,

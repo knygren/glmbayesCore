@@ -1626,7 +1626,7 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
     outlist<-.rNormalReg_cpp(n=n,y=y,x=x,mu=mu,P=P,offset=offset2,wt=wt,dispersion=dispersion,
                             ##                      famfunc=famfunc,f1=f1,
                             f2=f2,f3=f3,start=mu)
-    class(outlist$fit)="lm"
+    if (!is.null(outlist$fit)) class(outlist$fit) <- "lm"
     
   }
   else{

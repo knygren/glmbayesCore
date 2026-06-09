@@ -12,6 +12,7 @@
  *     - rNormalGLM.cpp
  *     - rNormalGLMBlocks.cpp
  *     - rNormalRegBlocks.cpp
+ *     - block_utils.cpp
  *     - rIndepNormalGammaReg.cpp
  *     - rNormalGammaReg.cpp
  *     - rGammaGaussian.cpp
@@ -114,7 +115,7 @@ Rcpp::List rNormalGLMBlocks(
     bool verbose = false
 );
 
-Rcpp::List rNormalReg(int n,NumericVector y,NumericMatrix x, 
+Rcpp::List rNormalReg(int n,NumericVector y,NumericMatrix x,
                          NumericVector mu,NumericMatrix P,
                          NumericVector offset,NumericVector wt,
                          double dispersion,
@@ -126,8 +127,6 @@ Rcpp::List rNormalReg(int n,NumericVector y,NumericMatrix x,
 );
 
 /// C++ block loop for Gaussian regression: calls rNormalReg() per block.
-/// Used for Block 1 of the lmebayes Gibbs sampler (school-level b_j draws).
-/// mu is l1 x J with one column per block when prior_by_block = TRUE.
 Rcpp::List rNormalRegBlocks(
     int n,
     NumericVector y,
@@ -144,6 +143,21 @@ Rcpp::List rNormalRegBlocks(
     int Gridtype = 2
 );
 
+Rcpp::List normalize_block_cpp(SEXP block, int l2);
+
+Rcpp::List block_rNormalReg_cpp_export(
+    int n,
+    const NumericVector& y,
+    const NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const NumericVector& offset,
+    const NumericVector& wt,
+    const Function& f2,
+    const Function& f3,
+    int Gridtype
+);
 
 
 Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,

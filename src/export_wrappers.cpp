@@ -115,6 +115,25 @@ Rcpp::List rNormalRegBlocks_cpp_export(
 }
 
 // [[Rcpp::export]]
+Rcpp::List block_rNormalReg_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    int Gridtype = 2
+) {
+  return glmbayes::sim::block_rNormalReg_cpp_export(
+    n, y, x, block, prior_list, prior_lists, offset, wt, f2, f3, Gridtype
+  );
+}
+
+// [[Rcpp::export]]
 Rcpp::List rNormalReg_cpp_export(
     int n,
     const Rcpp::NumericVector& y,

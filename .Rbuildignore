@@ -36,4 +36,5 @@
 ^legacy_c_code$
 ^legacy_code$
 ^inst/DESIGN_RGLM_BLOCKS\.md$
+^inst/DESIGN_RNORMALREG_BLOCKS\.md$
 ^vignettes/

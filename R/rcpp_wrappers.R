@@ -48,12 +48,24 @@
 #' @noRd
 #' @keywords internal
 .rNormalRegBlocks_cpp <- function(
-    n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3,
+    n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks,
+    f2, f3,
     Gridtype = 2L
 ) {
   .Call(`_glmbayesCore_rNormalRegBlocks_cpp_export`,
-    n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3,
+    n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks,
+    f2, f3,
     Gridtype
+  )
+}
+
+#' @noRd
+#' @keywords internal
+.block_rNormalReg_cpp <- function(
+    n, y, x, block, prior_list, prior_lists, offset, wt, f2, f3, Gridtype = 2L
+) {
+  .Call(`_glmbayesCore_block_rNormalReg_cpp_export`,
+    n, y, x, block, prior_list, prior_lists, offset, wt, f2, f3, Gridtype
   )
 }
 

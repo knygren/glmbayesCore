@@ -1,10 +1,13 @@
-#' Conditionally independent block GLM simulation (Gibbs / product likelihood)
+#' Conditionally independent block simulation (Gibbs / product likelihood)
 #'
 #' @description
 #' Draw from blockwise full conditionals when the posterior factorizes across
-#' observation blocks, via \code{.rNormalGLMBlocks_cpp()} (each block calls
-#' \code{rNormalGLM}). Typical use is **block Gibbs** (\code{n = 1} per outer step);
-#' \code{n > 1} gives iid draws from the product conditional.
+#' observation blocks.  \code{\link{block_rNormalReg}} uses
+#' \code{.rNormalRegBlocks_cpp()} (Gaussian; each block calls \code{rNormalReg}).
+#' \code{\link{block_rNormalGLM}} uses \code{.rNormalGLMBlocks_cpp()} (GLM envelope;
+#' each block calls \code{rNormalGLM}).  Typical use is **block Gibbs**
+#' (\code{n = 1} per outer step); \code{n > 1} gives iid draws from the product
+#' conditional.
 #'
 #' @details
 #' **Output layout:** \code{coefficients} and \code{coef.mode} are matrices with
@@ -25,7 +28,8 @@
 #'   partitioned across blocks like \code{y}.
 #' @param weights Optional weights; same recycling and blocking as \code{offset}.
 #' @param family GLM \code{\link{family}} (not \code{gaussian()}).
-#' @param Gridtype,use_parallel,use_opencl,verbose,progbar Passed to each block's sampler.
+#' @param Gridtype Passed to each block's sampler (Armadillo Gridtype).
+#' @param use_parallel,use_opencl,verbose,progbar Passed to each block's GLM sampler.
 #' @param n_envopt Passed to each block; defaults to \code{1} when \code{NULL}.
 #' @return A list with class \code{"block_rNormalGLM"} including:
 #'   \describe{
@@ -38,7 +42,7 @@
 #'   \code{\link{normalize_block}}, \code{inst/DESIGN_RGLM_BLOCKS.md}
 #' @example inst/examples/Ex_block_rNormalGLM.R
 #' @name block_simfuncs
-#' @aliases block_rNormalGLM
+#' @aliases block_rNormalGLM block_rNormalReg
 #' @family block_simfuncs
 NULL
 
@@ -200,6 +204,112 @@ block_rNormalGLM <- function(n,
     call = match.call()
   )
   class(outlist) <- c("block_rNormalGLM", "list")
+  outlist
+}
+
+#' @describeIn block_simfuncs Gaussian blockwise full conditionals via
+#'   \code{.block_rNormalReg_cpp()} (C++ partition, prior payload, and
+#'   \code{rNormalReg()} per block).
+#'   This is the Gaussian counterpart of \code{\link{block_rNormalGLM}}.
+#'
+#' @details
+#' **Per-block prior mean:** pass \code{prior_list$mu} as an \code{l1 x k}
+#' matrix (one column per block).  Standard for Block~1 of the lmebayes Gibbs
+#' sampler, where \eqn{\mu_j = X_{\text{hyper}} \gamma} depends on the current
+#' fixed-effects draw.
+#'
+#' **Dispersion:** must be supplied via \code{prior_list$dispersion} (residual
+#' variance \eqn{\sigma^2}).
+#'
+#' @return A list with class \code{"block_rNormalReg"} including
+#'   \code{coefficients}, \code{coef.mode}, \code{dispersion}, and
+#'   \code{block_info}.
+#' @example inst/examples/Ex_block_rNormalReg.R
+#' @export
+block_rNormalReg <- function(n,
+                             y,
+                             x,
+                             block,
+                             prior_list  = NULL,
+                             prior_lists = NULL,
+                             offset  = NULL,
+                             weights = 1,
+                             Gridtype = 2L) {
+  if (length(n) > 1L) n <- length(n)
+  n <- as.integer(n[1L])
+  if (n < 1L) stop("'n' must be at least 1.", call. = FALSE)
+
+  y <- as.numeric(y)
+  x <- as.matrix(x)
+  l2 <- length(y)
+  if (nrow(x) != l2) stop("nrow(x) must equal length(y).", call. = FALSE)
+
+  offset2 <- offset
+  wt <- weights
+  if (is.null(offset2)) {
+    offset2 <- rep(0, l2)
+  } else {
+    offset2 <- as.numeric(offset2)
+    if (length(offset2) == 1L) offset2 <- rep(offset2, l2)
+    if (length(offset2) != l2) stop("length(offset) must be 1 or length(y).", call. = FALSE)
+  }
+  if (length(wt) == 1L) wt <- rep(wt, l2)
+  if (length(wt) != l2) stop("length(weights) must be 1 or length(y).", call. = FALSE)
+
+  famfunc <- glmbfamfunc(gaussian())
+
+  cpp_out <- .block_rNormalReg_cpp(
+    n           = n,
+    y           = y,
+    x           = x,
+    block       = block,
+    prior_list  = prior_list,
+    prior_lists = prior_lists,
+    offset      = offset2,
+    wt          = wt,
+    f2          = famfunc$f2,
+    f3          = famfunc$f3,
+    Gridtype    = as.integer(Gridtype)
+  )
+
+  block_info    <- cpp_out$block_info
+  coef_draw     <- cpp_out$coefficients
+  coef_mode     <- cpp_out$coef.mode
+  disp_block    <- as.numeric(cpp_out$dispersion)
+  block_results <- cpp_out$block_results
+  prior_block   <- cpp_out$prior_lists
+  k             <- cpp_out$k
+  l1            <- cpp_out$l1
+
+  cn <- colnames(x)
+  if (!is.null(cn)) {
+    colnames(coef_draw) <- cn
+    colnames(coef_mode) <- cn
+  }
+  rn <- block_info$ids
+  if (!is.null(rn)) {
+    rownames(coef_draw) <- rn
+    rownames(coef_mode) <- rn
+  }
+
+  outlist <- list(
+    coefficients  = coef_draw,
+    coef.mode     = coef_mode,
+    dispersion    = disp_block,
+    n             = n,
+    k             = k,
+    l1            = l1,
+    l2            = l2,
+    block_info    = block_info,
+    block_results = block_results,
+    y             = y,
+    x             = x,
+    offset        = offset2,
+    prior.weights = wt,
+    prior_lists   = prior_block,
+    call          = match.call()
+  )
+  class(outlist) <- c("block_rNormalReg", "list")
   outlist
 }
 
