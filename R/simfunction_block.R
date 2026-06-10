@@ -3,9 +3,9 @@
 #' @description
 #' Draw from blockwise full conditionals when the posterior factorizes across
 #' observation blocks.  \code{\link{block_rNormalReg}} uses
-#' \code{.rNormalRegBlocks_cpp()} (Gaussian; each block calls \code{rNormalReg}).
-#' \code{\link{block_rNormalGLM}} uses \code{.rNormalGLMBlocks_cpp()} (GLM envelope;
-#' each block calls \code{rNormalGLM}).  Typical use is **block Gibbs**
+#' \code{.block_rNormalReg_cpp()} (Gaussian; each block calls \code{rNormalReg}).
+#' \code{\link{block_rNormalGLM}} uses \code{.block_rNormalGLM_cpp()} (GLM envelope;
+#' C++ partition and prior payload; each block calls \code{rNormalGLM}).  Typical use is **block Gibbs**
 #' (\code{n = 1} per outer step); \code{n > 1} gives iid draws from the product
 #' conditional.
 #'
@@ -117,15 +117,6 @@ block_rNormalGLM <- function(n,
     stop("length(weights) must be 1 or length(y).", call. = FALSE)
   }
 
-  block_info <- normalize_block(block, l2)
-  k <- block_info$k
-  prior_block <- normalize_prior_for_blocks(
-    prior_list = prior_list,
-    prior_lists = prior_lists,
-    block_info = block_info,
-    l1 = l1
-  )
-
   oklinks <- switch(
     family$family,
     poisson = "log",
@@ -144,31 +135,31 @@ block_rNormalGLM <- function(n,
   }
 
   famfunc <- glmbfamfunc(family)
-  prior_cpp <- .prior_payload_for_rNormalGLMBlocks_cpp(prior_block, l1, k)
   n_envopt_use <- if (is.null(n_envopt)) 1L else as.integer(n_envopt)
 
-  cpp_out <- .rNormalGLMBlocks_cpp(
-    n = n,
-    y = y,
-    x = x,
-    offset = offset2,
-    wt = wt,
-    dispersion = prior_cpp$dispersion,
-    mu = prior_cpp$mu,
-    P_blocks = prior_cpp$P_blocks,
-    prior_by_block = prior_cpp$prior_by_block,
-    row_blocks = block_info$rows,
-    f2 = famfunc$f2,
-    f3 = famfunc$f3,
-    family = family$family,
-    link = family$link,
-    Gridtype = as.integer(Gridtype),
-    n_envopt = n_envopt_use,
+  cpp_out <- .block_rNormalGLM_cpp(
+    n            = n,
+    y            = y,
+    x            = x,
+    block        = block,
+    prior_list   = prior_list,
+    prior_lists  = prior_lists,
+    offset       = offset2,
+    wt           = wt,
+    f2           = famfunc$f2,
+    f3           = famfunc$f3,
+    family       = family$family,
+    link         = family$link,
+    Gridtype     = as.integer(Gridtype),
+    n_envopt     = n_envopt_use,
     use_parallel = use_parallel,
-    use_opencl = use_opencl,
-    verbose = verbose
+    use_opencl   = use_opencl,
+    verbose      = verbose
   )
 
+  block_info <- cpp_out$block_info
+  k <- cpp_out$k
+  prior_block <- cpp_out$prior_lists
   coef_draw <- cpp_out$coefficients
   coef_mode <- cpp_out$coef.mode
   dispersion_block <- as.numeric(cpp_out$dispersion)

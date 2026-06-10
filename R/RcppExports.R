@@ -17,6 +17,14 @@ block_rNormalReg_cpp_export <- function(n, y, x, block, prior_list, prior_lists,
     .Call(`_glmbayesCore_block_rNormalReg_cpp_export`, n, y, x, block, prior_list, prior_lists, offset, wt, f2, f3, Gridtype)
 }
 
+block_rNormalGLM_cpp_export <- function(n, y, x, block, prior_list, prior_lists, offset, wt, f2, f3, family = "binomial", link = "logit", Gridtype = 2L, n_envopt = -1L, use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE) {
+    .Call(`_glmbayesCore_block_rNormalGLM_cpp_export`, n, y, x, block, prior_list, prior_lists, offset, wt, f2, f3, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
+}
+
+two_block_rNormal_reg_cpp_export <- function(n, m_convergence, y, x, block, x_hyper, prior_list_block1, dispersion_block1, ddef_block1, prior_list_block2, fixef_start, group_levels, family, link, f2, f3, f2_gauss, f3_gauss, offset, wt, Gridtype = 2L, n_envopt = 1L, use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE, progbar = TRUE) {
+    .Call(`_glmbayesCore_two_block_rNormal_reg_cpp_export`, n, m_convergence, y, x, block, x_hyper, prior_list_block1, dispersion_block1, ddef_block1, prior_list_block2, fixef_start, group_levels, family, link, f2, f3, f2_gauss, f3_gauss, offset, wt, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar)
+}
+
 rNormalReg_cpp_export <- function(n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family = "gaussian", link = "identity", Gridtype = 2L) {
     .Call(`_glmbayesCore_rNormalReg_cpp_export`, n, y, x, mu, P, offset, wt, dispersion, f2, f3, start, family, link, Gridtype)
 }

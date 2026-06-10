@@ -65,14 +65,22 @@ bool is_symmetric_mat(const NumericMatrix& M, double tol = 1e-8) {
   return true;
 }
 
+// R prior lists routinely carry present-but-NULL elements (e.g.
+// list(dispersion = NULL) from .two_block_block1_prior_list when the family
+// has no dispersion).  Mirror R's is.null() semantics: present-but-NULL
+// counts as absent.
+static inline bool has_non_null(const List& pl, const char* name) {
+  return pl.containsElementNamed(name) && !Rf_isNull(pl[name]);
+}
+
 List prior_list_to_P_Sigma(List pl) {
-  if (!pl.containsElementNamed("mu")) {
+  if (!has_non_null(pl, "mu")) {
     Rcpp::stop("prior_list must contain 'mu'.");
   }
   NumericVector mu = pl["mu"];
   List out = List::create(Rcpp::Named("mu") = mu);
 
-  if (pl.containsElementNamed("P")) {
+  if (has_non_null(pl, "P")) {
     NumericMatrix P = pl["P"];
     if (!is_symmetric_mat(P)) {
       Rcpp::stop("prior precision matrix P must be symmetric.");
@@ -85,15 +93,15 @@ List prior_list_to_P_Sigma(List pl) {
     out["Sigma"] = Sigma;
     return out;
   }
-  if (pl.containsElementNamed("Sigma")) {
+  if (has_non_null(pl, "Sigma")) {
     NumericMatrix Sigma = pl["Sigma"];
     if (!is_symmetric_mat(Sigma)) {
       Rcpp::stop("prior covariance Sigma must be symmetric.");
     }
     arma::mat S(const_cast<double*>(Sigma.begin()), Sigma.nrow(), Sigma.ncol(), false);
-    arma::mat R = arma::chol(S);
-    arma::mat Pinv = arma::inv(R);
-    arma::mat P = Pinv.t() * Pinv;
+    // Match R .prior_list_to_P_Sigma(): chol2inv(chol(Sigma)) is LAPACK
+    // dpotrf + dpotri, which is exactly what inv_sympd() uses.
+    arma::mat P = arma::inv_sympd(S);
     out["Sigma"] = Sigma;
     out["P"] = NumericMatrix(Rcpp::wrap(0.5 * (P + P.t())));
     return out;
@@ -116,10 +124,10 @@ List base_prior_block(List pl, int l1) {
     Rcpp::Named("Sigma") = ps["Sigma"],
     Rcpp::Named("P") = P
   );
-  if (pl.containsElementNamed("dispersion")) {
+  if (has_non_null(pl, "dispersion")) {
     out["dispersion"] = pl["dispersion"];
   }
-  if (pl.containsElementNamed("ddef")) {
+  if (has_non_null(pl, "ddef")) {
     out["ddef"] = pl["ddef"];
   }
   return out;
@@ -167,7 +175,7 @@ List normalize_prior_for_blocks_cpp(
 
   List prior_list(prior_list_sexp);
 
-  if (prior_list.containsElementNamed("blocks")) {
+  if (has_non_null(prior_list, "blocks")) {
     List bl = prior_list["blocks"];
     if (bl.size() != static_cast<R_xlen_t>(k)) {
       Rcpp::stop("'prior_list$blocks' must have length k = %d.", k);
@@ -207,7 +215,7 @@ List normalize_prior_for_blocks_cpp(
     return out;
   }
 
-  SEXP mu_sexp = prior_list["mu"];
+  SEXP mu_sexp = has_non_null(prior_list, "mu") ? (SEXP)prior_list["mu"] : R_NilValue;
   if (Rcpp::is<NumericMatrix>(mu_sexp)) {
     NumericMatrix mu_mat(mu_sexp);
     if (mu_mat.nrow() != l1) {
@@ -228,7 +236,7 @@ List normalize_prior_for_blocks_cpp(
     bool have_P_list = false;
     bool have_S_list = false;
 
-    if (prior_list.containsElementNamed("P")) {
+    if (has_non_null(prior_list, "P")) {
       SEXP P_sexp = prior_list["P"];
       if (Rcpp::is<List>(P_sexp)) {
         P_list = List(P_sexp);
@@ -238,7 +246,7 @@ List normalize_prior_for_blocks_cpp(
         have_P_list = true;
       }
     }
-    if (prior_list.containsElementNamed("Sigma")) {
+    if (has_non_null(prior_list, "Sigma")) {
       SEXP S_sexp = prior_list["Sigma"];
       if (Rcpp::is<List>(S_sexp)) {
         Sigma_list = List(S_sexp);
@@ -252,12 +260,12 @@ List normalize_prior_for_blocks_cpp(
     List out(k);
     for (int j = 0; j < k; ++j) {
       List pl_j = List::create(Rcpp::Named("mu") = mu_mat(Rcpp::_, j));
-      if (prior_list.containsElementNamed("dispersion")) {
+      if (has_non_null(prior_list, "dispersion")) {
         NumericVector disp = prior_list["dispersion"];
         if (disp.size() == k) pl_j["dispersion"] = disp[j];
         else pl_j["dispersion"] = disp[0];
       }
-      if (prior_list.containsElementNamed("ddef")) {
+      if (has_non_null(prior_list, "ddef")) {
         pl_j["ddef"] = prior_list["ddef"];
       }
       if (have_P_list) {
@@ -285,7 +293,7 @@ List prior_payload_from_blocks(const List& prior_block, int l1, int k) {
   NumericVector disp_v(k);
   for (int j = 0; j < k; ++j) {
     List pb = prior_block[j];
-    if (pb.containsElementNamed("dispersion")) {
+    if (has_non_null(pb, "dispersion")) {
       NumericVector d = pb["dispersion"];
       disp_v[j] = d[0];
     } else {
@@ -570,6 +578,89 @@ List block_rNormalReg_cpp_export(
   List cpp_out = rNormalRegBlocks(
     n, y, x, offset2, wt2, dispersion,
     mu, P_blocks, prior_by_block, row_blocks, f2, f3, Gridtype
+  );
+
+  return List::create(
+    Rcpp::Named("coefficients") = cpp_out["coefficients"],
+    Rcpp::Named("coef.mode") = cpp_out["coef.mode"],
+    Rcpp::Named("dispersion") = cpp_out["dispersion"],
+    Rcpp::Named("block_results") = cpp_out["block_results"],
+    Rcpp::Named("block_info") = block_info,
+    Rcpp::Named("prior_lists") = prior_block,
+    Rcpp::Named("n") = n,
+    Rcpp::Named("k") = k,
+    Rcpp::Named("l1") = l1,
+    Rcpp::Named("l2") = l2,
+    Rcpp::Named("y") = y,
+    Rcpp::Named("x") = x,
+    Rcpp::Named("offset") = offset2,
+    Rcpp::Named("prior.weights") = wt2
+  );
+}
+
+// GLM analogue of block_rNormalReg_cpp_export: C++ partition + prior payload,
+// then the existing rNormalGLMBlocks loop (each block calls rNormalGLM
+// unchanged).  Family/link validation and glmbfamfunc(f2, f3) stay on the R
+// side in block_rNormalGLM(); dispersion defaults to 1.0 per block when
+// absent (prior_payload_from_blocks), matching the GLM convention.
+List block_rNormalGLM_cpp_export(
+    int n,
+    const NumericVector& y,
+    const NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const NumericVector& offset,
+    const NumericVector& wt,
+    const Function& f2,
+    const Function& f3,
+    const std::string& family,
+    const std::string& link,
+    int Gridtype,
+    int n_envopt,
+    bool use_parallel,
+    bool use_opencl,
+    bool verbose
+) {
+  if (n < 1) {
+    Rcpp::stop("'n' must be at least 1.");
+  }
+  const int l2 = y.size();
+  const int l1 = x.ncol();
+  if (x.nrow() != l2) {
+    Rcpp::stop("nrow(x) must equal length(y).");
+  }
+
+  NumericVector offset2 = offset;
+  NumericVector wt2 = wt;
+  if (offset2.size() == 1) offset2 = Rcpp::rep(offset2[0], l2);
+  if (wt2.size() == 1) wt2 = Rcpp::rep(wt2[0], l2);
+  if (offset2.size() != l2) {
+    Rcpp::stop("length(offset) must be 1 or length(y).");
+  }
+  if (wt2.size() != l2) {
+    Rcpp::stop("length(weights) must be 1 or length(y).");
+  }
+
+  List block_info = normalize_block_cpp(block, l2);
+  const int k = block_info["k"];
+
+  List prior_block = normalize_prior_for_blocks_cpp(
+    prior_list, prior_lists, block_info, l1
+  );
+
+  List prior_cpp = prior_payload_from_blocks(prior_block, l1, k);
+
+  List row_blocks = block_info["rows"];
+  NumericMatrix mu = prior_cpp["mu"];
+  List P_blocks = prior_cpp["P_blocks"];
+  NumericVector dispersion = prior_cpp["dispersion"];
+  bool prior_by_block = prior_cpp["prior_by_block"];
+
+  List cpp_out = rNormalGLMBlocks(
+    n, y, x, offset2, wt2, dispersion,
+    mu, P_blocks, prior_by_block, row_blocks, f2, f3,
+    family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose
   );
 
   return List::create(

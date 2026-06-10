@@ -19,10 +19,11 @@ glmerb_posterior_mode(
 \item{family}{A \code{\link[stats]{family}} object. Defaults to
 \code{gaussian()}. Reserved for future non-Gaussian response models.}
 
-\item{measurement_prior_list}{List with \code{dispersion_ranef},
-\code{Sigma_ranef}, and \code{prior_list}. Each \code{prior_list[[k]]}
-must contain \code{mu_fixef}, \code{Sigma_fixef}, and
-\code{dispersion_fixef}.}
+\item{measurement_prior_list}{List with \code{Sigma_ranef} and
+\code{prior_list}.  \code{dispersion_ranef} (\eqn{\sigma^2}) is required
+for \code{family = gaussian()} and omitted otherwise.  Each
+\code{prior_list[[k]]} must contain \code{mu_fixef},
+\code{Sigma_fixef}, and \code{dispersion_fixef}.}
 
 \item{tol}{Convergence tolerance on the \eqn{\ell_\infty} change in
 \code{fixef} between successive iterations.  Default \code{1e-10}.}

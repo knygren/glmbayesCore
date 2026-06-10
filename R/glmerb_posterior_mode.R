@@ -38,10 +38,11 @@
 #'   \code{X_hyper}, and \code{re_coef_names}.
 #' @param family A \code{\link[stats]{family}} object. Defaults to
 #'   \code{gaussian()}. Reserved for future non-Gaussian response models.
-#' @param measurement_prior_list List with \code{dispersion_ranef},
-#'   \code{Sigma_ranef}, and \code{prior_list}. Each \code{prior_list[[k]]}
-#'   must contain \code{mu_fixef}, \code{Sigma_fixef}, and
-#'   \code{dispersion_fixef}.
+#' @param measurement_prior_list List with \code{Sigma_ranef} and
+#'   \code{prior_list}.  \code{dispersion_ranef} (\eqn{\sigma^2}) is required
+#'   for \code{family = gaussian()} and omitted otherwise.  Each
+#'   \code{prior_list[[k]]} must contain \code{mu_fixef},
+#'   \code{Sigma_fixef}, and \code{dispersion_fixef}.
 #' @param tol Convergence tolerance on the \eqn{\ell_\infty} change in
 #'   \code{fixef} between successive iterations.  Default \code{1e-10}.
 #' @param maxit Maximum number of ICM iterations.  Default \code{200L}.
@@ -73,6 +74,21 @@ glmerb_posterior_mode <- function(design,
 
   sigma2   <- measurement_prior_list$dispersion_ranef
   Sigma_b  <- measurement_prior_list$Sigma_ranef
+  is_gaussian <- identical(family$family, "gaussian")
+  if (is_gaussian && is.null(sigma2)) {
+    stop(
+      "'measurement_prior_list' must contain 'dispersion_ranef' ",
+      "when family = gaussian().",
+      call. = FALSE
+    )
+  }
+  if (!is_gaussian && !is.null(sigma2)) {
+    stop(
+      "'measurement_prior_list$dispersion_ranef' must be NULL ",
+      "for non-Gaussian families.",
+      call. = FALSE
+    )
+  }
 
   P_gamma  <- stats::setNames(
     lapply(re_names, function(k) {
@@ -111,11 +127,11 @@ glmerb_posterior_mode <- function(design,
       Z_j  <- design$Z[rows, , drop = FALSE]
       mu_j <- mu_all[, jj]
 
-      pf_j <- dNormal(
-        mu         = mu_j,
-        Sigma      = Sigma_b,
-        dispersion = sigma2
-      )
+      pf_j <- if (is.null(sigma2)) {
+        dNormal(mu = mu_j, Sigma = Sigma_b)
+      } else {
+        dNormal(mu = mu_j, Sigma = Sigma_b, dispersion = sigma2)
+      }
       fit_j <- rglmb(
         n       = 1L,
         y       = y_j,

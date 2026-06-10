@@ -1,3 +1,30 @@
+# glmbayesCore (development version)
+
+* **Two-block Gibbs loop in C++:** The main loop of
+  **`two_block_rNormal_reg()`** (Block 1 random-effects update, Block 2
+  hyperparameter update, `m_convergence` inner steps, replicate sampling) now
+  runs entirely in C++ (`two_block_rNormal_reg_cpp_export` in
+  `src/twoBlockGibbs.cpp`), eliminating per-iteration R/C++ round trips. This
+  is a port-only change: the R wrapper still performs input validation,
+  `glmbfamfunc()` resolution, and output assembly, and the C++ driver calls
+  the same per-block samplers (`rNormalGLM` envelope sampler, `rNormalReg`)
+  in the same order as the previous R loop. Draws are statistically
+  equivalent but not bit-reproducible against the old R loop because the C++
+  rejection sampler uses its own RNG stream (compare averages over many
+  draws, not individual draws).
+
+* **Faster GLM block sampling:** **`block_rNormalGLM()`** now performs block
+  partitioning and prior payload assembly in C++
+  (`block_rNormalGLM_cpp_export`), removing per-call R overhead in block
+  Gibbs loops (e.g. Block 1 of the **lmebayes** two-block sampler). The
+  sampling algorithm itself is unchanged: each block still calls the existing
+  `rNormalGLM()` envelope sampler serially. Posterior modes are numerically
+  identical to the previous R-prep path; individual draws follow the same
+  distribution but are not bit-reproducible against the old path (compare
+  means over longer runs). Present-but-`NULL` prior elements (e.g.
+  `dispersion = NULL`) are treated as absent, matching R `is.null()`
+  semantics.
+
 # glmbayes 0.9.6
 
 ## Highlights

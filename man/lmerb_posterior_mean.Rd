@@ -10,8 +10,8 @@ lmerb_posterior_mean(design, measurement_prior_list, tol = 1e-10, maxit = 200L)
 \item{design}{Design list with \code{y}, \code{Z}, \code{groups},
 \code{X_hyper}, and \code{re_coef_names}.}
 
-\item{measurement_prior_list}{List with \code{dispersion_ranef},
-\code{Sigma_ranef}, and \code{prior_list}. Each \code{prior_list[[k]]}
+\item{measurement_prior_list}{List with \code{dispersion_ranef}
+(Gaussian only), \code{Sigma_ranef}, and \code{prior_list}. Each \code{prior_list[[k]]}
 must contain \code{mu_fixef}, \code{Sigma_fixef}, and
 \code{dispersion_fixef}.}
 

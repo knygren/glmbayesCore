@@ -37,8 +37,8 @@
 #'
 #' @param design Design list with \code{y}, \code{Z}, \code{groups},
 #'   \code{X_hyper}, and \code{re_coef_names}.
-#' @param measurement_prior_list List with \code{dispersion_ranef},
-#'   \code{Sigma_ranef}, and \code{prior_list}. Each \code{prior_list[[k]]}
+#' @param measurement_prior_list List with \code{dispersion_ranef}
+#'   (Gaussian only), \code{Sigma_ranef}, and \code{prior_list}. Each \code{prior_list[[k]]}
 #'   must contain \code{mu_fixef}, \code{Sigma_fixef}, and
 #'   \code{dispersion_fixef}.
 #' @param tol Convergence tolerance on the \eqn{\ell_\infty} change in
@@ -69,6 +69,13 @@ lmerb_posterior_mean <- function(design,
   g_chr        <- as.character(design$groups)
 
   sigma2 <- measurement_prior_list$dispersion_ranef
+  if (is.null(sigma2)) {
+    stop(
+      "'measurement_prior_list' must contain 'dispersion_ranef' ",
+      "for lmerb_posterior_mean().",
+      call. = FALSE
+    )
+  }
   P_b    <- solve(measurement_prior_list$Sigma_ranef)
 
   P_gamma  <- stats::setNames(
@@ -173,7 +180,7 @@ lmerb_posterior_mean <- function(design,
   if (!is.list(mpl)) {
     stop("'measurement_prior_list' must be a list.", call. = FALSE)
   }
-  for (nm in c("dispersion_ranef", "Sigma_ranef", "prior_list")) {
+  for (nm in c("Sigma_ranef", "prior_list")) {
     if (is.null(mpl[[nm]])) {
       stop(
         "'measurement_prior_list' must contain '", nm, "'.",

@@ -149,109 +149,98 @@ two_block_rNormal_reg <- function(
     family = family
   )
 
+  ## Observation-level vectors normalized once (same rules as the block
+  ## wrappers, which used to do this per inner Gibbs step).
+  offset2 <- offset
+  wt <- weights
+  if (is.null(offset2)) {
+    offset2 <- rep(0, l2)
+  } else {
+    offset2 <- as.numeric(offset2)
+    if (length(offset2) == 1L) offset2 <- rep(offset2, l2)
+    if (length(offset2) != l2) {
+      stop("length(offset) must be 1 or length(y).", call. = FALSE)
+    }
+  }
+  if (length(wt) == 1L) wt <- rep(wt, l2)
+  if (length(wt) != l2) {
+    stop("length(weights) must be 1 or length(y).", call. = FALSE)
+  }
+
+  ## Family closures resolved once: Block 1 uses the response family, Block 2
+  ## is always Gaussian (multi_rNormal_reg/rNormal_reg used to resolve these
+  ## per call).
+  famfunc_block1 <- glmbfamfunc(if (is_gaussian) gaussian() else family)
+  famfunc_gauss <- glmbfamfunc(gaussian())
+  n_envopt_use <- if (is.null(n_envopt)) 1L else as.integer(n_envopt)
+
   if (!is.null(seed)) {
     set.seed(seed)
   }
 
-  fixef <- fixef_start
-  mu_all <- .two_block_mu_all(fixef, x_hyper, re_names, group_levels)
+  x_hyper_mats <- lapply(x_hyper, as.matrix)
 
-  block1_fn <- if (is_gaussian) block_rNormalReg else block_rNormalGLM
-  block1_args <- c(
-    list(
-      n          = 1L,
-      y          = y,
-      x          = x,
-      block      = block,
-      prior_list = .two_block_block1_prior_list(
-        prior_list_block1,
-        mu_all,
-        block1_prior_meta
-      ),
-      offset     = offset,
-      weights    = weights
-    ),
-    if (!is_gaussian) {
-      list(
-        family       = family,
-        Gridtype     = Gridtype,
-        n_envopt     = n_envopt,
-        use_parallel = use_parallel,
-        use_opencl   = use_opencl,
-        verbose      = verbose
-      )
-    } else {
-      list()
-    }
+  ## The n x m_convergence Gibbs loop runs in C++
+  ## (.two_block_rNormal_reg_cpp -> two_block_rNormal_reg_cpp_export):
+  ## mu_all -> Block 1 (block_rNormalReg/block_rNormalGLM C++ exports) ->
+  ## Block 2 (rNormalReg per RE component), exactly as the former R loop.
+  cpp_out <- .two_block_rNormal_reg_cpp(
+    n                 = n,
+    m_convergence     = m_convergence,
+    y                 = y,
+    x                 = x,
+    block             = block,
+    x_hyper           = x_hyper_mats,
+    prior_list_block1 = prior_list_block1,
+    dispersion_block1 = block1_prior_meta$dispersion,
+    ddef_block1       = block1_prior_meta$ddef,
+    prior_list_block2 = prior_list_block2,
+    fixef_start       = fixef_start,
+    group_levels      = group_levels,
+    family            = family$family,
+    link              = family$link,
+    f2                = famfunc_block1$f2,
+    f3                = famfunc_block1$f3,
+    f2_gauss          = famfunc_gauss$f2,
+    f3_gauss          = famfunc_gauss$f3,
+    offset            = offset2,
+    wt                = wt,
+    Gridtype          = as.integer(Gridtype),
+    n_envopt          = n_envopt_use,
+    use_parallel      = use_parallel,
+    use_opencl        = use_opencl,
+    verbose           = verbose,
+    progbar           = isTRUE(progbar)
   )
+
+  J <- length(group_levels)
+  p_re <- length(re_names)
+  group_ids <- as.character(cpp_out$group_ids)
+
+  fixef_draws <- stats::setNames(cpp_out$fixef_draws, re_names)
+  for (k in re_names) {
+    dimnames(fixef_draws[[k]]) <- list(NULL, names(fixef_start[[k]]))
+  }
+
+  fixef <- stats::setNames(cpp_out$fixef_last, re_names)
+
+  b_arr <- array(as.numeric(cpp_out$b_draws), dim = c(J, p_re, n))
+  b_i <- matrix(b_arr[, , n], nrow = J, ncol = p_re,
+                dimnames = list(group_ids, re_names))
+
+  mu_all <- cpp_out$mu_all_last
+  dimnames(mu_all) <- list(re_names, group_levels)
 
   coef_cols <- c("draw", group_name, re_names)
   draw_rows <- vector("list", n)
-
-  fixef_draws <- stats::setNames(
-    lapply(re_names, function(k) {
-      q_k <- length(fixef_start[[k]])
-      matrix(NA_real_, nrow = n, ncol = q_k,
-             dimnames = list(NULL, names(fixef_start[[k]])))
-    }),
-    re_names
-  )
-
-  if (isTRUE(progbar)) {
-    pb <- utils::txtProgressBar(min = 0L, max = n, style = 3L)
-    on.exit(close(pb), add = TRUE)
-  }
-
-  b_i <- NULL
-
   for (i in seq_len(n)) {
-    if (isTRUE(progbar)) {
-      utils::setTxtProgressBar(pb, i)
-    }
-
-    fixef <- fixef_start
-
-    for (m in seq_len(m_convergence)) {
-
-      mu_all <- .two_block_mu_all(fixef, x_hyper, re_names, group_levels)
-      block1_args$prior_list <- .two_block_block1_prior_list(
-        prior_list_block1,
-        mu_all,
-        block1_prior_meta
-      )
-      block_i <- do.call(block1_fn, block1_args)
-      b_i <- block_i$coefficients
-      if (is.null(rownames(b_i))) {
-        rownames(b_i) <- block_i$block_info$ids
-      }
-      colnames(b_i) <- re_names
-
-      fixef_draw <- multi_rNormal_reg(
-        n          = 1L,
-        y          = b_i,
-        x          = x_hyper,
-        prior_list = prior_list_block2,
-        family     = gaussian(),
-        progbar    = FALSE
-      )
-      fixef <- stats::setNames(
-        lapply(re_names, function(k) fixef_draw[[k]]$coefficients[1L, ]),
-        re_names
-      )
-    }
-
-    for (k in re_names) {
-      fixef_draws[[k]][i, ] <- fixef[[k]]
-    }
-
-    J_i <- nrow(b_i)
     draw_df <- data.frame(
-      draw = rep(i, J_i),
+      draw = rep(i, J),
       stringsAsFactors = FALSE
     )
-    draw_df[[group_name]] <- rownames(b_i)
-    for (nm in re_names) {
-      draw_df[[nm]] <- b_i[, nm]
+    draw_df[[group_name]] <- group_ids
+    for (jj in seq_len(p_re)) {
+      draw_df[[re_names[jj]]] <- b_arr[, jj, i]
     }
     draw_rows[[i]] <- draw_df
   }

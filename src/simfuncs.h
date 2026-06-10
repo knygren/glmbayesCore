@@ -159,6 +159,88 @@ Rcpp::List block_rNormalReg_cpp_export(
     int Gridtype
 );
 
+Rcpp::List block_rNormalGLM_cpp_export(
+    int n,
+    const NumericVector& y,
+    const NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const NumericVector& offset,
+    const NumericVector& wt,
+    const Function& f2,
+    const Function& f3,
+    const std::string& family,
+    const std::string& link,
+    int Gridtype,
+    int n_envopt,
+    bool use_parallel,
+    bool use_opencl,
+    bool verbose
+);
+
+Rcpp::List block_rNormalGLM_cpp_export(
+    int n,
+    const NumericVector& y,
+    const NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const NumericVector& offset,
+    const NumericVector& wt,
+    const Function& f2,
+    const Function& f3,
+    const std::string& family,
+    const std::string& link,
+    int Gridtype,
+    int n_envopt,
+    bool use_parallel,
+    bool use_opencl,
+    bool verbose
+);
+
+/// C++ port of the two_block_rNormal_reg() Gibbs loop (twoBlockGibbs.cpp).
+/// Per inner step: mu_all -> Block 1 via block_rNormal{Reg,GLM}_cpp_export ->
+/// Block 2 via rNormalReg() per RE component (port-only; algorithm unchanged).
+Rcpp::List two_block_rNormal_reg_cpp_export(
+    int n,
+    int m_convergence,
+    const NumericVector& y,
+    const NumericMatrix& x,
+    SEXP block,
+    const List& x_hyper,
+    const List& prior_list_block1,
+    SEXP dispersion_block1,
+    SEXP ddef_block1,
+    const List& prior_list_block2,
+    const List& fixef_start,
+    const CharacterVector& group_levels,
+    const std::string& family,
+    const std::string& link,
+    const Function& f2,
+    const Function& f3,
+    const Function& f2_gauss,
+    const Function& f3_gauss,
+    const NumericVector& offset,
+    const NumericVector& wt,
+    int Gridtype,
+    int n_envopt,
+    bool use_parallel,
+    bool use_opencl,
+    bool verbose,
+    bool progbar
+);
+
+Rcpp::List rNormalGLM_optim_poisson_log(
+    const NumericVector& parin,
+    const NumericVector& y,
+    const NumericMatrix& x,
+    const NumericVector& mu1,
+    const NumericMatrix& P,
+    const NumericVector& alpha,
+    const NumericVector& wt2
+);
+
 
 Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
                                           NumericMatrix mu, /// This is typically standardized to be a zero vector

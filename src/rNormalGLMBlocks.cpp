@@ -1,7 +1,8 @@
 // rNormalGLMBlocks.cpp
-// C++ counterpart to R rNormalGLM_reg_block(): serial loop over blocks, each
+// C++ counterpart to R block_rNormalGLM(): serial loop over blocks, each
 // iteration calls the existing rNormalGLM() on sliced (y_b, x_b, ...).
-// Not exported to R yet (Phase 2).
+// Reached via block_rNormalGLM_cpp_export (block_utils.cpp), which handles
+// the partition and prior payload in C++.
 
 #include "simfuncs.h"
 

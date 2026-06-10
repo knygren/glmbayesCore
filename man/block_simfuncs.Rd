@@ -167,9 +167,9 @@ is its own block (e.g. school-level random effects \eqn{b_j}).
 
 Draw from blockwise full conditionals when the posterior factorizes across
 observation blocks.  \code{\link{block_rNormalReg}} uses
-\code{.rNormalRegBlocks_cpp()} (Gaussian; each block calls \code{rNormalReg}).
-\code{\link{block_rNormalGLM}} uses \code{.rNormalGLMBlocks_cpp()} (GLM envelope;
-each block calls \code{rNormalGLM}).  Typical use is \strong{block Gibbs}
+\code{.block_rNormalReg_cpp()} (Gaussian; each block calls \code{rNormalReg}).
+\code{\link{block_rNormalGLM}} uses \code{.block_rNormalGLM_cpp()} (GLM envelope;
+C++ partition and prior payload; each block calls \code{rNormalGLM}).  Typical use is \strong{block Gibbs}
 (\code{n = 1} per outer step); \code{n > 1} gives iid draws from the product
 conditional.
 }

@@ -143,9 +143,17 @@ One of:
 | `integer` | `k` | `l2_blocks`: contiguous counts, `sum == l2` |
 | `list` | `k` | Named or unnamed row index vectors into `y` / `x` |
 
-### Prior inputs (R-side only)
+### Prior inputs
 
-**All extraction and `Sigma` → `P` conversion on R** — not in C++.
+**Extraction and `Sigma` → `P` conversion now run in C++** (Phase 2b):
+`normalize_block_cpp` / `normalize_prior_for_blocks_cpp` /
+`prior_payload_from_blocks` in `src/block_utils.cpp`, with the legacy R
+helpers (`normalize_block`, `normalize_prior_for_blocks`) retained for tests
+and external callers. The C++ versions mirror R semantics exactly, including
+`is.null()` behaviour: a present-but-`NULL` element (e.g.
+`list(dispersion = NULL)` from the two-block Gibbs prior builder) is treated
+as absent. `Sigma` → `P` uses `arma::inv_sympd` (LAPACK `dpotrf` + `dpotri`),
+matching R's `chol2inv(chol(Sigma))` bit-for-bit.
 
 Accepted shapes (normalize to canonical):
 
@@ -253,6 +261,20 @@ Convert `Sigma` → `P` as in `rNormal_reg()`.
 
 **`.rNormalGLMBlocks_cpp()`** in `R/rcpp_wrappers.R`: positional `.Call` only,
 no preprocessing (same contract as `.rNormalGLM_cpp()`).
+
+### High-level export (Phase 2b)
+
+**`block_rNormalGLM()`** (R) now does validation + family/link resolution +
+`glmbfamfunc()` only, then calls **`.block_rNormalGLM_cpp()`** →
+**`block_rNormalGLM_cpp_export()`** (`src/block_utils.cpp`), which performs
+block partition and prior payload assembly in C++ and delegates to the
+unchanged `rNormalGLMBlocks()` → `rNormalGLM()` pipeline. `f2`/`f3` are still
+R closures used by R `optim` per block (Phase 4 unchanged).
+
+**Equivalence policy:** posterior modes (`coef.mode`) are deterministic and
+must match the legacy R-prep payload tightly; individual rejection-sampler
+draws are *not* comparable across payload assembly paths — compare draw
+means over longer runs (see `data-raw/test_block_rNormalGLM_cpp.R`).
 
 ### Proposed `.Call` arguments
 
@@ -383,3 +405,5 @@ samplers live in **`simfunction_block.R`** only (Section 4b).
 |------|------|
 | 2026-05-28 | Initial design; R: `rNormalGLM_reg_block`; C++: `rNormalGLMBlocks` (loop → `rNormalGLM`). |
 | 2026-05-28 | R files: `simfunction_block.R`, `simfunction_block_utils.R`; integration policy (no `rglmb`/`rlmb` v1); future `rglmb_block` / `lmerb` noted. |
+| 2026-06-09 | Phase 2b: block partition + prior payload ported to C++ (`block_rNormalGLM_cpp_export` in `src/block_utils.cpp`); `block_rNormalGLM()` slimmed to validation + `glmbfamfunc`; `Sigma`→`P` via `inv_sympd`; present-but-NULL prior elements treated as absent (two-block Gibbs compatibility). |
+| 2026-06-10 | Phase 3 (port-only): full `two_block_rNormal_reg()` Gibbs loop moved to C++ (`two_block_rNormal_reg_cpp_export` in `src/twoBlockGibbs.cpp`): mu_all assembly, Block 1 via existing block exports, Block 2 via `rNormalReg` core, `m_convergence` inner steps, replicate sampling, progress bar. R wrapper retains validation + `glmbfamfunc` + output assembly. Equivalence: averages over many draws (C++ rejection sampler uses its own RNG stream); regression test `data-raw/test_two_block_cpp.R`. |
