@@ -406,33 +406,57 @@ Theory and implementation narrative: \insertCite{Nygren2006}{glmbayesCore};
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
+\code{\link{two_block_l_for_tv}()},
+\code{\link{two_block_mode_weights}()},
 \code{\link{two_block_rNormal_reg}()},
-\code{\link{two_block_rNormal_reg_v2}()}
+\code{\link{two_block_rNormal_reg_v2}()},
+\code{\link{two_block_rate}()},
+\code{\link{two_block_tv_bound}()}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
+\code{\link{two_block_l_for_tv}()},
+\code{\link{two_block_mode_weights}()},
 \code{\link{two_block_rNormal_reg}()},
-\code{\link{two_block_rNormal_reg_v2}()}
+\code{\link{two_block_rNormal_reg_v2}()},
+\code{\link{two_block_rate}()},
+\code{\link{two_block_tv_bound}()}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
+\code{\link{two_block_l_for_tv}()},
+\code{\link{two_block_mode_weights}()},
 \code{\link{two_block_rNormal_reg}()},
-\code{\link{two_block_rNormal_reg_v2}()}
+\code{\link{two_block_rNormal_reg_v2}()},
+\code{\link{two_block_rate}()},
+\code{\link{two_block_tv_bound}()}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
+\code{\link{two_block_l_for_tv}()},
+\code{\link{two_block_mode_weights}()},
 \code{\link{two_block_rNormal_reg}()},
-\code{\link{two_block_rNormal_reg_v2}()}
+\code{\link{two_block_rNormal_reg_v2}()},
+\code{\link{two_block_rate}()},
+\code{\link{two_block_tv_bound}()}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
+\code{\link{two_block_l_for_tv}()},
+\code{\link{two_block_mode_weights}()},
 \code{\link{two_block_rNormal_reg}()},
-\code{\link{two_block_rNormal_reg_v2}()}
+\code{\link{two_block_rNormal_reg_v2}()},
+\code{\link{two_block_rate}()},
+\code{\link{two_block_tv_bound}()}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
+\code{\link{two_block_l_for_tv}()},
+\code{\link{two_block_mode_weights}()},
 \code{\link{two_block_rNormal_reg}()},
-\code{\link{two_block_rNormal_reg_v2}()}
+\code{\link{two_block_rNormal_reg_v2}()},
+\code{\link{two_block_rate}()},
+\code{\link{two_block_tv_bound}()}
 }
 \author{
 The simulation framework was developed by Kjell Nygren as part of the \pkg{glmbayes} package. It builds on the likelihood subgradient approach described in \insertCite{Nygren2006}{glmbayesCore}, and extends classical Bayesian GLM sampling techniques.

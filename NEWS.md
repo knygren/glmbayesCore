@@ -1,5 +1,50 @@
 # glmbayesCore (development version)
 
+* **Convergence rate for the two-block sampler:** New **`two_block_rate()`**
+  computes the eigenvalues of
+  `A = P11^{-1/2} P12 P22^{-1} P21 P11^{-1/2}` (Nygren 2020, Remark 8) for
+  the joint Gaussian posterior targeted by **`two_block_rNormal_reg()`**,
+  without ever forming the `J*p_re x J*p_re` Block 1 precision: the cross
+  moment is accumulated per group with `p_re x p_re` solves followed by a
+  single `q x q` symmetric eigendecomposition. The maximal eigenvalue
+  `lambda*` is the geometric TV contraction rate of the sampler;
+  `m_for_tol(tol)` returns the implied number of inner Gibbs sweeps. For
+  non-Gaussian families explicit IRLS-style `weights` give a local-Gaussian
+  heuristic. Validated against a dense brute-force construction of the joint
+  precision and against the observed contraction of the ICM mean recursion
+  (`lmerb_posterior_mean()`), which contracts at exactly `lambda*`.
+
+* **Likelihood precision at the posterior mode:** New
+  **`two_block_mode_weights()`** evaluates per-observation likelihood
+  precisions (IRLS/Fisher weights) at a supplied random-effects value -
+  typically the joint posterior mode from `glmerb_posterior_mode()` - and
+  assembles the per-group likelihood precision blocks `Z_j' W_j Z_j`.
+  Weights are computed generically from the family object
+  (`w_i = wt_i mu'(eta_i)^2 / (V(mu_i) phi)`): exact observed Hessian for
+  canonical links (gaussian, poisson-log, binomial-logit), expected (Fisher)
+  information otherwise - including correct probit/cloglog/Gamma-log weights
+  where `glmbfamfunc()$f7` carries copy-pasted logistic weights.  The
+  `weights` component feeds `two_block_rate(weights = )` directly, providing
+  the local-Gaussian heuristic input for extending the TV-rate analysis to
+  non-Gaussian `glmerb` models.  Validated against `f7` on its correct
+  branches and against the exact Gaussian rate path.
+
+* **Explicit TV convergence bounds:** New **`two_block_tv_bound()`**
+  evaluates the total-variation bound between the `l`-step kernel and the
+  target (Nygren 2020) from the `two_block_rate()` spectrum, two ways:
+  `method = "theorem3"` computes the exact per-eigendirection terms
+  `d_i^(l)` using the closed form `erf_n(x) = pchisq(2 x^2, n)` with
+  `r_i^(l) = (1 - a_{i-1}^{2l})/(1 - a_i^{2l})`; `method = "corollary1"`
+  evaluates the looser geometric envelope with explicit constants. With the
+  chain started at the exact posterior mean (as `lmerb` does), the mean term
+  vanishes identically (`D0 = 0` default) and only the variance-convergence
+  sum remains, which decays like `lambda*^{2l}` - twice the exponent of the
+  crude `(lambda*)^m` proxy. **`two_block_l_for_tv()`** inverts the bound to
+  give the number of inner Gibbs sweeps required for a target tolerance, and
+  `print.two_block_rate()` now tabulates proxy vs Theorem 3 vs Corollary 1
+  sweeps. On the lmerb big_word_club example (`lambda* = 0.839`): TV <= 1e-3
+  needs 16 sweeps (Theorem 3) / 23 (Corollary 1) vs 40 for the proxy.
+
 * **Two-block Gibbs loop in C++:** The main loop of
   **`two_block_rNormal_reg()`** (Block 1 random-effects update, Block 2
   hyperparameter update, `m_convergence` inner steps, replicate sampling) now

@@ -66,7 +66,11 @@ Block 2 of \code{\link{two_block_rNormal_reg}}.
 
 glmbayes Simulation Functions
 \code{\link{simfuncs}},
+\code{\link{two_block_l_for_tv}()},
+\code{\link{two_block_mode_weights}()},
 \code{\link{two_block_rNormal_reg}()},
-\code{\link{two_block_rNormal_reg_v2}()}
+\code{\link{two_block_rNormal_reg_v2}()},
+\code{\link{two_block_rate}()},
+\code{\link{two_block_tv_bound}()}
 }
 \concept{simfuncs}
