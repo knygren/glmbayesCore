@@ -1,5 +1,11 @@
 # glmbayesCore (development version)
 
+* **`pfamily_list()` generic:** New S3 generic for building a named list of
+  pfamily objects from a prior-specification container.  Downstream
+  packages provide methods (e.g. `lmebayes` for `Prior_Setup_lmebayes()`
+  objects, mapping each random-effect component to `dNormal()` or
+  `dIndependent_Normal_Gamma()`).
+
 * **Convergence rate for the two-block sampler:** New **`two_block_rate()`**
   computes the eigenvalues of
   `A = P11^{-1/2} P12 P22^{-1} P21 P11^{-1/2}` (Nygren 2020, Remark 8) for
