@@ -124,6 +124,17 @@ stopifnot(all(is.finite(as.matrix(fit_ing$coefficients[, re_names]))))
 for (k in re_names) {
   stopifnot(all(is.finite(fit_ing$fixef_draws[[k]])))
 }
+## Candidate counts: every stored draw needed at least one envelope candidate
+## per inner sweep for each (all-ING) component.
+it <- fit_ing$iters_fixef_draws
+stopifnot(
+  is.matrix(it), nrow(it) == n_draw, ncol(it) == 2L,
+  identical(colnames(it), re_names),
+  all(is.finite(it)), all(it >= m_conv)
+)
+cat("   mean candidates per accepted draw: ",
+    paste(sprintf("%s = %.2f", re_names, colMeans(it) / m_conv),
+          collapse = ", "), "\n", sep = "")
 cat("1. all-ING run: structure + bounds OK (tau2 means: ",
     paste(sprintf("%s=%.3g", re_names, colMeans(dd)), collapse = ", "),
     ")\n", sep = "")

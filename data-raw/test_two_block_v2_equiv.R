@@ -116,7 +116,14 @@ dd <- fit_v2$dispersion_fixef_draws
 stopifnot(is.matrix(dd), nrow(dd) == n_draw, ncol(dd) == length(re_names))
 stopifnot(identical(colnames(dd), re_names))
 stopifnot(all(dd[, "(Intercept)"] == 0.16), all(dd[, "slope"] == 0.16))
-cat("2. dispersion_fixef_draws: OK\n")
+## iters_fixef_draws: total Block 2 candidates per stored draw (summed over
+## inner sweeps).  dNormal components are conjugate -- exactly 1 candidate
+## per sweep, so every entry equals m_convergence.
+it <- fit_v2$iters_fixef_draws
+stopifnot(is.matrix(it), nrow(it) == n_draw, ncol(it) == length(re_names))
+stopifnot(identical(colnames(it), re_names))
+stopifnot(all(it == m_conv))
+cat("2. dispersion_fixef_draws + iters_fixef_draws: OK\n")
 
 ## ---------------------------------------------------------------------------
 ## 3. Poisson Block 1: average-coefficient equivalence (RNG streams differ)
@@ -192,6 +199,11 @@ stopifnot(all(is.finite(dd_ing)), all(dd_ing > 0))
 stopifnot(all(dd_ing[, "(Intercept)"] == 0.16))  # dNormal: fixed
 stopifnot(all(dd_ing[, "slope"] >= dl_s))        # ING: within fixed window
 stopifnot(all(dd_ing[, "slope"] <= du_s))
+## Candidate counts: dNormal column = m_convergence exactly; ING column is
+## at least m_convergence (>= 1 envelope candidate per accepted draw).
+it_ing <- fit_ing$iters_fixef_draws
+stopifnot(all(it_ing[, "(Intercept)"] == 2L))
+stopifnot(all(it_ing[, "slope"] >= 2L))
 cat("4. mixed dNormal + ING smoke run: OK\n")
 
 ## Validation: ING without disp_lower is rejected up front

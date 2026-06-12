@@ -1,5 +1,19 @@
 # glmbayesCore (development version)
 
+* **Candidate counts surfaced by the two-block v2 sampler:**
+  **`two_block_rNormal_reg_v2()`** now returns `iters_fixef_draws`, an
+  `n x p_re` matrix of the total number of Block 2 candidates generated per
+  stored draw, summed over the `m_convergence` inner sweeps.
+  `dIndependent_Normal_Gamma` components count the envelope accept-reject
+  candidates until acceptance (the `iters_out` already produced by
+  `rIndepNormalGammaReg`, previously discarded by the Gibbs loop); `dNormal`
+  components count exactly one conjugate draw per sweep, so their columns
+  equal `m_convergence`.  Dividing by `m_convergence` gives the average
+  number of candidates per accepted draw (roughly the reciprocal envelope
+  acceptance rate), matching the `iters` semantics of `rglmb`-style
+  samplers.  Reading the counts consumes no RNG, so draws are
+  bitwise-identical to the previous version under the same seed.
+
 * **Prior-vs-data guard for `dIndependent_Normal_Gamma` sampling:**
   **`rindepNormalGamma_reg()`** now rejects calls where the Gamma (precision)
   part of the prior carries more effective prior observations than the data

@@ -81,7 +81,15 @@ Object of class \code{c("two_block_rNormal_reg_v2",
 \code{\link{two_block_rNormal_reg}}, plus
 \code{dispersion_fixef_draws}: an \code{n x p_re} matrix of the Block~2
 dispersion (tau^2_k) at each stored draw (constant columns for
-\code{dNormal} components).
+\code{dNormal} components), and \code{iters_fixef_draws}: an
+\code{n x p_re} matrix of the total number of Block~2 candidates
+generated per stored draw, summed over the \code{m_convergence} inner
+sweeps (mirrors \code{iters} in \code{rglmb}-style samplers;
+\code{dIndependent_Normal_Gamma} components count envelope
+accept-reject candidates until acceptance, \code{dNormal} components
+count exactly 1 conjugate draw per sweep, so their column equals
+\code{m_convergence}; divide by \code{m_convergence} for the average
+number of candidates per accepted draw).
 }
 \description{
 Development version of \code{\link{two_block_rNormal_reg}} where the

@@ -50,7 +50,15 @@
 #'   \code{\link{two_block_rNormal_reg}}, plus
 #'   \code{dispersion_fixef_draws}: an \code{n x p_re} matrix of the Block~2
 #'   dispersion (tau^2_k) at each stored draw (constant columns for
-#'   \code{dNormal} components).
+#'   \code{dNormal} components), and \code{iters_fixef_draws}: an
+#'   \code{n x p_re} matrix of the total number of Block~2 candidates
+#'   generated per stored draw, summed over the \code{m_convergence} inner
+#'   sweeps (mirrors \code{iters} in \code{rglmb}-style samplers;
+#'   \code{dIndependent_Normal_Gamma} components count envelope
+#'   accept-reject candidates until acceptance, \code{dNormal} components
+#'   count exactly 1 conjugate draw per sweep, so their column equals
+#'   \code{m_convergence}; divide by \code{m_convergence} for the average
+#'   number of candidates per accepted draw).
 #' @family simfuncs
 #' @seealso \code{\link{two_block_rNormal_reg}}, \code{\link{dNormal}},
 #'   \code{\link{dIndependent_Normal_Gamma}}
@@ -236,6 +244,9 @@ two_block_rNormal_reg_v2 <- function(
   dispersion_fixef_draws <- cpp_out$dispersion_fixef_draws
   dimnames(dispersion_fixef_draws) <- list(NULL, re_names)
 
+  iters_fixef_draws <- cpp_out$iters_fixef_draws
+  dimnames(iters_fixef_draws) <- list(NULL, re_names)
+
   coef_cols <- c("draw", group_name, re_names)
   draw_rows <- vector("list", n)
   for (i in seq_len(n)) {
@@ -262,6 +273,7 @@ two_block_rNormal_reg_v2 <- function(
       b_last                 = b_i,
       mu_all_last            = mu_all,
       dispersion_fixef_draws = dispersion_fixef_draws,
+      iters_fixef_draws      = iters_fixef_draws,
       pfamily_list           = pfamily_list,
       family                 = family,
       n                      = n,
