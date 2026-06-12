@@ -199,6 +199,45 @@ Rcpp::List two_block_rNormal_reg_cpp_export(
 }
 
 // [[Rcpp::export]]
+Rcpp::List two_block_rNormal_reg_v2_cpp_export(
+    int n,
+    int m_convergence,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    const Rcpp::List& x_hyper,
+    const Rcpp::List& prior_list_block1,
+    SEXP dispersion_block1,
+    SEXP ddef_block1,
+    const Rcpp::List& pfamily_list,
+    const Rcpp::List& fixef_start,
+    const Rcpp::CharacterVector& group_levels,
+    const std::string& family,
+    const std::string& link,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const Rcpp::Function& f2_gauss,
+    const Rcpp::Function& f3_gauss,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    int Gridtype = 2,
+    int n_envopt = 1,
+    bool use_parallel = true,
+    bool use_opencl = false,
+    bool verbose = false,
+    bool progbar = true
+) {
+  return glmbayes::sim::two_block_rNormal_reg_v2_cpp_export(
+    n, m_convergence, y, x, block, x_hyper,
+    prior_list_block1, dispersion_block1, ddef_block1,
+    pfamily_list, fixef_start, group_levels,
+    family, link, f2, f3, f2_gauss, f3_gauss,
+    offset, wt, Gridtype, n_envopt,
+    use_parallel, use_opencl, verbose, progbar
+  );
+}
+
+// [[Rcpp::export]]
 Rcpp::List rNormalReg_cpp_export(
     int n,
     const Rcpp::NumericVector& y,

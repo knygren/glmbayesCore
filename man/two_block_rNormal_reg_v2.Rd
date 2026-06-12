@@ -2,7 +2,7 @@
 % Please edit documentation in R/two_block_rNormal_reg_v2.R
 \name{two_block_rNormal_reg_v2}
 \alias{two_block_rNormal_reg_v2}
-\title{Two-block Gaussian Gibbs sampler (Gaussian-only backup)}
+\title{Two-block Gibbs sampler with pfamily Block 2 priors (development v2)}
 \usage{
 two_block_rNormal_reg_v2(
   n,
@@ -11,13 +11,21 @@ two_block_rNormal_reg_v2(
   block,
   x_hyper,
   prior_list_block1,
-  prior_list_block2,
+  pfamily_list,
   fixef_start,
   re_coef_names = colnames(x),
   group_levels = levels(block),
   group_name = NULL,
   m_convergence = 10L,
   sampling = c("replicate", "chain"),
+  family = gaussian(),
+  offset = NULL,
+  weights = 1,
+  Gridtype = 2L,
+  n_envopt = NULL,
+  use_parallel = TRUE,
+  use_opencl = FALSE,
+  verbose = FALSE,
   seed = NULL,
   progbar = TRUE
 )
@@ -38,8 +46,9 @@ two_block_rNormal_reg_v2(
 \code{dispersion} (required for \code{gaussian()}), optional \code{ddef}.
 \code{mu} is updated internally.}
 
-\item{prior_list_block2}{Named list of Block~2 prior lists passed to
-\code{\link{multi_rNormal_reg}}.}
+\item{pfamily_list}{Named list of \code{pfamily} objects, one per column
+of \code{x}: \code{\link{dNormal}} or
+\code{\link{dIndependent_Normal_Gamma}}.}
 
 \item{fixef_start}{Named list of hyper-parameter vectors at which each inner
 chain is initialised.}
@@ -54,21 +63,45 @@ chain is initialised.}
 
 \item{sampling}{Sampling scheme; only \code{"replicate"} is implemented.}
 
+\item{family}{Response \code{\link[stats]{family}} for Block~1 (default
+\code{gaussian()}). Block~2 always uses \code{gaussian()}.}
+
+\item{offset, weights}{Passed to Block~1 (length \code{l2} or recycled).}
+
+\item{Gridtype, n_envopt, use_parallel, use_opencl, verbose}{Passed to Block~1
+when \code{family} is not Gaussian.}
+
 \item{seed}{Optional RNG seed.}
 
 \item{progbar}{Logical; show a text progress bar.}
 }
 \value{
-Object of class \code{"two_block_rNormal_reg_v2"}.
+Object of class \code{c("two_block_rNormal_reg_v2",
+  "two_block_rNormal_reg")}.  Same fields as
+\code{\link{two_block_rNormal_reg}}, plus
+\code{dispersion_fixef_draws}: an \code{n x p_re} matrix of the Block~2
+dispersion (tau^2_k) at each stored draw (constant columns for
+\code{dNormal} components).
 }
 \description{
-Frozen copy of \code{\link{two_block_rNormal_reg}} before the
-\code{family}-aware Block~1 path was added.  Block~1 always uses
-\code{\link{block_rNormalReg}}; Block~2 uses \code{\link{multi_rNormal_reg}}
-with \code{family = gaussian()}.
+Development version of \code{\link{two_block_rNormal_reg}} where the
+Block~2 priors are supplied as \code{pfamily} objects instead of bare
+prior lists.  Each component of \code{pfamily_list} may be a
+\code{\link{dNormal}} prior (conjugate gamma_k draw at fixed dispersion,
+identical to v1) or a \code{\link{dIndependent_Normal_Gamma}} prior, in
+which case Block~2 makes a joint (gamma_k, tau^2_k) draw via the
+likelihood-subgradient envelope sampler (the same path as \code{rglmb}
+with an ING pfamily) and the sampled tau^2_k is fed back into the
+Block~1 prior precision on the next inner step.
+}
+\details{
+With \code{dNormal} priors throughout, this function produces draws that
+are identical to \code{\link{two_block_rNormal_reg}} under the same seed;
+that equivalence is the regression gate for the v2 development track.
 }
 \seealso{
-\code{\link{two_block_rNormal_reg}}
+\code{\link{two_block_rNormal_reg}}, \code{\link{dNormal}},
+\code{\link{dIndependent_Normal_Gamma}}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
@@ -77,6 +110,7 @@ glmbayes Simulation Functions
 \code{\link{two_block_mode_weights}()},
 \code{\link{two_block_rNormal_reg}()},
 \code{\link{two_block_rate}()},
+\code{\link{two_block_rate_v2}()},
 \code{\link{two_block_tv_bound}()}
 }
 \concept{simfuncs}

@@ -369,7 +369,10 @@ void rIndepNormalGammaReg_worker::operator()(std::size_t begin, std::size_t end)
         bool bad = false;
         std::ostringstream msg;
         
-        if (test1 > 0.0) {
+        // Tolerate round-off ties: at the mode face LL_Test == UB1 exactly in
+        // exact arithmetic, so test1 can land a few ulps above 0.
+        double tol1 = 1e-9 * std::max(1.0, std::abs(UB1));
+        if (test1 > tol1) {
           bad = true;
           msg << "Sign violation: test1 = " << test1 << " > 0\n";
         }
@@ -665,7 +668,10 @@ Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
       bool bad = false;
       std::ostringstream msg;
       
-      if (test1 > 0.0) {
+      // Tolerate round-off ties: at the mode face LL_Test == UB1 exactly in
+      // exact arithmetic, so test1 can land a few ulps above 0.
+      double tol1 = 1e-9 * std::max(1.0, std::abs(UB1));
+      if (test1 > tol1) {
         bad = true;
         msg << "Sign violation: test1 = " << test1 << " > 0\n";
       }

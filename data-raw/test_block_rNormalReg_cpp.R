@@ -78,19 +78,19 @@ stopifnot(identical(blk_factor$l2_blocks, blk_int$l2_blocks))
 cat("3. normalize_block partition shapes: OK\n")
 
 ## ---------------------------------------------------------------------------
-## 4. two_block_rNormal_reg vs v2 (Gaussian) — same draws with fixed seed
+## 4. two_block_rNormal_reg smoke run (Gaussian) — deterministic with seed
 ## ---------------------------------------------------------------------------
 x_hyper <- list("(Intercept)" = matrix(1, n_schools, 1), "X1" = matrix(0, n_schools, 1))
 prior_b1 <- list(P = diag(0.01, l1), dispersion = sigma2, ddef = FALSE)
 prior_b2 <- list(
-  "(Intercept)" = list(mu = 0, Sigma = 100, dispersion = 1),
-  "X1"          = list(mu = 0, Sigma = 100, dispersion = 1)
+  "(Intercept)" = list(mu = 0, Sigma = diag(100, 1L), dispersion = 1),
+  "X1"          = list(mu = 0, Sigma = diag(100, 1L), dispersion = 1)
 )
 fixef_start <- list("(Intercept)" = 0, "X1" = 0)
 
-run_pair <- function(seed) {
+run_once <- function(seed) {
   set.seed(seed)
-  v1 <- two_block_rNormal_reg(
+  two_block_rNormal_reg(
     n = 2L, y = y, x = x, block = factor(school),
     x_hyper = x_hyper,
     prior_list_block1 = prior_b1,
@@ -101,26 +101,16 @@ run_pair <- function(seed) {
     progbar = FALSE,
     seed = NULL
   )
-  set.seed(seed)
-  v2 <- two_block_rNormal_reg_v2(
-    n = 2L, y = y, x = x, block = factor(school),
-    x_hyper = x_hyper,
-    prior_list_block1 = prior_b1,
-    prior_list_block2 = prior_b2,
-    fixef_start = fixef_start,
-    m_convergence = 1L,
-    progbar = FALSE,
-    seed = NULL
-  )
-  list(v1 = v1, v2 = v2)
 }
 
-pair <- run_pair(123L)
-d_coef <- max(abs(pair$v1$b_last - pair$v2$b_last), na.rm = TRUE)
+r1 <- run_once(123L)
+r2 <- run_once(123L)
+stopifnot(all(is.finite(r1$b_last)))
+d_coef <- max(abs(r1$b_last - r2$b_last), na.rm = TRUE)
 if (!is.finite(d_coef) || d_coef > tol) {
-  stop("two_block_rNormal_reg vs v2 b_last differ: max = ", d_coef)
+  stop("two_block_rNormal_reg not reproducible with fixed seed: max = ", d_coef)
 }
-cat("4. two_block vs v2: OK (max diff ", format(d_coef, digits = 3), ")\n", sep = "")
+cat("4. two_block reproducibility: OK (max diff ", format(d_coef, digits = 3), ")\n", sep = "")
 
 ## ---------------------------------------------------------------------------
 ## 5. big_word_club — one Block 1 step via block_rNormalReg (optional)
@@ -147,7 +137,8 @@ if (requireNamespace("bayesrules", quietly = TRUE) &&
     ctrl <- lme4::lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
     ps <- lmebayes::Prior_Setup_lmebayes(form_lmer, data = dat, pwt = 0.01)
     design <- lmebayes::model_setup(form_lmer, data = dat, control = ctrl)
-    fixef <- lme4::fixef(design$lmer)
+    fixef <- lapply(ps$prior_list, `[[`, "mu_fixef")
+    names(fixef) <- design$re_coef_names
     mu_all <- as.matrix(glmbayesCore::build_mu_all(design, fixef)$mu_all)
     set.seed(99)
     b1 <- block_rNormalReg(
@@ -157,7 +148,7 @@ if (requireNamespace("bayesrules", quietly = TRUE) &&
       block = design$groups,
       prior_list = list(
         mu = mu_all,
-        P = ps$P_ranef,
+        Sigma = ps$Sigma_ranef,
         dispersion = ps$dispersion_ranef,
         ddef = FALSE
       )

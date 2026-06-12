@@ -35,7 +35,7 @@
 #' @param progbar Logical; show a text progress bar.
 #' @return Object of class \code{"two_block_rNormal_reg"}.
 #' @family simfuncs
-#' @seealso \code{\link{build_mu_all}}, \code{\link{two_block_rNormal_reg_v2}},
+#' @seealso \code{\link{build_mu_all}},
 #'   \code{\link{block_rNormalReg}}, \code{\link{block_rNormalGLM}},
 #'   \code{\link{multi_rNormal_reg}}, \code{\link{rNormal_reg}}
 #' @export
