@@ -220,6 +220,7 @@ OpenCL/GPU: \insertCite{glmbayesChapter12,glmbayesChapterA10}{glmbayesCore}.
 matrix-input fits; additional formula-based methods are in \pkg{glmbayes}.
 
 glmbayes Modeling Functions
+\code{\link{multi_rlmb}()},
 \code{\link{rlmb}()}
 }
 \author{

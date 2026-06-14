@@ -211,6 +211,7 @@ Further reading: \insertCite{Nygren2006}{glmbayesCore};
 User-facing S3 methods for fitted models are provided by \pkg{glmbayes}.
 
 glmbayes Modeling Functions
+\code{\link{multi_rlmb}()},
 \code{\link{rglmb}()}
 }
 \concept{modelfuns}

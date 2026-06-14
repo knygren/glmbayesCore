@@ -58,6 +58,7 @@ Gibbs samplers.} Unpublished manuscript.
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
+\code{\link{multi_rlmb}()},
 \code{\link{simfuncs}},
 \code{\link{two_block_l_for_tv}()},
 \code{\link{two_block_mode_weights}()},
