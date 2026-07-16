@@ -43,12 +43,10 @@
 #ifndef GLMBAYES_ENV_H
 #define GLMBAYES_ENV_H
 
-
 // we only include RcppArmadillo.h which pulls Rcpp.h in for us
 #include "RcppArmadillo.h"
 
 using namespace Rcpp;
-
 
 namespace glmbayes{
 
@@ -110,8 +108,6 @@ Rcpp::List EnvelopeSize(const arma::vec& a,
                         bool use_opencl = false,
                         bool verbose    = false);
 
-
-
 List EnvelopeBuild(NumericVector bStar,
                        NumericMatrix A,
                        NumericVector y,
@@ -129,7 +125,6 @@ List EnvelopeBuild(NumericVector bStar,
                        bool use_opencl    = false, // Enables OpenCL acceleration during envelope construction
                        bool verbose       = false  // Enables diagnostic output
 );
-
 
 Rcpp::List EnvelopeEval(const Rcpp::NumericMatrix& G4,   // grid (parameters × grid points)
                         const Rcpp::NumericVector& y,
@@ -160,7 +155,6 @@ List EnvelopeBuild_Ind_Normal_Gamma(NumericVector bStar,
                                     bool use_opencl    = false,
                                     bool verbose       = false);
 
-
 List EnvelopeDispersionBuild(
     List Env,
     double Shape,
@@ -182,7 +176,6 @@ List EnvelopeDispersionBuild(
     
 );
 
-
 /// EnvelopeCentering: dispersion anchoring for Normal-Gamma; RSS_post is closed-form
 /// E[RSS] each iteration and drives the Gamma update.
 List EnvelopeCentering(
@@ -196,150 +189,6 @@ List EnvelopeCentering(
     double rate,
     int Gridtype = 2,
     bool verbose = false
-);
-
-/// BlockEnvelopeCentering: pooled dispersion anchoring for block ING (Step 1).
-List BlockEnvelopeCentering(
-    NumericVector y,
-    NumericMatrix x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    NumericVector offset,
-    NumericVector wt,
-    double shape,
-    double rate,
-    double max_disp_perc,
-    Nullable<double> disp_lower,
-    Nullable<double> disp_upper,
-    int p_re,
-    int n_rss_iter,
-    bool verbose
-);
-
-/// BlockEnvelopeBuild: per-block beta envelopes + shared dispersion stub (Step 2).
-List BlockEnvelopeBuild(
-    const List& centering_out,
-    NumericVector y,
-    NumericMatrix x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    NumericVector offset,
-    NumericVector wt,
-    double max_disp_perc,
-    Nullable<double> disp_lower,
-    Nullable<double> disp_upper,
-    int n,
-    int Gridtype,
-    Nullable<int> n_envopt,
-    double RSS_ML,
-    bool use_parallel,
-    bool use_opencl,
-    bool verbose
-);
-
-/// BlockEnvelopeDispersionBuild: per-block EDB + pooled sigma^2 constants (Step 3).
-List BlockEnvelopeDispersionBuild(
-    const List& build_out,
-    const List& centering_out,
-    NumericVector y,
-    NumericMatrix x,
-    SEXP block,
-    NumericVector offset,
-    NumericVector wt,
-    double shape,
-    double rate,
-    double max_disp_perc,
-    Nullable<double> disp_lower,
-    Nullable<double> disp_upper,
-    double RSS_ML,
-    bool use_parallel,
-    bool verbose
-);
-
-/// BlockEnvelopeSim: envelope-proposal draws per block (phase 1 auto-accept).
-List BlockEnvelopeSim(
-    const List& build_out,
-    int n,
-    bool progbar,
-    bool verbose
-);
-
-/// Block ING pipeline orchestrator (Centering → Build → DispersionBuild → Sim).
-List rIndepNormalGammaRegBlock(
-    int n,
-    NumericVector y,
-    NumericMatrix x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    NumericVector offset,
-    NumericVector wt,
-    int p_re,
-    int n_rss_iter,
-    int Gridtype,
-    Nullable<int> n_envopt,
-    double RSS_ML,
-    bool use_parallel,
-    bool use_opencl,
-    bool progbar,
-    bool verbose,
-    CharacterVector group_levels,
-    CharacterVector re_names
-);
-
-/// Independent-block separable-overbound variant of BlockEnvelopeDispersionBuild.
-/// Skips build_joint_product_face_slack; faces drawn from per-block PLSDs.
-List BlockEnvelopeDispersionBuildInd(
-    const List& build_out,
-    const List& centering_out,
-    NumericVector y,
-    NumericMatrix x,
-    SEXP block,
-    NumericVector offset,
-    NumericVector wt,
-    double shape,
-    double rate,
-    double max_disp_perc,
-    Nullable<double> disp_lower,
-    Nullable<double> disp_upper,
-    double RSS_ML,
-    bool use_parallel,
-    bool verbose
-);
-
-/// Independent-block variant of BlockEnvelopeSim.
-/// Always draws faces independently from each block's own PLSD.
-List BlockEnvelopeSimInd(
-    const List& build_out,
-    int n,
-    bool progbar,
-    bool verbose
-);
-
-/// Orchestrator for the independent-block pipeline
-/// (Centering → Build → DispersionBuildInd → SimInd).
-List rIndepNormalGammaRegBlockInd(
-    int n,
-    NumericVector y,
-    NumericMatrix x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    NumericVector offset,
-    NumericVector wt,
-    int p_re,
-    int n_rss_iter,
-    int Gridtype,
-    Nullable<int> n_envopt,
-    double RSS_ML,
-    bool use_parallel,
-    bool use_opencl,
-    bool progbar,
-    bool verbose,
-    CharacterVector group_levels,
-    CharacterVector re_names
 );
 
 Rcpp::List EnvelopeOrchestrator(
@@ -388,36 +237,22 @@ Rcpp::List EnvelopeSort_cpp(
     const Rcpp::Nullable<Rcpp::NumericVector>& UB2min        = R_NilValue
 );
 
-
-
 List EnvelopeSet_Grid(Rcpp::NumericMatrix GIndex,  Rcpp::NumericMatrix cbars, Rcpp::NumericMatrix Lint);
 void EnvelopeSet_Grid_C2(Rcpp::NumericMatrix GIndex,  Rcpp::NumericMatrix cbars, Rcpp::NumericMatrix Lint,Rcpp::NumericMatrix Down,Rcpp::NumericMatrix Up,Rcpp::NumericMatrix lglt,Rcpp::NumericMatrix lgrt,Rcpp::NumericMatrix lgct,Rcpp::NumericMatrix logU,Rcpp::NumericMatrix logP);
 void EnvelopeSet_Grid_C2_pointwise(Rcpp::NumericMatrix GIndex,  Rcpp::NumericMatrix cbars, Rcpp::NumericMatrix Lint,Rcpp::NumericMatrix Down,Rcpp::NumericMatrix Up,Rcpp::NumericMatrix lglt,Rcpp::NumericMatrix lgrt,Rcpp::NumericMatrix lgct,Rcpp::NumericMatrix logU,Rcpp::NumericMatrix logP);
 
-
 List   EnvelopeSet_LogP(NumericMatrix logP,NumericVector NegLL,NumericMatrix cbars,NumericMatrix G3);
-
 
 } //env
 
 }  //glmbayes
 
-
-
-
 NumericVector RSS(NumericVector y, NumericMatrix x,NumericMatrix b,NumericVector alpha,NumericVector wt);
-
-
-
 
 // Rcpp::List Set_Grid_C(Rcpp::NumericMatrix GIndex,  Rcpp::NumericMatrix cbars, Rcpp::NumericMatrix Lint,Rcpp::NumericMatrix Down,Rcpp::NumericMatrix Up,Rcpp::NumericMatrix lglt,Rcpp::NumericMatrix lgrt,Rcpp::NumericMatrix lgct,Rcpp::NumericMatrix logU,Rcpp::NumericMatrix logP);
 
-
 // Rcpp::List   setlogP_C(NumericMatrix logP,NumericVector NegLL,NumericMatrix cbars,NumericMatrix G3,NumericMatrix LLconst);
 void setlogP_C2(NumericMatrix logP,NumericVector NegLL,NumericMatrix cbars,NumericMatrix G3,NumericMatrix LLconst);
-
-
-
 
 double rss_face_at_disp(double dispersion,
                         Rcpp::List cache,
@@ -448,7 +283,5 @@ Rcpp::List bound_ub2_over_dispersion(
     const Rcpp::NumericVector& wt,
     double rss_min_global
 );
-
-
 
 #endif

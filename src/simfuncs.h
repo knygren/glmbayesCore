@@ -10,9 +10,6 @@
  * @section ImplementedIn
  *   These declarations are implemented in:
  *     - rNormalGLM.cpp
- *     - rNormalGLMBlocks.cpp
- *     - rNormalRegBlocks.cpp
- *     - block_utils.cpp
  *     - rIndepNormalGammaReg.cpp
  *     - rNormalGammaReg.cpp
  *     - rGammaGaussian.cpp
@@ -44,14 +41,12 @@
 #ifndef GLMBAYES_SIM_H
 #define GLMBAYES_SIM_H
 
-
 // we only include RcppArmadillo.h which pulls Rcpp.h in for us
 #include "RcppArmadillo.h"
 
 #include <vector>
 
 using namespace Rcpp;
-
 
 namespace glmbayes {
 
@@ -93,30 +88,6 @@ Rcpp::List rNormalGLM(
     bool verbose = false
 );
 
-/// C++ counterpart to R \c rNormalGLM_reg_block(): loop over \c row_blocks,
-/// call \c rNormalGLM() per block. Not exported to R until Phase 2.
-Rcpp::List rNormalGLMBlocks(
-    int n,
-    NumericVector y,
-    NumericMatrix x,
-    NumericVector offset,
-    NumericVector wt,
-    NumericVector dispersion,
-    NumericMatrix mu,
-    List P_blocks,
-    bool prior_by_block,
-    List row_blocks,
-    Function f2,
-    Function f3,
-    std::string family,
-    std::string link,
-    int Gridtype = 2,
-    int n_envopt = -1,
-    bool use_parallel = true,
-    bool use_opencl = false,
-    bool verbose = false
-);
-
 Rcpp::List rNormalReg(int n,NumericVector y,NumericMatrix x,
                          NumericVector mu,NumericMatrix P,
                          NumericVector offset,NumericVector wt,
@@ -128,475 +99,6 @@ Rcpp::List rNormalReg(int n,NumericVector y,NumericMatrix x,
                          int Gridtype=2      
 );
 
-/// C++ block loop for Gaussian regression: calls rNormalReg() per block.
-Rcpp::List rNormalRegBlocks(
-    int n,
-    NumericVector y,
-    NumericMatrix x,
-    NumericVector offset,
-    NumericVector wt,
-    NumericVector dispersion,
-    NumericMatrix mu,
-    List P_blocks,
-    bool prior_by_block,
-    List row_blocks,
-    Function f2,
-    Function f3,
-    int Gridtype = 2
-);
-
-Rcpp::List normalize_block_cpp(SEXP block, int l2);
-
-Rcpp::List block_rNormalReg_cpp_export(
-    int n,
-    const NumericVector& y,
-    const NumericMatrix& x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    const NumericVector& offset,
-    const NumericVector& wt,
-    const Function& f2,
-    const Function& f3,
-    int Gridtype
-);
-
-Rcpp::List block_rNormalGLM_cpp_export(
-    int n,
-    const NumericVector& y,
-    const NumericMatrix& x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    const NumericVector& offset,
-    const NumericVector& wt,
-    const Function& f2,
-    const Function& f3,
-    const std::string& family,
-    const std::string& link,
-    int Gridtype,
-    int n_envopt,
-    bool use_parallel,
-    bool use_opencl,
-    bool verbose
-);
-
-Rcpp::List block_rNormalGLM_cpp_export(
-    int n,
-    const NumericVector& y,
-    const NumericMatrix& x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    const NumericVector& offset,
-    const NumericVector& wt,
-    const Function& f2,
-    const Function& f3,
-    const std::string& family,
-    const std::string& link,
-    int Gridtype,
-    int n_envopt,
-    bool use_parallel,
-    bool use_opencl,
-    bool verbose
-);
-
-/// C++ port of the two_block_rNormal_reg() Gibbs loop (twoBlockGibbs.cpp).
-/// Per inner step: mu_all -> Block 1 via block_rNormal{Reg,GLM}_cpp_export ->
-/// Block 2 via rNormalReg() per RE component (port-only; algorithm unchanged).
-Rcpp::List two_block_rNormal_reg_cpp_export(
-    int n,
-    int m_convergence,
-    const NumericVector& y,
-    const NumericMatrix& x,
-    SEXP block,
-    const List& x_hyper,
-    const List& prior_list_block1,
-    SEXP dispersion_block1,
-    SEXP ddef_block1,
-    const List& prior_list_block2,
-    const List& fixef_start,
-    const CharacterVector& group_levels,
-    const std::string& family,
-    const std::string& link,
-    const Function& f2,
-    const Function& f3,
-    const Function& f2_gauss,
-    const Function& f3_gauss,
-    const NumericVector& offset,
-    const NumericVector& wt,
-    int Gridtype,
-    int n_envopt,
-    bool use_parallel,
-    bool use_opencl,
-    bool verbose,
-    bool progbar
-);
-
-/// v2 of the two-block Gibbs driver (twoBlockGibbs.cpp): Block 2 priors are
-/// pfamily objects (dNormal / dIndependent_Normal_Gamma); dispatch on the
-/// pfamily type string. Returns dispersion_fixef_draws in addition to the
-/// v1 fields. Development track; v1 above is the frozen regression baseline.
-Rcpp::List two_block_rNormal_reg_v2_cpp_export(
-    int n,
-    int m_convergence,
-    const NumericVector& y,
-    const NumericMatrix& x,
-    SEXP block,
-    const List& x_hyper,
-    const List& prior_list_block1,
-    SEXP dispersion_block1,
-    SEXP ddef_block1,
-    const List& pfamily_list,
-    const List& fixef_start,
-    const CharacterVector& group_levels,
-    const std::string& family,
-    const std::string& link,
-    const Function& f2,
-    const Function& f3,
-    const Function& f2_gauss,
-    const Function& f3_gauss,
-    const NumericVector& offset,
-    const NumericVector& wt,
-    int Gridtype,
-    int n_envopt,
-    bool use_parallel,
-    bool use_opencl,
-    bool verbose,
-    bool progbar
-);
-
-/// v5 short-chain driver (twoBlockGibbs.cpp): sweep-outer loop order
-/// (m then i) with per-sweep chain progress bars.
-Rcpp::List two_block_rNormal_reg_v5_cpp_export(
-    int n,
-    int m_convergence,
-    const NumericVector& y,
-    const NumericMatrix& x,
-    SEXP block,
-    const List& x_hyper,
-    const List& prior_list_block1,
-    SEXP dispersion_block1,
-    SEXP ddef_block1,
-    const List& pfamily_list,
-    const List& fixef_start,
-    const CharacterVector& group_levels,
-    const std::string& family,
-    const std::string& link,
-    const Function& f2,
-    const Function& f3,
-    const Function& f2_gauss,
-    const Function& f3_gauss,
-    const NumericVector& offset,
-    const NumericVector& wt,
-    int Gridtype,
-    int n_envopt,
-    bool use_parallel,
-    bool use_opencl,
-    bool verbose,
-    Rcpp::Nullable<int> seed,
-    int seed_offset,
-    bool progbar,
-    std::string stage_label,
-    bool diag_sweeps,
-    SEXP fixef_mode,
-    SEXP b_mode
-);
-
-/// Staged v2 driver (twoBlockGibbsStaged.cpp): pilot replicate chains,
-/// Hotelling chi-squared vs fixef_start, then main replicate chains.
-/// Pilot eigenvalue upper bounds are computed in the R wrapper (Phase 2b).
-Rcpp::List two_block_rNormal_reg_staged_cpp_export(
-    int n_main,
-    int m_convergence_main,
-    int n_pilot,
-    int m_convergence_pilot,
-    const NumericVector& y,
-    const NumericMatrix& x,
-    const Rcpp::RObject& block,
-    const List& x_hyper,
-    const List& prior_list_block1,
-    const Rcpp::RObject& dispersion_block1,
-    const Rcpp::RObject& ddef_block1,
-    const List& pfamily_list,
-    const List& fixef_start,
-    const CharacterVector& group_levels,
-    const std::string& family,
-    const std::string& link,
-    const Function& f2,
-    const Function& f3,
-    const Function& f2_gauss,
-    const Function& f3_gauss,
-    const NumericVector& offset,
-    const NumericVector& wt,
-    int Gridtype,
-    int n_envopt,
-    bool use_parallel,
-    bool use_opencl,
-    bool verbose,
-    bool progbar_main,
-    bool progbar_pilot
-);
-
-/// Cached \code{X_hyper} row lookups for \code{build_mu_all} (two_block_block1.cpp).
-struct MuAllBuilder {
-  int p_re;
-  int J;
-  std::vector<Rcpp::NumericMatrix> X;
-  std::vector<std::vector<int>> row_idx;
-
-  MuAllBuilder(
-      const Rcpp::List& x_hyper,
-      const Rcpp::CharacterVector& group_levels
-  );
-  Rcpp::NumericMatrix build(
-      const std::vector<Rcpp::NumericVector>& fixef
-  ) const;
-};
-
-/// Block~1: \code{mu_all} matrix (port of \code{build_mu_all()}).
-Rcpp::NumericMatrix two_block_build_mu_all(
-    const Rcpp::List& x_hyper,
-    const Rcpp::List& fixef,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::CharacterVector& group_levels
-);
-
-/// Block~1: ING \code{P} refresh from \code{tau2} (two_block_block1.cpp).
-Rcpp::List two_block_block1_prior_with_tau2(
-    const Rcpp::List& base_prior,
-    const Rcpp::NumericVector& tau2_vec,
-    const Rcpp::CharacterVector& ptypes,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::NumericMatrix& mu_all
-);
-
-/// Block~1: mean envelope iters across groups (two_block_block1.cpp).
-double two_block_block1_iters_mean(const Rcpp::List& block_out);
-
-/// Extract chain-\code{i} fixef list (two_block_block1.cpp).
-/// Port of \code{.two_block_batch_fixef_chain}.
-Rcpp::List fixef_list_from_batch_chain(
-    const Rcpp::List& batch_fixef,
-    int chain_i,
-    const Rcpp::CharacterVector& re_names
-);
-
-/// All-chains step A: \code{batch$tau2[chain_i, ]} (two_block_block1.cpp).
-Rcpp::NumericVector batch_tau2_chain_row(
-    const Rcpp::NumericMatrix& batch_tau2,
-    int chain_i
-);
-
-/// All-chains step C: \code{batch$b[, , chain_i] <- b_draw} (two_block_block1.cpp).
-void batch_b_assign_slice(
-    Rcpp::NumericVector& b_store,
-    int chain_i,
-    const Rcpp::NumericMatrix& b_draw
-);
-
-/// \code{dim(b)[3]} for batch \code{b} (two_block_block1.cpp).
-int batch_b_n_chains(const Rcpp::NumericVector& batch_b);
-
-/// Restore \code{dim}/\code{dimnames} on batch \code{b} (two_block_block1.cpp).
-void ensure_batch_b_dimnames(
-    Rcpp::NumericVector& batch_b,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::CharacterVector& re_names,
-    int n_chains
-);
-
-/// All-chains step D: \code{batch$iters_ranef[chain_i] += iters_mean}
-/// (two_block_block1.cpp).
-void batch_iters_ranef_add(
-    Rcpp::NumericVector& iters_ranef,
-    int chain_i,
-    double iters_mean
-);
-
-/// Block~1: reorder coefficient rows to group_levels (two_block_block1.cpp).
-Rcpp::NumericMatrix two_block_reorder_b_to_group_levels(
-    Rcpp::NumericMatrix b_draw,
-    SEXP block_ids,
-    const Rcpp::CharacterVector& group_levels
-);
-
-/// Block~1 prep + draw for one chain (two_block_block1.cpp).
-Rcpp::List two_block_block1_one_chain_impl(
-    int chain_i,
-    const Rcpp::List& batch_fixef,
-    const Rcpp::NumericVector& tau2_i,
-    const Rcpp::NumericVector& y,
-    const Rcpp::NumericMatrix& Z,
-    SEXP groups,
-    const Rcpp::NumericVector& offset,
-    const Rcpp::NumericVector& wt,
-    const Rcpp::List& x_hyper,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::CharacterVector& ptypes,
-    const Rcpp::List& block1_prior,
-    bool is_gaussian,
-    const Rcpp::Function& f2,
-    const Rcpp::Function& f3,
-    const Rcpp::Function& f2_gauss,
-    const Rcpp::Function& f3_gauss,
-    const std::string& family,
-    const std::string& link,
-    int Gridtype,
-    int n_envopt
-);
-
-/// Full per-chain Block~1 orchestration steps A→D (two_block_block1.cpp).
-Rcpp::List two_block_block1_one_chain_orchestrate_impl(
-    int chain_i,
-    Rcpp::NumericVector b_store,
-    Rcpp::NumericVector iters_ranef,
-    const Rcpp::List& batch_fixef,
-    const Rcpp::NumericMatrix& batch_tau2,
-    const Rcpp::List& design,
-    const Rcpp::List& block1_prior,
-    SEXP family,
-    const Rcpp::CharacterVector& ptypes,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::Function& f2,
-    const Rcpp::Function& f3,
-    const Rcpp::Function& f2_gauss,
-    const Rcpp::Function& f3_gauss,
-    bool use_cpp_tau2_row,
-    bool use_cpp_b_slice,
-    bool use_cpp_iters_ranef_add
-);
-
-/// Block~1 draw from R-built \code{mu_all} and \code{P} (two_block_block1.cpp).
-Rcpp::List two_block_block1_one_chain_from_mu_P_impl(
-    const Rcpp::NumericMatrix& mu_all,
-    const Rcpp::NumericMatrix& P,
-    SEXP dispersion,
-    SEXP ddef,
-    const Rcpp::List& design,
-    SEXP family,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::Function& f2,
-    const Rcpp::Function& f3,
-    const Rcpp::Function& f2_gauss,
-    const Rcpp::Function& f3_gauss
-);
-
-/// Block~1 prep + draw for one chain (v2): chain-local inputs; returns slice
-/// \code{b} and \code{iters_mean} only (two_block_block1.cpp).
-Rcpp::List two_block_block1_one_chain_v2_impl(
-    const Rcpp::List& fixef_i,
-    const Rcpp::NumericVector& tau2_i,
-    const Rcpp::List& design,
-    const Rcpp::List& block1_prior,
-    SEXP family,
-    const Rcpp::CharacterVector& ptypes,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::Function& f2,
-    const Rcpp::Function& f3,
-    const Rcpp::Function& f2_gauss,
-    const Rcpp::Function& f3_gauss
-);
-
-/// Per-chain Block~1 v2 internal: fixef/tau2 extract, v2 draw, slice assign,
-/// iters add (two_block_block1.cpp).
-Rcpp::List two_block_block1_all_chains_v2_internal_impl(
-    const Rcpp::List& fixef,
-    int chain_i,
-    const Rcpp::NumericMatrix& tau2,
-    Rcpp::NumericVector b_store,
-    Rcpp::NumericVector iters_ranef,
-    const Rcpp::List& design,
-    const Rcpp::List& block1_prior,
-    SEXP family,
-    const Rcpp::CharacterVector& ptypes,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::Function& f2,
-    const Rcpp::Function& f3,
-    const Rcpp::Function& f2_gauss,
-    const Rcpp::Function& f3_gauss,
-    bool use_cpp_tau2_row,
-    bool use_cpp_b_slice,
-    bool use_cpp_iters_ranef_add
-);
-
-/// All-chain Block~1 v2 loop (two_block_block1.cpp).
-Rcpp::List two_block_block1_all_chains_v2_internal_loop_impl(
-    int n,
-    const Rcpp::List& fixef,
-    const Rcpp::NumericMatrix& tau2,
-    const Rcpp::NumericMatrix& b_in_master,
-    const Rcpp::NumericVector& iters_ranef_in,
-    const Rcpp::List& design,
-    const Rcpp::List& block1_prior,
-    SEXP family,
-    const Rcpp::CharacterVector& ptypes,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::Function& f2,
-    const Rcpp::Function& f3,
-    const Rcpp::Function& f2_gauss,
-    const Rcpp::Function& f3_gauss,
-    bool use_cpp_tau2_row,
-    bool use_cpp_b_slice,
-    bool use_cpp_iters_ranef_add,
-    bool show_bar,
-    const std::string& progbar_prefix,
-    bool progbar_finish_newline
-);
-
-/// Block~1 prep + draw for all chains (two_block_block1.cpp).
-/// Port of \code{.two_block_block1_all_chains_v2}; mutates \code{b} and
-/// \code{iters_ranef} in place (no return value).
-void two_block_block1_all_chains_impl(
-    int n,
-    const Rcpp::List& fixef,
-    const Rcpp::NumericMatrix& tau2,
-    Rcpp::NumericVector& b,
-    Rcpp::NumericVector& iters_ranef,
-    const Rcpp::CharacterVector& re_names,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::List& design,
-    const Rcpp::List& block1_prior,
-    SEXP family,
-    const Rcpp::CharacterVector& ptypes,
-    const Rcpp::Function& f2,
-    const Rcpp::Function& f3,
-    const Rcpp::Function& f2_gauss,
-    const Rcpp::Function& f3_gauss,
-    bool use_cpp_tau2_row,
-    bool use_cpp_b_slice,
-    bool use_cpp_iters_ranef_add,
-    bool show_bar,
-    const std::string& progbar_prefix,
-    bool progbar_finish_newline
-);
-
-/// Block~2 align (twoBlockGibbs.cpp): port of R two_block_align_b_to_xhyper().
-Rcpp::NumericVector two_block_align_b_to_xhyper_cpp(
-    Rcpp::NumericVector b_vec,
-    Rcpp::NumericMatrix X_k,
-    Rcpp::CharacterVector group_levels
-);
-
-/// Block~2 one-chain update (twoBlockGibbs.cpp): native align + rglmb per RE.
-Rcpp::List two_block_block2_one_chain_cpp_export(
-    const Rcpp::NumericMatrix& b_i,
-    const Rcpp::List& fixef_rows,
-    const Rcpp::NumericVector& tau2_i,
-    const Rcpp::NumericVector& iters_i,
-    const Rcpp::List& x_hyper,
-    const Rcpp::CharacterVector& group_levels,
-    const Rcpp::List& pfamily_list,
-    const Rcpp::CharacterVector& ptypes,
-    const Rcpp::CharacterVector& re_names
-);
-
 Rcpp::List rNormalGLM_optim_poisson_log(
     const NumericVector& parin,
     const NumericVector& y,
@@ -606,7 +108,6 @@ Rcpp::List rNormalGLM_optim_poisson_log(
     const NumericVector& alpha,
     const NumericVector& wt2
 );
-
 
 Rcpp::List  rIndepNormalGammaReg_std(int n,NumericVector y,NumericMatrix x,
                                           NumericMatrix mu, /// This is typically standardized to be a zero vector
@@ -637,7 +138,6 @@ Rcpp::List rIndepNormalGammaReg_std_parallel(
     bool verbose = false
 );
 
-
 Rcpp::List rNormalGammaReg(
     int n,
     Rcpp::NumericVector y,
@@ -653,7 +153,6 @@ Rcpp::List rNormalGammaReg(
     Rcpp::Nullable<double> disp_upper,
     bool verbose
 );
-
 
 Rcpp::List rIndepNormalGammaReg(
     int n,
@@ -691,7 +190,6 @@ Rcpp::List rGammaGaussian(
     bool verbose = false
 );
 
-
 Rcpp::List rGammaGamma(
     int n,
     Rcpp::NumericVector y,
@@ -714,74 +212,6 @@ Rcpp::List glmb_Standardize_Model(
     NumericMatrix bstar, // Posterior Mode from optimization (to be adjusted)
     NumericMatrix A1  // Precision for Log-Posterior at posterior mode (to be adjusted)
 );
-
-namespace env {
-
-Rcpp::List BlockEnvelopeCentering(
-    Rcpp::NumericVector y,
-    Rcpp::NumericMatrix x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    Rcpp::NumericVector offset,
-    Rcpp::NumericVector wt,
-    double shape,
-    double rate,
-    double max_disp_perc,
-    Rcpp::Nullable<double> disp_lower,
-    Rcpp::Nullable<double> disp_upper,
-    int p_re,
-    int n_rss_iter,
-    bool verbose
-);
-
-Rcpp::List BlockEnvelopeBuild(
-    const Rcpp::List& centering_out,
-    Rcpp::NumericVector y,
-    Rcpp::NumericMatrix x,
-    SEXP block,
-    SEXP prior_list,
-    SEXP prior_lists,
-    Rcpp::NumericVector offset,
-    Rcpp::NumericVector wt,
-    double max_disp_perc,
-    Rcpp::Nullable<double> disp_lower,
-    Rcpp::Nullable<double> disp_upper,
-    int n,
-    int Gridtype,
-    Rcpp::Nullable<int> n_envopt,
-    double RSS_ML,
-    bool use_parallel,
-    bool use_opencl,
-    bool verbose
-);
-
-Rcpp::List BlockEnvelopeDispersionBuild(
-    const Rcpp::List& build_out,
-    const Rcpp::List& centering_out,
-    Rcpp::NumericVector y,
-    Rcpp::NumericMatrix x,
-    SEXP block,
-    Rcpp::NumericVector offset,
-    Rcpp::NumericVector wt,
-    double shape,
-    double rate,
-    double max_disp_perc,
-    Rcpp::Nullable<double> disp_lower,
-    Rcpp::Nullable<double> disp_upper,
-    double RSS_ML,
-    bool use_parallel,
-    bool verbose
-);
-
-Rcpp::List BlockEnvelopeSim(
-    const Rcpp::List& build_out,
-    int n,
-    bool progbar,
-    bool verbose
-);
-
-}
 
 }
 
