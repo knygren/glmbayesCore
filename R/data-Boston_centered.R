@@ -12,6 +12,8 @@
 #'
 #' @usage data("Boston_centered")
 #'
+#' @example inst/examples/Ex_Boston_centered_opencl.R
+#'
 #' @keywords datasets
 #' @concept Bayesian linear regression
 "Boston_centered"

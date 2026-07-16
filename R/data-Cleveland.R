@@ -29,6 +29,8 @@
 #'
 #' @usage data("Cleveland")
 #'
+#' @example inst/examples/Ex_Cleveland_opencl.R
+#'
 #' @keywords datasets
 #' @concept Bayesian Binomial Regression
 "Cleveland"
