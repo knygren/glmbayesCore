@@ -716,6 +716,32 @@ NULL
   invisible(NULL)
 }
 
+#' Per-group full column-rank flag for Block~1 \code{Z_j}.
+#' @noRd
+.lmebayes_re_rank_from_Z <- function(Z, groups, group_levels = NULL) {
+  Z <- as.matrix(Z)
+  g_chr <- as.character(groups)
+  levs <- if (is.null(group_levels)) {
+    unique(g_chr)
+  } else {
+    as.character(group_levels)
+  }
+  p_re <- ncol(Z)
+  stats::setNames(
+    vapply(
+      levs,
+      function(lev) {
+        rows <- which(g_chr == lev)
+        Z_j  <- Z[rows, , drop = FALSE]
+        nrow(Z_j) >= p_re &&
+          Matrix::rankMatrix(Z_j, method = "qr")[1L] == p_re
+      },
+      logical(1L)
+    ),
+    levs
+  )
+}
+
 #' @noRd
 .rLMM_ing_prior_list_subset <- function(pl_j, keep, re_names) {
   keep <- as.integer(keep)

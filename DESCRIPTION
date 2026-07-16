@@ -30,14 +30,12 @@ URL: https://github.com/knygren/glmbayesCore
 BugReports: https://github.com/knygren/glmbayesCore/issues
 Imports:
     stats,
-    lme4,
     Matrix,
-    reformulas,
     Rcpp (>= 1.1.1),
     RcppParallel,
     Rdpack (>= 0.11-0),
     opencltools (>= 0.8.1),
-    nmathopencl 
+    nmathopencl
 RdMacros: Rdpack
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel
 Depends: MASS, R (>= 3.5.0)
