@@ -1,0 +1,954 @@
+{
+  "generated": "2026-07-16",
+  "glmbayesCore": {
+    "path": "C:\\Rpackages\\glmbayesCore",
+    "sha": "90ddf14"
+  },
+  "glmbayes": {
+    "path": "C:\\Rpackages\\glmbayes",
+    "sha": "94d0262"
+  },
+  "R": {
+    "identical_byte": [
+      "compute_gaussian_prior.R",
+      "fitter_functions.R",
+      "internal_rcppparallel.R",
+      "summary.rgamma_reg.R"
+    ],
+    "identical_norm_only": [
+      "data-BikeSharing.R",
+      "data-carinsca.R"
+    ],
+    "differing": [
+      "RcppExports.R",
+      "data-AMI.R",
+      "data-Boston_centered.R",
+      "data-Cleveland.R",
+      "envelopeorchestrator.R",
+      "formula.summary.rglmb.R",
+      "gamma_ct.R",
+      "globals.R",
+      "gpu_diagnostics.R",
+      "invgamma_ct.R",
+      "normal_ct.R",
+      "pfamily.R",
+      "prior.R",
+      "rcpp_wrappers.R",
+      "rglmb.R",
+      "rlmb.R",
+      "simfunction.R",
+      "simulationpipeline.R",
+      "summary.rglmb.R",
+      "zzz.R"
+    ],
+    "core_only": [
+      "dic_info.R",
+      "glmbayesCore-package.R",
+      "ing_prior_guard.R",
+      "multi_prior_setup.R",
+      "multi_rNormal_reg.R",
+      "multi_rlmb.R",
+      "residuals.rglmb.R",
+      "summary.mrglmb.R"
+    ],
+    "glmbayes_only": [
+      "anova.glmb.R",
+      "case.names.glmb.R",
+      "confint.glmb.R",
+      "deviance.rglmb.R",
+      "directional_tail.R",
+      "dummy.coef.glmb.R",
+      "extractDIC.R",
+      "get_opencl_core_count.R",
+      "glmb.R",
+      "glmbayes-package.R",
+      "influence.glmb.R",
+      "lmb.R",
+      "logLik.glmb.R",
+      "plot.glmb.R",
+      "predict.glmb.R",
+      "residuals.glmb.R",
+      "simulate.glmb.R",
+      "summary.glmb.R",
+      "summary.mlmb.R",
+      "vcov.glmb.R"
+    ]
+  },
+  "src": {
+    "identical_byte": [
+      "EnvelopeEval.cpp",
+      "EnvelopeSort.cpp",
+      "Set_Grid.cpp",
+      "Set_LogP.cpp",
+      "configure_OpenCL.cpp",
+      "cuda_probe.cpp",
+      "famfuncs.h",
+      "famfuncs_poisson.cpp",
+      "invgamma_ct.cpp",
+      "kernel_runners.cpp",
+      "opencl_detect.cpp",
+      "rNormalReg.cpp",
+      "rng_utils.h",
+      "rnorm_ct.cpp"
+    ],
+    "identical_norm_only": [
+      "EnvelopeCentering.cpp",
+      "glmbayes_getRegisteredNamespace.cpp",
+      "glmbayes_getRegisteredNamespace.h"
+    ],
+    "differing": [
+      "EnvelopeBuild.cpp",
+      "EnvelopeBuild_Ind_Normal_Gamma.cpp",
+      "EnvelopeDispersionBuild.cpp",
+      "EnvelopeOrchestrator.cpp",
+      "EnvelopeSize.cpp",
+      "Envelopefuncs.h",
+      "OpenCL_helper.cpp",
+      "R_interface.h",
+      "export_wrappers.cpp",
+      "famfuncs_Gamma.cpp",
+      "famfuncs_binomial.cpp",
+      "famfuncs_gaussian.cpp",
+      "kernel_loader.cpp",
+      "kernel_wrappers.cpp",
+      "opencl.h",
+      "openclPort.h",
+      "progress_utils.cpp",
+      "progress_utils.h",
+      "rGammaGamma.cpp",
+      "rGammaGaussian.cpp",
+      "rIndepNormalGammaReg.cpp",
+      "rNormalGLM.cpp",
+      "rNormalGammaReg.cpp",
+      "rng_utils.cpp",
+      "simfuncs.h"
+    ],
+    "core_only": [
+      "package_ns.h"
+    ],
+    "glmbayes_only": [
+      "rNormalGLMBlocks.cpp"
+    ],
+    "nmath_core_count": 127
+  },
+  "cl": {
+    "identical_byte": [
+      "OPENCL.cl",
+      "R_ext_internals/Parse.cl",
+      "R_ext_internals/R_ext_internals.cl",
+      "R_ext_internals/stats_package.cl",
+      "R_ext_runtime/Arith.cl",
+      "R_ext_runtime/Error.cl",
+      "R_ext_runtime/MathThreads.cl",
+      "R_ext_runtime/Memory.cl",
+      "R_ext_runtime/Print.cl",
+      "R_ext_runtime/RS.cl",
+      "R_ext_runtime/Random.cl",
+      "R_ext_runtime/Riconv.cl",
+      "R_ext_runtime/Utils.cl",
+      "R_ext_types/Boolean.cl",
+      "R_ext_types/Complex.cl",
+      "R_ext_types/Constants.cl",
+      "R_ext_types/Visibility.cl",
+      "R_ext_types/libextern.cl",
+      "R_shims/Rconfig.cl",
+      "R_shims/Rdefines.cl",
+      "R_shims/Rinternals.cl",
+      "System/stdint.cl",
+      "libR_shims/libR.cl",
+      "nmath/Rmath.cl",
+      "nmath/bd0.cl",
+      "nmath/chebyshev.cl",
+      "nmath/cospi.cl",
+      "nmath/dbinom.cl",
+      "nmath/dgamma.cl",
+      "nmath/dnorm.cl",
+      "nmath/dpois.cl",
+      "nmath/dpq.cl",
+      "nmath/fmax2.cl",
+      "nmath/gamma.cl",
+      "nmath/gammalims.cl",
+      "nmath/kernel_dependency_index.rds",
+      "nmath/kernel_dependency_index.tsv",
+      "nmath/lgamma.cl",
+      "nmath/lgammacor.cl",
+      "nmath/log1p.cl",
+      "nmath/nmath.cl",
+      "nmath/pgamma_utils.cl",
+      "nmath/pnorm.cl",
+      "nmath/refactored.cl",
+      "nmath/stirlerr.cl",
+      "nmath/stirlerr_cycle_dependent.cl",
+      "nmath/stirlerr_cycle_free.cl",
+      "src/f2_f3_binomial_cloglog.cl",
+      "src/f2_f3_binomial_logit.cl",
+      "src/f2_f3_binomial_probit.cl",
+      "src/f2_f3_gamma.cl",
+      "src/f2_f3_gaussian.cl",
+      "src/f2_f3_poisson.cl"
+    ],
+    "identical_norm_only": [],
+    "differing": [
+      "README.md"
+    ],
+    "core_only": [],
+    "glmbayes_only": []
+  },
+  "opencl_description": {
+    "glmbayesCore": {
+      "LinkingTo_opencltools": false,
+      "Imports_opencltools": true,
+      "Imports_nmathopencl": true
+    },
+    "glmbayes": {
+      "LinkingTo_opencltools": true,
+      "Imports_opencltools": true,
+      "Imports_nmathopencl": true
+    }
+  },
+  "functions": {
+    "R/RcppExports.R": {
+      "note": "Generated by Rcpp::compileAttributes(); skip detailed body compare."
+    },
+    "R/data-AMI.R": {
+      "identical": [],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/data-Boston_centered.R": {
+      "identical": [],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/data-Cleveland.R": {
+      "identical": [],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/envelopeorchestrator.R": {
+      "identical": [
+        "EnvelopeCentering",
+        "EnvelopeOrchestrator"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/formula.summary.rglmb.R": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "formula.summary.rglmb"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/gamma_ct.R": {
+      "identical": [
+        "rgamma_ct"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/globals.R": {
+      "identical": [],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/gpu_diagnostics.R": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "diagnose_glmbayes"
+      ],
+      "core_only": [
+        "glmbayesCore_has_opencl"
+      ],
+      "glmbayes_only": [
+        "has_opencl"
+      ]
+    },
+    "R/invgamma_ct.R": {
+      "identical": [
+        "pinvgamma_ct",
+        "qinvgamma_ct",
+        "rinvgamma_ct"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/normal_ct.R": {
+      "identical": [
+        "pnorm_ct",
+        "rnorm_ct"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/pfamily.R": {
+      "identical": [
+        "dBeta",
+        "dGamma",
+        "dNormal",
+        "dNormal_Gamma",
+        "pfamily",
+        "print.pfamily"
+      ],
+      "rename_only": [],
+      "different": [
+        "dIndependent_Normal_Gamma"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/prior.R": {
+      "identical": [
+        "Prior_Check",
+        "Prior_Setup",
+        "print.PriorSetup"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/rcpp_wrappers.R": {
+      "identical": [],
+      "rename_only": [
+        ".EnvelopeBuild_Ind_Normal_Gamma_cpp",
+        ".EnvelopeBuild_cpp",
+        ".EnvelopeCentering_cpp",
+        ".EnvelopeEval_cpp",
+        ".EnvelopeOrchestrator_cpp",
+        ".EnvelopeSet_Grid_cpp",
+        ".EnvelopeSet_LogP_cpp",
+        ".EnvelopeSize_cpp",
+        ".glmb_Standardize_Model_cpp",
+        ".rGammaGamma_cpp",
+        ".rGammaGaussian_cpp",
+        ".rIndepNormalGammaReg_cpp",
+        ".rIndepNormalGammaReg_std_cpp",
+        ".rIndepNormalGammaReg_std_parallel_cpp",
+        ".rNormalGLM_cpp",
+        ".rNormalGLM_std_cpp",
+        ".rNormalGammaReg_cpp"
+      ],
+      "different": [
+        ".EnvelopeDispersionBuild_cpp",
+        ".gpu_names_cpp",
+        ".rNormalReg_cpp"
+      ],
+      "core_only": [
+        ".glmbayesCore_has_opencl_cpp",
+        ".rIndepNormalGammaReg_with_envelope_cpp"
+      ],
+      "glmbayes_only": [
+        ".get_opencl_core_count_cpp",
+        ".has_opencl_cpp",
+        ".rNormalGLMBlocks_cpp"
+      ]
+    },
+    "R/rglmb.R": {
+      "identical": [
+        "print.rglmb",
+        "rglmb"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/rlmb.R": {
+      "identical": [
+        "print.rlmb",
+        "rlmb"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/simfunction.R": {
+      "identical": [
+        ".check_gamma_conjugate_scalar_design",
+        "logdiffexp",
+        "print.rGamma_reg",
+        "print.simfunction",
+        "rBeta_reg",
+        "rGamma_Conjugate_reg",
+        "rGamma_reg",
+        "rNormalGamma_reg",
+        "simfunction",
+        "simfunction.default"
+      ],
+      "rename_only": [],
+      "different": [
+        "rNormal_reg",
+        "rindepNormalGamma_reg"
+      ],
+      "core_only": [
+        ".lmebayes_check_disp_bounds_or_stop",
+        ".rindepNormalGamma_reg_impl",
+        "rindepNormalGamma_reg_with_envelope"
+      ],
+      "glmbayes_only": []
+    },
+    "R/simulationpipeline.R": {
+      "identical": [
+        "EnvelopeBuild",
+        "EnvelopeDispersionBuild",
+        "EnvelopeEval",
+        "EnvelopeOpt",
+        "EnvelopeSetGrid",
+        "EnvelopeSetLogP",
+        "EnvelopeSize",
+        "EnvelopeSort",
+        "dpois2",
+        "glmb_Standardize_Model",
+        "glmbfamfunc",
+        "print.glmbfamfunc",
+        "rIndepNormalGammaReg_std",
+        "rNormalGLM_std"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "R/summary.rglmb.R": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "print.summary.rglmb",
+        "summary.rglmb"
+      ],
+      "core_only": [
+        ".rglmb_get_offset",
+        ".rglmb_prior_precision",
+        "summary.rlmb"
+      ],
+      "glmbayes_only": []
+    },
+    "R/zzz.R": {
+      "identical": [
+        ".onAttach",
+        ".opencl_runtime_sniff",
+        ".opencl_startup_quiet"
+      ],
+      "rename_only": [],
+      "different": [
+        ".opencl_startup_message"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/EnvelopeBuild.cpp": {
+      "identical": [
+        "EnvelopeBuild"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/EnvelopeBuild_Ind_Normal_Gamma.cpp": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "EnvelopeBuild_Ind_Normal_Gamma"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/EnvelopeDispersionBuild.cpp": {
+      "identical": [
+        "EnvBuildLinBound_cpp",
+        "RSS",
+        "UB2",
+        "bisection_root",
+        "bound_rss_over_dispersion",
+        "compute_envelope_geometry_cpp",
+        "compute_mixture_and_outputs_cpp",
+        "g_of_t",
+        "hprime_of_t",
+        "max_vec",
+        "minimize_ub2_over_dispersion",
+        "rss_face_at_disp",
+        "rss_face_bound_from_cache_cpp",
+        "rss_face_quadratic_sum_internal",
+        "run_ub2_pilot_block",
+        "thetabar_const_cpp",
+        "ub2_min_exact_1d",
+        "ub2_reduced"
+      ],
+      "rename_only": [],
+      "different": [
+        "EnvelopeDispersionBuild",
+        "bound_ub2_over_dispersion"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/EnvelopeOrchestrator.cpp": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "EnvelopeOrchestrator"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/EnvelopeSize.cpp": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "EnvelopeSize"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/Envelopefuncs.h": {
+      "identical": [
+        "decl:EnvelopeBuild_Ind_Normal_Gamma",
+        "decl:EnvelopeCentering",
+        "decl:EnvelopeOrchestrator",
+        "decl:EnvelopeSet_Grid_C2",
+        "decl:EnvelopeSet_Grid_C2_pointwise",
+        "decl:EnvelopeSort_cpp",
+        "decl:UB2",
+        "decl:setlogP_C2"
+      ],
+      "rename_only": [],
+      "different": [
+        "decl:EnvelopeBuild",
+        "decl:EnvelopeDispersionBuild",
+        "decl:EnvelopeEval",
+        "decl:EnvelopeSet_Grid",
+        "decl:EnvelopeSet_LogP",
+        "decl:EnvelopeSize",
+        "decl:RSS",
+        "decl:rss_face_at_disp"
+      ],
+      "core_only": [
+        "check_disp_bounds_or_stop",
+        "check_disp_bounds_or_stop(Rcpp::Nullable<Rcpp::NumericVector> disp_lower, Rcpp::Nullab)",
+        "check_disp_bounds_or_stop(Rcpp::Nullable<double> disp_lower, Rcpp::Nullable<double> di)",
+        "decl:bound_ub2_over_dispersion",
+        "decl:check_disp_bounds_or_stop"
+      ],
+      "glmbayes_only": []
+    },
+    "src/OpenCL_helper.cpp": {
+      "identical": [
+        "copyVector",
+        "flattenMatrix"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [
+        "glmbayesCore_has_opencl",
+        "opencl_core_count_for_scaling"
+      ],
+      "glmbayes_only": [
+        "has_opencl"
+      ]
+    },
+    "src/R_interface.h": {
+      "identical": [
+        "decl:r_as_matrix",
+        "decl:r_as_numeric",
+        "decl:r_as_vector",
+        "decl:r_expand_grid",
+        "decl:r_format",
+        "decl:r_gaussian",
+        "decl:r_interactive",
+        "decl:r_lm_fit",
+        "decl:r_lm_wfit",
+        "decl:r_optim",
+        "decl:r_qgamma",
+        "decl:r_readline",
+        "decl:r_runif",
+        "decl:r_sys_time",
+        "decl:r_system_file",
+        "decl:r_try",
+        "r_as_matrix",
+        "r_as_numeric",
+        "r_as_vector",
+        "r_expand_grid",
+        "r_format",
+        "r_gaussian",
+        "r_interactive",
+        "r_lm_fit",
+        "r_lm_wfit",
+        "r_optim",
+        "r_qgamma",
+        "r_readline",
+        "r_runif",
+        "r_sys_time",
+        "r_system_file",
+        "r_try"
+      ],
+      "rename_only": [],
+      "different": [
+        "r_envelope_opt",
+        "r_envelope_sort",
+        "r_rNormal_reg_wfit",
+        "r_rgamma_ct"
+      ],
+      "core_only": [
+        "decl:pkg_env",
+        "pkg_env",
+        "r_glmbfamfunc"
+      ],
+      "glmbayes_only": [
+        "decl:r_envelope_opt",
+        "decl:r_envelope_sort",
+        "decl:r_rNormal_reg_wfit",
+        "decl:r_rgamma_ct"
+      ]
+    },
+    "src/export_wrappers.cpp": {
+      "identical": [
+        "EnvelopeBuild_Ind_Normal_Gamma_cpp_export",
+        "EnvelopeBuild_Ind_Normal_Gamma_cpp_export(const Rcpp::NumericVector& bStar, const Rcpp::NumericMatrix&)",
+        "EnvelopeBuild_cpp_export",
+        "EnvelopeBuild_cpp_export(Rcpp::NumericVector bStar, Rcpp::NumericMatrix A, Rcpp::Nume)",
+        "EnvelopeCentering_cpp_export",
+        "EnvelopeCentering_cpp_export(const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, )",
+        "EnvelopeDispersionBuild_cpp_export",
+        "EnvelopeDispersionBuild_cpp_export(const Rcpp::List& Env, double Shape, double Rate, const Rcpp)",
+        "EnvelopeEval_cpp_export",
+        "EnvelopeEval_cpp_export(const Rcpp::NumericMatrix& G4, const Rcpp::NumericVector& y,)",
+        "EnvelopeOrchestrator_cpp_export",
+        "EnvelopeOrchestrator_cpp_export(const Rcpp::NumericVector& bstar2, const Rcpp::NumericMatrix)",
+        "EnvelopeSet_Grid_cpp_export",
+        "EnvelopeSet_Grid_cpp_export(const Rcpp::NumericMatrix& GIndex, const Rcpp::NumericMatrix)",
+        "EnvelopeSet_LogP_cpp_export",
+        "EnvelopeSet_LogP_cpp_export(const Rcpp::NumericMatrix& logP, const Rcpp::NumericVector& )",
+        "EnvelopeSize_cpp_export",
+        "EnvelopeSize_cpp_export(const arma::vec& a, const Rcpp::NumericMatrix& G1, int Gridt)",
+        "UB2_cpp_export",
+        "UB2_cpp_export(double dispersion, const Rcpp::List& cache, const Rcpp::Nume)",
+        "glmb_Standardize_Model_cpp_export",
+        "glmb_Standardize_Model_cpp_export(const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, )",
+        "gpu_names_cpp_export",
+        "gpu_names_cpp_export()",
+        "rGammaGamma_cpp_export",
+        "rGammaGamma_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)",
+        "rGammaGaussian_cpp_export",
+        "rGammaGaussian_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)",
+        "rIndepNormalGammaReg_std_cpp_export",
+        "rIndepNormalGammaReg_std_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)",
+        "rIndepNormalGammaReg_std_parallel_cpp_export",
+        "rIndepNormalGammaReg_std_parallel_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)",
+        "rNormalGLM_cpp_export",
+        "rNormalGLM_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)",
+        "rNormalGLM_std_cpp_export",
+        "rNormalGLM_std_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)",
+        "rNormalGammaReg_cpp_export",
+        "rNormalGammaReg_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)",
+        "rNormalReg_cpp_export",
+        "rNormalReg_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)",
+        "rss_face_at_disp_cpp_export",
+        "rss_face_at_disp_cpp_export(double dispersion, const Rcpp::List& cache, const Rcpp::Nume)"
+      ],
+      "rename_only": [],
+      "different": [
+        "rIndepNormalGammaReg_cpp_export",
+        "rIndepNormalGammaReg_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)"
+      ],
+      "core_only": [
+        "glmbayesCore_has_opencl_cpp_export",
+        "glmbayesCore_has_opencl_cpp_export()",
+        "rIndepNormalGammaReg_with_envelope_cpp_export",
+        "rIndepNormalGammaReg_with_envelope_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)"
+      ],
+      "glmbayes_only": [
+        "get_opencl_core_count_cpp_export",
+        "get_opencl_core_count_cpp_export()",
+        "has_opencl_cpp_export",
+        "has_opencl_cpp_export()",
+        "rNormalGLMBlocks_cpp_export",
+        "rNormalGLMBlocks_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatr)"
+      ]
+    },
+    "src/famfuncs_Gamma.cpp": {
+      "identical": [
+        "f1_gamma",
+        "f2_f3_gamma",
+        "f2_gamma",
+        "f2_gamma_rmat",
+        "f3_gamma"
+      ],
+      "rename_only": [],
+      "different": [
+        "dgamma_glmb"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/famfuncs_binomial.cpp": {
+      "identical": [
+        "f1_binomial_cloglog",
+        "f1_binomial_logit",
+        "f1_binomial_probit",
+        "f2_binomial_cloglog",
+        "f2_binomial_cloglog_rmat",
+        "f2_binomial_logit",
+        "f2_binomial_logit_rmat",
+        "f2_binomial_probit",
+        "f2_f3_binomial_cloglog",
+        "f2_f3_binomial_logit",
+        "f3_binomial_cloglog",
+        "f3_binomial_logit",
+        "f3_binomial_probit"
+      ],
+      "rename_only": [],
+      "different": [
+        "dbinom_glmb",
+        "f2_binomial_probit_rmat",
+        "f2_f3_binomial_probit"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/famfuncs_gaussian.cpp": {
+      "identical": [
+        "Inv_f3_precompute_disp",
+        "Inv_f3_with_disp",
+        "Inv_f3_with_disp_rmat",
+        "dnorm_glmb",
+        "f1_gaussian",
+        "f2_f3_gaussian",
+        "f2_gaussian",
+        "f2_gaussian_rmat",
+        "f2_gaussian_rmat_mat",
+        "f3_gaussian"
+      ],
+      "rename_only": [],
+      "different": [],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/kernel_loader.cpp": {
+      "identical": [
+        "resolve_kernel_path"
+      ],
+      "rename_only": [],
+      "different": [
+        "load_kernel_library",
+        "load_kernel_source",
+        "load_library_for_kernel",
+        "load_library_for_kernel_cross_package",
+        "load_likelihood_subgradient_program"
+      ],
+      "core_only": [
+        "load_likelihood_subgradient_program_v2",
+        "parse_cl_tag",
+        "read_tsv_index"
+      ],
+      "glmbayes_only": [
+        "get_opencl_core_count",
+        "load_program_preload",
+        "opencltools_take_cstr"
+      ]
+    },
+    "src/kernel_wrappers.cpp": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "f2_f3_opencl"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/opencl.h": {
+      "identical": [
+        "decl:f2_f3_opencl"
+      ],
+      "rename_only": [],
+      "different": [
+        "decl:load_likelihood_subgradient_program",
+        "decl:openclPort"
+      ],
+      "core_only": [
+        "decl:load_likelihood_subgradient_program_v2"
+      ],
+      "glmbayes_only": []
+    },
+    "src/openclPort.h": {
+      "identical": [
+        "decl:configureOpenCL",
+        "decl:copyVector",
+        "decl:detect_num_gpus_internal",
+        "decl:flattenMatrix",
+        "decl:gpu_names"
+      ],
+      "rename_only": [],
+      "different": [
+        "decl:load_kernel_library",
+        "decl:load_kernel_source"
+      ],
+      "core_only": [
+        "decl:glmbayesCore_has_opencl",
+        "decl:opencl_core_count_for_scaling"
+      ],
+      "glmbayes_only": [
+        "decl:get_opencl_core_count",
+        "decl:has_opencl",
+        "decl:load_library_for_kernel",
+        "decl:load_library_for_kernel_cross_package",
+        "decl:load_program_preload"
+      ]
+    },
+    "src/progress_utils.cpp": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "progress_bar"
+      ],
+      "core_only": [
+        "progress_bar_finish"
+      ],
+      "glmbayes_only": []
+    },
+    "src/progress_utils.h": {
+      "identical": [
+        "begin",
+        "decl:begin",
+        "decl:localtime_r",
+        "decl:localtime_s",
+        "decl:now_hms",
+        "decl:print_completed",
+        "format_hms",
+        "format_hms(int h, int m, int s)",
+        "format_int_with_commas",
+        "now_hms",
+        "print_completed",
+        "timestamp_cpp"
+      ],
+      "rename_only": [],
+      "different": [
+        "decl:progress_bar"
+      ],
+      "core_only": [
+        "decl:progress_bar_finish"
+      ],
+      "glmbayes_only": []
+    },
+    "src/rGammaGamma.cpp": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "rGammaGamma"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/rGammaGaussian.cpp": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "rGammaGaussian"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/rIndepNormalGammaReg.cpp": {
+      "identical": [
+        "g1_face_at_disp",
+        "g2_face_at_disp",
+        "rIndepNormalGammaReg_std_parallel",
+        "rIndepNormalGammaReg_worker"
+      ],
+      "rename_only": [],
+      "different": [
+        "rIndepNormalGammaReg",
+        "rIndepNormalGammaReg_std"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/rNormalGLM.cpp": {
+      "identical": [
+        "make_rcppparallel_pilot_result",
+        "rNormalGLM",
+        "rNormalGLM_std",
+        "rNormalGLM_std_parallel",
+        "rNormalGLM_worker",
+        "run_rcppparallel_pilot"
+      ],
+      "rename_only": [],
+      "different": [
+        "glmb_Standardize_Model"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/rNormalGammaReg.cpp": {
+      "identical": [],
+      "rename_only": [],
+      "different": [
+        "rNormalGammaReg"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/rng_utils.cpp": {
+      "identical": [
+        "log_p_inv_gamma_ct_safe",
+        "runif_safe"
+      ],
+      "rename_only": [],
+      "different": [
+        "log_p_inv_gamma_safe",
+        "p_inv_gamma_safe",
+        "q_inv_gamma_safe",
+        "rinvgamma_ct_safe"
+      ],
+      "core_only": [],
+      "glmbayes_only": []
+    },
+    "src/simfuncs.h": {
+      "identical": [
+        "decl:glmb_Standardize_Model",
+        "decl:rGammaGaussian",
+        "decl:rIndepNormalGammaReg_std_parallel",
+        "decl:rNormalGLM",
+        "decl:rNormalGLM_std",
+        "decl:rNormalReg"
+      ],
+      "rename_only": [],
+      "different": [
+        "decl:rGammaGamma",
+        "decl:rIndepNormalGammaReg",
+        "decl:rIndepNormalGammaReg_std",
+        "decl:rNormalGammaReg"
+      ],
+      "core_only": [
+        "decl:rNormalGLM_optim_poisson_log"
+      ],
+      "glmbayes_only": [
+        "decl:rNormalGLMBlocks"
+      ]
+    },
+    "inst/cl/README.md": {
+      "note": "Non-.cl differing file; hash-only."
+    }
+  }
+}
