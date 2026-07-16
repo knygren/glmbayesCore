@@ -4,12 +4,20 @@
 #' in a \code{\link{Prior_Setup_lmebayes}} object into a named list of
 #' \code{\link{dGamma}} \code{pfamily} objects, one per group level.
 #'
-#' Prior density (\code{shape_ING}, \code{rate} from \eqn{S_{\mathrm{marg}}}
-#' A12 3.3.4) comes from \code{object$ing_prior_measurement_group} (calibrated in
+#' Prior density (\code{shape_ING}, \code{rate}) comes from
+#' \code{object$ing_prior_measurement_group}, calibrated in
 #' \code{Prior_Setup_lmebayes()} via \code{\link{compute_gaussian_prior}} with
-#' shared population \code{sd_tau}).  Truncation bounds use an approximate
-#' posterior at \eqn{n_{\mathrm{combined},j} = n_{\mathrm{prior},j} + n_j},
-#' mean-matched at one of two per-group centers (\code{disp_center}):
+#' shared population \code{sd_tau}.  As of the Chapter A12 Part~VI switch,
+#' this is the "full marginal" calibration (\eqn{\mu_j \to \bar\mu}, also
+#' integrating out \code{fixef} against Block~2's own \code{dNormal} prior),
+#' falling back to the Part~I calibration (\eqn{S_{\mathrm{marg}}}, A12 3.3.4)
+#' when Part~VI's calibration fails; see
+#' \code{inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md} Part VI and
+#' \code{object$ing_prior_measurement_group_classical} (the Part~I
+#' calibration, always computed, kept for comparison/fallback). Truncation
+#' bounds use an approximate posterior at
+#' \eqn{n_{\mathrm{combined},j} = n_{\mathrm{prior},j} + n_j}, mean-matched at
+#' one of two per-group centers (\code{disp_center}):
 #' \describe{
 #'   \item{\code{"sigma2_hat"} (default)}{\code{disp_lower} is OLS-anchored at
 #'     \code{sigma2_hat_j}; \code{disp_upper} widens by the BLUP/OLS residual

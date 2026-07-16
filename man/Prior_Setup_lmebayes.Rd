@@ -238,10 +238,25 @@ the same calibrated \code{shape}/\code{rate}.  Pass these fields to
 \item{\code{ing_prior_measurement_group}}{Gaussian models only, and only
 when \code{dispformula} requests per-group dispersion: named list
 (one entry per group level) of per-group \code{dGamma()} density
-calibration (\code{sigma2_hat}, \code{shape_ING}, \code{rate_gamma},
-\code{n_prior}, \code{n_j}, \code{n_combined}, \ldots).  \code{NULL}
-when \code{dispformula = ~1}.  Used by \code{\link{dGamma_list}()};
-truncation bounds are assembled there.}
+calibration (\code{sigma2_hat}, \code{shape_ING}, \code{rate},
+\code{rate_gamma}, \code{n_prior}, \code{n_j}, \code{n_combined},
+\ldots).  \code{NULL} when \code{dispformula = ~1}.  Used by
+\code{\link{dGamma_list}()} for both the \code{dGamma()} density and
+its mean-matched truncation bounds.  This is the Chapter A12 Part~VI
+"full marginal" calibration (\code{mu_j -> mu_bar}, integrating out
+\code{fixef} against Block~2's own \code{dNormal} prior; see
+\code{inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md} Part VI), falling
+back to the Part~I ("classical") calibration -- with a
+\code{\link[base]{warning}} -- if Part VI's calibration fails (e.g.\
+a random-effect component's Block~2 hyper-design is not
+intercept-only).}
+\item{\code{ing_prior_measurement_group_classical}}{Gaussian models
+only, and only when \code{dispformula} requests per-group
+dispersion: the Part~I calibration (same fields as
+\code{ing_prior_measurement_group}), kept unconditionally as the
+fallback for -- and for comparison against --
+\code{ing_prior_measurement_group} above.  \code{NULL} when
+\code{dispformula = ~1}. Not consumed by \code{dGamma_list()}.}
 \item{\code{dispformula}}{The \code{dispformula} supplied.}
 }
 

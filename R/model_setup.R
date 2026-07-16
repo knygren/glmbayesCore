@@ -102,8 +102,6 @@
 #' @seealso \code{\link{extract_re_hyper_matrices}},
 #'   \code{\link{lmerb_default_vcov_formula}},
 #'   \code{\link{extract_lmer_variance_components}}
-#' @examplesIf requireNamespace("bayesrules", quietly = TRUE)
-#' @example inst/examples/Ex_model_setup_big_word_club.R
 #' @export
 model_setup <- function(
     formula,

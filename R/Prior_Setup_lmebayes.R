@@ -226,10 +226,25 @@
 #'     \item{\code{ing_prior_measurement_group}}{Gaussian models only, and only
 #'       when \code{dispformula} requests per-group dispersion: named list
 #'       (one entry per group level) of per-group \code{dGamma()} density
-#'       calibration (\code{sigma2_hat}, \code{shape_ING}, \code{rate_gamma},
-#'       \code{n_prior}, \code{n_j}, \code{n_combined}, \ldots).  \code{NULL}
-#'       when \code{dispformula = ~1}.  Used by \code{\link{dGamma_list}()};
-#'       truncation bounds are assembled there.}
+#'       calibration (\code{sigma2_hat}, \code{shape_ING}, \code{rate},
+#'       \code{rate_gamma}, \code{n_prior}, \code{n_j}, \code{n_combined},
+#'       \ldots).  \code{NULL} when \code{dispformula = ~1}.  Used by
+#'       \code{\link{dGamma_list}()} for both the \code{dGamma()} density and
+#'       its mean-matched truncation bounds.  This is the Chapter A12 Part~VI
+#'       "full marginal" calibration (\code{mu_j -> mu_bar}, integrating out
+#'       \code{fixef} against Block~2's own \code{dNormal} prior; see
+#'       \code{inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md} Part VI), falling
+#'       back to the Part~I ("classical") calibration -- with a
+#'       \code{\link[base]{warning}} -- if Part VI's calibration fails (e.g.\
+#'       a random-effect component's Block~2 hyper-design is not
+#'       intercept-only).}
+#'     \item{\code{ing_prior_measurement_group_classical}}{Gaussian models
+#'       only, and only when \code{dispformula} requests per-group
+#'       dispersion: the Part~I calibration (same fields as
+#'       \code{ing_prior_measurement_group}), kept unconditionally as the
+#'       fallback for -- and for comparison against --
+#'       \code{ing_prior_measurement_group} above.  \code{NULL} when
+#'       \code{dispformula = ~1}. Not consumed by \code{dGamma_list()}.}
 #'     \item{\code{dispformula}}{The \code{dispformula} supplied.}
 #'   }
 #' @details
@@ -728,7 +743,11 @@ Prior_Setup_lmebayes <- function(formula,
     NULL
   }
 
-  ing_prior_measurement_group <- if (is_gaussian && identical(dispformula_kind, "group")) {
+  ## Part I ("classical"): per-group mu_j / Sigma_j from the group's own
+  ## within-group null-model regression (A12 3.3.4 rate = S_marg). Always
+  ## computed -- both as the fallback below, and as the reference column in
+  ## the comparison prints. See inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md Part I.
+  ing_prior_measurement_group_classical <- if (is_gaussian && identical(dispformula_kind, "group")) {
     .lmebayes_calibrate_ing_prior_measurement_group(
       design           = design,
       data             = data,
@@ -745,12 +764,73 @@ Prior_Setup_lmebayes <- function(formula,
     NULL
   }
 
-  ## Dev-only: print A12 3.3.4 rate vs A12 3.3.5 rate_gamma from same calibration; not stored.
-  if (is_gaussian && identical(dispformula_kind, "group") &&
-      !is.null(ing_prior_measurement_group)) {
-    .lmebayes_print_ing_prior_measurement_group_compare(
-      existing = ing_prior_measurement_group
+  ## Part VI ("full marginal"): as Part I, but also integrates out fixef
+  ## against Block~2's own fixef dNormal prior (mu_j -> mu_bar, Sigma_j ->
+  ## Sigma_j + Omega; both bar_mu/Omega read off prior_list, population-level
+  ## and shared across groups). This is now the production calibration fed to
+  ## dGamma_list() (density *and* truncation bounds, since both derive from
+  ## sigma2_hat/rate on this same list) -- see
+  ## inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md Part VI. Falls back to Part I
+  ## ("classical") with a warning if it fails (e.g. a RE component's Block~2
+  ## hyper-design isn't intercept-only, which Part VI doesn't yet support).
+  ing_prior_measurement_group_full_marginal <- if (
+    is_gaussian && identical(dispformula_kind, "group") &&
+      !is.null(ing_prior_measurement_group_classical)
+  ) {
+    tryCatch(
+      .lmebayes_calibrate_ing_prior_measurement_group_full_marginal(
+        design           = design,
+        data             = data,
+        block_formula    = block_formula,
+        sd_tau           = sd_tau_out,
+        pwt_group        = meas_group$pwt_measurement,
+        n_prior_group    = meas_group$n_prior_measurement,
+        group_levels     = group_levels,
+        prior_list       = prior_list,
+        family           = family,
+        intercept_source = intercept_source,
+        effects_source   = effects_source
+      ),
+      error = function(e) {
+        warning(
+          "Part VI full-marginal per-group dispersion calibration failed; ",
+          "dGamma_list() will fall back to the Part I (classical) ",
+          "calibration for this fit: ", conditionMessage(e),
+          call. = FALSE
+        )
+        NULL
+      }
     )
+  } else {
+    NULL
+  }
+
+  ## SWAP POINT: production ing_prior_measurement_group (consumed by
+  ## dGamma_list() for both the dGamma() density and its mean-matched
+  ## truncation bounds). To revert to the Part I ("classical") behavior,
+  ## change the right-hand side to
+  ## `ing_prior_measurement_group_classical`.
+  ing_prior_measurement_group <- if (!is.null(ing_prior_measurement_group_full_marginal)) {
+    ing_prior_measurement_group_full_marginal
+  } else {
+    ing_prior_measurement_group_classical
+  }
+
+  ## Dev diagnostic: print A12 3.3.4 rate vs A12 3.3.5 rate_gamma (both from
+  ## the Part I calibration; unaffected by the Part VI swap above) and, when
+  ## available, the Part I vs Part VI comparison actually driving the swap.
+  if (is_gaussian && identical(dispformula_kind, "group") &&
+      !is.null(ing_prior_measurement_group_classical)) {
+    .lmebayes_print_ing_prior_measurement_group_compare(
+      existing = ing_prior_measurement_group_classical
+    )
+
+    if (!is.null(ing_prior_measurement_group_full_marginal)) {
+      .lmebayes_print_ing_prior_measurement_group_full_marginal_compare(
+        existing      = ing_prior_measurement_group_classical,
+        full_marginal = ing_prior_measurement_group_full_marginal
+      )
+    }
   }
 
   pwt_measurement_out <- if (is_gaussian) {
@@ -803,7 +883,8 @@ Prior_Setup_lmebayes <- function(formula,
       prior_list            = prior_list,
       ing_prior             = ing_prior,
       ing_prior_measurement = ing_prior_measurement,
-      ing_prior_measurement_group = ing_prior_measurement_group
+      ing_prior_measurement_group = ing_prior_measurement_group,
+      ing_prior_measurement_group_classical = ing_prior_measurement_group_classical
     ),
     class = "lmebayes_prior_setup"
   )

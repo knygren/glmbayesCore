@@ -802,6 +802,36 @@
   )
 }
 
+#' \code{compute_gaussian_prior()} on within-group glm inputs, widened by a
+#' fixed \code{Omega} to also integrate out uncertainty about the prior mean
+#' (\code{mu_j -> mu_bar}); see
+#' \code{inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md} Part VI. \code{Omega} is
+#' fixed and absolute (same coefficient-scale units as \code{Sigma}), so it is
+#' divided by the same group-specific \code{dispersion_classical} that
+#' \code{Sigma} already is -- no rescaling by the (unknown) working
+#' dispersion is involved. Dev-only: not called from any exported path.
+#' @noRd
+.lmebayes_compute_full_marginal_ing_prior_cal_from_sigma <- function(
+    inp, Sigma, n_prior_j, mu_bar, Omega
+) {
+  Sigma_0  <- Sigma / inp$dispersion_classical
+  Omega_0  <- Omega / inp$dispersion_classical
+  compute_gaussian_prior(
+    X           = inp$X,
+    Y           = inp$Y,
+    weights     = inp$weights,
+    offset      = inp$offset,
+    dispersion  = NULL,
+    n_effective = inp$n_j,
+    bhat        = inp$bhat,
+    mu          = mu_bar,
+    Sigma_0     = Sigma_0 + Omega_0,
+    Sigma       = Sigma + Omega,
+    n_prior     = n_prior_j,
+    k           = 1
+  )
+}
+
 #' Per-group Block~1 measurement-dispersion calibration for \code{dGamma_list()}.
 #'
 #' \code{sigma2_hat}, \code{shape_ING}, and \code{rate_gamma} from shared
@@ -890,8 +920,142 @@
   )
 }
 
-#' Print \code{rate_gamma} (A12 3.3.5, downstream) vs \code{rate} (A12 3.3.4
-#' \eqn{S_{\mathrm{marg}}}) from the same per-group calibration.
+#' Part VI ("full marginal") per-group measurement-dispersion calibration:
+#' same as \code{.lmebayes_calibrate_ing_prior_measurement_group()} but
+#' additionally integrates out \code{fixef} against its own \code{dNormal}
+#' prior (Block~2), via a fixed \code{Omega} widening \code{Sigma_0j} and
+#' \code{mu_j -> mu_bar}. \code{mu_bar}/\code{Omega} are read directly off
+#' \code{prior_list} (\code{Prior_Setup_lmebayes()}'s own Block~2 fixef prior,
+#' one \code{mu_fixef}/\code{Sigma_fixef} pair per RE component \code{k}) --
+#' population-level and shared across all groups, not re-derived from pooled
+#' data. Assembled block-diagonally onto \code{design$re_coef_names}; requires
+#' each RE component's own \code{X_hyper[[k]]} to be intercept-only (the usual
+#' random-intercept/random-slope case with no Block~2-level covariates).
+#' \code{shape_ING} is unchanged (depends only on \code{n_prior_j}, \code{p_re}).
+#' Called from \code{Prior_Setup_lmebayes()}, which stores its result as the
+#' production \code{ing_prior_measurement_group} consumed by
+#' \code{dGamma_list()} (falling back to
+#' \code{.lmebayes_calibrate_ing_prior_measurement_group()}'s Part~I result on
+#' failure); see \code{inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md} Part VI.
+#' @noRd
+.lmebayes_calibrate_ing_prior_measurement_group_full_marginal <- function(
+    design,
+    data,
+    block_formula,
+    sd_tau,
+    pwt_group,
+    n_prior_group,
+    group_levels,
+    prior_list,
+    family = gaussian(),
+    intercept_source = c("null_model", "full_model"),
+    effects_source = c("null_effects", "full_model")
+) {
+  intercept_source <- match.arg(intercept_source)
+  effects_source   <- match.arg(effects_source)
+  re_names <- design$re_coef_names
+  p_re <- length(re_names)
+  if (p_re < 1L) {
+    stop(
+      "Per-group measurement dispersion calibration requires at least one random coefficient.",
+      call. = FALSE
+    )
+  }
+  if (length(sd_tau) != p_re || anyNA(sd_tau) || any(sd_tau <= 0)) {
+    stop(
+      "'sd_tau' must be a named numeric vector of positive RE standard deviations.",
+      call. = FALSE
+    )
+  }
+  if (!identical(names(prior_list), re_names) && !setequal(names(prior_list), re_names)) {
+    stop(
+      "'prior_list' must have one element per RE component in ",
+      "design$re_coef_names.",
+      call. = FALSE
+    )
+  }
+
+  ## Anchor: mu_bar / Omega are fixef's own dNormal prior (Block~2),
+  ## population-level and shared across every group -- not re-derived from
+  ## pooled data. Requires each RE component's own Block~2 hyper-design to be
+  ## intercept-only (X_hyper[[k]] has exactly one column); there is no
+  ## established mapping from block_formula's per-group coefficient k onto a
+  ## multi-column Sigma_fixef[[k]] otherwise.
+  mu_bar <- stats::setNames(numeric(p_re), re_names)
+  Omega  <- matrix(0, p_re, p_re, dimnames = list(re_names, re_names))
+  for (k in re_names) {
+    Xh_k <- design$X_hyper[[k]]
+    if (is.null(Xh_k) || ncol(Xh_k) != 1L) {
+      stop(
+        "Part VI full-marginal calibration requires an intercept-only ",
+        "Block~2 hyper-design for RE component '", k, "' (no ",
+        "Block~2-level covariates); ncol(X_hyper[['", k, "']]) != 1.",
+        call. = FALSE
+      )
+    }
+    pk <- prior_list[[k]]
+    mu_bar[[k]] <- unname(pk$mu_fixef[1L])
+    Omega[k, k] <- unname(pk$Sigma_fixef[1L, 1L])
+  }
+
+  stats::setNames(
+    lapply(group_levels, function(lev) {
+      idx   <- design$groups == lev
+      dat_j <- data[idx, , drop = FALSE]
+      n_prior_j <- unname(n_prior_group[[lev]])
+
+      inp <- .lmebayes_ing_prior_measurement_group_glm_inputs(
+        lev              = lev,
+        dat_j            = dat_j,
+        block_formula    = block_formula,
+        sd_tau           = sd_tau,
+        family           = family,
+        intercept_source = intercept_source,
+        effects_source   = effects_source
+      )
+
+      pwt_j <- diag(inp$V0)
+      pwt_j <- pwt_j / (pwt_j + inp$sd_vec^2)
+      names(pwt_j) <- inp$var_names
+
+      if (length(pwt_j) == 1L) {
+        Sigma <- ((1 - pwt_j) / pwt_j) * inp$V0
+      } else {
+        scale_vec <- sqrt((1 - pwt_j) / pwt_j)
+        Sigma <- inp$V0 * outer(scale_vec, scale_vec)
+      }
+
+      cal <- .lmebayes_compute_full_marginal_ing_prior_cal_from_sigma(
+        inp, Sigma, n_prior_j, mu_bar, Omega
+      )
+
+      .ing_stop_if_prior_exceeds_data(
+        shape       = cal$shape_ING,
+        p           = inp$nvar,
+        n_w         = inp$n_j,
+        detail      = paste0("group '", lev, "' has n_j = ", inp$n_j),
+        limit_label = "n_j",
+        prefix      = "Per-group measurement dispersion (full marginal): "
+      )
+
+      .lmebayes_ing_prior_list_from_cal(
+        cal         = cal,
+        n_prior_j   = n_prior_j,
+        n_j         = inp$n_j,
+        p_re        = p_re,
+        pwt_record  = pwt_j,
+        pwt_group_j = unname(pwt_group[[lev]])
+      )
+    }),
+    group_levels
+  )
+}
+
+#' Print \code{rate_gamma} (A12 3.3.5) vs \code{rate} (A12 3.3.4
+#' \eqn{S_{\mathrm{marg}}}) from the Part~I ("classical") per-group
+#' calibration -- diagnostic only; \code{dGamma_list()} normally uses the
+#' Part~VI "full marginal" calibration instead (see
+#' \code{.lmebayes_print_ing_prior_measurement_group_full_marginal_compare()}).
 #' @noRd
 .lmebayes_print_ing_prior_measurement_group_compare <- function(
     existing,
@@ -943,9 +1107,12 @@
   rownames(tab) <- NULL
 
   cat(
-    "\n--- Per-group Block~1 gamma: rate_gamma (A12 3.3.5) vs rate (A12 3.3.4 S_marg) ---\n",
-    "  dGamma_list downstream uses rate (S_marg); rate_gamma retained for comparison.\n",
-    "  sigma2_hat and truncation bounds unchanged.\n\n",
+    "\n--- Part I 'classical' calibration: rate_gamma (A12 3.3.5) vs\n",
+    "    rate (A12 3.3.4 S_marg) ---\n",
+    "  Both retained for comparison only; dGamma_list() normally uses the\n",
+    "  Part VI 'full marginal' rate/sigma2_hat below instead (falls back to\n",
+    "  this Part I 'rate' on failure). sigma2_hat/bounds shown here are\n",
+    "  Part I's own (pre-Part VI) values.\n\n",
     sep = ""
   )
   num_cols <- vapply(tab, is.numeric, logical(1))
@@ -954,6 +1121,78 @@
   }
   print(tab, row.names = FALSE)
   invisible(tab)
+}
+
+#' Print the Part VI ("full marginal") \code{sigma2_hat}/\code{rate} vs the
+#' Part~I (\code{"classical"}, A12 3.3.4) per-group calibration, plus the
+#' implied vector of Part VI \code{sigma2_hat} values -- the dispersion point
+#' estimates \code{dGamma_list()}'s window is now centered on (Part VI is the
+#' production calibration as of the swap described in
+#' \code{inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md} Part VI). Diagnostic
+#' print only; does not itself affect \code{Prior_Setup_lmebayes()}'s
+#' returned object (the swap happens separately, in
+#' \code{Prior_Setup_lmebayes()}'s own body).
+#' @noRd
+.lmebayes_print_ing_prior_measurement_group_full_marginal_compare <- function(
+    existing,
+    full_marginal,
+    digits = 4
+) {
+  if (is.null(existing) || is.null(full_marginal)) {
+    return(invisible(NULL))
+  }
+  grp <- names(existing)
+  if (is.null(grp) || length(grp) < 1L) {
+    return(invisible(NULL))
+  }
+
+  pct_diff <- function(new, old) {
+    if (!is.finite(old) || old == 0) {
+      return(NA_real_)
+    }
+    100 * (new - old) / old
+  }
+
+  tab <- do.call(rbind, lapply(grp, function(g) {
+    ex <- existing[[g]]
+    fm <- full_marginal[[g]]
+    data.frame(
+      group             = g,
+      n_j               = ex$n_j,
+      n_prior           = ex$n_prior,
+      sigma2_hat        = ex$sigma2_hat,
+      sigma2_hat_full   = fm$sigma2_hat,
+      pct_sigma2_hat    = pct_diff(fm$sigma2_hat, ex$sigma2_hat),
+      rate              = ex$rate,
+      rate_full         = fm$rate,
+      pct_rate          = pct_diff(fm$rate, ex$rate),
+      stringsAsFactors  = FALSE
+    )
+  }))
+  rownames(tab) <- NULL
+
+  cat(
+    "\n--- Per-group Block~1 gamma: Part I 'classical' rate/sigma2_hat\n",
+    "    (A12 3.3.4) vs Part VI 'full marginal' (mu_j -> mu_bar, integrates\n",
+    "    out fixef via Block~2's own dNormal prior) ---\n",
+    "  dGamma_list() now uses Part VI (falls back to Part I on failure); see\n",
+    "  inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md Part VI.\n\n",
+    sep = ""
+  )
+  num_cols <- vapply(tab, is.numeric, logical(1))
+  if (any(num_cols)) {
+    tab[num_cols] <- lapply(tab[num_cols], round, digits = digits)
+  }
+  print(tab, row.names = FALSE)
+
+  implied_disp <- stats::setNames(
+    vapply(grp, function(g) full_marginal[[g]]$sigma2_hat, numeric(1)),
+    grp
+  )
+  cat("\nImplied Part VI dispersion values (sigma2_hat_full, per group):\n")
+  print(round(implied_disp, digits))
+
+  invisible(list(compare = tab, sigma2_hat_full = implied_disp))
 }
 
 #' BLUP/OLS residual RSS inflation ratio per group (for dGamma upper bounds)

@@ -39,8 +39,7 @@
 #'     \item{block_results}{List of length \code{k} with each block's sampler output.}
 #'   }
 #' @seealso \code{\link{rNormal_reg}}, \code{\link{simfunction}},
-#'   \code{\link{normalize_block}}, \code{inst/DESIGN_RGLM_BLOCKS.md}
-#' @example inst/examples/Ex_block_rNormalGLM.R
+#'   \code{\link{normalize_block}}
 #' @name block_simfuncs
 #' @aliases block_rNormalGLM block_rNormalReg block_rNormalGLM_update
 #'   block_rNormalReg_update normalize_block
@@ -216,7 +215,6 @@ block_rNormalGLM <- function(n,
 #' @return A list with class \code{"block_rNormalReg"} including
 #'   \code{coefficients}, \code{coef.mode}, \code{dispersion}, and
 #'   \code{block_info}.
-#' @example inst/examples/Ex_block_rNormalReg.R
 #' @export
 block_rNormalReg <- function(n,
                              y,
@@ -324,7 +322,6 @@ block_rNormalReg <- function(n,
 #'   \code{b_draws} (default \code{NULL} returns all columns).
 #' @return A list with \code{b_draws}, \code{coefficients}, \code{coef.mode},
 #'   and \code{block_rNormalReg} (full block sampler output).
-#' @example inst/examples/Ex_block_rNormalReg_update.R
 #' @export
 block_rNormalReg_update <- function(mu_all,
                                     P          = NULL,
@@ -400,7 +397,6 @@ block_rNormalReg_update <- function(mu_all,
 #'   \code{theta} (default \code{1} for scalar intercept blocks).
 #' @return A list with \code{theta}, \code{coefficients}, \code{coef.mode}, and
 #'   \code{block_rNormalGLM} (full block sampler output).
-#' @example inst/examples/Ex_block_rNormalGLM_update.R
 #' @export
 block_rNormalGLM_update <- function(mu_all,
                                     sigma_theta_sq = NULL,

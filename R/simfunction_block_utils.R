@@ -10,7 +10,6 @@
 #' @param l2 Number of observations (rows) after \code{model.frame}.
 #' @return List with \code{k}, \code{ids}, \code{l2_blocks}, \code{starts},
 #'   and \code{rows} (per-block row indices).
-#' @example inst/examples/Ex_normalize_block.R
 #' @export
 normalize_block <- function(block, l2) {
   l2 <- as.integer(l2)
