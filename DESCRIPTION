@@ -2,7 +2,7 @@ Package: glmbayesCore
 Type: Package
 Title: Core C++ Sampling Engine for glmbayes
 Version: 0.1.0
-Date: 2026-06-03
+Date: 2026-07-16
 Authors@R: c(
     person("Kjell", "Nygren", role = c("aut", "cre"),
            email = "kjell.a.nygren@gmail.com"),
@@ -21,10 +21,12 @@ Authors@R: c(
     person("Martin", "Maechler", role = "ctb",
            comment = "Portions of R Mathlib")
     )
-Description: Core C++ engine for glmbayes: envelope-based iid samplers, Gibbs
-    building blocks, and optional OpenCL. Developer backend for glmbayes,
-    lmebayes, and extensions. End users should use glmbayes for lm/glm
-    modelling.
+Description: Core C++ engine for glmbayes: envelope-based iid GLM/LM samplers,
+    prior-family routing, and optional OpenCL. Developer backend for the
+    glmbayes formula interface. Mixed-model (LMM/GLMM) engines are planned
+    for this package and are currently developed in the temporary
+    lmebayesCore fork used by lmebayes. End users should use glmbayes for
+    lm/glm modelling.
 License: GPL-2
 URL: https://github.com/knygren/glmbayesCore
 BugReports: https://github.com/knygren/glmbayesCore/issues
@@ -41,11 +43,9 @@ Depends: MASS, R (>= 3.5.0)
 Suggests:
     glmbayes,
     coda,
-    ggplot2,
     bayesrules,
     bayestestR,
     LearnBayes,
-    glmmTMB,
     testthat (>= 3.0.0),
     spelling,
     knitr,

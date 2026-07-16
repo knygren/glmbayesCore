@@ -6,10 +6,11 @@
 \alias{glmbayesCore}
 \title{glmbayesCore: Core C++ Sampling Engine for glmbayes}
 \description{
-Core C++ engine for envelope-based iid samplers, Gibbs building blocks, and
-optional OpenCL acceleration. Developer backend for \pkg{glmbayes},
-\pkg{lmebayes}, and related extensions. End users should install
-\pkg{glmbayes} for formula-based modelling and S3 methods.
+Core C++ engine for envelope-based iid GLM/LM samplers, prior-family
+routing, and optional OpenCL acceleration. Developer backend for
+\pkg{glmbayes} (and, once reintegrated, mixed-model engines for
+\pkg{lmebayes}). End users should install \pkg{glmbayes} for
+formula-based modelling and S3 methods.
 }
 \details{
 Low-level entry points include envelope construction
@@ -18,7 +19,9 @@ registered simulation pipelines (\code{\link{rNormalGLM_std}},
 \code{\link{rIndepNormalGammaReg_std}}), matrix-input samplers
 (\code{\link{rglmb}}, \code{\link{rlmb}}), and OpenCL kernel loaders.
 Formula interfaces \code{glmb} and \code{lmb} live in \pkg{glmbayes};
-\pkg{glmbayesCore} supplies the sampling engine.
+\pkg{glmbayesCore} supplies the sampling engine. Mixed-model (LMM/GLMM)
+code is under active development in the temporary \pkg{lmebayesCore}
+fork and will be merged back here gradually.
 }
 \section{OpenCL startup checks}{
 

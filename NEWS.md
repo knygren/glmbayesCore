@@ -1,5 +1,17 @@
 # glmbayesCore (development version)
 
+* **Temporary strip of mixed-model stack (Batches 0–5):** LMM/GLMM /
+  two-block / block-ING R engines, C++ sources, prior-setup helpers, and
+  related tests/docs were parked in the temporary **lmebayesCore** fork
+  (used by **lmebayes**) so this package can ship a clean iid GLM/LM
+  envelope backend for **glmbayes** (`rglmb` / `rlmb`, `pfamily`,
+  `simfunction`, envelope + optional OpenCL). Mixed-model features are
+  still part of the **glmbayesCore** roadmap and will be reintegrated
+  gradually. Unused Suggests (`glmmTMB`, `ggplot2`) dropped; Imports
+  already omit `lme4` / `Matrix` / `reformulas`. README / inventories
+  describe the current slim API; mixed-model NEWS bullets below remain
+  relevant history for the work now advancing in **lmebayesCore**.
+
 * **Per-group `dGamma_list()` prior now uses the §3.3.4 marginal rate:**
   **`dGamma_list.lmebayes_prior_setup()`** feeds each group's `dGamma()` the
   Chapter A12 **§3.3.4** marginal ING rate (`beta` integrated out) instead of
