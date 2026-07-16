@@ -103,25 +103,9 @@ Rcpp::List f2_f3_opencl(
     Rcpp::stop("Unsupported family: " + family);
   }
 
-  // all_src = load_likelihood_subgradient_program(family, link, GLMBAYES_R_NS);
-  all_src = load_likelihood_subgradient_program_v2(family, link, GLMBAYES_R_NS);
+  // Prelude/nmath from nmathopencl; entry kernel from this package (opencltools C API).
+  all_src = load_likelihood_subgradient_program(family, link, GLMBAYES_R_NS);
 
-  // Legacy glmbayes program assembly (replaced by load_likelihood_subgradient_program above)
-  // std::string OPENCL_source     = load_kernel_source("OPENCL.cl");
-  // std::string rmath_source     = load_kernel_library("rmath","glmbayes", false);
-  // std::string nmath_source     = load_kernel_library("nmath","glmbayes", false);
-  // std::string dpq_source     = load_kernel_library("dpq","glmbayes", false);
-  // std::string ksrc    = load_kernel_source(kernel_file);
-  //
-  // all_src = OPENCL_source +
-  //   "\n" +   rmath_source +
-  //   "\n" + dpq_source +
-  //   "\n" +nmath_source
-  // + "\n" +   ksrc;
-  
-  // Rcpp::Rcout << "Entering f2_f3_kernel runner \n";
-  
-  
   f2_f3_kernel_runner(
     all_src,
     kernel_name.c_str(),  // ✅ convert to const char*

@@ -1,12 +1,12 @@
 /**
  * @file openclPort.h
- * @brief Public OpenCL interface for glmbayes, including kernel loading,
+ * @brief Public OpenCL interface for glmbayesCore, including kernel loading,
  *        device discovery, capability probing, and Rcpp-to-std::vector
  *        conversion helpers.
  *
  * @namespace openclPort
  * @brief Lightweight OpenCL utility layer providing kernel management and
- *        device‑level information for optional GPU acceleration.
+ *        device-level information for optional GPU acceleration.
  *
  * @section ImplementedIn
  *   These declarations are implemented in:
@@ -26,14 +26,14 @@
  *   Provides:
  *     - Rcpp → std::vector conversion utilities for kernel argument buffers
  *     - GPU/device enumeration and capability checks (gpu_names, glmbayesCore_has_opencl)
- *     - Kernel source and library loading from inst/cl/ directories
- *       (generic loaders; full likelihood-subgradient program assembly is in
+ *     - Kernel source and library loading via the opencltools C API
+ *       (full likelihood-subgradient program assembly is in
  *       glmbayes::opencl::load_likelihood_subgradient_program — see inst/cl/README.md)
- *     - Conditional OpenCL configuration and build‑option generation
+ *     - Conditional OpenCL configuration and build-option generation
  *
  *   This module:
  *     - is optional and only active when compiled with USE_OPENCL,
- *     - isolates all OpenCL‑specific logic from the statistical code,
+ *     - isolates all OpenCL-specific logic from the statistical code,
  *     - ensures safe fallback to CPU execution when no GPU is available.
  */
 
@@ -52,7 +52,7 @@
 #define CL_TARGET_OPENCL_VERSION 300
 #include <CL/cl.h>
 #include <string>
-#endif 
+#endif
 
 #ifdef __linux__
 #include <stdio.h>
@@ -61,19 +61,10 @@
 
 using namespace Rcpp;
 
-// Dependencies:
-
-// 1) OpenCL_helper.cpp
-// 2) 
-
-
-
 //
 // -----------------------------------------------------------------------------
 // openclPort: Public API for OpenCL kernel loading, device utilities,
 //             and Rcpp → std::vector conversion helpers.
-// -----------------------------------------------------------------------------
-// Everything a user needs to write OpenCL-enabled wrappers lives here.
 // -----------------------------------------------------------------------------
 namespace openclPort {
 
@@ -93,10 +84,6 @@ int detect_num_gpus_internal();
 
 // OpenCL compute units via opencltools::get_opencl_core_count() (envelope scaling)
 int opencl_core_count_for_scaling();
-
-// -------------------------------------------------------------------------
-// Device / OpenCL utilities
-// -------------------------------------------------------------------------
 
 bool glmbayesCore_has_opencl();
 
@@ -125,6 +112,30 @@ std::string load_kernel_library(
     bool verbose = false
 );
 
+// Minimal library subset from a kernel annotation; kernel and library may
+// live in different installed packages (paths relative to inst/cl/).
+std::string load_library_for_kernel(
+    const std::string& kernel_relative_path,
+    const std::string& library_subdir,
+    const std::string& package,
+    const std::string& depends_tag);
+
+std::string load_library_for_kernel_cross_package(
+    const std::string& kernel_relative_path,
+    const std::string& kernel_package,
+    const std::string& library_subdir,
+    const std::string& library_package,
+    const std::string& depends_tag);
+
+std::string load_program_preload(
+    const std::string& manifest_relative_path = "program_preload_manifest.tsv",
+    const std::string& source_package = "nmathopencl",
+    bool verbose = false);
+
+std::string resolve_kernel_path(
+    const std::string& family,
+    const std::string& link);
+
 struct OpenCLConfig {
   bool have_expm1;
   bool have_log1p;
@@ -142,5 +153,3 @@ OpenCLConfig configureOpenCL(cl_context context,
 } // namespace openclPort
 
 #endif // OPENCLPORT_H
-
-

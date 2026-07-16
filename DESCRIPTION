@@ -38,7 +38,7 @@ Imports:
     opencltools (>= 0.8.1),
     nmathopencl
 RdMacros: Rdpack
-LinkingTo: Rcpp, RcppArmadillo, RcppParallel
+LinkingTo: Rcpp, RcppArmadillo, RcppParallel, opencltools
 Depends: MASS, R (>= 3.5.0)
 Suggests:
     glmbayes,

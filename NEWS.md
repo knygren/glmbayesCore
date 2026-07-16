@@ -1,5 +1,11 @@
 # glmbayesCore (development version)
 
+* **OpenCL program assembly aligned with glmbayes:** `src/kernel_loader.cpp`
+  now delegates to the **opencltools** C API (same recipe as **glmbayes**):
+  prelude/shims/`nmath` from **nmathopencl**, entry kernels from
+  **glmbayesCore**. Added `LinkingTo: opencltools`. Fat in-tree loader archived
+  under `src/backup/` (not compiled).
+
 * **Temporary strip of mixed-model stack (Batches 0–5):** LMM/GLMM /
   two-block / block-ING R engines, C++ sources, prior-setup helpers, and
   related tests/docs were parked in the temporary **lmebayesCore** fork
