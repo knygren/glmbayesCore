@@ -1,11 +1,7 @@
 // -*- mode: C++; c-indent-level: 4; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 
-// Include <random> before R headers when a private nmath header redefines calloc/free.
 #include <random>
-
-#include <Rmath.h>   // libR Mathlib: Rf_pgamma, Rf_qgamma (replaces src/pgamma.c, qgamma.c)
-//#include "nmath_local.h"
-//#include "dpq_local.h"
+#include <Rmath.h>   // libR Mathlib: Rf_pgamma, Rf_qgamma
 #include "rng_utils.h"
 #include <sstream>
 

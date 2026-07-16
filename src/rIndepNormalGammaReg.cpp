@@ -19,9 +19,6 @@
 #include <math.h>
 #include "rng_utils.h"  // for safe_runif()
 
-//#include "nmath_local.h"   // archived under legacy_c_code/; C++ uses libR / rng_utils
-//#include "dpq_local.h"
-
 // Required headers
 #include <RcppArmadillo.h>
 #include <RcppParallel.h>

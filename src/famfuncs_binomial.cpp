@@ -5,9 +5,6 @@
 #include <limits>
 #include <RcppParallel.h>
 #include <Rmath.h>   // libR Mathlib: Rf_dbinom_raw, Rf_pnorm5, Rf_dnorm4, Rf_dbinom
-//#define MATHLIB_STANDALONE
-//#include "nmath_local.h"
-//#include "dpq_local.h"
 #include "openclPort.h"
 #include "famfuncs.h"
 #include "progress_utils.h"

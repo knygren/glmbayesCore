@@ -19,15 +19,20 @@ Authors@R: c(
     person("Morten", "Welinder", role = c("ctb", "cph"),
            comment = "Portions of R Mathlib"),
     person("Martin", "Maechler", role = "ctb",
-           comment = "Portions of R Mathlib")
+           comment = "Portions of R Mathlib"),
+    person("The Khronos Group Inc", role = "cph",
+           comment = "OpenCL API headers in inst/include/CL (Apache License 2.0)")
     )
-Description: Core C++ engine for glmbayes: envelope-based iid GLM/LM samplers,
-    prior-family routing, and optional OpenCL. Developer backend for the
-    glmbayes formula interface. Mixed-model (LMM/GLMM) engines are planned
-    for this package and are currently developed in the temporary
-    lmebayesCore fork used by lmebayes. End users should use glmbayes for
-    lm/glm modelling.
+Description: Core C++ engine for 'glmbayes': envelope-based iid GLM/LM
+    samplers, prior-family routing, and optional 'OpenCL' acceleration.
+    Sampling for supported non-conjugate models uses accept-reject methods
+    based on likelihood subgradients as in Nygren and Nygren (2006)
+    <doi:10.1198/016214506000000357>. Intended as a developer backend for
+    the 'glmbayes' formula interface; end users should use 'glmbayes' for
+    lm/glm modelling. Mixed-model (LMM/GLMM) engines are planned for a
+    future release.
 License: GPL-2
+Copyright: see file COPYRIGHTS
 URL: https://github.com/knygren/glmbayesCore
 BugReports: https://github.com/knygren/glmbayesCore/issues
 Imports:

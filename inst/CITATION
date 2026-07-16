@@ -1,4 +1,4 @@
-citHeader("To cite glmbayes in publications use the first entry for software; cite Nygren and Nygren (2006) for likelihood subgradient methodology.")
+citHeader("To cite glmbayesCore in publications use the first entry for software; cite Nygren and Nygren (2006) for likelihood subgradient methodology. End-user modelling interfaces live in the glmbayes package (cite separately if used).")
 
 year <- sub("-.*", "", meta$Date)
 if (!nzchar(year)) {
@@ -8,11 +8,11 @@ if (!nzchar(year)) {
 c(
   bibentry(
     bibtype  = "Manual",
-    title    = "{glmbayes}: Bayesian Generalized Linear Models (IID Samples)",
+    title    = "{glmbayesCore}: Core C++ Sampling Engine for glmbayes",
     author   = person("Kjell", "Nygren"),
     year     = year,
     note     = paste("R package version", meta$Version),
-    url      = "https://CRAN.R-project.org/package=glmbayes"
+    url      = "https://github.com/knygren/glmbayesCore"
   ),
   bibentry(
     bibtype  = "Article",

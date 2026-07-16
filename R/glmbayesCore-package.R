@@ -5,8 +5,7 @@
 #' @description
 #' Core C++ engine for envelope-based iid GLM/LM samplers, prior-family
 #' routing, and optional OpenCL acceleration. Developer backend for
-#' \pkg{glmbayes} (and, once reintegrated, mixed-model engines for
-#' \pkg{lmebayes}). End users should install \pkg{glmbayes} for
+#' \pkg{glmbayes}. End users should install \pkg{glmbayes} for
 #' formula-based modelling and S3 methods.
 #'
 #' @details
@@ -17,8 +16,11 @@
 #' (\code{\link{rglmb}}, \code{\link{rlmb}}), and OpenCL kernel loaders.
 #' Formula interfaces \code{glmb} and \code{lmb} live in \pkg{glmbayes};
 #' \pkg{glmbayesCore} supplies the sampling engine. Mixed-model (LMM/GLMM)
-#' code is under active development in the temporary \pkg{lmebayesCore}
-#' fork and will be merged back here gradually.
+#' engines are planned for a future release.
+#'
+#' IID posterior simulation for non-Gaussian GLMs and several non-conjugate
+#' linear-model setups uses the likelihood-subgradient envelope method of
+#' \insertCite{Nygren2006}{glmbayesCore}.
 #'
 #' @section OpenCL startup checks:
 #' In interactive sessions, attaching the package with \code{library(glmbayesCore)}

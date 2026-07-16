@@ -3,10 +3,7 @@
 // we only include RcppArmadillo.h which pulls Rcpp.h in for us
 #include "RcppArmadillo.h"
 #include <RcppParallel.h>
-#include <Rmath.h>   // libR Mathlib: Rf_dgamma (replaces vendored src/dgamma.c for this file)
-//#define MATHLIB_STANDALONE
-//#include "nmath_local.h"
-//#include "dpq_local.h"
+#include <Rmath.h>   // libR Mathlib: Rf_dgamma
 #include "famfuncs.h"
 #include "progress_utils.h"
 

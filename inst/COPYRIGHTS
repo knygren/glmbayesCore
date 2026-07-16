@@ -1,44 +1,49 @@
-Copyright and Derived Code Notices for glmbayes
+Copyright and Derived Code Notices for glmbayesCore
 
-The original glmbayes package code, documentation, examples, and vignettes are
-copyright Kjell Nygren, except where otherwise noted below.
+The original glmbayesCore package code, documentation, examples, and vignettes
+are copyright Kjell Nygren, except where otherwise noted below.
 
 R Mathlib and R Source Code
 ---------------------------
 
-The package includes local copies, adaptations, or translations of selected
-portions of R Mathlib and R source code in src/, src/nmath/, and inst/cl/. These
-files retain the original copyright and license notices where present. The
-OpenCL kernels in inst/cl/nmath/, inst/cl/dpq/, and inst/cl/rmath/ are ports or
-adaptations of relevant R Mathlib distribution routines, probability helper
-code, numerical support code, constants, and related headers.
+CPU-side C++ code calls R’s libR Mathlib at link time (no vendored CPU nmath
+sources). The package ships OpenCL ports or adaptations of selected R Mathlib
+and related routines under inst/cl/ (for example inst/cl/nmath/, inst/cl/dpq/,
+and inst/cl/rmath/). These files retain the original copyright and license
+notices where present.
 
 Relevant copyright holders and contributors include The R Core Team, The R
 Foundation, Ross Ihaka, Robert Gentleman, Morten Welinder, and Martin Maechler.
 The applicable licenses are GPL-2-or-later and/or LGPL-2.1-or-later as
 indicated in the individual source file headers.
 
-R stats Modeling Code and Methods
----------------------------------
+OpenCL API Headers
+------------------
 
-The functions glmb(), lmb(), and several associated methods use R's classical
-lm()/glm() formula interface, model-frame/model-matrix setup, fitted-object
-structure, and method conventions. Portions of the R-level implementation are
-adapted from or closely follow functions and methods in the stats package,
-including glm(), lm(), glm.fit()/lm.fit()-style setup, and related methods for
-prediction, residuals, summaries, influence diagnostics, dummy coefficients,
-log-likelihoods, variance-covariance extraction, confidence intervals, and
-analysis of deviance.
+The bundled OpenCL API headers inst/include/CL/cl.h and
+inst/include/CL/cl_platform.h are Copyright (c) 2008-2020 The Khronos Group
+Inc. and are licensed under the Apache License, Version 2.0. The original
+copyright and license notices are preserved in the file headers.
 
-Relevant contributors/copyright holders include The R Core Team, The R
-Foundation, Ross Ihaka, and Simon Davies. The R implementation of glm() was
-originally written by Simon Davies under Ross Ihaka and has since been
-extensively maintained by the R Core Team.
+R stats Modeling Conventions
+----------------------------
+
+Portions of the R-level prior-setup and matrix-input modelling helpers follow
+classical stats::lm()/stats::glm() conventions (model matrices, family objects,
+and related fitted-object patterns). They are not a reimplementation of the
+end-user formula interfaces glmb()/lmb(), which live in the glmbayes package.
+
+Relevant contributors/copyright holders for the underlying R modelling
+infrastructure include The R Core Team, The R Foundation, Ross Ihaka, and
+Simon Davies. The R implementation of glm() was originally written by Simon
+Davies under Ross Ihaka and has since been extensively maintained by the R
+Core Team.
 
 Package Dependencies
 --------------------
 
 The package links to or imports external R packages including Rcpp,
-RcppArmadillo, RcppParallel, MASS, coda, and Rdpack. These packages are not
-bundled in glmbayes; their authorship and copyright are governed by their own
-package metadata and licenses.
+RcppArmadillo, RcppParallel, MASS, Rdpack, opencltools, and nmathopencl.
+These packages are not bundled in glmbayesCore; their authorship and copyright
+are governed by their own package metadata and licenses. Additional OpenCL
+Mathlib sources used at runtime may come from the imported nmathopencl package.
