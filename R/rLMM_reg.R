@@ -5,8 +5,8 @@
 #' \code{x_hyper}, \code{pfamily_list}). Each stored draw runs
 #' \code{m_convergence} inner Gibbs sweeps (Block~1 random effects, then
 #' Block~2 hyperparameters). There is no standalone \code{rLMM()} function;
-#' use the \code{\link{rGLMM_reg}} routes via \code{\link{rglmerb}}; Gaussian LMMs
-#' use \code{\link{rLMM_reg}} via \code{\link{rlmerb}}.
+#' formula-level fitting lives in **lmebayes** (\code{lmerb}/\code{rlmerb});
+#' non-Gaussian models use the \code{\link{rGLMM_reg}} routes.
 #'
 #' @section Four route engines:
 #' \describe{
@@ -52,7 +52,7 @@
 #' @param gap_tol,mode_gap_max,diag_sweeps,stage_verbose Pilot-stage controls for
 #'   \code{rLMMNormal_reg_estimated_vcov} and ING estimated routes (see route docs).
 #' @family simfuncs
-#' @seealso \code{\link{rGLMM_reg}}, \code{\link{rlmerb}}, \code{\link{rindepNormalGamma_reg}}
+#' @seealso \code{\link{rGLMM_reg}}, \code{\link{rindepNormalGamma_reg}}
 #' @name rLMM_reg
 NULL
 
@@ -2226,7 +2226,7 @@ rLMMNormal_reg_estimated_vcov <- function(
 #'   \code{\link{rGamma_reg}}, then calls \code{\link{rLMMNormal_reg}} each
 #'   replicate. Prefer \code{\link{rLMMindepNormalGamma_reg_known_vcov}} or
 #'   \code{\link{rLMMindepNormalGamma_reg_estimated_vcov}} for the ING Block~1
-#'   sweep engine used by \code{\link{rlmerb}}.
+#'   sweep engine (formula-level entry is in **lmebayes**).
 #' @export
 rLMMindepNormalGamma_reg <- function(
     n,
@@ -2460,8 +2460,8 @@ rLMMindepNormalGamma_reg <- function(
 }
 
 #' @describeIn rLMM_reg Random \eqn{\sigma^2} (per-group ING Block~1); all
-#'   Block~2 \code{dNormal}. Used by \code{\link{rlmerb}} when
-#'   \code{dispersion_ranef} is dGamma and Block~2 is all \code{dNormal}.
+#'   Block~2 \code{dNormal}. Used when \code{dispersion_ranef} is dGamma and
+#'   Block~2 is all \code{dNormal}.
 #' @export
 rLMMindepNormalGamma_reg_known_vcov <- function(
     n,
@@ -2526,8 +2526,8 @@ rLMMindepNormalGamma_reg_known_vcov <- function(
 }
 
 #' @describeIn rLMM_reg Random \eqn{\sigma^2} (per-group ING Block~1); ING Block~2.
-#'   Pilot/UB calibration via sweep-outer engine. Default path for
-#'   \code{\link{rlmerb}} with dGamma \code{dispersion_ranef} and ING Block~2.
+#'   Pilot/UB calibration via sweep-outer engine. Default path for dGamma
+#'   \code{dispersion_ranef} with ING Block~2.
 #' @export
 rLMMindepNormalGamma_reg_estimated_vcov <- function(
     n,

@@ -178,8 +178,8 @@ Gaussian two-block LMM samplers at matrix level (\code{y}, \code{Z},
 \code{x_hyper}, \code{pfamily_list}). Each stored draw runs
 \code{m_convergence} inner Gibbs sweeps (Block~1 random effects, then
 Block~2 hyperparameters). There is no standalone \code{rLMM()} function;
-use the \code{\link{rGLMM_reg}} routes via \code{\link{rglmerb}}; Gaussian LMMs
-use \code{\link{rLMM_reg}} via \code{\link{rlmerb}}.
+formula-level fitting lives in \strong{lmebayes} (\code{lmerb}/\code{rlmerb});
+non-Gaussian models use the \code{\link{rGLMM_reg}} routes.
 }
 \section{Functions}{
 \itemize{
@@ -197,15 +197,15 @@ Optional pilot stage; conservative \code{disp_lower} rate bound.
 \code{\link{rGamma_reg}}, then calls \code{\link{rLMMNormal_reg}} each
 replicate. Prefer \code{\link{rLMMindepNormalGamma_reg_known_vcov}} or
 \code{\link{rLMMindepNormalGamma_reg_estimated_vcov}} for the ING Block~1
-sweep engine used by \code{\link{rlmerb}}.
+sweep engine (formula-level entry is in \strong{lmebayes}).
 
 \item \code{rLMMindepNormalGamma_reg_known_vcov()}: Random \eqn{\sigma^2} (per-group ING Block~1); all
-Block~2 \code{dNormal}. Used by \code{\link{rlmerb}} when
-\code{dispersion_ranef} is dGamma and Block~2 is all \code{dNormal}.
+Block~2 \code{dNormal}. Used when \code{dispersion_ranef} is dGamma and
+Block~2 is all \code{dNormal}.
 
 \item \code{rLMMindepNormalGamma_reg_estimated_vcov()}: Random \eqn{\sigma^2} (per-group ING Block~1); ING Block~2.
-Pilot/UB calibration via sweep-outer engine. Default path for
-\code{\link{rlmerb}} with dGamma \code{dispersion_ranef} and ING Block~2.
+Pilot/UB calibration via sweep-outer engine. Default path for dGamma
+\code{dispersion_ranef} with ING Block~2.
 
 }}
 \section{Four route engines}{
@@ -232,7 +232,7 @@ outer-loop \code{rLMMindepNormalGamma_reg}, draw \eqn{\sigma^2} then call
 }
 
 \seealso{
-\code{\link{rGLMM_reg}}, \code{\link{rlmerb}}, \code{\link{rindepNormalGamma_reg}}
+\code{\link{rGLMM_reg}}, \code{\link{rindepNormalGamma_reg}}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},

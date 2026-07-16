@@ -148,9 +148,9 @@ is \code{NULL}.}
 \description{
 Non-Gaussian (and optionally Gaussian) two-block GLMM samplers at matrix
 level. Each stored draw runs \code{m_convergence} inner Gibbs sweeps via
-\code{\link{rGLMM_sweep}}. Formula-level fitting uses \code{\link{rglmerb}}
-in \strong{lmebayes}; Gaussian models with observation dispersion typically use
-the \code{\link{rLMM_reg}} routes via \code{\link{rlmerb}}.
+\code{\link{rGLMM_sweep}}. Formula-level fitting lives in \strong{lmebayes}
+(\code{glmerb}/\code{rglmerb}); Gaussian models with observation dispersion
+typically use the \code{\link{rLMM_reg}} routes.
 }
 \section{Functions}{
 \itemize{
@@ -192,8 +192,7 @@ to the appropriate route.
 }
 
 \seealso{
-\code{\link{rGLMM_sweep}}, \code{\link{rLMM_reg}},
-\code{\link{rglmerb}}
+\code{\link{rGLMM_sweep}}, \code{\link{rLMM_reg}}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},

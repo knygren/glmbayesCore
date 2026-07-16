@@ -3,9 +3,9 @@
 #' @description
 #' Non-Gaussian (and optionally Gaussian) two-block GLMM samplers at matrix
 #' level. Each stored draw runs \code{m_convergence} inner Gibbs sweeps via
-#' \code{\link{rGLMM_sweep}}. Formula-level fitting uses \code{\link{rglmerb}}
-#' in **lmebayes**; Gaussian models with observation dispersion typically use
-#' the \code{\link{rLMM_reg}} routes via \code{\link{rlmerb}}.
+#' \code{\link{rGLMM_sweep}}. Formula-level fitting lives in **lmebayes**
+#' (\code{glmerb}/\code{rglmerb}); Gaussian models with observation dispersion
+#' typically use the \code{\link{rLMM_reg}} routes.
 #'
 #' @section Two route engines:
 #' Both routes run a \strong{pilot stage for non-Gaussian} families (local-Gaussian
@@ -56,8 +56,7 @@
 #' @param rate_calibration Optional rate object for \code{stage_verbose}.
 #' @param collect_block1 Collect Block~1 \code{coefficients} from main chains.
 #' @family simfuncs
-#' @seealso \code{\link{rGLMM_sweep}}, \code{\link{rLMM_reg}},
-#'   \code{\link{rglmerb}}
+#' @seealso \code{\link{rGLMM_sweep}}, \code{\link{rLMM_reg}}
 #' @name rGLMM_reg
 NULL
 
