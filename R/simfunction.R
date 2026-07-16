@@ -1106,6 +1106,25 @@ rBeta_reg <- function(
 
 
 
+#' Validate optional ING truncation bounds before the C++ sampler.
+#' @noRd
+.lmebayes_check_disp_bounds_or_stop <- function(disp_lower, disp_upper, fn_name) {
+  if (is.null(disp_lower) || is.null(disp_upper)) {
+    return(invisible(NULL))
+  }
+  if (!is.numeric(disp_lower) || !is.numeric(disp_upper) ||
+      length(disp_lower) < 1L || length(disp_upper) < 1L ||
+      !is.finite(disp_lower[[1L]]) || !is.finite(disp_upper[[1L]]) ||
+      disp_lower[[1L]] <= 0 || disp_upper[[1L]] <= 0 ||
+      disp_upper[[1L]] <= disp_lower[[1L]]) {
+    stop(sprintf(
+      "invalid disp_lower or disp_upper in function %s. disp_lower=%s, disp_upper=%s",
+      fn_name, paste(disp_lower, collapse = ", "), paste(disp_upper, collapse = ", ")
+    ), call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' @noRd
 .rindepNormalGamma_reg_impl <- function(
     n,

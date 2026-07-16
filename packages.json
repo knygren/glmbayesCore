@@ -3,8 +3,10 @@
   "nmathopencl": "knygren/nmathopencl",
   "opencltools": "knygren/opencltools",
   "glmbayesCore": "knygren/glmbayesCore",
+  "lmebayesCore": "knygren/lmebayesCore",
   "lmebayes": "knygren/lmebayes"
 }
+
 
 
 

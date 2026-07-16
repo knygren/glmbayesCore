@@ -58,23 +58,14 @@ For shared \code{x}, an object of class \code{"mrglmb"}.  For list
 Runs \code{\link{rNormal_reg}} once per column of \code{y}.  Argument
 \code{x} may be a single shared design matrix or a \strong{list of matrices}
 with one entry per response column.  The list path allows each column of
-\code{y} to have a different number of predictors, which is required for
-Block 2 of \code{\link{two_block_rNormal_reg}}.
+\code{y} to have a different number of predictors.
 }
 \seealso{
-\code{\link{rNormal_reg}}, \code{\link{two_block_rNormal_reg}}
+\code{\link{rNormal_reg}}
 
 glmbayes Simulation Functions
 \code{\link{multi_rlmb}()},
-\code{\link{rGLMM_Re_Draw}()},
-\code{\link{rGLMM_reg}()},
-\code{\link{rGLMM_sweep}()},
-\code{\link{rLMM_reg}},
 \code{\link{rindepNormalGamma_reg_with_envelope}()},
-\code{\link{simfuncs}},
-\code{\link{two_block_optimize_pilot_cost}()},
-\code{\link{two_block_rNormal_reg}()},
-\code{\link{two_block_rate}()},
-\code{\link{two_block_tv_bound}()}
+\code{\link{simfuncs}}
 }
 \concept{simfuncs}
