@@ -1,6 +1,7 @@
 # `R/` function inventory (index)
 
-Maintainer index for symbols under **`R/`** in **glmbayesCore** today
+Maintainer-only index (under `data-raw/inventories/`; not shipped in the
+package tarball) for symbols under **`R/`** in **glmbayesCore** today
 (iid GLM/LM envelope engine). Mixed-model APIs are temporarily developed in
 **lmebayesCore** and will be reintegrated here gradually.
 

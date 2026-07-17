@@ -1,7 +1,7 @@
 Package: glmbayesCore
 Type: Package
 Title: Core C++ Sampling Engine for 'glmbayes'
-Version: 0.1.0
+Version: 0.5.0
 Date: 2026-07-16
 Authors@R: c(
     person("Kjell", "Nygren", role = c("aut", "cre"),
@@ -23,14 +23,14 @@ Authors@R: c(
     person("The Khronos Group Inc", role = "cph",
            comment = "OpenCL API headers in inst/include/CL (Apache License 2.0)")
     )
-Description: Core C++ engine for 'glmbayes': envelope-based iid GLM/LM
-    samplers, prior-family routing, and optional 'OpenCL' acceleration.
-    Sampling for supported non-conjugate models uses accept-reject methods
-    based on likelihood subgradients as in Nygren and Nygren (2006)
-    <doi:10.1198/016214506000000357>. Intended as a developer backend for
-    the 'glmbayes' formula interface; end users should use 'glmbayes' for
-    lm/glm modelling. Mixed-model (LMM/GLMM) engines are planned for a
-    future release.
+Description: Core C++ engine for 'glmbayes': envelope-based iid linear and
+    generalized linear model samplers, prior-family routing, and optional
+    'OpenCL' acceleration. Sampling for supported non-conjugate models uses
+    accept-reject methods based on likelihood subgradients as in Nygren and
+    Nygren (2006) <doi:10.1198/016214506000000357>. Intended as a developer
+    backend for the 'glmbayes' formula interface; end users should use
+    'glmbayes' for modelling with interfaces analogous to 'lm' and 'glm'.
+    Mixed-model engines are planned for a future release.
 License: GPL-2
 Copyright: see file COPYRIGHTS
 URL: https://github.com/knygren/glmbayesCore

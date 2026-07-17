@@ -36,7 +36,6 @@
 ^Rplots\.pdf$
 ^inst/DESIGN_RGLM_BLOCKS\.md$
 ^inst/DESIGN_RNORMALREG_BLOCKS\.md$
-^inst/R_.*\.(md|html)$
 ^src/backup$
 ^vignettes/
 ^_install_test$

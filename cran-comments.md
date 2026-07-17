@@ -1,12 +1,13 @@
-# CRAN submission comments — glmbayes 0.9.6
+# CRAN submission comments — glmbayesCore 0.5.0
 
 ## Summary
 
-(To be filled in before submission.)
+This is a new package submission.
 
 ## Test environments
 
-(To be filled in before submission.)
+* local Windows, `R CMD check --as-cran`: 0 errors | 0 warnings | 0 notes
+  (aside from the expected “New submission” NOTE)
 
 ---
 _This file is listed in `.Rbuildignore` and is not included in the built source

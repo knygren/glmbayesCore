@@ -197,13 +197,6 @@ Symbols below are exported from **glmbayesCore** today (iid path). End users
 typically load **glmbayes** (or **lmebayes** for mixed models). Mixed-model
 exports temporarily ship from **lmebayesCore** and will return here.
 
-**Maintainers:** current slim inventories live in
-[inst/R_FUNCTION_INVENTORY.md](inst/R_FUNCTION_INVENTORY.md)
-([exports](inst/R_EXPORTED_AND_DOCUMENTED.md),
-[Core-only by type](inst/R_CORE_ONLY_EXPORTS.md),
-[reachability](inst/R_EXPORT_REACHABILITY.md),
-[internal helpers](inst/R_INTERNAL_HELPERS.md)).
-
 ### Shared with **glmbayes** (iid GLM / LM)
 
 #### Retain as **glmbayes** re-exports
@@ -330,10 +323,6 @@ build on two-block Gibbs engines that will return to this package. While
 those engines are staged in **lmebayesCore**, architecture notes
 (ergodicity, `rGLMM_sweep` / Block~1–Block~2 call chains, C++ migration
 plans) live there and will move back with the code.
-
-### `R/` symbol inventory
-
-[inst/R_FUNCTION_INVENTORY.md](inst/R_FUNCTION_INVENTORY.md)
 
 ---
 
