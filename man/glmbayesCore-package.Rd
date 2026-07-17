@@ -4,7 +4,7 @@
 \name{glmbayesCore-package}
 \alias{glmbayesCore-package}
 \alias{glmbayesCore}
-\title{glmbayesCore: Core C++ Sampling Engine for glmbayes}
+\title{glmbayesCore: Core C++ Sampling Engine for 'glmbayes'}
 \description{
 Core C++ engine for envelope-based iid GLM/LM samplers, prior-family
 routing, and optional OpenCL acceleration. Developer backend for

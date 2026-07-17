@@ -8,7 +8,7 @@ if (!nzchar(year)) {
 c(
   bibentry(
     bibtype  = "Manual",
-    title    = "{glmbayesCore}: Core C++ Sampling Engine for glmbayes",
+    title    = "{glmbayesCore}: Core C++ Sampling Engine for 'glmbayes'",
     author   = person("Kjell", "Nygren"),
     year     = year,
     note     = paste("R package version", meta$Version),
