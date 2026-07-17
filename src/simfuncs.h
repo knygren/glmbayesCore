@@ -172,8 +172,7 @@ Rcpp::List rIndepNormalGammaReg(
     bool use_parallel,
     bool use_opencl,
     bool verbose,
-    bool progbar,
-    bool return_envelope = false
+    bool progbar
 );
 
 Rcpp::List rGammaGaussian(

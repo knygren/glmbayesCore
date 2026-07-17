@@ -13,10 +13,6 @@ rIndepNormalGammaReg_cpp_export <- function(n, y, x, mu, P, offset, wt, shape, r
     .Call(`_glmbayesCore_rIndepNormalGammaReg_cpp_export`, n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar)
 }
 
-rIndepNormalGammaReg_with_envelope_cpp_export <- function(n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar) {
-    .Call(`_glmbayesCore_rIndepNormalGammaReg_with_envelope_cpp_export`, n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar)
-}
-
 rNormalGammaReg_cpp_export <- function(n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, verbose = FALSE) {
     .Call(`_glmbayesCore_rNormalGammaReg_cpp_export`, n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, verbose)
 }

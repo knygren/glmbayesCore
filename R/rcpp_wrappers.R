@@ -62,12 +62,6 @@
 
 #' @noRd
 #' @keywords internal
-.rIndepNormalGammaReg_with_envelope_cpp <- function(n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar) {
-  .Call(`_glmbayesCore_rIndepNormalGammaReg_with_envelope_cpp_export`, n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar)
-}
-
-#' @noRd
-#' @keywords internal
 .rNormalGammaReg_cpp <- function(n, y, x, mu, P, offset, wt, shape, rate,
                                  max_disp_perc, disp_lower, disp_upper,
                                  verbose = FALSE) {

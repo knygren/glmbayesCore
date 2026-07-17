@@ -65,7 +65,6 @@ with one entry per response column.  The list path allows each column of
 
 glmbayes Simulation Functions
 \code{\link{multi_rlmb}()},
-\code{\link{rindepNormalGamma_reg_with_envelope}()},
 \code{\link{simfuncs}}
 }
 \concept{simfuncs}

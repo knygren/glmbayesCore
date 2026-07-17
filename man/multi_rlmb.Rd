@@ -210,12 +210,10 @@ glmbayes Modeling Functions
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
-\code{\link{rindepNormalGamma_reg_with_envelope}()},
 \code{\link{simfuncs}}
 
 glmbayes Simulation Functions
 \code{\link{multi_rNormal_reg}()},
-\code{\link{rindepNormalGamma_reg_with_envelope}()},
 \code{\link{simfuncs}}
 }
 \concept{modelfuns}
