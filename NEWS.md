@@ -1,4 +1,4 @@
-# glmbayesCore 0.5.0
+# glmbayesCore 0.5.1
 
 ## Initial CRAN submission
 
@@ -16,6 +16,6 @@
   at this Core package as their shared sampling engine, so that the iid
   envelope stack is maintained in one place.
 
-* Version **0.5.0** (rather than 0.1.0) reflects that the engine API is already
+* Version **0.5.1** (rather than 0.1.0) reflects that the engine API is already
   substantially complete from its prior life inside **glmbayes**, while leaving
   room for integration-driven releases before a 1.0.0 freeze.
