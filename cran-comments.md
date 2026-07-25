@@ -21,8 +21,7 @@ Changes in response to reviewer comments:
 
 * win-builder (CRAN): 0 errors | 0 warnings | 0 notes on **r-release**,
   **r-devel**, and **r-oldrel** (aside from the expected “New submission”
-  NOTE on each) for the previous 0.5.1 candidate; will re-check 0.5.2
-  before upload if needed.
+  NOTE on each).
 
 ---
 _This file is listed in `.Rbuildignore` and is not included in the built source
