@@ -1,8 +1,8 @@
 Package: glmbayesCore
 Type: Package
 Title: Core C++ Sampling Engine for 'glmbayes'
-Version: 0.5.2
-Date: 2026-07-24
+Version: 0.5.3
+Date: 2026-07-25
 Authors@R: c(
     person("Kjell", "Nygren", role = c("aut", "cre"),
            email = "kjell.a.nygren@gmail.com"),

@@ -1,3 +1,14 @@
+# glmbayesCore 0.5.3
+
+## Bug fixes
+
+* Windows builds now link against the TBB libraries provided by
+  **RcppParallel** (`RcppParallel::RcppParallelLibs()` and
+  `-DRCPP_PARALLEL_USE_TBB=1` in `configure.win`). This fixes undefined
+  reference errors to `tbb::detail::r1::wait_on_address` /
+  `notify_by_address_one` seen on current Windows toolchains
+  (win-builder / R-universe).
+
 # glmbayesCore 0.5.2
 
 ## Initial CRAN submission
