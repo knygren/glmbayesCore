@@ -255,7 +255,7 @@ rglmb<-function(n=1,y,x,family=gaussian(),pfamily,offset=NULL,
       pfamily$prior_list$disp_upper=outlist$sim_bounds$upp
       
     } else {
-      cat("No simbounds returned in outlist.\n")
+      warning("No simbounds returned in outlist.", call. = FALSE)
     }
   }  
   

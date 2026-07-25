@@ -3,6 +3,7 @@
 S3method(formula,summary.rglmb)
 S3method(pfamily,default)
 S3method(print,PriorSetup)
+S3method(print,diagnose_glmbayes)
 S3method(print,glmbfamfunc)
 S3method(print,pfamily)
 S3method(print,rGamma_reg)

@@ -212,7 +212,7 @@ rlmb <- function(
       pfamily$prior_list$disp_lower <- outlist$sim_bounds$low
       pfamily$prior_list$disp_upper <- outlist$sim_bounds$upp
     } else {
-      cat("No simbounds returned in outlist.\n")
+      warning("No simbounds returned in outlist.", call. = FALSE)
     }
   }
 

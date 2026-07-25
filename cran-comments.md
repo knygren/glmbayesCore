@@ -2,7 +2,17 @@
 
 ## Summary
 
-This is a new package submission.
+This is a resubmission of the new package glmbayesCore (0.5.2).
+
+Changes in response to reviewer comments:
+
+* Added `\value` documentation for `diagnose_glmbayes()` /
+  `glmbayesCore_has_opencl()` in `gpu_diagnostics.Rd` (via `@return` in
+  roxygen).
+* Replaced ungated `print()` / `cat()` console output with `message()` /
+  `warning()` in `Prior_Check()`, `rglmb()`, and `rlmb()`.
+* Refactored `diagnose_glmbayes()` to return a `"diagnose_glmbayes"` object
+  and print the human-readable report via `print.diagnose_glmbayes()`.
 
 ## Test environments
 
@@ -11,7 +21,8 @@ This is a new package submission.
 
 * win-builder (CRAN): 0 errors | 0 warnings | 0 notes on **r-release**,
   **r-devel**, and **r-oldrel** (aside from the expected “New submission”
-  NOTE on each)
+  NOTE on each) for the previous 0.5.1 candidate; will re-check 0.5.2
+  before upload if needed.
 
 ---
 _This file is listed in `.Rbuildignore` and is not included in the built source

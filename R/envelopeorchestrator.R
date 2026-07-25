@@ -434,7 +434,7 @@ EnvelopeOrchestrator <- function(bstar2,
   )
   
   if (verbose) {
-    cat("[EnvelopeOrchestrator] Using C++ orchestrator output\n")
+    message("[EnvelopeOrchestrator] Using C++ orchestrator output")
   }
   
   return(out_cpp)
