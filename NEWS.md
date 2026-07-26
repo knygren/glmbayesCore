@@ -9,6 +9,11 @@
   `notify_by_address_one` seen on current Windows toolchains
   (win-builder / R-universe).
 
+* Cap RcppParallel to 2 threads in the `pfamily`, `Prior_Setup`, and
+  `simfuncs` examples (`\dontshow{setThreadOptions(numThreads = 2)}`)
+  so CRAN checks do not report “CPU time > 2.5 times elapsed time”.
+  Default parallel sampling for users is unchanged.
+
 # glmbayesCore 0.5.2
 
 ## Initial CRAN submission

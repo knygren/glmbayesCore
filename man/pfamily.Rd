@@ -250,6 +250,9 @@ the surrogate variance is the Beta variance
 \code{shape1*shape2/((shape1+shape2)^2*(shape1+shape2+1))}.
 }
 \examples{
+\dontshow{
+  RcppParallel::setThreadOptions(numThreads = 2L)
+}
 ## Dobson (1990) Page 93: Randomized Controlled Trial :
 counts    <- c(18, 17, 15, 20, 10, 20, 25, 13, 12)
 outcome   <- gl(3, 1, 9)

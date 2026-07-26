@@ -1,4 +1,7 @@
 ############################### Start of rNormal_reg examples ####################
+\dontshow{
+  RcppParallel::setThreadOptions(numThreads = 2L)
+}
 set.seed(333)
 
 ## Dobson (1990) Page 93: Randomized Controlled Trial :
