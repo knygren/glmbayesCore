@@ -1,3 +1,16 @@
+# glmbayesCore 0.5.4
+
+## Bug fixes
+
+* **Configure (Linux/macOS):** `-DUSE_OPENCL` is set only when a **non-PoCL**
+  OpenCL platform exposes at least one **GPU** device (same policy as
+  **glmbayes** 0.9.75), avoiding PoCL cache NOTEs on CRAN debian-gcc.
+
+* **Configure policy:** Removed `tools/rcpp_include.R` / Function.h branch
+  probing from `configure` and `configure.win`. Builds rely on standard
+  **`LinkingTo: Rcpp`**. The registered-namespace shim
+  (`glmbayes_getRegisteredNamespace`) remains via `-include` in Makevars.
+
 # glmbayesCore 0.5.3
 
 ## Bug fixes
