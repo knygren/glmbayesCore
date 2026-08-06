@@ -10,6 +10,17 @@
   installs (NVIDIA/AMD/Intel) are unchanged. `configure.win` is unaffected
   (Windows never ran a runtime OpenCL probe).
 
+* **Configure policy:** Removed `tools/rcpp_include.R` / `tools/patch_rcpp_function_h.R`
+  and the `glmbayes_getRegisteredNamespace` compatibility shim (`src/glmbayes_getRegisteredNamespace.{cpp,h}`)
+  from `configure` and `configure.win`. Builds now rely on standard
+  **`LinkingTo: Rcpp`** and the CRAN **Rcpp (>= 1.1.1)** requirement instead of
+  probing/patching `Rcpp/Function.h` or recommending a GitHub install of Rcpp
+  (same policy fix as **glmbayes** 0.9.73/0.9.75).
+
+* **CI:** Replaced `.github/workflows/rhub.yaml` with the current
+  **glmbayes** version, removing dead matrix/report logic that referenced the
+  now-removed `tools/patch_rcpp_function_h.R` script.
+
 # glmbayesCore 0.5.3
 
 ## Bug fixes
