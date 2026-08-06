@@ -1,3 +1,15 @@
+# glmbayesCore 0.5.4
+
+## Bug fixes
+
+* **Configure (Linux/macOS):** `-DUSE_OPENCL` is set only when a **non-PoCL**
+  OpenCL platform exposes at least one **GPU** device (same policy as
+  **glmbayes** 0.9.75). PoCL-only ICD stacks (typical on CRAN debian-gcc
+  incoming) no longer enable OpenCL at compile time, so kernel builds do not
+  touch `~/.cache/pocl` (avoids incoming NOTE on `tempfile_*` there). Real GPU
+  installs (NVIDIA/AMD/Intel) are unchanged. `configure.win` is unaffected
+  (Windows never ran a runtime OpenCL probe).
+
 # glmbayesCore 0.5.3
 
 ## Bug fixes
