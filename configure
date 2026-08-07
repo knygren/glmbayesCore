@@ -238,10 +238,10 @@ if [ "$OPENCL_FOUND" = "yes" ]; then
   FULL_LIBS="$FULL_LIBS $OPENCL_LIB"
 
   if [ "$OPENCL_RUNTIME_FOUND" = "yes" ]; then
-    echo "OpenCL runtime probe succeeded"
+    echo "OpenCL GPU runtime probe succeeded"
     FULL_CXXFLAGS="$FULL_CXXFLAGS -DUSE_OPENCL"
   else
-    echo "OpenCL runtime probe failed, not defining USE_OPENCL"
+    echo "OpenCL GPU runtime probe failed, not defining USE_OPENCL"
   fi
 
   if [ "$EMSCRIPTEN_BUILD" = "YES" ]; then
