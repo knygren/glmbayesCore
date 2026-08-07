@@ -16,7 +16,13 @@
 \item{object}{an object of class \code{rglmb}, \code{rlmb}, or
 \code{summary.rglmb}.}
 
-\item{ysim}{optional simulated responses (matrix with one row per draw).}
+\item{ysim}{optional matrix of simulated responses (one row per draw), as
+produced by a posterior-predictive simulation. When supplied, \code{ysim}
+substitutes for the observed response \code{y} while the fitted value for
+each draw is held fixed at that draw's own fit; this builds a reference
+("what would a typical residual look like under the model") distribution
+for posterior-predictive residual checks, comparable to the residuals
+obtained from the actual data (\code{ysim = NULL}).}
 
 \item{...}{further arguments (currently unused).}
 }
