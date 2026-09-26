@@ -1,37 +1,28 @@
-# CRAN submission comments — glmbayesCore 0.5.3
+# CRAN submission comments — glmbayesCore 0.5.4
 
 ## Summary
 
-This is a resubmission of the new package glmbayesCore (0.5.3).
+This is an update of glmbayesCore from 0.5.3 (currently on CRAN) to 0.5.4.
 
-### Changes in response to reviewer comments (0.5.2)
+### Changes in 0.5.4
 
-* Added `\value` documentation for `diagnose_glmbayes()` /
-  `glmbayesCore_has_opencl()` in `gpu_diagnostics.Rd` (via `@return` in
-  roxygen).
-* Replaced ungated `print()` / `cat()` console output with `message()` /
-  `warning()` in `Prior_Check()`, `rglmb()`, and `rlmb()`.
-* Refactored `diagnose_glmbayes()` to return a `"diagnose_glmbayes"` object
-  and print the human-readable report via `print.diagnose_glmbayes()`.
-
-### Additional changes in 0.5.3
-
-* Fixed Windows linking against **RcppParallel** / TBB in `configure.win`
-  (`-DRCPP_PARALLEL_USE_TBB=1` and `RcppParallel::RcppParallelLibs()`),
-  addressing undefined reference errors to `tbb::detail::r1::*` on current
-  Windows toolchains.
-* Limited RcppParallel to 2 threads in the `pfamily`, `Prior_Setup`, and
-  `simfuncs` examples only (`\dontshow{setThreadOptions(numThreads = 2)}`),
-  addressing the NOTE “Examples with CPU time > 2.5 times elapsed time”.
-  Package default parallelism for users is unchanged.
+* **Configure (Linux/macOS):** `-DUSE_OPENCL` is set only when a **non-PoCL**
+  OpenCL platform exposes at least one **GPU** device (same policy as
+  **glmbayes**), avoiding PoCL cache NOTEs on CRAN debian-gcc.
+* **Configure policy:** Removed `tools/rcpp_include.R` /
+  `tools/patch_rcpp_function_h.R` and related Function.h / registered-namespace
+  probing from `configure` and `configure.win`. Builds rely on standard
+  **`LinkingTo: Rcpp`** and **Rcpp (>= 1.1.1)** instead of recommending a
+  GitHub install of Rcpp (same CRAN policy fix as **glmbayes**).
+* **`residuals.rglmb()` / `residuals.rlmb()` / `residuals.summary.rglmb()`:**
+  Fixed `ysim` to substitute for the observed response (fitted values held
+  fixed), aligning with **glmbayes** `residuals.glmb()` semantics. Default
+  (`ysim = NULL`) behavior is unchanged.
 
 ## Test environments
 
-* local Windows, `R CMD check --as-cran`: 0 errors | 0 warnings | 0 notes
-  (aside from the expected “New submission” NOTE)
-
-* win-builder (CRAN): 0 errors | 0 warnings | 0 notes on **r-release**,
-  **r-devel**, and **r-oldrel** 
+* local Windows, `R CMD check --as-cran`: (update after local check of 0.5.4)
+* win-builder (CRAN): (update after 0.5.4 rebuild)
 
 ---
 _This file is listed in `.Rbuildignore` and is not included in the built source

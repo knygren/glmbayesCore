@@ -39,7 +39,7 @@
 #' @importFrom MASS mvrnorm
 #' @importFrom RcppParallel RcppParallelLibs
 #' @importFrom utils flush.console
-#' @import opencltools
-#' @import nmathopencl
+#' @importFrom opencltools has_opencl get_opencl_core_count
+#' @importFrom nmathopencl nmathopencl_has_opencl
 #' @useDynLib glmbayesCore, .registration = TRUE
 "_PACKAGE"
