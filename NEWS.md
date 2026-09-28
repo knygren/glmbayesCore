@@ -1,3 +1,9 @@
+# glmbayesCore 0.5.5
+
+## Changes
+
+* (development) Version bump after CRAN 0.5.4.
+
 # glmbayesCore 0.5.4
 
 ## Bug fixes

@@ -140,6 +140,10 @@ and \code{lik_shape}.}
 \item{simfun}{Function used to generate posterior draws (e.g., \code{\link{rNormal_reg}},
 \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rindepNormalGamma_reg}});
 for standard use these produce i.i.d.\ posterior samples for the implemented settings.}
+\item{pfun}{Prior-simulation function paired with this constructor (e.g.,
+\code{\link{rNormal_prior}}, \code{\link{rGamma_prior}},
+\code{\link{rNormal_Gamma_prior}}); called as
+\code{pfun(n, prior_list, params)}. See \code{\link{prior_simfuncs}}.}
 }
 \description{
 Prior family objects provide a convenient way to specify the details of the priors
@@ -172,10 +176,12 @@ These priors are designed to integrate seamlessly with modeling functions such a
 \pkg{glmbayes} package, which consume the \code{pfamily} object to define the prior distribution over model parameters.
 The \code{pfamily()} generic retrieves the embedded prior from a fitted model object, while \code{print.pfamily()} displays its structure.
 
-\strong{\code{prior_list} and \code{simfun}.} The named list \code{prior_list} holds the hyperparameters for the chosen
+\strong{\code{prior_list}, \code{simfun}, and \code{pfun}.} The named list \code{prior_list} holds the hyperparameters for the chosen
 prior family. When a model function draws from the posterior, it passes \code{prior_list} into the element
 \code{simfun} (e.g., \code{\link{rNormal_reg}}, \code{\link{rGamma_reg}}) so the low-level sampler receives
 one consistent list structure regardless of which constructor built the \code{pfamily}.
+Each constructor also stores a matching \code{pfun} (see \code{\link{prior_simfuncs}}) for i.i.d.\ draws from
+the prior via \code{pfun(n, prior_list, params)}, mirroring how \code{simfun} is used for the posterior.
 
 \strong{\code{\link{Prior_Setup}} and default hyperparameters.} \code{Prior_Setup()} fits an auxiliary GLM and returns
 default \code{mu}, \code{Sigma} / \code{Sigma_0}, \code{dispersion}, Gamma \code{shape} and \code{rate}, and
@@ -241,7 +247,7 @@ the \code{shape} argument (see Details above).
 
 Each \code{pfamily} object includes:
 \itemize{
-\item \code{pfamily}, \code{prior_list}, \code{okfamilies}, \code{plinks}, and \code{simfun} (see Value).
+\item \code{pfamily}, \code{prior_list}, \code{okfamilies}, \code{plinks}, \code{simfun}, and \code{pfun} (see Value).
 }
 }
 
@@ -336,7 +342,9 @@ pfamily(rlmb.D9_v3)
 \seealso{
 \code{\link{rglmb}}, \code{\link{rlmb}} for modeling functions that consume \code{pfamily} objects.
 
-\code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rindepNormalGamma_reg}} for lower-level sampling functions used by \code{pfamily} constructors.
+\code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rindepNormalGamma_reg}} for lower-level posterior sampling functions used by \code{pfamily} constructors.
+
+\code{\link{prior_simfuncs}} for the paired prior-simulation functions (\code{pfun}).
 
 \code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for initializing and validating prior specifications.
 

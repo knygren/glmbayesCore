@@ -98,6 +98,10 @@ Kernel loading for exploration uses **opencltools**; runtime GPU assembly uses
 | `envelopeorchestrator.R` | R orchestration of multi-step envelope building and optional GPU dispatch |
 | `compute_gaussian_prior.R` | Gaussian-specific prior calibration utilities |
 
+C++ → R callback inventory (both packages): see **glmbayes**
+[`data-raw/CPP_R_CALLBACK_INVENTORY.md`](https://github.com/knygren/glmbayes/blob/main/data-raw/CPP_R_CALLBACK_INVENTORY.md).
+Re-scan with `Rscript data-raw/cpp_r_callback_inventory.R` in either package tree.
+
 ---
 
 ## Architecture: How pfamilies Route to Simulation Functions

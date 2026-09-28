@@ -1330,7 +1330,8 @@ rBeta_reg <- function(
       max_disp_perc = max_disp_perc,
       disp_lower = low,
       disp_upper = upp
-    )
+    ),
+    pfun = rIndependent_Normal_Gamma_prior
   )
   attr(pfamily_obj, "Prior Type") <- "dIndependent_Normal_Gamma"
   class(pfamily_obj) <- "pfamily"
@@ -1548,7 +1549,8 @@ rNormalGamma_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussia
       P = P,
       shape = shape,
       rate = rate
-    )
+    ),
+    pfun = rNormal_Gamma_prior
   )
   attr(pfamily_obj, "Prior Type") <- "dNormal_Gamma"
   class(pfamily_obj) <- "pfamily"
@@ -1790,7 +1792,8 @@ rNormal_reg<-function(n,y,x,prior_list,offset=NULL,weights=1,family=gaussian(),
   pl_disp <- if (!is.null(dispersion)) dispersion else outlist$dispersion
   pfamily_obj <- list(
     pfamily = "dNormal",
-    prior_list = list(mu = as.numeric(mu), Sigma = Sigma, dispersion = pl_disp)
+    prior_list = list(mu = as.numeric(mu), Sigma = Sigma, dispersion = pl_disp),
+    pfun = rNormal_prior
   )
   attr(pfamily_obj, "Prior Type") <- "dNormal"
   class(pfamily_obj) <- "pfamily"

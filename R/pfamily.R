@@ -75,10 +75,12 @@
 #' \pkg{glmbayes} package, which consume the `pfamily` object to define the prior distribution over model parameters. 
 #' The `pfamily()` generic retrieves the embedded prior from a fitted model object, while `print.pfamily()` displays its structure.
 #'
-#' **\code{prior_list} and \code{simfun}.** The named list \code{prior_list} holds the hyperparameters for the chosen
+#' **\code{prior_list}, \code{simfun}, and \code{pfun}.** The named list \code{prior_list} holds the hyperparameters for the chosen
 #' prior family. When a model function draws from the posterior, it passes \code{prior_list} into the element
 #' \code{simfun} (e.g., \code{\link{rNormal_reg}}, \code{\link{rGamma_reg}}) so the low-level sampler receives
 #' one consistent list structure regardless of which constructor built the \code{pfamily}.
+#' Each constructor also stores a matching \code{pfun} (see \code{\link{prior_simfuncs}}) for i.i.d.\ draws from
+#' the prior via \code{pfun(n, prior_list, params)}, mirroring how \code{simfun} is used for the posterior.
 #'
 #' **\code{\link{Prior_Setup}} and default hyperparameters.** \code{Prior_Setup()} fits an auxiliary GLM and returns
 #' default \code{mu}, \code{Sigma} / \code{Sigma_0}, \code{dispersion}, Gamma \code{shape} and \code{rate}, and
@@ -147,7 +149,7 @@
 #'   the \code{shape} argument (see Details above).
 #'
 #' Each `pfamily` object includes:
-#' - `pfamily`, `prior_list`, `okfamilies`, `plinks`, and `simfun` (see Value).
+#' - `pfamily`, `prior_list`, `okfamilies`, `plinks`, `simfun`, and `pfun` (see Value).
 #'
 #' @return An object of class \code{"pfamily"} (with a concise \code{print} method). A list with elements:
 #' \item{pfamily}{Character string: the constructor name (\code{"dNormal"}, \code{"dGamma"},
@@ -178,7 +180,11 @@
 #' \item{simfun}{Function used to generate posterior draws (e.g., \code{\link{rNormal_reg}},
 #'   \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rindepNormalGamma_reg}});
 #'   for standard use these produce i.i.d.\ posterior samples for the implemented settings.}
-#' 
+#' \item{pfun}{Prior-simulation function paired with this constructor (e.g.,
+#'   \code{\link{rNormal_prior}}, \code{\link{rGamma_prior}},
+#'   \code{\link{rNormal_Gamma_prior}}); called as
+#'   \code{pfun(n, prior_list, params)}. See \code{\link{prior_simfuncs}}.}
+#'
 #' @author The design of the \code{pfamily} set of functions was developed by Kjell Nygren and was 
 #' inspired by the family used by \code{\link{rglmb}} to specify the likelihood 
 #' function. That design in turn was inspired by S functions of the same names from
@@ -187,7 +193,9 @@
 #' @seealso
 #' \code{\link{rglmb}}, \code{\link{rlmb}} for modeling functions that consume \code{pfamily} objects.
 #'
-#' \code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rindepNormalGamma_reg}} for lower-level sampling functions used by \code{pfamily} constructors.
+#' \code{\link{rNormal_reg}}, \code{\link{rNormalGamma_reg}}, \code{\link{rGamma_reg}}, \code{\link{rGamma_Conjugate_reg}}, \code{\link{rindepNormalGamma_reg}} for lower-level posterior sampling functions used by \code{pfamily} constructors.
+#'
+#' \code{\link{prior_simfuncs}} for the paired prior-simulation functions (\code{pfun}).
 #'
 #' \code{\link{Prior_Setup}}, \code{\link{Prior_Check}} for initializing and validating prior specifications.
 #'
@@ -289,7 +297,8 @@ dNormal<-function(mu,Sigma,dispersion=NULL){
 
   outlist=list(pfamily="dNormal",prior_list=prior_list,okfamilies=okfamilies,
   plinks=plinks,             
-  simfun=rNormal_reg)
+  simfun=rNormal_reg,
+  pfun=rNormal_prior)
   attr(outlist,"Prior Type")="dNormal"             
   class(outlist)="pfamily"
   outlist$call<-match.call()
@@ -346,7 +355,8 @@ dGamma <- function(shape, rate, beta,
                     prior_list = prior_list,
                     okfamilies = okfamilies,
                     plinks     = plinks,
-                    simfun     = rGamma_reg)
+                    simfun     = rGamma_reg,
+                    pfun       = rGamma_prior)
     attr(outlist, "Prior Type") <- "dGamma"
 
   ## -------------------------------------------------------------------------
@@ -400,7 +410,8 @@ dGamma <- function(shape, rate, beta,
                     prior_list = prior_list,
                     okfamilies = okfamilies,
                     plinks     = plinks,
-                    simfun     = rGamma_Conjugate_reg)
+                    simfun     = rGamma_Conjugate_reg,
+                    pfun       = rGamma_Conjugate_prior)
     attr(outlist, "Prior Type") <- "dGamma"
   }
 
@@ -516,7 +527,8 @@ dBeta <- function(shape1, shape2, beta) {
     prior_list = prior_list,
     okfamilies = okfamilies,
     plinks     = plinks,
-    simfun     = rBeta_reg
+    simfun     = rBeta_reg,
+    pfun       = rBeta_prior
   )
   attr(outlist, "Prior Type") <- "dBeta"
   class(outlist) <- "pfamily"
@@ -577,7 +589,8 @@ dNormal_Gamma <- function(mu, Sigma_0, shape, rate) {
   prior_list=list(mu=mu,Sigma=Sigma,shape=shape,rate=rate)
   attr(prior_list,"Prior Type")="dNormal_Gamma"  
   outlist=list(pfamily="dNormal_Gamma",call=call,prior_list=prior_list,
-    okfamilies=okfamilies,plinks=plinks,simfun=rNormalGamma_reg)
+    okfamilies=okfamilies,plinks=plinks,simfun=rNormalGamma_reg,
+    pfun=rNormal_Gamma_prior)
   
   attr(outlist,"Prior Type")="dNormal_Gamma"             
   class(outlist)="pfamily"
@@ -648,7 +661,8 @@ dIndependent_Normal_Gamma <- function(mu, Sigma, shape, rate, max_disp_perc = 0.
   )
   attr(prior_list,"Prior Type")="dIndependent_Normal_Gamma"  
   outlist=list(pfamily="dIndependent_Normal_Gamma",prior_list=prior_list,
-               okfamilies=okfamilies,plinks=plinks,simfun=rindepNormalGamma_reg)
+               okfamilies=okfamilies,plinks=plinks,simfun=rindepNormalGamma_reg,
+               pfun=rIndependent_Normal_Gamma_prior)
   
   attr(outlist,"Prior Type")="dIndependent_Normal_Gamma"             
   class(outlist)="pfamily"
