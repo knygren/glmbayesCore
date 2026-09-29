@@ -18,6 +18,10 @@
   **`rglmb()`** and **`rlmb()`** when **`glmbayesCore_has_opencl()`** is true
   (skipped on CRAN).
 
+* **Vignettes:** Appendix chapters **A02**, **A05–A12** are included in the
+  source bundle and built with **`VignetteBuilder: knitr`** (for R-universe /
+  GitHub inspection; CRAN manual update later).
+
 # glmbayesCore 0.5.4
 
 ## Bug fixes

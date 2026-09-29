@@ -9,7 +9,8 @@ ecosystem. It holds the C++/OpenCL envelope samplers, the family-function
 infrastructure, and the R-level prior and simulation interfaces that
 downstream packages depend on. End users should install
 [glmbayes](https://github.com/knygren/glmbayes) rather than this package
-directly.
+directly. Backend documentation is in the package vignettes (see
+[Vignettes](#vignettes)).
 
 The relationship to the broader ecosystem parallels how `StanHeaders` /
 `rstan` serve as the compiled backbone for `rstanarm`: **glmbayesCore** is
@@ -292,8 +293,9 @@ install.packages("glmbayesCore", type = "source",
                  repos = "https://knygren.r-universe.dev")
 ```
 
-See [Chapter 16 — Large models: GPU acceleration using OpenCL](https://knygren.r-universe.dev/articles/glmbayes/Chapter-16.html)
-for system-level setup instructions.
+OpenCL requires a source install with GPU-capable drivers; see
+[Chapter A10 — Accelerated EnvelopeBuild Implementation using OpenCL](https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A10.html)
+in [Vignettes](#vignettes) below.
 
 **Dependencies that must be installed first:**
 
@@ -302,6 +304,46 @@ install.packages(c("Rcpp", "RcppArmadillo", "RcppParallel", "MASS", "Rdpack"))
 install.packages(c("opencltools", "nmathopencl"),
                  repos = "https://knygren.r-universe.dev")
 ```
+
+---
+
+## Vignettes
+
+**glmbayesCore** includes vignettes on estimation procedures, likelihood-subgradient
+samplers, envelope construction, parallel CPU sampling, OpenCL acceleration, and
+prior derivations for **`Prior_Setup()`**. Chapter labels may be renumbered in a
+future release; names below match the current **`vignette()`** topics.
+
+After installing from [R-Universe](https://knygren.r-universe.dev/glmbayesCore), use the
+links below or in R: `vignette("Chapter-A08", package = "glmbayesCore")`,
+`browseVignettes("glmbayesCore")`.
+
+- **Chapter A02 — Overview of Estimation Procedures**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A02.html
+
+- **Chapter A05 — Simulation Methods - Likelihood Subgradient Densities**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A05.html
+
+- **Chapter A06 — Accept–Reject Sampling for Dispersion in Gamma Regression**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A06.html
+
+- **Chapter A07 — Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A07.html
+
+- **Chapter A08 — Overview of Envelope Related Functions**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A08.html
+
+- **Chapter A09 — Parallel Sampling Implementation using RcppParallel**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A09.html
+
+- **Chapter A10 — Accelerated EnvelopeBuild Implementation using OpenCL**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A10.html
+
+- **Chapter A11 — Implementation Companion for Independent Normal-Gamma**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A11.html
+
+- **Chapter A12 — Technical Derivations for Priors Returned by `Prior_Setup()`**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A12.html
 
 ---
 
