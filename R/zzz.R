@@ -49,7 +49,8 @@
 
   packageStartupMessage(
     "Note: glmbayes provides full CPU capability in this session ",
-    "(e.g. glmb(), lmb(), Prior_Setup()). GPU acceleration is recommended ",
+    "(e.g. Prior_Setup(), rglmb(), rlmb(); formula fits via pkg glmbayes). ",
+    "GPU acceleration is recommended ",
     "for bigger models and appears available. Reinstall glmbayes from source ",
     "with OpenCL at compile time to enable it; see vignette(\"Chapter-16\", ",
     "\"glmbayes\") for install instructions."

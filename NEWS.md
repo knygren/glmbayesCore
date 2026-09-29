@@ -2,7 +2,21 @@
 
 ## Changes
 
-* (development) Version bump after CRAN 0.5.4.
+* **Prior simulation API (`prior_simfuncs`):** New exports **`rNormal_prior()`**,
+  **`rGamma_prior()`**, **`rGamma_Conjugate_prior()`**, **`rNormal_Gamma_prior()`**,
+  **`rIndependent_Normal_Gamma_prior()`**, and **`rBeta_prior()`** for i.i.d. draws
+  from a **`prior_list`**, mirroring the posterior **`simfuncs`** naming pattern.
+
+* **`pfamily` objects:** Each **`d*()`** constructor (and **`pfamily`** objects
+  attached by **`rNormal_reg()`**, **`rNormalGamma_reg()`**, and related reg
+  samplers) now includes **`pfun`**, the paired prior-simulation function, alongside
+  **`simfun`**. Downstream packages (e.g. **glmbayes** / **bayestestR**) can call
+  **`pfun(n, prior_list, params)`** for prior predictive checks without reimplementing
+  the draw logic.
+
+* **Tests:** **`test-prior_simfunction.R`**; optional OpenCL smoke tests for
+  **`rglmb()`** and **`rlmb()`** when **`glmbayesCore_has_opencl()`** is true
+  (skipped on CRAN).
 
 # glmbayesCore 0.5.4
 
