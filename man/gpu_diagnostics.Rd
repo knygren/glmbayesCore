@@ -46,7 +46,8 @@ builds remain fully usable for standard modelling.
 
 Start with \code{\link{diagnose_glmbayes}()} for a single readable report;
 use \code{\link{glmbayesCore_has_opencl}()} for a quick boolean when scripting. Full install
-notes: \code{vignette("Chapter-16", package = "glmbayes")}
+notes: \code{vignette("Chapter-16", package = "glmbayesCore")} (backend);
+\code{vignette("Chapter-16", package = "glmbayes")} for the formula interface
 (\insertCite{glmbayesChapter12}{glmbayesCore}).
 }
 \section{Diagnostics exported from \pkg{glmbayes}}{

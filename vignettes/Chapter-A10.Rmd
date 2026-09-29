@@ -28,7 +28,7 @@ The `glmbayes` package constructs envelopes for accept–reject sampling by eval
 
 The optional **OpenCL** implementation accelerates these evaluations by running them on a GPU (or OpenCL-capable CPU). OpenCL is vendor-neutral and works across NVIDIA, AMD, and Intel hardware. When OpenCL is available and `use_opencl = TRUE`, the package uses GPU-accelerated evaluation inside `EnvelopeEval`, which is called by `EnvelopeBuild` and `EnvelopeDispersionBuild`. If OpenCL is not available or `use_opencl = FALSE`, the CPU path (`f2_f3_non_opencl`) is used instead. The package runs correctly in either case.
 
-This chapter describes the OpenCL implementation: the two-layer design (kernel wrapper and kernel runner), how the OpenCL program is assembled from ported nmath/rmath functions, and how the pilot and safeguards integrate with the envelope build. For installation and availability checks, see Chapter 16.
+This chapter describes the OpenCL implementation: the two-layer design (kernel wrapper and kernel runner), how the OpenCL program is assembled from ported nmath/rmath functions, and how the pilot and safeguards integrate with the envelope build. For installation and availability checks, see **`vignette("Chapter-16", package = "glmbayesCore")`**.
 
 
 ## 2. Architecture Overview
@@ -202,11 +202,11 @@ OpenCL support is **optional**. The package compiles and runs without it; in tha
 
 To enable OpenCL:
 
-- Install OpenCL headers and development libraries (see Chapter 16).
-- Build the package from source with OpenCL enabled (configure script detects OpenCL).
-- Ensure an OpenCL runtime (ICD loader, vendor driver) is available at runtime.
+- Install OpenCL headers and development libraries (see **`vignette("Chapter-16", package = "glmbayesCore")`**).
+- Build **glmbayesCore** from source with OpenCL enabled (`configure` / `configure.win`).
+- Ensure **opencltools** and **nmathopencl** are installed and OpenCL-ready; ensure an ICD loader and vendor driver at runtime.
 
-Use `glmbayesCore_has_opencl()` to check availability and `diagnose_glmbayes()` for a full diagnostic report. See Chapter 16 for platform-specific installation instructions (Windows, Linux, macOS) and AMD ROCm notes.
+Use `glmbayesCore_has_opencl()` to check availability and `diagnose_glmbayes()` for a full diagnostic report. Platform-specific steps (Windows, Linux, macOS) and AMD ROCm notes are in Chapter 16.
 
 
 ## 10. Cross-References
@@ -214,7 +214,7 @@ Use `glmbayesCore_has_opencl()` to check availability and `diagnose_glmbayes()` 
 - **Chapter A05** – Simulation pipeline (optimization, standardization, envelope build, sampling)
 - **Chapter A08** – Envelope-related functions
 - **Chapter A09** – Parallel sampling (pilot pattern, 5-minute safeguard)
-- **Chapter 16** – GPU acceleration: installation, `glmbayesCore_has_opencl`, `diagnose_glmbayes`
+- **Chapter 16** (`glmbayesCore`) – GPU acceleration: installation, `glmbayesCore_has_opencl`, `diagnose_glmbayes`
 - **`?EnvelopeBuild`**, **`?EnvelopeEval`** – use_opencl argument
 - **`?opencltools::load_kernel_library`**, **`?opencltools::load_kernel_source`** – Program assembly
-- **`?glmb`**, **`?rglmb`** – use_opencl argument
+- **`?rglmb`**, **`?rlmb`** – `use_opencl` argument

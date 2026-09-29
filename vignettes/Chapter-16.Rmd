@@ -1,0 +1,259 @@
+---
+title: "Chapter 16: Large models — GPU acceleration using OpenCL"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Chapter 16: Large models — GPU acceleration using OpenCL}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+GPU acceleration is an **optional** feature of **glmbayesCore**. Matrix-level
+samplers --- `rglmb()`, `rlmb()`, and the envelope machinery they use --- run
+fully on the CPU regardless of whether OpenCL is available. No setup is needed
+for standard use.
+
+Where GPU acceleration pays off is with **large models**: high-dimensional
+predictor sets or large posterior sample sizes. The computationally intensive
+work is envelope construction and evaluation --- gradient and log-posterior
+calculations at each tangency grid point grow with model dimension and are
+embarrassingly parallel. Passing `use_opencl = TRUE` can substantially reduce
+wall time. See **`vignette("Chapter-A10", package = "glmbayesCore")`** for what
+is accelerated and why.
+
+End users of the formula interface (`glmb()`, `lmb()` in **glmbayes**) call the
+same backend; install and compile-time requirements below apply to
+**glmbayesCore** (see also **`vignette("Chapter-16", package = "glmbayes")`**
+for the **glmbayes**-centric checklist).
+
+This chapter describes how to enable GPU acceleration for **glmbayesCore**.
+Ensure **opencltools** (and **nmathopencl**) are OpenCL-ready, then install
+**glmbayesCore** from source so its `configure` scripts can enable
+`-DUSE_OPENCL`.
+
+# What you see when you load glmbayesCore
+
+When **glmbayesCore** is attached in an interactive session it checks whether
+GPU acceleration appears feasible. If `glmbayesCore_has_opencl()` is already
+`TRUE`, attach is silent.
+
+If OpenCL was **not** compiled in **and** a GPU or OpenCL stack is detected on
+the host, you may see:
+
+```
+Note: glmbayesCore provides full CPU capability in this session
+(e.g. Prior_Setup(), rglmb(), rlmb()). GPU acceleration is recommended
+for bigger models and appears available. Reinstall glmbayesCore from source
+with OpenCL at compile time to enable it; see vignette("Chapter-16",
+package = "glmbayesCore") for install instructions.
+```
+
+On a machine with no GPU and no OpenCL stack, attach is silent.
+
+To suppress the message in scripts or automated workflows:
+
+```r
+options(glmbayes.quiet_opencl_startup = TRUE)
+```
+
+# Enabling GPU acceleration: three steps
+
+Work through these steps in order. After each step you can check whether you
+are done and skip the rest.
+
+## Step 1: Check whether OpenCL is already enabled
+
+```r
+library(glmbayesCore)
+glmbayesCore_has_opencl()
+```
+
+If this returns `TRUE`, pass `use_opencl = TRUE` to `rglmb()` or `rlmb()` and
+you are done. Otherwise continue to Step 2.
+
+## Step 2: Ensure dependencies are OpenCL-ready
+
+**glmbayesCore** **Imports** **opencltools** and **nmathopencl**. Both must be
+available; **opencltools** must be built with OpenCL support for a successful
+GPU-enabled Core build.
+
+Check **opencltools**:
+
+```r
+opencltools::has_opencl()
+```
+
+If this returns `FALSE`, follow
+**`vignette("Chapter-01", package = "opencltools")`** to install GPU drivers,
+OpenCL headers, and the ICD loader for your platform, then reinstall
+**opencltools** from source.
+
+Install **nmathopencl** from source when building **glmbayesCore** from source
+(R-Universe hosts current builds):
+
+```r
+install.packages(
+  c("opencltools", "nmathopencl"),
+  repos = c("https://cloud.r-project.org", "https://knygren.r-universe.dev"),
+  type = "source"
+)
+```
+
+**What you need on your system** (brief summary; details in **opencltools**
+Chapter 01):
+
+| Component | What it provides | Needed for |
+|-----------|-----------------|------------|
+| GPU driver | Exposes hardware to the OS | Runtime |
+| OpenCL headers (`CL/cl.h`) | Required at compile time | Source build |
+| OpenCL ICD loader (`OpenCL.dll` / `libOpenCL.so`) | Dispatches to vendor runtime | Runtime |
+
+All three must be present before Step 3.
+
+## Step 3: Reinstall glmbayesCore from source
+
+With the OpenCL environment confirmed, reinstall **glmbayesCore** from source.
+The package `configure` / `configure.win` script detects OpenCL headers and
+libraries and defines `-DUSE_OPENCL` when appropriate.
+
+Prebuilt **CRAN** / **R-Universe** binaries of **glmbayesCore** are often
+**CPU-only**. GPU support requires a **source** install after Step 2.
+
+### Windows
+
+Install **Rtools** (<https://cran.r-project.org/bin/windows/Rtools/>) and,
+if needed, **devtools**:
+
+```r
+install.packages("devtools")
+```
+
+Then:
+
+```r
+install.packages(
+  "glmbayesCore",
+  repos = c("https://cloud.r-project.org", "https://knygren.r-universe.dev"),
+  type = "source"
+)
+```
+
+Or from GitHub:
+
+```r
+devtools::install_github("knygren/glmbayesCore")
+```
+
+### Linux / macOS
+
+```r
+install.packages(
+  "glmbayesCore",
+  repos = c("https://cloud.r-project.org", "https://knygren.r-universe.dev"),
+  type = "source"
+)
+```
+
+On macOS, Xcode Command Line Tools and a suitable compiler are required; see
+**opencltools** Chapter 01 for platform notes.
+
+### After the install
+
+```r
+library(glmbayesCore)
+glmbayesCore_has_opencl()
+#> [1] TRUE
+```
+
+# Verifying the setup
+
+```{r, eval=FALSE}
+diagnose_glmbayes()
+```
+
+The diagnostic combines **opencltools** host checks with compile-time status
+for **glmbayesCore**. A clean report ends with OpenCL enabled for this package
+(the printed label may still say "glmbayes" for historical reasons).
+
+Common resolutions:
+
+- **Driver not installed** → install or update your GPU vendor driver.
+- **Headers not found** → install the OpenCL SDK; see **opencltools** Chapter 01.
+- **Runtime not found** → install the ICD loader (`ocl-icd-libopencl1` on Linux; CUDA Toolkit on Windows).
+- **Runtime probe failed** → run `clinfo` outside R; check `/etc/OpenCL/vendors/` on Linux.
+- **Package not compiled with OpenCL** → repeat Step 2, then reinstall **glmbayesCore** from source.
+
+# Running a GPU-accelerated model
+
+Pass `use_opencl = TRUE` to **`rglmb()`** (or **`rlmb()`** for Gaussian models).
+The **`Cleveland`** heart-disease data ship with **glmbayesCore**:
+
+```{r, eval=FALSE}
+library(glmbayesCore)
+data("Cleveland")
+
+form <- hd ~ age + sex + cp + trestbps + chol +
+  fbs + restecg + thalach + exang + oldpeak + slope + ca + thal
+
+ps <- Prior_Setup(form, family = binomial(logit), data = Cleveland)
+
+y <- ps$y
+if (is.factor(y)) y <- as.numeric(y) - 1L else y <- as.numeric(y)
+
+t_cpu <- system.time({
+  fit_cpu <- rglmb(
+    n = 20000,
+    y = y,
+    x = as.matrix(ps$x),
+    family = binomial(link = "logit"),
+    pfamily = dNormal(mu = ps$mu, Sigma = ps$Sigma),
+    Gridtype = 2,
+    use_parallel = TRUE,
+    use_opencl = FALSE,
+    verbose = FALSE
+  )
+})
+
+t_gpu <- system.time({
+  fit_gpu <- rglmb(
+    n = 20000,
+    y = y,
+    x = as.matrix(ps$x),
+    family = binomial(link = "logit"),
+    pfamily = dNormal(mu = ps$mu, Sigma = ps$Sigma),
+    Gridtype = 2,
+    use_parallel = TRUE,
+    use_opencl = TRUE,
+    verbose = FALSE
+  )
+})
+
+t_cpu
+t_gpu
+summary(fit_gpu)
+```
+
+The GPU path should match the CPU posterior up to Monte Carlo variation; gains
+are most visible for larger `n`, more predictors, and higher-dimensional grids.
+
+# Appendix A: AMD GPUs on Linux (ROCm OpenCL)
+
+AMD provides multiple OpenCL implementations on Linux, but only **ROCm OpenCL**
+is fully supported and stable. On **Ubuntu 22.04 or 24.04 LTS**:
+
+```sh
+sudo apt-get install rocm-opencl-runtime
+```
+
+**Supported AMD GPUs** (ROCm) include RX 7900 / 7800 / 7700 series and Instinct
+MI200 / MI300. Older Polaris / Vega / Navi 1x–2x GPUs are not supported by
+ROCm. See **`vignette("Chapter-01", package = "opencltools")`** for full
+verification steps.

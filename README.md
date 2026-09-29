@@ -293,8 +293,9 @@ install.packages("glmbayesCore", type = "source",
                  repos = "https://knygren.r-universe.dev")
 ```
 
-OpenCL requires a source install with GPU-capable drivers; see
-[Chapter A10 — Accelerated EnvelopeBuild Implementation using OpenCL](https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A10.html)
+OpenCL requires a source install of **glmbayesCore** with GPU-capable drivers; see
+[Chapter 16 — GPU acceleration using OpenCL](https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-16.html)
+and [Chapter A10](https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A10.html)
 in [Vignettes](#vignettes) below.
 
 **Dependencies that must be installed first:**
@@ -317,6 +318,9 @@ future release; names below match the current **`vignette()`** topics.
 After installing from [R-Universe](https://knygren.r-universe.dev/glmbayesCore), use the
 links below or in R: `vignette("Chapter-A08", package = "glmbayesCore")`,
 `browseVignettes("glmbayesCore")`.
+
+- **Chapter 16 — Large models: GPU acceleration using OpenCL**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-16.html
 
 - **Chapter A02 — Overview of Estimation Procedures**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Chapter-A02.html
