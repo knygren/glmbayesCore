@@ -1,12 +1,12 @@
 ---
-title: "Chapter A02: Overview of Estimation Procedures"
+title: "Core 01: Overview of Estimation Procedures"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter A02: Overview of Estimation Procedures}
+  %\VignetteIndexEntry{Core 01: Overview of Estimation Procedures}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -22,7 +22,7 @@ knitr::opts_chunk$set(
 library(glmbayesCore)
 ```
 
-# Chapter A02: Overview of Estimation Procedures
+# Core 01: Overview of Estimation Procedures
 
 ## Introduction
 
@@ -365,7 +365,7 @@ The simulation functions are grounded in the following theoretical results:
 
 - [@Nygren2006]: likelihood-subgradient densities and bounds on acceptance rates.
 
-- [@glmbayesSimmethods]: implementation-oriented companion (this series, Chapter A05) for likelihood-subgradient samplers and the `.rNormalGLM_cpp` pipeline.
+- [@glmbayesSimmethods]: implementation-oriented companion (this series, Core 02) for likelihood-subgradient samplers and the `.rNormalGLM_cpp` pipeline.
 
 - [@glmbayesGammaVignette]: accept--reject sampling for dispersion in Gamma regression (`rGamma_reg`).
 

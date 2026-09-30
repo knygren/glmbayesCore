@@ -1,10 +1,10 @@
 ---
-title: "Chapter A12: Technical Derivations for Priors Returned by `Prior_Setup()"
+title: "Core 09: Technical Derivations for Priors Returned by `Prior_Setup()"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter A12: Technical Derivations for Priors Returned by `Prior_Setup()}
+  %\VignetteIndexEntry{Core 09: Technical Derivations for Priors Returned by `Prior_Setup()}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: REFERENCES.bib
@@ -22,7 +22,7 @@ knitr::opts_chunk$set(
 library(glmbayesCore)
 ```
 
-# Chapter A12: Technical Derivations for Priors Returned by `Prior_Setup()`
+# Core 09: Technical Derivations for Priors Returned by `Prior_Setup()`
 
 ## 1. Introduction
 
@@ -75,7 +75,7 @@ mapping to `pfamily` constructors, and how defaults encode prior strength.
 **Roadmap.** Chapter 15 fixes notation for weighted Gaussian regression
 ($n_w$, $G = X^{\mathsf T} W X$, precision $\tau = 1/\phi$, and the conjugate
 Normal--Gamma structure). Appendix A3 there gives closed-form posterior moments
-for $\beta$ under the Zellner-type prior implied by scalar `pwt`. Chapter A02
+for $\beta$ under the Zellner-type prior implied by scalar `pwt`. Core 01
 documents how `pfamily` objects map to lower-level simulation functions. Here
 we tie those ideas to **what `Prior_Setup()` actually returns** and how to pass
 those fields into `dNormal()`, `dNormal_Gamma()`, and

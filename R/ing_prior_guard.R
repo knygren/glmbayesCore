@@ -57,7 +57,7 @@
 ## .ing_stop_if_not_g_prior() -- a temporary Zellner-g-prior-only guard that
 ## lived here -- has been REMOVED. It rejected any dIndependent_Normal_Gamma
 ## coefficient prior whose K = Q^{-1/2} P Q^{-1/2} was anisotropic, working
-## around a gap in Chapter A07's Claim 7/Remark 5.5.7 (endpoint-only
+## around a gap in Core 04's Claim 7/Remark 5.5.7 (endpoint-only
 ## minimization of UB2_j(d) is only exact when K is isotropic). That gap is
 ## now fixed directly: src/EnvelopeDispersionBuild.cpp::
 ## bound_ub2_over_dispersion() computes the true minimum of UB2_j(d) via

@@ -1,10 +1,10 @@
 ---
-title: "Chapter A11: Implementation Companion for Independent Normal-Gamma"
+title: "Core 08: Implementation Companion for Independent Normal-Gamma"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter A11: Implementation Companion for Independent Normal-Gamma}
+  %\VignetteIndexEntry{Core 08: Implementation Companion for Independent Normal-Gamma}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: REFERENCES.bib
@@ -22,7 +22,7 @@ knitr::opts_chunk$set(
 library(glmbayesCore)
 ```
 
-# Chapter A11: Implementation Companion for Independent Normal-Gamma
+# Core 08: Implementation Companion for Independent Normal-Gamma
 
 ## 1. Introduction
 
@@ -34,11 +34,11 @@ This vignette documents the implementation of the **independent Normal-Gamma ext
 The discussion then deep-dives into the **accept-reject sampler** used after the envelope is constructed:
 `rIndepNormalGammaReg_std` (serial) / `rIndepNormalGammaReg_std_parallel` (parallel).
 
-Theory justification and the underlying accept-reject / envelope construction are described in Chapter A07 (the independent Normal-Gamma extension theory) and in [@Nygren2006] for the base likelihood subgradient approach. Implementation of independent Normal--Gamma regression is discussed in [@GriffinBrown2010].
+Theory justification and the underlying accept-reject / envelope construction are described in Core 04 (the independent Normal-Gamma extension theory) and in [@Nygren2006] for the base likelihood subgradient approach. Implementation of independent Normal--Gamma regression is discussed in [@GriffinBrown2010].
 
-For the fixed-dispersion coefficient-envelope implementation details, see Chapter A05.
+For the fixed-dispersion coefficient-envelope implementation details, see Core 02.
 
-Prior construction and the Gaussian calibration of `shape`, `rate`, `dispersion`, and coefficient covariances returned by `Prior_Setup()` are derived in **Chapter A12** (<https://knygren.r-universe.dev/articles/glmbayes/Chapter-A12.html>).
+Prior construction and the Gaussian calibration of `shape`, `rate`, `dispersion`, and coefficient covariances returned by `Prior_Setup()` are derived in **Core 09** (<https://knygren.r-universe.dev/articles/glmbayesCore/Core-09.html>).
 
 ## 2. Core Function #1: `rIndepNormalGammaReg` (non-`_std`) - Internal Workflow
 
@@ -99,7 +99,7 @@ In implementation terms, the code extracts:
 - `x2_std`, `mu2_std`, `P2_std` (standardized design and prior components),
 - `L2Inv`, `L3Inv` (matrices used later to back-transform sampled coefficients).
 
-For the full theoretical and implementation details of standardization, see Chapter A05.
+For the full theoretical and implementation details of standardization, see Core 02.
 
 ### 2.4 Stage D: `EnvelopeOrchestrator()` - envelope + dispersion refinement
 
@@ -374,13 +374,13 @@ Large values indicate a loose envelope (or expensive bounds), while values near 
 ### 6.3 Minimal examples
 
 For runnable examples that exercise the envelope construction and sampler path, see:
-- Chapter A07 (independent Normal-Gamma extension theory),
-- Chapter A05 (fixed-dispersion envelope build),
+- Core 04 (independent Normal-Gamma extension theory),
+- Core 02 (fixed-dispersion envelope build),
 - and the `inst/examples/` directory for end-to-end usage patterns.
 
 ## 7. Cross-References
 
-- Chapter A05 for coefficient-envelope construction (`EnvelopeBuild`) and standardization (`glmb_Standardize_Model`).
-- Chapter A07 for the independent Normal-Gamma extension theory and the accept-reject decomposition.
-- Chapter A06 for dispersion accept-reject foundations in other Gaussian families (as relevant).
+- Core 02 for coefficient-envelope construction (`EnvelopeBuild`) and standardization (`glmb_Standardize_Model`).
+- Core 04 for the independent Normal-Gamma extension theory and the accept-reject decomposition.
+- Core 03 for dispersion accept-reject foundations in other Gaussian families (as relevant).
 

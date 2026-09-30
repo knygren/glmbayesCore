@@ -709,14 +709,14 @@ Rcpp::List rss_face_quadratic_sum_internal(
 // Exact (root-finding) minimization of UB2_j(d) over d in [low, upp] for
 // anisotropic coefficient priors.
 //
-// Background (see vignettes/Chapter-A07.Rmd, Remark 5.5.4/5.5.7, and
+// Background (see vignettes/Core-04.Rmd, Remark 5.5.4/5.5.7, and
 // data-raw/ub2_root_finding_prototype.R / data-raw/README_ub2_rootfinding_fix.md):
 // with t = 1/d, K = Q^{-1/2} P Q^{-1/2}, v_j = Q^{-1/2}*(cbars_j - P*mu - P*beta_hat),
 // and w_i = (u_i^T v_j)^2 (u_i = eigenvectors of K, lambda_i its eigenvalues),
 //
 //   tilde{UB2}_j(t) = (t/2) * (g(t) - Delta),   g(t) = sum_i w_i/(lambda_i+t)^2.
 //
-// Claim 7 (Chapter A07) assumed the minimum over t always occurs at an
+// Claim 7 (Core 04) assumed the minimum over t always occurs at an
 // endpoint, but the underlying proof (Remark 5.5.7) only guarantees any
 // critical point t* satisfies t* < lambda_max(K), not t* < lambda_min(K).
 // For anisotropic K this allows genuine interior minima, which the
@@ -896,7 +896,7 @@ Rcpp::List bound_ub2_over_dispersion(
   double t_lo = 1.0 / upp;   // t = 1/d; d=upp -> t_lo (smallest t)
   double t_hi = 1.0 / low;   // d=low -> t_hi (largest t)
 
-  // Near-isotropic fast path: Claim 7 part 3 (Chapter A07 vignette) proves
+  // Near-isotropic fast path: Claim 7 part 3 (Core 04 vignette) proves
   // the endpoint-only minimum is *exact* -- not merely a heuristic -- once
   // kappa(K) = lambda_max(K)/lambda_min(K) <= 2 (any critical point lies in
   // t* < lambda_max(K) by part 1, while any inflection point needs

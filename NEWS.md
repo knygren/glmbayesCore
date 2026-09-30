@@ -1,3 +1,28 @@
+# glmbayesCore (unreleased)
+
+## Vignettes
+
+* **Renamed engine vignettes** to consecutive **`Core-01`** … **`Core-10`**
+  (replacing **`Chapter-A*`** appendix names and backend **`Chapter-16`**).
+  Appendix **`Chapter-A*`** numbering remains on **glmbayes** Part 5 only.
+
+| Former vignette (glmbayesCore) | New vignette |
+|--------------------------------|--------------|
+| `Chapter-A02` | `Core-01` |
+| `Chapter-A05` | `Core-02` |
+| `Chapter-A06` | `Core-03` |
+| `Chapter-A07` | `Core-04` |
+| `Chapter-A08` | `Core-05` |
+| `Chapter-A09` | `Core-06` |
+| `Chapter-A10` | `Core-07` |
+| `Chapter-A11` | `Core-08` |
+| `Chapter-A12` | `Core-09` |
+| `Chapter-16` (backend install) | `Core-10` |
+
+* **Cross-references** in roxygen, README, and vignette sources now use
+  `vignette("Core-NN", package = "glmbayesCore")`. The **glmbayes** formula
+  OpenCL tutorial remains **`vignette("Chapter-16", package = "glmbayes")`**.
+
 # glmbayesCore 0.5.5
 
 ## Changes

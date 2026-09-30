@@ -1,12 +1,12 @@
 ---
-title: "Chapter A08: Overview of Envelope Related Functions"
+title: "Core 05: Overview of Envelope Related Functions"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter A08: Overview of Envelope Related Functions}
+  %\VignetteIndexEntry{Core 05: Overview of Envelope Related Functions}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -22,13 +22,13 @@ knitr::opts_chunk$set(
 library(glmbayesCore)
 ```
 
-# Chapter A08: Overview of Envelope Related Functions
+# Core 05: Overview of Envelope Related Functions
 
 ## 1. Introduction and Purpose
 
 The `glmbayes` package produces **independent and identically distributed (iid)** posterior samples for Bayesian generalized linear models. When the posterior is not available in closed form (e.g., Poisson or binomial regression with Normal priors, Gaussian regression with independent Normal-Gamma priors), the package uses **accept-reject sampling** based on tight **enveloping functions**. These envelopes are constructed using the **likelihood subgradient** approach of [@Nygren2006].
 
-This chapter provides a central overview of the envelope-related functions in the package. It consolidates the theoretical foundations, the function map, and the workflow so that users and developers can see how the pieces fit together. For implementation details of the full simulation pipeline, see Chapter A05. For envelope theory in specialized settings, see Chapter A06 (dispersion envelopes) and Chapter A07 (joint envelopes for independent Normal-Gamma priors).
+This chapter provides a central overview of the envelope-related functions in the package. It consolidates the theoretical foundations, the function map, and the workflow so that users and developers can see how the pieces fit together. For implementation details of the full simulation pipeline, see Core 02. For envelope theory in specialized settings, see Core 03 (dispersion envelopes) and Core 04 (joint envelopes for independent Normal-Gamma priors).
 
 ### 1.1 Why Envelopes?
 
@@ -50,7 +50,7 @@ For models with unknown dispersion, an additional **dispersion envelope** step (
 
 ## 2. Theoretical Foundation
 
-The envelope construction is grounded in Nygren & Nygren (2006), "Likelihood Subgradient Densities," *Journal of the American Statistical Association*. This section records the definitions and structural results from the paper that justify mixture envelopes and the \(3^p\) partition. For how these are implemented in **glmbayes**, see Chapter A05.
+The envelope construction is grounded in Nygren & Nygren (2006), "Likelihood Subgradient Densities," *Journal of the American Statistical Association*. This section records the definitions and structural results from the paper that justify mixture envelopes and the \(3^p\) partition. For how these are implemented in **glmbayes**, see Core 02.
 
 ### 2.1 Posterior and Definition 2 (paper Section 2)
 
@@ -480,7 +480,7 @@ For other log-concave models, posterior asymptotic normality suggests analogous 
 |-------------|------|---------------|
 | `rNormal_reg` | Non-Gaussian families (Poisson, binomial, Gamma, etc.) with Normal prior | `EnvelopeBuild` for coefficients |
 | `rindepNormalGamma_reg` | Gaussian with independent Normal-Gamma prior | `EnvelopeOrchestrator` -> `EnvelopeBuild` + `EnvelopeDispersionBuild` |
-| `rGamma_reg` | Gamma family with Gamma prior on dispersion | Dispersion envelope (see Chapter A06) |
+| `rGamma_reg` | Gamma family with Gamma prior on dispersion | Dispersion envelope (see Core 03) |
 
 For conjugate cases (e.g., Gaussian likelihood with Normal or Normal-Gamma prior), no envelope is constructed; direct sampling is used.
 
@@ -537,7 +537,7 @@ The `Gridtype` argument (passed via `glmb()`, `rglmb()`, etc.) controls how many
 
 **Gridtype 2** is the default. It uses `EnvelopeOpt` to balance build time (more tangents = more cost) against acceptance rate (more tangents = tighter envelope = fewer candidates). The `n_envopt` argument influences the effective sample size used in this optimization; larger values encourage tighter envelopes.
 
-For large models, `use_opencl = TRUE` can accelerate `EnvelopeBuild` by evaluating gradients on the GPU. See Chapter A10 for OpenCL usage.
+For large models, `use_opencl = TRUE` can accelerate `EnvelopeBuild` by evaluating gradients on the GPU. See Core 07 for OpenCL usage.
 
 
 ## 6. Central Distributions: Normal_ct, Gamma_ct, InvGamma_ct
@@ -555,12 +555,12 @@ These functions support the envelope construction and accept-reject steps; see t
 
 ## 7. Cross-References
 
-- **Chapter A02** - Overview of estimation procedures, mapping of families/pfamilies to simfunctions.
-- **Chapter A05** - Full simulation pipeline: optimization, standardization, sizing, building, sampling. Deep dive into `EnvelopeBuild` and `EnvelopeOpt`.
-- **Chapter A06** - Accept-reject sampling for dispersion in Gamma regression.
-- **Chapter A07** - Accept-reject sampling for Gaussian regression with independent Normal-Gamma priors. Joint envelope construction.
-- **Chapter A09** - Parallel sampling implementation (RcppParallel).
-- **Chapter A10** - OpenCL acceleration for `EnvelopeBuild`.
+- **Core 01** - Overview of estimation procedures, mapping of families/pfamilies to simfunctions.
+- **Core 02** - Full simulation pipeline: optimization, standardization, sizing, building, sampling. Deep dive into `EnvelopeBuild` and `EnvelopeOpt`.
+- **Core 03** - Accept-reject sampling for dispersion in Gamma regression.
+- **Core 04** - Accept-reject sampling for Gaussian regression with independent Normal-Gamma priors. Joint envelope construction.
+- **Core 06** - Parallel sampling implementation (RcppParallel).
+- **Core 07** - OpenCL acceleration for `EnvelopeBuild`.
 - **Nygren & Nygren (2006)** - Original paper: "Likelihood Subgradient Densities," *JASA*.
 
 For help on individual functions, use `?EnvelopeBuild`, `?EnvelopeSize`, `?EnvelopeOrchestrator`, etc.

@@ -175,7 +175,7 @@ by constructing a joint envelope that respects posterior curvature in both dimen
 The dispersion anchor point is chosen as the log-scale center of the credible interval,
 and the Gamma proposal is tilted to match the envelope slope at this point.
 Theory and narrative: \insertCite{Nygren2006}{glmbayesCore}; vignettes
-\code{Chapter-A07}, \code{Chapter-A11}; \insertCite{glmbayesChapterA08,glmbayesIndNormGammaVignette}{glmbayesCore}.
+\code{Core-04}, \code{Core-08}; \insertCite{glmbayesChapterA08,glmbayesIndNormGammaVignette}{glmbayesCore}.
 }
 \section{Use in accept/reject procedure}{
 

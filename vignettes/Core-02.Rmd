@@ -1,12 +1,12 @@
 ---
-title: "Chapter A05: Simulation Methods - Likelihood Subgradient Densities"
+title: "Core 02: Simulation Methods - Likelihood Subgradient Densities"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter A05: Simulation Methods - Likelihood Subgradient Densities}
+  %\VignetteIndexEntry{Core 02: Simulation Methods - Likelihood Subgradient Densities}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

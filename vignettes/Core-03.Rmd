@@ -1,12 +1,12 @@
 ---
-title: "Chapter A06: Accept–Reject Sampling for Dispersion in Gamma Regression"
+title: "Core 03: Accept–Reject Sampling for Dispersion in Gamma Regression"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter A06: Accept–Reject Sampling for Dispersion in Gamma Regression}
+  %\VignetteIndexEntry{Core 03: Accept–Reject Sampling for Dispersion in Gamma Regression}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

@@ -1,12 +1,12 @@
 ---
-title: "Chapter A07: Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors"
+title: "Core 04: Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Chapter A07: Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors}
+  %\VignetteIndexEntry{Core 04: Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -89,7 +89,7 @@ This form is **jointly concave** in \((\beta,\tau)\).
 
 ## 1.2 Independent Normal–Gamma prior
 
-Chapter A07 uses the **independent** Normal–Gamma prior:
+Core 04 uses the **independent** Normal–Gamma prior:
 
 \[
 \beta \sim N(\mu_0,\Sigma_0),
@@ -184,7 +184,7 @@ a_0 - 1 + \frac{n_w}{2}
 + \text{const}.
 \]
 
-This joint log‑posterior is **jointly concave** in \((\beta,\tau)\), which is the key property enabling the envelope‑based accept–reject sampler developed in the remainder of Chapter A07.
+This joint log‑posterior is **jointly concave** in \((\beta,\tau)\), which is the key property enabling the envelope‑based accept–reject sampler developed in the remainder of Core 04.
 
 ## 3. General Sampling Process
 

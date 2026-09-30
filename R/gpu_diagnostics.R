@@ -37,7 +37,7 @@
 #'
 #' Start with \code{\link{diagnose_glmbayes}()} for a single readable report;
 #' use \code{\link{glmbayesCore_has_opencl}()} for a quick boolean when scripting. Full install
-#' notes: \code{vignette("Chapter-16", package = "glmbayesCore")} (backend);
+#' notes: \code{vignette("Core-10", package = "glmbayesCore")} (backend);
 #' \code{vignette("Chapter-16", package = "glmbayes")} for the formula interface
 #' (\insertCite{glmbayesChapter12}{glmbayesCore}).
 #'

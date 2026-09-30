@@ -1,8 +1,8 @@
 ---
-title: "Chapter 16: Large models — GPU acceleration using OpenCL"
+title: "Core 10: Large models — GPU acceleration using OpenCL (backend installation)"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter 16: Large models — GPU acceleration using OpenCL}
+  %\VignetteIndexEntry{Core 10: Large models — GPU acceleration using OpenCL (backend installation)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -26,7 +26,7 @@ predictor sets or large posterior sample sizes. The computationally intensive
 work is envelope construction and evaluation --- gradient and log-posterior
 calculations at each tangency grid point grow with model dimension and are
 embarrassingly parallel. Passing `use_opencl = TRUE` can substantially reduce
-wall time. See **`vignette("Chapter-A10", package = "glmbayesCore")`** for what
+wall time. See **`vignette("Core-07", package = "glmbayesCore")`** for what
 is accelerated and why.
 
 End users of the formula interface (`glmb()`, `lmb()` in **glmbayes**) call the
@@ -52,7 +52,7 @@ the host, you may see:
 Note: glmbayesCore provides full CPU capability in this session
 (e.g. Prior_Setup(), rglmb(), rlmb()). GPU acceleration is recommended
 for bigger models and appears available. Reinstall glmbayesCore from source
-with OpenCL at compile time to enable it; see vignette("Chapter-16",
+with OpenCL at compile time to enable it; see vignette("Core-10",
 package = "glmbayesCore") for install instructions.
 ```
 

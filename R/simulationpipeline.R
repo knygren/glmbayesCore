@@ -1055,7 +1055,7 @@ EnvelopeOpt<-function(a1,n,core_cnt=1L){
 #' Definitions, claims, theorems, remarks, and examples through Remark 16
 #' (including standard form, the \eqn{3^p} partition, and sampling remarks) are in
 #' \insertCite{Nygren2006}{glmbayesCore}. An expanded narrative is in
-#' \code{vignette("Chapter-A08", package = "glmbayes")}.
+#' \code{vignette("Core-05", package = "glmbayesCore")}.
 #'
 #' @section Subgradient density formulation:
 #' Each grid component corresponds to a tilted multivariate normal density,
@@ -1600,7 +1600,7 @@ EnvelopeEval <- function(G4, y, x, mu, P, alpha, wt,
 #' The dispersion anchor point is chosen as the log-scale center of the credible interval,
 #' and the Gamma proposal is tilted to match the envelope slope at this point.
 #' Theory and narrative: \insertCite{Nygren2006}{glmbayesCore}; vignettes
-#' \code{Chapter-A07}, \code{Chapter-A11}; \insertCite{glmbayesChapterA08,glmbayesIndNormGammaVignette}{glmbayesCore}.
+#' \code{Core-04}, \code{Core-08}; \insertCite{glmbayesChapterA08,glmbayesIndNormGammaVignette}{glmbayesCore}.
 #' @section Use in accept/reject procedure:
 #'
 #' The accept/reject sampler relies on a decomposition of the log-posterior into

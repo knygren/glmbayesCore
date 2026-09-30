@@ -1,10 +1,10 @@
 ---
-title: "Chapter A09: Parallel Sampling Implementation using RcppParallel"
+title: "Core 06: Parallel Sampling Implementation using RcppParallel"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Chapter A09: Parallel Sampling Implementation using RcppParallel}
+  %\VignetteIndexEntry{Core 06: Parallel Sampling Implementation using RcppParallel}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 library(glmbayesCore)
 ```
 
-# Chapter A09: Parallel Sampling Implementation using RcppParallel
+# Core 06: Parallel Sampling Implementation using RcppParallel
 
 ## 1. Introduction
 
@@ -28,7 +28,7 @@ The `glmbayesCore` package uses **parallel sampling** for many envelope-based sa
 
 However, RcppParallel-based sampling **cannot be interrupted**. Once the main parallel loop starts, the R session is blocked until it completes. Users may experience the sampler as "freezing" during long runs. To address this, the package runs **pilots** that estimate how long sampling will take and, in interactive sessions, asks users to opt in or out before the non-interruptible phase begins.
 
-This chapter describes the parallel sampling implementation, the pilot logic, and the interactive safeguards. Parallel **envelope construction** (e.g., in `EnvelopeDispersionBuild`) uses a similar pilot pattern and is noted briefly. GPU acceleration via OpenCL is covered in Chapter A10.
+This chapter describes the parallel sampling implementation, the pilot logic, and the interactive safeguards. Parallel **envelope construction** (e.g., in `EnvelopeDispersionBuild`) uses a similar pilot pattern and is noted briefly. GPU acceleration via OpenCL is covered in Core 07.
 
 
 ## 2. Where Parallel Sampling Is Used
@@ -219,8 +219,8 @@ The parallel samplers use the standard RcppParallel `Worker` pattern:
 
 ## 11. Cross-References
 
-- **Chapter A05** – Simulation pipeline (optimization, standardization, envelope, sampling)
-- **Chapter A08** – Envelope-related functions
-- **Chapter A10** – OpenCL acceleration for envelope construction
+- **Core 02** – Simulation pipeline (optimization, standardization, envelope, sampling)
+- **Core 05** – Envelope-related functions
+- **Core 07** – OpenCL acceleration for envelope construction
 - **`?glmb`**, **`?rglmb`**, **`?lmb`**, **`?rlmb`** – `use_parallel` argument
 - **NEWS.md** – Parallel sampling and pilot-related changes
