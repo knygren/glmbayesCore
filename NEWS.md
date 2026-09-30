@@ -2,22 +2,24 @@
 
 ## Vignettes
 
-* **Renamed engine vignettes** to consecutive **`Core-01`** … **`Core-10`**
+* **Renamed engine vignettes** to consecutive **`Core-01`** … **`Core-11`**
   (replacing **`Chapter-A*`** appendix names and backend **`Chapter-16`**).
-  Appendix **`Chapter-A*`** numbering remains on **glmbayes** Part 5 only.
+  **`Core-01`** is a new package overview; **`Chapter-A*`** numbering remains on
+  **glmbayes** Part 5 only.
 
 | Former vignette (glmbayesCore) | New vignette |
 |--------------------------------|--------------|
-| `Chapter-A02` | `Core-01` |
-| `Chapter-A05` | `Core-02` |
-| `Chapter-A06` | `Core-03` |
-| `Chapter-A07` | `Core-04` |
-| `Chapter-A08` | `Core-05` |
-| `Chapter-A09` | `Core-06` |
-| `Chapter-A10` | `Core-07` |
-| `Chapter-A11` | `Core-08` |
-| `Chapter-A12` | `Core-09` |
-| `Chapter-16` (backend install) | `Core-10` |
+| *(new)* | `Core-01` |
+| `Chapter-A02` | `Core-02` |
+| `Chapter-A05` | `Core-03` |
+| `Chapter-A06` | `Core-04` |
+| `Chapter-A07` | `Core-05` |
+| `Chapter-A08` | `Core-06` |
+| `Chapter-A09` | `Core-07` |
+| `Chapter-A10` | `Core-08` |
+| `Chapter-A11` | `Core-09` |
+| `Chapter-A12` | `Core-10` |
+| `Chapter-16` (backend install) | `Core-11` |
 
 * **Cross-references** in roxygen, README, and vignette sources now use
   `vignette("Core-NN", package = "glmbayesCore")`. The **glmbayes** formula

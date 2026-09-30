@@ -57,4 +57,4 @@ That string is passed to **`clCreateProgramWithSource`** (see `glmbayes::opencl:
 ## References
 
 - Nygren, K. N., & Nygren, L. M. (2006). Likelihood subgradient densities. *Journal of the American Statistical Association*, 101(475), 1144–1156. https://doi.org/10.1198/016214506000000357  
-- Package vignettes: OpenCL install (`Core-10`) and kernel assembly (`Core-07`).
+- Package vignettes: OpenCL install (`Core-11`) and kernel assembly (`Core-08`).

@@ -1259,7 +1259,7 @@ rBeta_reg <- function(
   stopifnot(all(ev >= -tol * abs(ev[1L])))
   
   ## NOTE: this used to require a (numerically) Zellner g-prior for the
-  ## coefficient covariance, working around a gap in Core 04's Claim 7 /
+  ## coefficient covariance, working around a gap in Core 05's Claim 7 /
   ## Remark 5.5.7 (endpoint-only minimization of UB2_j(d) is only exact when
   ## K = Q^{-1/2} P Q^{-1/2} is isotropic). That guard has been removed: the
   ## gap is now fixed directly via exact root-finding for UB2_Min_j in

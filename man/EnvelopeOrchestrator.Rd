@@ -64,7 +64,7 @@ envelopes.}
 \item{RSS_Post2}{Numeric. Expected posterior weighted RSS used to anchor the
 dispersion axis (typically \code{centering_out$RSS_post} from
 \code{\link{EnvelopeCentering}} inside \code{\link{rindepNormalGamma_reg}};
-see vignette \code{Core-08}).}
+see vignette \code{Core-09}).}
 
 \item{RSS_ML}{Numeric. Maximum‑likelihood residual sum of squares.}
 
@@ -133,7 +133,7 @@ dispersion centering loop (\code{\link{EnvelopeCentering}}), \strong{not} optimi
 the posterior mode or Hessian, \strong{not} standardize the model
 (\code{\link{glmb_Standardize_Model}}), and \strong{not} draw posterior samples.
 Those steps are performed by \code{\link{rindepNormalGamma_reg}} (see vignette
-\code{Core-08}) before and after the orchestrator. Inputs such as
+\code{Core-09}) before and after the orchestrator. Inputs such as
 \code{bstar2}, \code{A}, \code{x2}, \code{mu2}, and \code{P2} must therefore
 already be in \strong{standard form} for the coefficient subproblem, exactly as
 passed from that workflow.
@@ -143,10 +143,10 @@ and \code{UB_list} are consumed by the internal standardized samplers
 \code{rIndepNormalGammaReg_std} and \code{rIndepNormalGammaReg_std_parallel} in
 \file{src/rIndepNormalGammaReg.cpp}, which implement the joint
 accept--reject procedure over \eqn{(\beta, \phi)}. Theory for the dispersion
-envelope and bounding arguments is in vignette \code{Core-04}; the
-end-to-end implementation map is in \code{Core-08}. The coefficient-only
+envelope and bounding arguments is in vignette \code{Core-05}; the
+end-to-end implementation map is in \code{Core-09}. The coefficient-only
 likelihood-subgradient envelope (\insertCite{Nygren2006}{glmbayesCore}) is
-documented under \code{\link{EnvelopeBuild}} and vignette \code{Core-05}.
+documented under \code{\link{EnvelopeBuild}} and vignette \code{Core-06}.
 
 The function does \strong{not} perform simulation. Simulation is carried out
 afterward via \code{.rIndepNormalGammaReg_std_cpp()} or
@@ -171,8 +171,8 @@ the \strong{standardized} regression coefficients, with mixture weights
 constants are adjusted so that, together with a \strong{truncated inverse-Gamma}
 (dispersion) proposal derived from \code{gamma_list}, the joint proposal
 dominates the target posterior on the truncated dispersion interval
-\code{[low, upp]}. \code{vignette("Core-04", package = "glmbayesCore")} derives
-the dispersion-related bounds; \code{vignette("Core-08", package = "glmbayesCore")}
+\code{[low, upp]}. \code{vignette("Core-05", package = "glmbayesCore")} derives
+the dispersion-related bounds; \code{vignette("Core-09", package = "glmbayesCore")}
 records how \code{UB_list} entries enter the code.
 
 \strong{One accept--reject iteration} (standardized coordinates) proceeds as follows:
@@ -260,8 +260,8 @@ piece is recomputed as \eqn{\mathrm{UB1}} once \eqn{\phi} and
 
 The orchestrator implements the \strong{independent Normal--Gamma} envelope
 pipeline: first a \strong{coefficient} envelope at a \strong{dispersion anchor}
-(\insertCite{Nygren2006}{glmbayesCore}; vignette \code{Core-05}), then
-\strong{dispersion-aware} refinement (\code{Core-04}), then sorting. Steps 3--8
+(\insertCite{Nygren2006}{glmbayesCore}; vignette \code{Core-06}), then
+\strong{dispersion-aware} refinement (\code{Core-05}), then sorting. Steps 3--8
 repeat the internal logic of \code{\link{EnvelopeBuild}} (same formulas on that
 help page); here the likelihood is \strong{Gaussian} with \strong{identity} link, weights
 are \eqn{w_i / d_\star} with \eqn{d_\star} from the anchor below, and the first
@@ -321,7 +321,7 @@ coordinate,
 \item \strong{Evaluate negative log-likelihood and gradient at each grid point.}
 Subgradients \eqn{c(\bar{\theta}_j)} and negative log-likelihoods define
 the likelihood-subgradient envelope pieces (\insertCite{Nygren2006}{glmbayesCore};
-\code{Core-05}). CPU: \code{f2_f3_non_opencl}; GPU (optional):
+\code{Core-06}). CPU: \code{f2_f3_non_opencl}; GPU (optional):
 \code{f2_f3_opencl}.
 \item \strong{Call} \code{EnvelopeSet_Grid_C2_pointwise} \strong{and}
 \code{EnvelopeSet_LogP_C2} \strong{(C++ pipeline)} to obtain restricted Normal
@@ -339,8 +339,8 @@ data \code{y}, \code{x2}, \code{alpha}, \code{mu2}, \code{wt},
 (\code{max_disp_perc}, optional bounds), and \code{use_parallel}. This
 constructs the dispersion truncation interval, updates Gamma proposal
 parameters (\code{gamma_list}), computes \code{UB_list}, and returns
-\code{Env_out} with adjusted \code{PLSD}. See \code{Core-04} and
-\code{Core-08}, Section 3.3.
+\code{Env_out} with adjusted \code{PLSD}. See \code{Core-05} and
+\code{Core-09}, Section 3.3.
 \item \strong{Call} \code{\link{EnvelopeSort}} \strong{(R).} Reorder envelope components and
 align \code{lg_prob_factor} and \code{UB2min} with the sorted indexing. If
 sorting cannot allocate safely, the implementation falls back to unsorted
@@ -514,7 +514,7 @@ env_out
 \item \link[glmbayes]{glmb_Standardize_Model} – standardized inputs for the orchestrator
 \item \code{\link{rindepNormalGamma_reg}} – full Normal–Gamma workflow (R + C++)
 \item \code{\link{rlmb}}, \code{\link{rglmb}}, \code{\link{simfuncs}} – higher-level sampling entry points
-\item Vignettes \code{Core-04}, \code{Core-05}, \code{Core-08}; cited as
+\item Vignettes \code{Core-05}, \code{Core-06}, \code{Core-09}; cited as
 \insertCite{Nygren2006,glmbayesChapterA08,glmbayesIndNormGammaVignette}{glmbayesCore}
 }
 }

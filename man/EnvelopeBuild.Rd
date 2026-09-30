@@ -344,7 +344,7 @@ improve sampling efficiency.
 Definitions, claims, theorems, remarks, and examples through Remark 16
 (including standard form, the \eqn{3^p} partition, and sampling remarks) are in
 \insertCite{Nygren2006}{glmbayesCore}. An expanded narrative is in
-\code{vignette("Core-05", package = "glmbayesCore")}.
+\code{vignette("Core-06", package = "glmbayesCore")}.
 }
 
 \section{Subgradient density formulation}{

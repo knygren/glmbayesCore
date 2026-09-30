@@ -294,8 +294,8 @@ install.packages("glmbayesCore", type = "source",
 ```
 
 OpenCL requires a source install of **glmbayesCore** with GPU-capable drivers; see
-[Core 10 — GPU acceleration using OpenCL](https://knygren.r-universe.dev/articles/glmbayesCore/Core-10.html)
-and [Core 07](https://knygren.r-universe.dev/articles/glmbayesCore/Core-07.html)
+[Core 11 — GPU acceleration using OpenCL](https://knygren.r-universe.dev/articles/glmbayesCore/Core-11.html)
+and [Core 08](https://knygren.r-universe.dev/articles/glmbayesCore/Core-08.html)
 in [Vignettes](#vignettes) below.
 
 **Dependencies that must be installed first:**
@@ -310,45 +310,48 @@ install.packages(c("opencltools", "nmathopencl"),
 
 ## Vignettes
 
-**glmbayesCore** includes consecutive engine vignettes **`Core-01`** … **`Core-10`**
-(estimation procedures, likelihood-subgradient samplers, envelope construction,
-parallel CPU sampling, OpenCL acceleration, and prior derivations for
-**`Prior_Setup()`**). Appendix-style **`Chapter-A*`** names belong to **glmbayes**
-Part 5 only.
+**glmbayesCore** includes consecutive engine vignettes **`Core-01`** … **`Core-11`**
+(package overview, estimation procedures, likelihood-subgradient samplers,
+envelope construction, parallel CPU sampling, OpenCL acceleration, and prior
+derivations for **`Prior_Setup()`**). Appendix-style **`Chapter-A*`** names belong
+to **glmbayes** Part 5 only.
 
 After installing from [R-Universe](https://knygren.r-universe.dev/glmbayesCore), use the
-links below or in R: `vignette("Core-05", package = "glmbayesCore")`,
+links below or in R: `vignette("Core-01", package = "glmbayesCore")`,
 `browseVignettes("glmbayesCore")`.
 
-- **Core 01 — Overview of Estimation Procedures**  
+- **Core 01 — Overview of the glmbayesCore package**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-01.html
 
-- **Core 02 — Simulation Methods - Likelihood Subgradient Densities**  
+- **Core 02 — Overview of Estimation Procedures**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-02.html
 
-- **Core 03 — Accept–Reject Sampling for Dispersion in Gamma Regression**  
+- **Core 03 — Simulation Methods - Likelihood Subgradient Densities**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-03.html
 
-- **Core 04 — Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors**  
+- **Core 04 — Accept–Reject Sampling for Dispersion in Gamma Regression**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-04.html
 
-- **Core 05 — Overview of Envelope Related Functions**  
+- **Core 05 — Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-05.html
 
-- **Core 06 — Parallel Sampling Implementation using RcppParallel**  
+- **Core 06 — Overview of Envelope Related Functions**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-06.html
 
-- **Core 07 — Accelerated EnvelopeBuild Implementation using OpenCL**  
+- **Core 07 — Parallel Sampling Implementation using RcppParallel**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-07.html
 
-- **Core 08 — Implementation Companion for Independent Normal-Gamma**  
+- **Core 08 — Accelerated EnvelopeBuild Implementation using OpenCL**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-08.html
 
-- **Core 09 — Technical Derivations for Priors Returned by `Prior_Setup()`**  
+- **Core 09 — Implementation Companion for Independent Normal-Gamma**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-09.html
 
-- **Core 10 — Large models: GPU acceleration using OpenCL (backend installation)**  
+- **Core 10 — Technical Derivations for Priors Returned by `Prior_Setup()`**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-10.html
+
+- **Core 11 — Large models: GPU acceleration using OpenCL (backend installation)**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Core-11.html
 
 ---
 

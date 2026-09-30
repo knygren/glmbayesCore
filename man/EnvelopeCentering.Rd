@@ -65,8 +65,8 @@ as \code{dispersion2} and \code{RSS_Post2} in downstream envelope construction
 (e.g., \code{\link{EnvelopeOrchestrator}}).
 
 This anchors the joint Normal--Gamma accept--reject construction in
-\insertCite{Nygren2006}{glmbayesCore}; see vignettes \code{Core-04},
-\code{Core-08}, and \insertCite{glmbayesChapterA08,glmbayesIndNormGammaVignette}{glmbayesCore}.
+\insertCite{Nygren2006}{glmbayesCore}; see vignettes \code{Core-05},
+\code{Core-09}, and \insertCite{glmbayesChapterA08,glmbayesIndNormGammaVignette}{glmbayesCore}.
 }
 \examples{
 ############################### Start of EnvelopeCentering example ####################
