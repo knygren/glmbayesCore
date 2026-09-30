@@ -1,10 +1,14 @@
 ---
-title: "Core 10: Large models — GPU acceleration using OpenCL (backend installation)"
+title: "Core 10: Technical Derivations for Priors Returned by `Prior_Setup()"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Core 10: Large models — GPU acceleration using OpenCL (backend installation)}
+  %\VignetteIndexEntry{Core 10: Technical Derivations for Priors Returned by `Prior_Setup()}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+bibliography: REFERENCES.bib
+reference-section-title: References
 ---
 
 ```{r, include = FALSE}
@@ -14,246 +18,2659 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Introduction
-
-GPU acceleration is an **optional** feature of **glmbayesCore**. Matrix-level
-samplers --- `rglmb()`, `rlmb()`, and the envelope machinery they use --- run
-fully on the CPU regardless of whether OpenCL is available. No setup is needed
-for standard use.
-
-Where GPU acceleration pays off is with **large models**: high-dimensional
-predictor sets or large posterior sample sizes. The computationally intensive
-work is envelope construction and evaluation --- gradient and log-posterior
-calculations at each tangency grid point grow with model dimension and are
-embarrassingly parallel. Passing `use_opencl = TRUE` can substantially reduce
-wall time. See **`vignette("Core-07", package = "glmbayesCore")`** for what
-is accelerated and why.
-
-End users of the formula interface (`glmb()`, `lmb()` in **glmbayes**) call the
-same backend; install and compile-time requirements below apply to
-**glmbayesCore** (see also **`vignette("Chapter-16", package = "glmbayes")`**
-for the **glmbayes**-centric checklist).
-
-This chapter describes how to enable GPU acceleration for **glmbayesCore**.
-Ensure **opencltools** (and **nmathopencl**) are OpenCL-ready, then install
-**glmbayesCore** from source so its `configure` scripts can enable
-`-DUSE_OPENCL`.
-
-# What you see when you load glmbayesCore
-
-When **glmbayesCore** is attached in an interactive session it checks whether
-GPU acceleration appears feasible. If `glmbayesCore_has_opencl()` is already
-`TRUE`, attach is silent.
-
-If OpenCL was **not** compiled in **and** a GPU or OpenCL stack is detected on
-the host, you may see:
-
-```
-Note: glmbayesCore provides full CPU capability in this session
-(e.g. Prior_Setup(), rglmb(), rlmb()). GPU acceleration is recommended
-for bigger models and appears available. Reinstall glmbayesCore from source
-with OpenCL at compile time to enable it; see vignette("Core-10",
-package = "glmbayesCore") for install instructions.
-```
-
-On a machine with no GPU and no OpenCL stack, attach is silent.
-
-To suppress the message in scripts or automated workflows:
-
-```r
-options(glmbayes.quiet_opencl_startup = TRUE)
-```
-
-# Enabling GPU acceleration: three steps
-
-Work through these steps in order. After each step you can check whether you
-are done and skip the rest.
-
-## Step 1: Check whether OpenCL is already enabled
-
-```r
+```{r setup}
 library(glmbayesCore)
-glmbayesCore_has_opencl()
 ```
 
-If this returns `TRUE`, pass `use_opencl = TRUE` to `rglmb()` or `rlmb()` and
-you are done. Otherwise continue to Step 2.
+# Core 10: Technical Derivations for Priors Returned by `Prior_Setup()
 
-## Step 2: Ensure dependencies are OpenCL-ready
+## 1. Introduction
 
-**glmbayesCore** **Imports** **opencltools** and **nmathopencl**. Both must be
-available; **opencltools** must be built with OpenCL support for a successful
-GPU-enabled Core build.
+This appendix provides a complete and self‑contained derivation of the prior objects returned by
+`Prior_Setup()` and of the Gaussian prior families used throughout **glmbayesCore**. Its purpose is to make
+explicit how the returned quantities—`mu`, `Sigma`, `Sigma_0`, `dispersion`, `shape`, `rate`, and related
+fields—arise from the **weighted Gaussian likelihood**, the **Normal–Gamma algebra**, and the
+**Zellner‑type calibration** used by the package.
 
-Check **opencltools**:
+This appendix contrasts with applied chapters such as **Chapter&nbsp;03**
+(Bayesian linear models with **`rlmb()`**), **Chapter&nbsp;04**
+(`Prior_Setup()` workflow), **Chapter&nbsp;07** (GLM foundations), and **Chapter&nbsp;08**
+(estimating Bayesian GLMs), where the emphasis is intuitive model building rather than proofs.
+Instead, here we focus on **mathematics**:
 
-```r
-opencltools::has_opencl()
+- the weighted Gaussian likelihood and its precision form,
+- the conjugate Normal–Gamma posterior and the derivation of its conditional and marginal components,
+- the construction of the Zellner‑type dispersion‑free matrix `Sigma_0`,
+- the mapping between `pwt`, `n_prior`, and prior strength,
+- the independent Normal–Gamma prior and its log‑concavity,
+- and the shared **weak‑prior limit** to which all Gaussian prior families converge.
+
+All formulas needed by the main vignettes are derived here from first principles, without relying on other vignettes purely as prerequisites.
+
+The goal is to make the calibration used by `Prior_Setup()` transparent, reproducible, and extensible, so
+that users can confidently interpret or modify the priors supplied to `dNormal()`, `dNormal_Gamma()`,
+and `dIndependent_Normal_Gamma()`.
+
+Textbook treatments of conjugate Normal--Gamma linear models and related updating appear in
+[@Gelman2013; @Raiffa1961]. The Zellner $g$-prior scaling used for coefficient covariances is due to
+[@zellner1986gprior]. Applied prior construction with `Prior_Setup()` is in [@glmbayesChapter03].
+
+
+
+
+
+## 1. Introductory Discussion
+
+This appendix records **precise formulas and derivations** for the prior objects
+returned by `Prior_Setup()` and for the conjugate Normal--Gamma Gaussian model
+used by `dNormal_Gamma()`. The goal is to connect implementation quantities
+(`mu`, `Sigma`, `Sigma_0`, `dispersion`, `shape`, `rate`, and related settings)
+to the **weighted likelihood notation** and **$S_{\mathrm{marg}}$** machinery in
+Chapter 15 (especially Section 3.2 and Appendix A3), with steps spelled out
+rather than only stated.
+
+This chapter is a companion to the main vignettes: it emphasizes **theory**,
+mapping to `pfamily` constructors, and how defaults encode prior strength.
+
+**Roadmap.** Chapter 15 fixes notation for weighted Gaussian regression
+($n_w$, $G = X^{\mathsf T} W X$, precision $\tau = 1/\phi$, and the conjugate
+Normal--Gamma structure). Appendix A3 there gives closed-form posterior moments
+for $\beta$ under the Zellner-type prior implied by scalar `pwt`. Core 02
+documents how `pfamily` objects map to lower-level simulation functions. Here
+we tie those ideas to **what `Prior_Setup()` actually returns** and how to pass
+those fields into `dNormal()`, `dNormal_Gamma()`, and
+`dIndependent_Normal_Gamma()` without mixing coefficient-scale `Sigma`,
+dispersion-free `Sigma_0`, and optional fixed `dispersion` (see `?Prior_Setup`,
+`?compute_gaussian_prior`).
+
+## 2. Default Priors for Coefficient Means and Covariance Matrices
+
+This section concerns families such as **binomial** and **Poisson** where the
+usual exponential-family dispersion is **$\phi=1$** (Chapters 5, 7, and 8).
+**Gaussian** models and `dNormal_Gamma` are in Section 3.
+
+Let $n_w = \sum_i w_i$ for nonnegative **observation weights** $w_i$ in the
+weighted likelihood (the same totals appear as `PriorSettings$n_effective`).
+These $w_i$ are **fixed** by design and do not depend on $\beta$.
+
+### 2.1 How prior means are determined
+
+The Prior_Setup function provides three options for setting the prior mean vector mu. By default, it is set to correspond to the NULL (intercept only) model (`intercept_source = "null_model"`,`effects_source = "null_effects"`) . Alternatively, the user can change this to correspond to the OLS estimates for the intercept (`intercept_source =full_model"`) , the predictors (`effects_source ="full_model"`), or both. Finally, the user can also optionally provide their own custom prior mean vector `mu` directly to the Prior_Setup function.
+
+
+### 2.2 Data precision $P(\beta)$.
+
+Let $\ell(\beta)$ be the weighted log-likelihood as in Chapters 7--8, with
+$\eta_i = x_i^{\mathsf T}\beta$. Define the **data precision matrix**
+\[
+P(\beta) := \nabla^2_\beta\bigl(-\ell(\beta)\bigr),
+\]
+the Hessian of the **negative** log-likelihood. With
+$\ell(\beta)=\sum_i \ell_i(\eta_i)$,
+\[
+P(\beta) = X^{\mathsf T} W(\beta)\, X,
+\qquad
+W_i(\beta) := -\frac{d^2 \ell_i}{d\eta_i^2}\Big|_{\eta_i=x_i^{\mathsf T}\beta}
+\ge 0
+\]
+(log-concavity in $\eta$; Chapter 5), and $W(\beta)$ diagonal.
+The Hessian form of $P(\beta)$ matches standard GLM theory [@McCullagh1989].
+
+Write $W_i(\beta) = w_i\,\omega_i(\beta)$ with fixed $w_i$ and mean-dependent
+$\omega_i(\beta)$. Let $W_{\mathrm{obs}}=\mathrm{diag}(w_i)$ and
+$\Omega(\beta)=\mathrm{diag}(\omega_i(\beta))$. Then
+$W(\beta) = W_{\mathrm{obs}}\,\Omega(\beta)$ (indexwise) and
+\[
+P(\beta) = X^{\mathsf T} W_{\mathrm{obs}}\,\Omega(\beta)\, X.
+\]
+
+**Examples** (Chapters 7--8):
+
+- **Poisson, log link:** $P(\beta) = X^{\mathsf T}\,\mathrm{diag}\bigl(w_i\,\mu_i(\beta)\bigr)\, X$.
+- **Binomial, logit:** $P(\beta) = X^{\mathsf T}\,\mathrm{diag}\bigl(w_i\,\mu_i(\beta)(1-\mu_i(\beta))\bigr)\, X$.
+
+### 2.3 Zellner-type prior using $P(\beta^{\ast})$
+
+#### 2.3.1 Precision mapping and default covariance scaling
+
+For these families, `Prior_Setup()` sets `dispersion`, `shape`, `rate`, and
+`Sigma_0` to `NULL`. Let $V_0$ denote the **sampling covariance matrix** of the
+fitted coefficients $\beta^{\ast}$ under the stated model ($\phi=1$). Then
+\[
+V_0^{-1} = P(\beta^{\ast}).
+\]
+
+**Weighted Gaussian, fixed dispersion $d$.** (See Section 3 for prior outputs.)
+Then $P(\beta)=\frac{1}{d} X^{\mathsf T} W_{\mathrm{obs}} X$ for all $\beta$, and
+the same identification gives $V_0^{-1}=\frac{1}{d} X^{\mathsf T} W_{\mathrm{obs}} X$
+when $V_0$ is the covariance matrix at dispersion $d$. User-provided $d$ in
+`compute_gaussian_prior()` sets returned `dispersion` to $d$ and rescales
+`Sigma` so this scale is explicit in the returned list.
+
+**Prior covariance:** scalar `pwt`,
+$\Sigma = \frac{1-\mathrm{pwt}}{\mathrm{pwt}}\, V_0$ (equivalently
+$\Sigma^{-1} = \frac{\mathrm{pwt}}{1-\mathrm{pwt}}\, P(\beta^{\ast})$)
+
+
+This `Sigma` is what `Prior_Setup()` returns by default on the coefficient
+scale. For Gaussian fits, the returned dispersion-free matrix is
+
+\[
+\Sigma_0 = \Sigma / d,
+\]
+so
+\[
+\Sigma_0^{-1}
+=
+d\,\Sigma^{-1}
+=
+d\,\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,P(\beta^{\ast}).
+\]
+Using $P(\beta^{\ast})=\frac{1}{d}X^{\mathsf T}WX$ in weighted Gaussian
+regression gives
+\[
+\Sigma_0^{-1}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,X^{\mathsf T}WX,
+\]
+which is independent of $d$; this is the default `Sigma_0` returned by `Prior_Setup()`.
+
+#### 2.3.2 Posterior mean and Variance under `dNormal()`
+
+When default settings are used, the Gaussian posterior means reduce to simple
+weighted averages of the fitted coefficient vector $\beta^\ast$ and prior mean
+$\mu$.
+
+**`dNormal()` (Gaussian, coefficient-scale covariance `Sigma`).**
+For Gaussian likelihood precision $P(\beta^\ast)$ and prior precision
+$\Sigma^{-1}$,
+\[
+E(\beta\mid y)
+=
+\bigl(P(\beta^\ast)+\Sigma^{-1}\bigr)^{-1}
+\Bigl(P(\beta^\ast)\beta^\ast+\Sigma^{-1}\mu\Bigr).
+\]
+With the default scalar `pwt`,
+\[
+\Sigma^{-1}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,P(\beta^\ast),
+\]
+so
+\[
+\begin{aligned}
+E(\beta\mid y)
+&=
+\left(P(\beta^\ast)+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}P(\beta^\ast) \right)^{-1}
+\left(P(\beta^\ast)\beta^\ast+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}P(\beta^\ast)\mu\right) \\
+&=
+\left(\frac{1-\mathrm{pwt}}{1-\mathrm{pwt}}P(\beta^\ast)+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}P(\beta^\ast) \right)^{-1}
+\left(\frac{1-\mathrm{pwt}}{1-\mathrm{pwt}}P(\beta^\ast)\beta^\ast+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}P(\beta^\ast)\mu\right) \\
+&=
+\left(\frac{1}{1-\mathrm{pwt}}P(\beta^\ast)\right)^{-1}
+\left(\frac{1}{1-\mathrm{pwt}}P(\beta^\ast)\bigl((1-\mathrm{pwt})\beta^\ast+\mathrm{pwt}\mu\bigr)\right) \\
+&=
+(1-\mathrm{pwt})\beta^\ast+\mathrm{pwt}\,\mu.
+\end{aligned}
+\]
+Thus the posterior mean is a convex combination of the likelihood estimate
+$\beta^\ast$ and prior mean $\mu$: larger `pwt` gives more pull toward $\mu$.
+In the limit as $\mathrm{pwt}\to 0$, it approaches $\beta^\ast$.
+The underlying precision combination is the usual normal--normal Bayes linear model update [@LindleySmith1972].
+
+
+
+The posterior covariance is
+\[
+\mathrm{Var}(\beta\mid y)
+=
+\bigl(P(\beta^\ast)+\Sigma^{-1}\bigr)^{-1}.
+\]
+With the default scalar `pwt`,
+\[
+\Sigma^{-1}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,P(\beta^\ast),
+\]
+so
+\[
+\begin{aligned}
+\mathrm{Var}(\beta\mid y)
+&=
+\left(P(\beta^\ast)+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,P(\beta^\ast)\right)^{-1} \\
+&=
+\left(\frac{1-\mathrm{pwt}}{1-\mathrm{pwt}}\,P(\beta^\ast)+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,P(\beta^\ast)\right)^{-1} \\
+&=
+\left(\frac{1}{1-\mathrm{pwt}}\,P(\beta^\ast)\right)^{-1} \\
+&=
+(1-\mathrm{pwt})\,P(\beta^\ast)^{-1}.
+\end{aligned}
+\]
+
+Thus the posterior covariance is the likelihood-based covariance
+$P(\beta^\ast)^{-1}$ shrunk by the factor $1-\mathrm{pwt}$: larger `pwt`
+(stronger prior pull) gives tighter posterior uncertainty. In the limit as
+$\mathrm{pwt}\to 0$, it approaches the likelihood-based covariance.
+
+#### 2.3.3 Marginal posterior mean under `dNormal_Gamma()`
+
+**`dNormal_Gamma()` (Gaussian conjugate Normal--Gamma, using `Sigma_0`).**
+The **marginal** posterior mean is
+\[
+E(\beta\mid y)
+=
+E_{\tau\mid y}\!\left[E(\beta\mid \tau,y)\right].
+\]
+For fixed $\tau$,
+\[
+E(\beta\mid \tau,y)
+=
+\bigl(\tau X^{\mathsf T}W_{\mathrm{obs}}X+\tau\Sigma_0^{-1}\bigr)^{-1}
+\Bigl(\tau X^{\mathsf T}W_{\mathrm{obs}}X\,\beta^\ast+\tau\Sigma_0^{-1}\mu\Bigr).
+\]
+Under the default scalar `pwt` calibration for `Sigma_0`,
+\[
+\Sigma_0^{-1}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,X^{\mathsf T}W_{\mathrm{obs}}X,
+\]
+so
+\[
+\begin{aligned}
+E(\beta\mid \tau,y)
+&=
+\left(\tau X^{\mathsf T}W_{\mathrm{obs}}X+\tau\frac{\mathrm{pwt}}{1-\mathrm{pwt}}X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}
+\left(\tau X^{\mathsf T}W_{\mathrm{obs}}X\,\beta^\ast+\tau\frac{\mathrm{pwt}}{1-\mathrm{pwt}}X^{\mathsf T}W_{\mathrm{obs}}X\,\mu\right) \\
+&=
+\left(\frac{\tau}{1-\mathrm{pwt}}X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}
+\left(\frac{\tau}{1-\mathrm{pwt}}X^{\mathsf T}W_{\mathrm{obs}}X\bigl((1-\mathrm{pwt})\beta^\ast+\mathrm{pwt}\mu\bigr)\right) \\
+&=
+(1-\mathrm{pwt})\beta^\ast+\mathrm{pwt}\,\mu.
+\end{aligned}
+\]
+Because this expression is free of $\tau$, averaging over $\tau\mid y$ gives
+\[
+E(\beta\mid y)=(1-\mathrm{pwt})\beta^\ast+\mathrm{pwt}\,\mu.
+\]
+Thus the marginal posterior mean has the same weighted-average interpretation:
+larger `pwt` gives more pull toward $\mu$, and as $\mathrm{pwt}\to 0$ it
+approaches $\beta^\ast$.
+For general non-Gaussian GLMs these equalities are not exact in finite samples,
+because the likelihood is not exactly quadratic in $\beta$; however, the same
+weighted-average form is often a good approximation when the likelihood is
+close to multivariate normal, as typically occurs in large samples.
+
+### 2.4 Vector `pwt` and optional `sd`
+
+**Vector `pwt`:** same Hadamard construction as above; correlations in $V_0$ are
+preserved, variances scaled per coordinate.
+
+**`sd`:** $\mathrm{pwt}_j = (V_0)_{jj}/\bigl((V_0)_{jj}+\mathrm{sd}_j^2\bigr)$;
+vector `pwt` is not overwritten from scalar `n_prior`. **Gaussian** fits may
+require scalar `n_prior` in addition (Section 3).
+
+## 3. Default Priors for Dispersion, Shape, and Rate Parameters
+
+This section develops the Gaussian prior families used when the dispersion
+parameter is unknown. The goal is to show how `Prior_Setup()` constructs the
+Gamma prior on the residual precision \(\tau = 1/\phi\), how the Normal block
+interacts with the likelihood, and how the resulting posterior hyperparameters
+arise.
+
+### 3.1 Posterior pieces: contribution from likelihood + Normal block
+
+We begin with the conjugate Normal–Gamma specification
+\[
+\beta \mid \tau \sim N\!\left(\mu,\; (\tau \Sigma_0)^{-1}\right),
+\qquad
+\tau \sim \Gamma(a_0, b_0),
+\]
+where \(\Sigma_0\) is the **dispersion‑free** prior covariance matrix.
+
+For the weighted Gaussian likelihood,
+\[
+y \mid \beta,\tau \sim N\!\left(X\beta,\; \tau^{-1} W_{\mathrm{obs}}^{-1}\right),
+\]
+the Normal block and likelihood combine through:
+
+- the **coefficient precision update**  
+  \[
+  X^{\mathsf T}W_{\mathrm{obs}}X \quad\text{and}\quad \Sigma_0^{-1},
+  \]
+- and the **marginal quadratic term**
+  \[
+  S_{\mathrm{marg}}
+  =
+  \mathrm{RSS}_w
+  +
+  (\hat\beta - \mu)^{\mathsf T}
+  \left(
+    \Sigma_0 + (X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}
+  \right)^{-1}
+  (\hat\beta - \mu),
+  \]
+  where \(\hat\beta\) is the weighted least‑squares estimator and
+  \(\mathrm{RSS}_w\) is the weighted residual sum of squares.
+
+Integrating out \(\beta\) in the Normal–Gamma algebra adds
+\[
+\frac{n_w}{2}
+\]
+to the Gamma **shape** parameter (note: this parameterization does *not* add
+\(p/2\)). Thus the posterior hyperparameters are
+\[
+a_n = a_0 + \frac{n_w}{2},
+\qquad
+b_n = b_0 + \frac{1}{2} S_{\mathrm{marg}},
+\]
+with \(n_w\) the effective sample size and \(p = \mathrm{ncol}(X)\).
+
+---
+
+### 3.2 Prior-strength parameterization from `pwt`
+
+The scalar prior‑weight `pwt` is mapped to an **effective prior sample size**
+\[
+n_{\mathrm{prior}}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\, n_w,
+\qquad\text{equivalently}\qquad
+\mathrm{pwt}
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}} + n_w}.
+\]
+
+Interpretation:
+
+- `pwt` controls how strongly the prior mean \(\mu\) influences the posterior,  
+- `n_prior` is the number of “pseudo‑observations” implied by the prior,  
+- and as `pwt → 0`, the prior becomes negligible and the posterior becomes
+  likelihood‑dominated.
+
+The dispersion‑free covariance used in `dNormal_Gamma()` is
+\[
+\Sigma_0
+=
+\frac{1-\mathrm{pwt}}{\mathrm{pwt}}
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
+\]
+so that
+\[
+\Sigma_0^{-1}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}
+\,X^{\mathsf T}W_{\mathrm{obs}}X.
+\]
+
+Substituting this into the expression for \(S_{\mathrm{marg}}\) yields
+\[
+\begin{aligned}
+S_{\mathrm{marg}}
+&=
+\mathrm{RSS}_w
++
+(\hat\beta - \mu)^{\mathsf T}
+\left(
+\frac{1-\mathrm{pwt}}{\mathrm{pwt}}
+(X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}
++
+(X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}
+\right)^{-1}
+(\hat\beta - \mu) \\
+&=
+\mathrm{RSS}_w
++
+\mathrm{pwt}\,
+(\hat\beta - \mu)^{\mathsf T}
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)
+(\hat\beta - \mu).
+\end{aligned}
+\]
+
+Thus under scalar `pwt`, the prior‑mean penalty in \(S_{\mathrm{marg}}\) is scaled
+**directly** by `pwt`. This is the key link between the Normal block and the
+Gamma update for \(\tau\).
+
+
+
+### 3.3 Gaussian prior-family calibration and parameter mapping
+
+This section explains how the outputs of `Prior_Setup()` map into the Gaussian
+prior families and how a single calibration—based on `pwt`,
+\(n_{\mathrm{prior}}\), and the Zellner form of \(\Sigma_0\)—governs all of them.
+
+We proceed in four parts:
+
+1. Default calibration of the Gamma prior on \(\tau\) from `n_prior`.  
+2. Conjugate Normal–Gamma posterior (Theorem 1).  
+3. Weak‑prior limit as \(n_{\mathrm{prior}}\to 0^{+}\) (Theorem 2).  
+4. Independent Normal–Gamma analogue (Theorem 3).
+
+A final subsection states the unified weak‑limit theorem.
+
+---
+
+#### 3.3.1 Default calibration and posterior Gamma shape/rate
+
+Let \(n_w=\sum_i w_i\) be the effective sample size (`n_effective`).  
+For scalar `pwt`, `Prior_Setup()` defines the **effective prior sample size**
+\[
+n_{\mathrm{prior}}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,n_w,
+\qquad
+\mathrm{pwt}
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}.
+\]
+
+Under the shape–rate parameterization \(\Gamma(a_0,b_0)\) with density
+\(\propto \tau^{a_0-1}e^{-b_0\tau}\), the default prior on the residual precision
+\(\tau\) is
+\[
+a_0 = \frac{n_{\mathrm{prior}}+k}{2},\qquad
+b_0 = \frac{1}{2}(n_{\mathrm{prior}}+k+p-2)\frac{\mathrm{Smarg}}{n_w-p}.
+\]
+where \(S_{\mathrm{marg}}\) is the marginal quadratic term from Section 3.1,  
+\(n_w>p\) ensures propriety of the likelihood contribution,  
+and the conditions \(k \ge 0\) and \(k+p \ge 2\) guarantee that the Gamma prior itself is proper for all \( n_{\mathrm{prior}}>0\).
+
+The posterior hyperparameters and induced moments follow from this calibration
+and are summarized in Theorem 1.
+
+---
+
+#### 3.3.2 Conjugate Normal–Gamma posterior (dNormal_Gamma())
+
+##### **Theorem 1 (Conjugate posterior under the default `dNormal_Gamma()` calibration)**
+
+**Assume:**
+
+1. \(X^{\mathsf T}W_{\mathrm{obs}}X\) is positive definite,
+
+2. \(n_w > p\),
+
+3. \(\mathrm{RSS}_w > 0\),
+
+4. \(k \ge 0\),
+
+5. \(k + p \ge 2\).
+
+Let the prior be
+\[
+\beta\mid\tau\sim N(\mu,\tau^{-1}\Sigma_0),
+\qquad
+\tau\sim\Gamma(a_0,b_0),
+\]
+with
+\[
+\Sigma_0
+=
+\frac{1-\mathrm{pwt}}{\mathrm{pwt}}
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}
+=
+\frac{n_w}{n_{\mathrm{prior}}}
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+\]
+
+Then the posterior is again Normal–Gamma with the following hyperparameters.
+
+---
+
+#### **(i) Posterior mean of \(\beta\)**
+
+\[
+\mu_{\mathrm{post}}
+=
+\mathrm{pwt}\,\mu+(1-\mathrm{pwt})\,\hat\beta
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,\mu
++
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,\hat\beta.
+\]
+
+---
+
+#### **(ii) Posterior dispersion‑free covariance**
+
+\[
+\Sigma_{0,\mathrm{post}}
+=
+(\Sigma_0^{-1}+X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,\Sigma_0
+=
+\frac{n_w}{n_{\mathrm{prior}}+n_w}
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+\]
+
+For general \(\Sigma_0\), use  
+\(\Sigma_{0,\mathrm{post}}=(\Sigma_0^{-1}+X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}\).
+
+---
+
+#### **(iii) Posterior Gamma shape**
+
+\[
+a_n = a_0 + \frac{n_w}{2}
+    = \frac{n_{\mathrm{prior}} + k + n_w}{2}.
+\]
+
+---
+
+#### **(iv) Posterior Gamma rate**
+
+\[
+b_n = b_0 + \frac{1}{2}\mathrm{Smarg}
+    = \frac{1}{2}\frac{\mathrm{Smarg}}{n_w-p}\,(n_{\mathrm{prior}} + k + n_w - 2).
+\]
+
+---
+
+#### **(v) Marginal posterior mean of \(\beta\)**
+
+\[
+\mathbb{E}[\beta\mid y]=\mu_{\mathrm{post}}.
+\]
+
+---
+
+#### **(vi) Posterior expectation of \(\sigma^2=1/\tau\)**
+
+For \(a_n>1\),
+\[
+\mathbb{E}[\sigma^2\mid y]
+=
+\frac{b_n}{a_n-1}
+=
+\frac{S_{\mathrm{marg}}}{n_w-p}.
+\]
+
+---
+
+#### **(vii) Marginal posterior covariance of \(\beta\)**
+
+Let  
+\[
+V_n=\Sigma_{0,\mathrm{post}}
+=
+(\Sigma_0^{-1}+X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}.
+\]
+
+Then
+\[
+\mathrm{Cov}(\beta\mid y)
+=
+\mathbb{E}[\sigma^2\mid y]\,V_n
+=
+\frac{S_{\mathrm{marg}}}{n_w-p}\,
+\frac{n_w}{n_w+n_{\mathrm{prior}}}\,
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+\]
+
+*Proof.* See Appendix B.
+
+---
+
+#### **Interpretation**
+
+- `pwt` controls the **pull toward the prior mean** in (i).  
+- `pwt` also controls the **shrinkage of the covariance** in (vii) via  
+  \(n_w/(n_w+n_{\mathrm{prior}})\).  
+- The denominator \(n_w-p\) reflects the **residual degrees of freedom** in the weighted Gaussian model.
+
+Together, these determine how prior strength interacts with sample size and model dimension.  
+Theorem 1 restates standard conjugate Normal–Gamma posterior formulas under this calibration  
+[@Gelman2013; @Raiffa1961].
+
+
+### **Theorem 2 (Weak‑prior limit of the `dNormal_Gamma()` posterior)**
+
+Assume the same identifiability conditions as in Theorem 1:
+
+1. \(X^{\mathsf T}W_{\mathrm{obs}}X\) is positive definite,
+
+2. \(n_w > p\),
+
+3. \(\mathrm{RSS}_w > 0\),
+
+4. \(k \ge 0\),
+
+5. \(k + p \ge 2\).
+
+Under the default calibration of Theorem 1, let  
+\[
+n_{\mathrm{prior}} \to 0^{+}
+\qquad\text{equivalently}\qquad
+\mathrm{pwt} \to 0^{+},
+\quad
+n_{\mathrm{prior}}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,n_w.
+\]
+
+Then \(S_{\mathrm{marg}} \to \mathrm{RSS}_w\), and the conjugate
+`dNormal_Gamma()` posterior converges weakly to a **Normal–Gamma** law
+\(\Pi_{0}(\cdot\mid y)\) on \((\beta,\tau)\).  
+The limiting hyperparameters are the limits of the posterior quantities in
+Theorem 1 as \(n_{\mathrm{prior}}\to 0^{+}\).  
+(These are *not* the prior hyperparameters \(a_0,b_0\).)
+
+---
+
+#### **(i) Limiting posterior mean of \(\beta\)**
+
+\[
+\mu_{\Pi_{0}}
+=
+\lim_{n_{\mathrm{prior}}\to 0^{+}}
+\mu_{\mathrm{post}}
+=
+\hat\beta.
+\]
+
+---
+
+#### **(ii) Limiting dispersion‑free covariance**
+
+\[
+\Sigma_{0,\Pi_{0}}
+=
+\lim_{n_{\mathrm{prior}}\to 0^{+}}
+\Sigma_{0,\mathrm{post}}
+=
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+\]
+
+---
+
+#### **(iii) Limiting Gamma shape**
+
+\[
+a_{\mathrm{II}}
+=
+\lim_{n_{\mathrm{prior}}\to 0^+} a_n
+=
+\frac{k + n_w}{2}.
+\]
+
+---
+
+#### **(iv) Limiting Gamma rate**
+
+\[
+b_{\mathrm{II}}
+=
+\lim_{n_{\mathrm{prior}}\to 0^+} b_n
+=
+\frac{1}{2}\frac{\mathrm{RSS}_w}{n_w-p}\,(k + n_w - 2).
+\]
+
+---
+
+#### **(v) Limiting marginal mean of \(\beta\)**
+
+\[
+\mathbb{E}_{\Pi_{0}}[\beta\mid y]
+=
+\mu_{\Pi_{0}}
+=
+\hat\beta.
+\]
+
+---
+
+#### **(vi) Limiting expectation of \(\sigma^2 = 1/\tau\)**
+
+For \(\tau\mid y \sim \Gamma(a_{\Pi_{0}},b_{\Pi_{0}})\),
+\[
+\mathbb{E}_{\Pi_{0}}[\sigma^2\mid y]
+=
+\frac{b_{\Pi_{0}}}{a_{\Pi_{0}}-1}
+=
+\frac{\mathrm{RSS}_w}{n_w-p},
+\]
+the classical weighted residual‑variance estimator.
+
+---
+
+#### **(vii) Limiting marginal covariance of \(\beta\)**
+
+\[
+\mathrm{Cov}_{\Pi_{0}}(\beta\mid y)
+=
+\mathbb{E}_{\Pi_{0}}[\sigma^2\mid y]\,
+\Sigma_{0,\Pi_{0}}
+=
+\frac{\mathrm{RSS}_w}{n_w-p}\,
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
+\]
+matching the usual weighted least‑squares covariance.
+
+---
+
+### **Interpretation**
+
+The limit \(\Pi_{0}\) is the **weak‑prior Normal–Gamma law** obtained when the
+prior contributes no pseudo‑information.  
+It has:
+
+- location \(\hat\beta\),  
+- geometry \((X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}\),  
+- and Gamma precision determined entirely by the data.
+
+The independent Normal–Gamma posterior (Theorem 3) converges to this **same**
+\(\Pi_{0}\) under the same assumptions; only the finite‑\(n_{\mathrm{prior}}\)
+joint density differs.
+
+---
+
+### *Proof of Theorem 2.*
+
+By Theorem 1, for each \(n_{\mathrm{prior}}>0\) the dNormal\_Gamma posterior is Normal–Gamma with
+hyperparameters
+\[
+\mu_{\mathrm{post}}(n_{\mathrm{prior}}),\quad
+\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}}),\quad
+a_n(n_{\mathrm{prior}}),\quad
+b_n(n_{\mathrm{prior}}),
+\]
+given explicitly by
+\[
+\mu_{\mathrm{post}}(n_{\mathrm{prior}})
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,\mu
++
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,\hat\beta,
+\]
+\[
+\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}})
+=
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,G^{-1},
+\]
+\[
+a_n(n_{\mathrm{prior}})
+=
+\frac{n_{\mathrm{prior}}+k+n_w}{2},\qquad
+b_n(n_{\mathrm{prior}})
+=
+\frac{n_{\mathrm{prior}}+k+n_w-2}{2}\,
+\frac{\mathrm{Smarg}}{n_w-p}.
+\]
+
+As \(n_{\mathrm{prior}}\to 0^+\), each of these converges to a finite, valid Normal–Gamma parameter.
+Using assumption **4** (\(k\ge 0\)) together with assumption **2** (\(n_w>p\)),
+\[
+a_n(n_{\mathrm{prior}})\to\frac{k+n_w}{2}>0.
+\]
+Using assumption **5** (\(k+p\ge 2\)) and again **2** (\(n_w>p\)), which together imply
+\(k+n_w>2\),
+\[
+b_n(n_{\mathrm{prior}})\to
+\frac{k+n_w-2}{2}\,
+\frac{\mathrm{RSS}_w}{n_w-p}>0,
+\]
+with \(\mathrm{Smarg}\to\mathrm{RSS}_w\) as \(n_{\mathrm{prior}}\to 0^+\).
+Thus both limiting Gamma parameters are strictly positive, ensuring that the limiting
+Normal–Gamma law is proper.
+
+The Normal–Gamma family is closed under weak limits when its parameters converge in this
+way, so the posteriors \(\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}\) converge weakly to the Normal–Gamma
+law \(\Pi_0\) with these limiting hyperparameters. The stated formulas for the limiting mean,
+covariance, and variance of \(\beta\) and \(\sigma^2=1/\tau\) follow by plugging the limits into the
+standard Normal–Gamma moment expressions.
+\(\square\)
+
+
+
+### 3.3.3 Posterior covariance under `dNormal()` with default dispersion
+
+The `dNormal()` prior fixes the residual variance \(\sigma^2\) at a calibrated
+value rather than integrating over \(\tau\) as in the Normal–Gamma model.  
+This section shows how the default dispersion is chosen and how the resulting
+posterior covariance matches the weak‑prior limit of `dNormal_Gamma()`.
+
+---
+
+#### Covariance under fixed \(\sigma^2\)
+
+From Section 2.3.2, under scalar `pwt`,
+\[
+\mathrm{Var}(\beta\mid y,\sigma^2)
+=
+(1-\mathrm{pwt})\,P(\beta^\ast)^{-1}.
+\]
+
+For weighted Gaussian regression,
+\[
+P(\beta^\ast)
+=
+\sigma^{-2}X^{\mathsf T}W_{\mathrm{obs}}X,
+\]
+so
+\[
+\mathrm{Var}(\beta\mid y,\sigma^2)
+=
+(1-\mathrm{pwt})\,\sigma^2
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+\]
+
+Using  
+\[
+n_{\mathrm{prior}}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}},
+\qquad
+1-\mathrm{pwt}
+=
+\frac{n_w}{n_w+n_{\mathrm{prior}}},
+\]
+this becomes
+\[
+\mathrm{Var}(\beta\mid y,\sigma^2)
+=
+\frac{n_w}{n_w+n_{\mathrm{prior}}}\,
+\sigma^2
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+\]
+
+---
+
+#### Default dispersion
+
+To choose a default fixed value of \(\sigma^2\), `Prior_Setup()` uses the
+posterior mean from the Normal–Gamma model (Theorem 1 (vi)):
+\[
+\mathrm{dispersion}_{\mathrm{default}}
+=
+\frac{S_{\mathrm{marg}}}{n_w-p}.
+\]
+
+This matches the classical residual degrees‑of‑freedom adjustment.
+
+Substituting this into the covariance expression gives
+\[
+\mathrm{Var}(\beta\mid y,\mathrm{dispersion}_{\mathrm{default}})
+=
+\frac{n_w}{n_w+n_{\mathrm{prior}}}\,
+\frac{S_{\mathrm{marg}}}{n_w-p}\,
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1}.
+\]
+
+---
+
+#### Calibrated prior covariance returned by `Prior_Setup()`
+
+With the same default dispersion, `Prior_Setup()` returns the coefficient‑scale
+prior covariance
+\[
+\Sigma_{\mathrm{calibrated}}
+=
+\frac{n_w}{n_{\mathrm{prior}}}\,
+\mathrm{dispersion}_{\mathrm{default}}\,
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
+\]
+which is the matrix used by `dNormal()`.
+
+This matches the Normal–Gamma expression in Section 3.3.2, ensuring that the
+fixed‑dispersion and conjugate models share the same calibration.
+
+---
+
+#### Weak‑prior limit
+
+As \(\mathrm{pwt}\to 0\) (equivalently \(n_{\mathrm{prior}}\to 0^{+}\)),
+\[
+\mathrm{Var}(\beta\mid y)
+\;\longrightarrow\;
+\frac{\mathrm{RSS}_w}{n_w-p}\,
+\left(X^{\mathsf T}W_{\mathrm{obs}}X\right)^{-1},
+\]
+the classical weighted least‑squares covariance.
+
+Thus `dNormal()` with default dispersion has the **same weak‑prior limit** as
+`dNormal_Gamma()`, and the returned `shape`, `rate`, `dispersion`, and
+coefficient‑scale covariance remain internally consistent under the package
+calibration.
+
+
+### 3.3.4 Independent Normal–Gamma Prior
+
+The independent Normal–Gamma (ING) prior replaces the conjugate covariance structure 
+\(\tau^{-1}\Sigma_0\) with a fixed coefficient-scale covariance \(\Sigma\), while using a Gamma prior on 
+\(\tau\) whose shape parameter differs from the conjugate Normal–Gamma case by \(p/2\).
+[@GriffinBrown2010] develop inference with Normal--Gamma priors in regression when independence replaces full conjugacy.
+
+The default call is
+
+```text
+dIndependent_Normal_Gamma(ps$mu, Sigma = ps$Sigma, shape = ps$shape_ING, rate = ps$rate)
 ```
 
-If this returns `FALSE`, follow
-**`vignette("Chapter-01", package = "opencltools")`** to install GPU drivers,
-OpenCL headers, and the ICD loader for your platform, then reinstall
-**opencltools** from source.
+Let \(p = \mathrm{ncol}(X)\), and let \(a_0, b_0, S_{\mathrm{marg}}\) be as in Sections 3.3.1–3.3.2.
 
-Install **nmathopencl** from source when building **glmbayesCore** from source
-(R-Universe hosts current builds):
+- Prior mean:
+  \[
+  \mu = \texttt{ps\$mu}.
+  \]
 
-```r
-install.packages(
-  c("opencltools", "nmathopencl"),
-  repos = c("https://cloud.r-project.org", "https://knygren.r-universe.dev"),
-  type = "source"
-)
-```
+- Coefficient-scale covariance:
+  \[
+  \Sigma
+  =
+  \frac{n_w}{n_{\mathrm{prior}}}\,
+  \frac{S_{\mathrm{marg}}}{n_w - p}\,
+  (X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}.
+  \]
 
-**What you need on your system** (brief summary; details in **opencltools**
-Chapter 01):
+- ING Gamma shape:
+  \[
+  \mathrm{shape}_{\mathrm{ING}}
+  =
+  a_0 + \frac{p}{2}
+  =
+  \frac{n_{\mathrm{prior}} + k + p}{2}.
+  \]
 
-| Component | What it provides | Needed for |
-|-----------|-----------------|------------|
-| GPU driver | Exposes hardware to the OS | Runtime |
-| OpenCL headers (`CL/cl.h`) | Required at compile time | Source build |
-| OpenCL ICD loader (`OpenCL.dll` / `libOpenCL.so`) | Dispatches to vendor runtime | Runtime |
+- Gamma rate:
+  \[
+  \texttt{rate}
+  =
+  b_0
+  =
+  \frac{1}{2}(n_{\mathrm{prior}} + k + p - 2)\,
+  \frac{S_{\mathrm{marg}}}{n_w - p}.
+  \]
 
-All three must be present before Step 3.
+---
 
-## Step 3: Reinstall glmbayesCore from source
+### Theorem 3 (Weak-prior limit of the Independent Normal–Gamma posterior)
 
-With the OpenCL environment confirmed, reinstall **glmbayesCore** from source.
-The package `configure` / `configure.win` script detects OpenCL headers and
-libraries and defines `-DUSE_OPENCL` when appropriate.
+**Assume:**
 
-Prebuilt **CRAN** / **R-Universe** binaries of **glmbayesCore** are often
-**CPU-only**. GPU support requires a **source** install after Step 2.
+1. \(X^{\mathsf T}W_{\mathrm{obs}}X\) is positive definite,
 
-### Windows
+2. \(n_w > p\),
 
-Install **Rtools** (<https://cran.r-project.org/bin/windows/Rtools/>) and,
-if needed, **devtools**:
+3. \(\mathrm{RSS}_w > 0\),
 
-```r
-install.packages("devtools")
-```
+4. \(k \ge 0\),
 
-Then:
+5. \(k + p \ge 2\).
 
-```r
-install.packages(
-  "glmbayesCore",
-  repos = c("https://cloud.r-project.org", "https://knygren.r-universe.dev"),
-  type = "source"
-)
-```
+For each \(n_{\mathrm{prior}} > 0\), let  
+\[
+\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\cdot \mid y)
+\]
+denote the posterior under the ING prior above.  
+Let \(\Pi_0(\cdot \mid y)\) be the Normal–Gamma law from Theorem 2 with hyperparameters
 
-Or from GitHub:
+\[
+\mu_{\Pi_0} = \hat\beta, \qquad
+\Sigma_{0,\Pi_0} = (X^{\mathsf T}W_{\mathrm{obs}}X)^{-1},
+\]
+\[
+a_{\Pi_0} = \frac{k + n_w}{2}, \qquad
+b_{\Pi_0} = \frac{1}{2}\frac{k + n_w - 2}{n_w - p}\,\mathrm{RSS}_w.
+\]
 
-```r
-devtools::install_github("knygren/glmbayesCore")
-```
+Then, as \(n_{\mathrm{prior}} \to 0^{+}\) (equivalently \(\mathrm{pwt} \to 0^{+}\)),
 
-### Linux / macOS
+\[
+\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\cdot \mid y)
+\;\Rightarrow\;
+\Pi_0(\cdot \mid y)
+\]
 
-```r
-install.packages(
-  "glmbayesCore",
-  repos = c("https://cloud.r-project.org", "https://knygren.r-universe.dev"),
-  type = "source"
-)
-```
+in distribution on \(\mathbb{R}^p \times (0,\infty)\).  
+Moreover, the posterior moments converge:
 
-On macOS, Xcode Command Line Tools and a suitable compiler are required; see
-**opencltools** Chapter 01 for platform notes.
+1. Coefficient mean:
+   \[
+   \mathbb{E}_{\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}}[\beta \mid y]
+   \longrightarrow
+   \hat\beta.
+   \]
 
-### After the install
+2. Residual variance:
+   \[
+   \mathbb{E}_{\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}}[\sigma^2 \mid y]
+   \longrightarrow
+   \frac{\mathrm{RSS}_w}{n_w - p}.
+   \]
 
-```r
-library(glmbayesCore)
-glmbayesCore_has_opencl()
-#> [1] TRUE
-```
+3. Coefficient covariance:
+   \[
+   \mathrm{Cov}_{\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}}(\beta \mid y)
+   \longrightarrow
+   \frac{\mathrm{RSS}_w}{n_w - p}\,
+   (X^{\mathsf T}W_{\mathrm{obs}}X)^{-1}.
+   \]
 
-# Verifying the setup
+Thus the ING posterior has the same weak-prior limit as the conjugate Normal–Gamma posterior, even though its finite-\(n_{\mathrm{prior}}\) form is not conjugate and its Gamma shape parameter differs by \(p/2\).
 
-```{r, eval=FALSE}
-diagnose_glmbayes()
-```
+*Proof of Theorem 3.*
 
-The diagnostic combines **opencltools** host checks with compile-time status
-for **glmbayesCore**. A clean report ends with OpenCL enabled for this package
-(the printed label may still say "glmbayes" for historical reasons).
+Fix \(y,X,W_{\mathrm{obs}}\) satisfying Assumptions 1–3.  
+For each \(n_{\mathrm{prior}}>0\), let
+\(\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}\) and
+\(\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}\) denote, respectively, the NG and ING posteriors on
+\((\beta,\tau)\).
 
-Common resolutions:
+By Theorem 2, the NG posteriors converge weakly to the limiting Normal–Gamma law \(\Pi_0\):
+\[
+\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}} \Rightarrow \Pi_0
+\quad\text{as }n_{\mathrm{prior}}\to 0^+.
+\]
 
-- **Driver not installed** → install or update your GPU vendor driver.
-- **Headers not found** → install the OpenCL SDK; see **opencltools** Chapter 01.
-- **Runtime not found** → install the ICD loader (`ocl-icd-libopencl1` on Linux; CUDA Toolkit on Windows).
-- **Runtime probe failed** → run `clinfo` outside R; check `/etc/OpenCL/vendors/` on Linux.
-- **Package not compiled with OpenCL** → repeat Step 2, then reinstall **glmbayesCore** from source.
+From the posterior ratio identity in A.2 and Lemma B, we have, for each \(n_{\mathrm{prior}}>0\),
+\[
+\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\mathrm{d}\beta,\mathrm{d}\tau)
+=
+R_{n_{\mathrm{prior}}}(\beta,\tau)\,
+\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\mathrm{d}\beta,\mathrm{d}\tau),
+\]
+with
+\[
+R_{n_{\mathrm{prior}}}(\beta,\tau)\to 1
+\quad\text{for each fixed }(\beta,\tau),
+\]
+and a measurable envelope \(M(\beta,\tau)\) such that
+\[
+\sup_{0<n_{\mathrm{prior}}<\delta}
+|R_{n_{\mathrm{prior}}}(\beta,\tau)|
+\le M(\beta,\tau),
+\qquad
+\int M(\beta,\tau)\,\Pi_0(\mathrm{d}\beta,\mathrm{d}\tau)<\infty.
+\]
 
-# Running a GPU-accelerated model
+Let \(f\colon\mathbb{R}^p\times(0,\infty)\to\mathbb{R}\) be bounded and continuous. Then
+\[
+\int f\,\mathrm{d}\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+=
+\int f(\beta,\tau)\,R_{n_{\mathrm{prior}}}(\beta,\tau)\,
+\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\mathrm{d}\beta,\mathrm{d}\tau).
+\]
 
-Pass `use_opencl = TRUE` to **`rglmb()`** (or **`rlmb()`** for Gaussian models).
-The **`Cleveland`** heart-disease data ship with **glmbayesCore**:
+By Lemma A, the NG path has uniform moment bounds.  
+These bounds rely on Assumptions 4–5 (\(k\ge0\) and \(k+p\ge2\)), which ensure that the NG
+Gamma shapes and rates remain in compact subsets of \((0,\infty)\) for all
+\(0<n_{\mathrm{prior}}<\delta\).  
+Together with Claim B.2, this implies that \(|f\,R_{n_{\mathrm{prior}}}|\) is dominated by an
+integrable envelope under \(\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}\) for \(0<n_{\mathrm{prior}}<\delta\).
 
-```{r, eval=FALSE}
-library(glmbayesCore)
-data("Cleveland")
+Using the pointwise convergence \(R_{n_{\mathrm{prior}}}\to 1\) and the weak convergence
+\(\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}\Rightarrow\Pi_0\), we obtain, by dominated convergence,
+\[
+\int f\,\mathrm{d}\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+\longrightarrow
+\int f\,\mathrm{d}\Pi_0.
+\]
+Thus \(\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}\Rightarrow\Pi_0\) as \(n_{\mathrm{prior}}\to 0^+\),
+proving the distributional convergence.
 
-form <- hd ~ age + sex + cp + trestbps + chol +
-  fbs + restecg + thalach + exang + oldpeak + slope + ca + thal
+For the moment statements, take \(f(\beta,\tau)=\beta_j\),
+\(f(\beta,\tau)=\tau^{-1}\), and
+\(f(\beta,\tau)=(\beta-\mathbb{E}_{\Pi_0}[\beta])
+(\beta-\mathbb{E}_{\Pi_0}[\beta])^\top\) componentwise.
+Lemma A again applies because Assumptions 4–5 ensure that the NG Gamma parameters
+stay uniformly bounded away from zero, giving uniform integrability of the corresponding
+NG moments.  
+The same envelope \(M\) from Claim B.2 transfers this to the ING path via the ratio
+representation. Hence dominated convergence applies to these (unbounded) test functions
+as well, yielding
+\[
+\mathbb{E}_{\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}}[\beta]
+\to
+\mathbb{E}_{\Pi_0}[\beta]=\hat\beta,
+\quad
+\mathbb{E}_{\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}}[\tau^{-1}]
+\to
+\mathbb{E}_{\Pi_0}[\tau^{-1}]
+=
+\frac{\mathrm{RSS}_w}{n_w-p},
+\]
+and
+\[
+\mathrm{Cov}_{\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}}(\beta\mid y)
+\to
+\mathrm{Cov}_{\Pi_0}(\beta\mid y)
+=
+\frac{\mathrm{RSS}_w}{n_w-p}\,G^{-1}.
+\]
 
-ps <- Prior_Setup(form, family = binomial(logit), data = Cleveland)
+These limits match the expressions stated in Theorem 3, so the ING posterior has the same
+weak–prior limit \(\Pi_0\) as the conjugate Normal–Gamma posterior, with convergence of the
+first two moments. 
+\(\square\)
 
-y <- ps$y
-if (is.factor(y)) y <- as.numeric(y) - 1L else y <- as.numeric(y)
+### 3.3.5 dGamma() Prior (Fixed $\beta$, Gamma Prior on Precision)
 
-t_cpu <- system.time({
-  fit_cpu <- rglmb(
-    n = 20000,
-    y = y,
-    x = as.matrix(ps$x),
-    family = binomial(link = "logit"),
-    pfamily = dNormal(mu = ps$mu, Sigma = ps$Sigma),
-    Gridtype = 2,
-    use_parallel = TRUE,
-    use_opencl = FALSE,
-    verbose = FALSE
-  )
-})
+This subsection records the Gaussian hyperparameters that `Prior_Setup()` passes into
+`dGamma()` and `rGamma_reg()` when the coefficient vector is fixed at the default blend
+\(\beta^{+}\). The implementation uses the fields `shape`, `rate_gamma`, and `coefficients`
+returned by `compute_gaussian_prior()`; the sampler then pairs a Gamma prior on
+\(\tau = 1/\sigma^{2}\) with the weighted Gaussian likelihood evaluated at \(\beta^{+}\).
 
-t_gpu <- system.time({
-  fit_gpu <- rglmb(
-    n = 20000,
-    y = y,
-    x = as.matrix(ps$x),
-    family = binomial(link = "logit"),
-    pfamily = dNormal(mu = ps$mu, Sigma = ps$Sigma),
-    Gridtype = 2,
-    use_parallel = TRUE,
-    use_opencl = TRUE,
-    verbose = FALSE
-  )
-})
+Let
+\[
+n_w = \sum_i w_i,\qquad p = \mathrm{ncol}(X),\qquad 
+n_{\mathrm{prior}} = \frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,n_w,
+\]
+and let \(k=1\) be the package default in `compute_gaussian_prior()`.
 
-t_cpu
-t_gpu
-summary(fit_gpu)
-```
+Define the blended coefficient vector
+\[
+\beta^{+} = (1-\mathrm{pwt})\,\hat\beta + \mathrm{pwt}\,\mu,
+\]
+and the corresponding weighted residual sum of squares
+\[
+\mathrm{RSS}_w(\beta^{+}) = \sum_i w_i\,(y_i - x_i^\top\beta^{+})^2.
+\]
 
-The GPU path should match the CPU posterior up to Monte Carlo variation; gains
-are most visible for larger `n`, more predictors, and higher-dimensional grids.
+---
 
-# Appendix A: AMD GPUs on Linux (ROCm OpenCL)
+### **Prior on \(\tau\) (fixed-$\beta$ path)**
 
-AMD provides multiple OpenCL implementations on Linux, but only **ROCm OpenCL**
-is fully supported and stable. On **Ubuntu 22.04 or 24.04 LTS**:
+The prior supplied to `dGamma()` is a Gamma distribution on the precision \(\tau\):
 
-```sh
-sudo apt-get install rocm-opencl-runtime
-```
+1. **Shape parameter**
+\[
+a_0 = \frac{n_{\mathrm{prior}} + k}{2}.
+\]
 
-**Supported AMD GPUs** (ROCm) include RX 7900 / 7800 / 7700 series and Instinct
-MI200 / MI300. Older Polaris / Vega / Navi 1x–2x GPUs are not supported by
-ROCm. See **`vignette("Chapter-01", package = "opencltools")`** for full
-verification steps.
+2. **Rate parameter**
+\[
+b_{0,y}
+=
+\frac{n_{\mathrm{prior}} + k + p - 2}{2}\;
+\frac{\mathrm{RSS}_w(\beta^{+})}{\,n_w - p\,},
+\qquad n_w > p.
+\]
+
+This matches the structure used internally by `compute_gaussian_prior()`: the factor
+\((n_{\mathrm{prior}} + k + p - 2)/(n_w - p)\) is the same multiplier that appears in the
+default `rate_gamma`, with \(\mathrm{RSS}_w(\beta^{+})\) supplying the residual sum of squares
+at the blended coefficient.
+
+---
+
+### **Posterior for \(\tau\) given \(y\) and fixed \(\beta^{+}\)**
+
+With the weighted Gaussian likelihood
+\[
+L(y\mid \beta^{+},\tau)
+\;\propto\;
+\tau^{n_w/2}\exp\!\left(-\frac{\tau}{2}\,\mathrm{RSS}_w(\beta^{+})\right),
+\]
+and the prior \(\tau\sim\Gamma(a_0,b_{0,y})\), the posterior is again Gamma:
+
+1. **Posterior shape**
+\[
+a_n
+=
+a_0 + \frac{n_w}{2}
+=
+\frac{n_{\mathrm{prior}} + k + n_w}{2}.
+\]
+
+2. **Posterior rate**
+\[
+b_n
+=
+b_{0,y} + \frac{1}{2}\,\mathrm{RSS}_w(\beta^{+})
+=
+\frac{n_{\mathrm{prior}} + k + n_w - 2}{2}\;
+\frac{\mathrm{RSS}_w(\beta^{+})}{\,n_w - p\,}.
+\]
+
+---
+
+### **Posterior expectation of \(\sigma^2 = 1/\tau\)**
+
+For \(a_n > 1\),
+\[
+E[\sigma^2 \mid y, \beta^{+}]
+=
+\frac{b_n}{a_n - 1}
+=
+\frac{\mathrm{RSS}_w(\beta^{+})}{\,n_w - p\,},
+\]
+the usual weighted residual‑variance estimator evaluated at \(\beta^{+}\).
+
+---
+
+### **Interpretation**
+
+- The prior rate \(b_{0,y}\) uses the same structural multiplier as the Normal–Gamma
+  calibration, but evaluated at the blended coefficient \(\beta^{+}\).
+- The posterior expectation of \(\sigma^2\) is the classical residual‑variance estimator at
+  \(\beta^{+}\), independent of \(n_{\mathrm{prior}}\).
+- In the weak‑prior limit \(\mathrm{pwt}\to 0\),  
+  \(\beta^{+}\to\hat\beta\) and  
+  \(\mathrm{RSS}_w(\beta^{+})\to\mathrm{RSS}_w(\hat\beta)\),  
+  recovering the usual weighted least‑squares variance estimate.
+
+This completes the description of the fixed-$\beta$ Gamma prior used by `dGamma()` and
+`rGamma_reg()`.
+---
+
+## Appendix A: Technical Ingredients for the ING Weak‑Prior Limit
+
+This appendix collects the analytical components required to establish Theorem 3.  
+Theorems 1 and 2 follow directly from conjugate Normal–Gamma algebra and the Zellner‑type
+calibration; only the Independent Normal–Gamma (ING) case requires additional work.  
+The purpose of this appendix is therefore to isolate the technical machinery needed to show that the
+ING posterior converges to the same weak‑prior limit \(\Pi_0\) as the conjugate Normal–Gamma posterior.
+
+The argument proceeds through five steps:
+
+1. A common Gaussian likelihood representation  
+2. A ratio representation comparing ING and NG posteriors  
+3. Uniform moment bounds for the NG path (Lemma A)  
+4. Ratio convergence and domination (Lemma B)  
+5. Weak convergence and moment convergence for the ING posterior
+
+Each subsection states the required intermediate results and provides the structural components of the
+proof, while detailed algebraic derivations are deferred to the appropriate claims and lemmas.
+
+### A.1 Common Gaussian Setup
+
+Let
+
+- \(G = X^{\mathsf T}W_{\mathrm{obs}}X\),
+- \(\hat\beta\) the weighted least‑squares estimator,
+- \(\mathrm{RSS}_w\) the weighted residual sum of squares,
+- \(\mathrm{RSS}_w(\beta) = \mathrm{RSS}_w + (\beta - \hat\beta)^{\mathsf T}G(\beta - \hat\beta)\).
+
+The weighted Gaussian likelihood can be written as
+
+\[
+L(y \mid \beta,\tau)
+\propto
+\tau^{n_w/2}
+\exp\!\left(
+-\frac{\tau}{2}\,\mathrm{RSS}_w(\beta)
+\right).
+\]
+
+This representation is shared by both the NG and ING posterior paths.
+
+---
+
+### A.2 Posterior Ratio Representation
+
+To compare the ING and NG posterior paths, we first record their correct prior kernels.
+
+#### NG prior (Theorem 1, §3.3.2)
+
+For each \(n_{\mathrm{prior}} > 0\),
+\[
+\beta \mid \tau \sim N\!\left(\mu,\;\tau^{-1}\Sigma_0\right),
+\qquad
+\tau \sim \Gamma\!\left(a_0(n_{\mathrm{prior}}),\, b_0(n_{\mathrm{prior}})\right),
+\]
+where the dispersion–free Zellner matrix is
+\[
+\Sigma_0
+=
+\frac{1-pwt}{pwt}\,(X^\top W_{\mathrm{obs}}X)^{-1}.
+\]
+
+Thus the NG prior kernel is
+\[
+\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau)
+\propto
+\tau^{a_0(n_{\mathrm{prior}})+p/2-1}
+\exp\!\left(
+-b_0(n_{\mathrm{prior}})\tau
+-\frac{\tau}{2}(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu)
+\right).
+\]
+
+#### ING prior (§3.3.4)
+
+The ING prior uses a fixed coefficient–scale covariance and a Gamma shape shifted by \(p/2\):
+\[
+\beta \mid n_{\mathrm{prior}} \sim N\!\left(\mu,\;\Sigma(n_{\mathrm{prior}})\right),
+\qquad
+\tau \sim \Gamma\!\left(a_0(n_{\mathrm{prior}})+\tfrac{p}{2},\; b_0(n_{\mathrm{prior}})\right),
+\]
+with \(\beta\) and \(\tau\) independent, and
+\[
+\Sigma(n_{\mathrm{prior}})
+=
+\frac{n_w}{n_{\mathrm{prior}}}\,
+\frac{\mathrm{Smarg}}{n_w - p}\,
+(X^\top W_{\mathrm{obs}}X)^{-1}.
+\]
+
+Thus the ING prior kernel is
+\[
+\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau)
+\propto
+\tau^{a_0(n_{\mathrm{prior}})+p/2-1}
+\exp\!\left(
+-b_0(n_{\mathrm{prior}})\tau
+\right)
+\exp\!\left(
+-\frac{1}{2}(\beta-\mu)^\top\Sigma(n_{\mathrm{prior}})^{-1}(\beta-\mu)
+\right).
+\]
+
+#### Ratio of prior kernels
+
+Define
+\[
+R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+\frac{
+\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau)
+}{
+\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau)
+}.
+\]
+
+Because the ING Gamma shape equals the NG Gamma shape plus \(p/2\), the \(\tau\)-powers match and cancel.
+The ratio therefore reduces to
+\[
+R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+C_{n_{\mathrm{prior}}}\,
+\exp\!\left(
+-\frac{1}{2}(\beta-\mu)^\top
+\bigl[\Sigma(n_{\mathrm{prior}})^{-1}
+-\tau\,\Sigma_0^{-1}\bigr]
+(\beta-\mu)
+\right),
+\]
+where \(C_{n_{\mathrm{prior}}}\) absorbs all \(\tau\)-free constants.
+
+#### Posterior ratio identity
+
+The ING posterior is a reweighted NG posterior:
+\[
+\Pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\mathrm{d}\beta,\mathrm{d}\tau)
+\propto
+R_{n_{\mathrm{prior}}}(\beta,\tau)\,
+\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\mathrm{d}\beta,\mathrm{d}\tau).
+\]
+
+This identity is the starting point for Lemma B and the ING weak‑prior limit.
+
+---
+
+### A.3 Lemma A: Uniform moment bounds for the NG path
+
+#### Lemma A (Uniform moment bounds for the NG posterior)
+
+**Assume:**
+
+1. \(X^{\mathsf T}W_{\mathrm{obs}}X\) is positive definite,
+
+2. \(n_w > p\),
+
+3. \(\mathrm{RSS}_w > 0\),
+
+4. \(k \ge 0\),
+
+5. \(k + p \ge 2\).
+
+Fix \(X, W_{\mathrm{obs}}, y, \mu\), and hence \(\hat\beta\), \(\mathrm{RSS}_w\), \(S_{\mathrm{marg}}\), and \(G\).  
+For each \(n_{\mathrm{prior}} > 0\), let \(\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}\) be the conjugate Normal–Gamma posterior
+from Section 3.3.2, with hyperparameters
+
+\[
+\mu_{\mathrm{post}}(n_{\mathrm{prior}}),
+\quad
+\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}}),
+\quad
+a_n(n_{\mathrm{prior}}),
+\quad
+b_n(n_{\mathrm{prior}}).
+\]
+
+**With the \(k\)-generalized calibration, these are:**
+\[
+a_n(n_{\mathrm{prior}})=\frac{n_{\mathrm{prior}}+k+n_w}{2},
+\qquad
+b_n(n_{\mathrm{prior}})=\frac{n_{\mathrm{prior}}+k+n_w-2}{2}\frac{S_{\mathrm{marg}}}{n_w-p}.
+\]
+
+Then there exists \(\delta > 0\) and constants \(C_1, C_2 < \infty\) such that for all
+\(0 < n_{\mathrm{prior}} < \delta\),
+
+\[
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}
+\bigl[\|\beta\|\bigr]
+\le C_1,
+\qquad
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}
+\bigl[\|\beta\|^2\bigr]
+\le C_2,
+\]
+
+and
+
+\[
+\sup_{0 < n_{\mathrm{prior}} < \delta}
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}[\tau]
+< \infty,
+\qquad
+\sup_{0 < n_{\mathrm{prior}} < \delta}
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}[\tau^2]
+< \infty.
+\]
+
+---
+
+#### Claim A.1 (Continuity and compactness of NG hyperparameters)
+
+Under Assumptions 1–5 of Theorem 3, the NG hyperparameters satisfy:
+
+- \(n_{\mathrm{prior}} \mapsto \mu_{\mathrm{post}}(n_{\mathrm{prior}})\) is continuous on \((0,\infty)\) and
+  \(\mu_{\mathrm{post}}(n_{\mathrm{prior}}) \to \hat\beta\) as \(n_{\mathrm{prior}} \to 0^{+}\).
+- \(n_{\mathrm{prior}} \mapsto \Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}})\) is continuous on \((0,\infty)\) and
+  \(\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}}) \to G^{-1}\) as \(n_{\mathrm{prior}} \to 0^{+}\).
+- \(n_{\mathrm{prior}} \mapsto a_n(n_{\mathrm{prior}})\) and \(n_{\mathrm{prior}} \mapsto b_n(n_{\mathrm{prior}})\) are
+  continuous on \((0,\infty)\) and converge to strictly positive limits as \(n_{\mathrm{prior}} \to 0^{+}\).
+
+In particular, there exists \(\delta > 0\) such that for all \(0 < n_{\mathrm{prior}} < \delta\), the four
+hyperparameters lie in compact subsets of their respective spaces.
+
+*Proof of Claim A.1.*
+
+By Theorem 1 and the prior setup, the NG hyperparameters can be written explicitly as functions of
+\(n_{\mathrm{prior}} > 0\):
+
+\[
+\mu_{\mathrm{post}}(n_{\mathrm{prior}})
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,\mu
++
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,\hat\beta,
+\]
+
+\[
+\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}})
+=
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,G^{-1},
+\]
+
+\[
+a_n(n_{\mathrm{prior}})
+=
+\frac{n_{\mathrm{prior}} + k + n_w}{2},\qquad
+b_n(n_{\mathrm{prior}})
+=
+\frac{1}{2}\bigl(n_{\mathrm{prior}} + k + n_w - 2\bigr)\,
+\frac{S_{\mathrm{marg}}}{n_w-p}.
+\]
+
+Here \(\mu, \hat\beta, G, S_{\mathrm{marg}}, n_w, p\) are fixed and do not depend on \(n_{\mathrm{prior}}\).
+
+Each of these maps is a rational (in fact affine) function of \(n_{\mathrm{prior}}\) with denominator
+\(n_{\mathrm{prior}}+n_w > 0\), so all four are continuous on \((0,\infty)\).
+Assumption 1 (\(G\) positive definite) ensures that \(G^{-1}\) exists and is finite, so
+\(\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}})\) is well defined for all \(n_{\mathrm{prior}}>0\).
+Assumption 2 (\(n_w > p\)) implies \(n_w-p>0\), so the denominator in \(b_n(n_{\mathrm{prior}})\) is positive.
+Assumption 3 (\(\mathrm{RSS}_w>0\)) implies \(S_{\mathrm{marg}}>0\), so the rate \(b_n(n_{\mathrm{prior}})\) is strictly
+positive for all \(n_{\mathrm{prior}}>0\).
+
+Taking the limit \(n_{\mathrm{prior}} \to 0^{+}\) in the explicit formulas gives
+
+\[
+\mu_{\mathrm{post}}(n_{\mathrm{prior}}) \to \hat\beta,\qquad
+\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}}) \to G^{-1},
+\]
+
+\[
+a_n(n_{\mathrm{prior}}) \to \frac{k+n_w}{2} > 0,\qquad
+b_n(n_{\mathrm{prior}}) \to \frac{1}{2}\frac{k+n_w-2}{n_w-p}\,S_{\mathrm{marg}} > 0,
+\]
+
+where the strict positivity of the limits of \(a_n\) and \(b_n\) uses Assumptions 2–3 together with
+Assumptions 4–5 (\(k\ge0\) and \(k+p\ge2\)), since \(k+p\ge2\) and \(n_w>p\) imply \(k+n_w>2\).
+
+Since each map is continuous on \((0,\infty)\) and has a finite limit as \(n_{\mathrm{prior}} \to 0^{+}\), there
+exists \(\delta > 0\) such that, for all \(0 < n_{\mathrm{prior}} < \delta\),
+
+- \(\mu_{\mathrm{post}}(n_{\mathrm{prior}})\) lies in a compact subset of \(\mathbb{R}^p\),
+- \(\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}})\) lies in a compact subset of the positive definite matrices,
+- \(a_n(n_{\mathrm{prior}})\) and \(b_n(n_{\mathrm{prior}})\) lie in compact subsets of \((0,\infty)\).
+
+This is exactly the continuity and compactness statement of Claim A.1.
+\(\square\)
+
+---
+
+#### Proof of Lemma A
+
+For each \(n_{\mathrm{prior}} > 0\), Theorem 1 gives
+
+- \(\beta \mid \tau, y, n_{\mathrm{prior}} \sim 
+   N\bigl(\mu_{\mathrm{post}}(n_{\mathrm{prior}}),
+   \tau^{-1}\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}})\bigr)\),
+
+- \(\tau \mid y, n_{\mathrm{prior}} \sim 
+   \Gamma\bigl(a_n(n_{\mathrm{prior}}), b_n(n_{\mathrm{prior}})\bigr)\).
+
+By Claim A.1, there exists \(\delta > 0\) such that for all \(0 < n_{\mathrm{prior}} < \delta\),
+
+- \(a_n(n_{\mathrm{prior}})\) and \(b_n(n_{\mathrm{prior}})\) lie in compact subsets of \((0,\infty)\),  
+- \(\mu_{\mathrm{post}}(n_{\mathrm{prior}})\) lies in a compact subset of \(\mathbb{R}^p\),  
+- \(\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}})\) lies in a compact subset of the positive definite matrices.
+
+These compactness properties rely on Assumptions 4–5 (\(k\ge0\), \(k+p\ge2\)) together with
+Assumptions 2–3 (\(n_w>p\), \(\mathrm{RSS}_w>0\)), which ensure that the limiting Gamma
+shape and rate are strictly positive and therefore bounded away from zero.
+
+---
+
+##### Bounds for \(\tau\)
+
+For each \(n_{\mathrm{prior}}\),  
+\(\tau \mid y, n_{\mathrm{prior}} \sim 
+\Gamma(a_n(n_{\mathrm{prior}}), b_n(n_{\mathrm{prior}}))\), so
+
+\[
+\mathbb{E}[\tau \mid y, n_{\mathrm{prior}}]
+=
+\frac{a_n(n_{\mathrm{prior}})}{b_n(n_{\mathrm{prior}})},\qquad
+\mathbb{E}[\tau^2 \mid y, n_{\mathrm{prior}}]
+=
+\frac{a_n(n_{\mathrm{prior}})\bigl(a_n(n_{\mathrm{prior}})+1\bigr)}
+     {b_n(n_{\mathrm{prior}})^2}.
+\]
+
+On \((0,\delta)\), both \(a_n(n_{\mathrm{prior}})\) and \(b_n(n_{\mathrm{prior}})\) stay in compact subsets of
+\((0,\infty)\) by Claim A.1, which uses Assumptions 4–5 to ensure positivity of the limiting
+Gamma parameters. Thus the maps
+
+\[
+n_{\mathrm{prior}} \mapsto 
+\frac{a_n(n_{\mathrm{prior}})}{b_n(n_{\mathrm{prior}})},\qquad
+n_{\mathrm{prior}} \mapsto 
+\frac{a_n(n_{\mathrm{prior}})\bigl(a_n(n_{\mathrm{prior}})+1\bigr)}
+     {b_n(n_{\mathrm{prior}})^2}
+\]
+
+are continuous and bounded on \((0,\delta)\). Hence
+
+\[
+\sup_{0 < n_{\mathrm{prior}} < \delta}
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}[\tau]
+< \infty,\qquad
+\sup_{0 < n_{\mathrm{prior}} < \delta}
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}[\tau^2]
+< \infty.
+\]
+
+---
+
+##### Bounds for \(\beta\)
+
+The marginal distribution of \(\beta \mid y, n_{\mathrm{prior}}\) under
+\(\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}\) has
+
+\[
+\mathbb{E}[\beta \mid y, n_{\mathrm{prior}}]
+=
+\mu_{\mathrm{post}}(n_{\mathrm{prior}}),
+\]
+
+and
+
+\[
+\mathrm{Cov}(\beta \mid y, n_{\mathrm{prior}})
+=
+\mathbb{E}[\sigma^2 \mid y, n_{\mathrm{prior}}]\,
+\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}}),
+\]
+
+where \(\sigma^2 = 1/\tau\) and, for \(a_n(n_{\mathrm{prior}}) > 1\),
+
+\[
+\mathbb{E}[\sigma^2 \mid y, n_{\mathrm{prior}}]
+=
+\frac{b_n(n_{\mathrm{prior}})}{a_n(n_{\mathrm{prior}})-1}.
+\]
+
+By Claim A.1,  
+\(a_n(n_{\mathrm{prior}}) \to (k+n_w)/2 > 0\) as \(n_{\mathrm{prior}} \to 0^{+}\).  
+Assumptions 4–5 ensure that \((k+n_w)/2>1\) because \(k+p\ge2\) and \(n_w>p\) imply
+\(k+n_w>2\).  
+Shrinking \(\delta\) if necessary, we may therefore assume \(a_n(n_{\mathrm{prior}}) > 1\) for all
+\(0 < n_{\mathrm{prior}} < \delta\).
+
+On this interval, \(a_n(n_{\mathrm{prior}})\) and \(b_n(n_{\mathrm{prior}})\) lie in compact subsets of
+\((0,\infty)\), so
+
+\[
+n_{\mathrm{prior}} \mapsto 
+\frac{b_n(n_{\mathrm{prior}})}{a_n(n_{\mathrm{prior}})-1}
+\]
+
+is continuous and bounded on \((0,\delta)\).  
+By Claim A.1, \(\Sigma_{0,\mathrm{post}}(n_{\mathrm{prior}})\) lies in a compact subset of the positive
+definite matrices, so its operator norm and trace are bounded on \((0,\delta)\).  
+Therefore
+
+\[
+\sup_{0 < n_{\mathrm{prior}} < \delta}
+\mathrm{tr}\,\mathrm{Cov}(\beta \mid y, n_{\mathrm{prior}})
+< \infty.
+\]
+
+Now
+
+\[
+\mathbb{E}\bigl[\|\beta\|^2 \mid y, n_{\mathrm{prior}}\bigr]
+=
+\bigl\|\mathbb{E}[\beta \mid y, n_{\mathrm{prior}}]\bigr\|^2
++
+\mathrm{tr}\,\mathrm{Cov}(\beta \mid y, n_{\mathrm{prior}}).
+\]
+
+By Claim A.1, \(\mu_{\mathrm{post}}(n_{\mathrm{prior}})\) lies in a compact subset of \(\mathbb{R}^p\) for
+\(0 < n_{\mathrm{prior}} < \delta\), so \(\|\mu_{\mathrm{post}}(n_{\mathrm{prior}})\|\) is bounded on \((0,\delta)\).
+Combined with the bound on \(\mathrm{tr}\,\mathrm{Cov}(\beta \mid y, n_{\mathrm{prior}})\), this implies
+
+\[
+\sup_{0 < n_{\mathrm{prior}} < \delta}
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}
+\bigl[\|\beta\|^2\bigr]
+< \infty.
+\]
+
+Define
+
+\[
+C_2
+:=
+\sup_{0 < n_{\mathrm{prior}} < \delta}
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}
+\bigl[\|\beta\|^2\bigr]
+< \infty.
+\]
+
+Finally, by Cauchy–Schwarz,
+
+\[
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}
+\bigl[\|\beta\|\bigr]
+\le
+\Bigl(
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}
+\bigl[\|\beta\|^2\bigr]
+\Bigr)^{1/2}
+\le
+\sqrt{C_2}
+=: C_1.
+\]
+
+This proves Lemma A.
+
+### A.4 Lemma B: Ratio convergence and domination
+
+Lemma B (Ratio convergence and domination)
+
+Let \(R_{n_{\mathrm{prior}}}(\beta,\tau)\) be the posterior density ratio
+\[
+R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+\frac{\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau\mid y)}
+     {\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau\mid y)}.
+\]
+
+Under the assumptions of Theorem 3:
+
+1. For each fixed \((\beta,\tau)\),
+\[
+R_{n_{\mathrm{prior}}}(\beta,\tau)\to 1
+\quad\text{as }n_{\mathrm{prior}}\to 0^+.
+\]
+
+2. There exists a measurable envelope \(M(\beta,\tau)\) such that
+\[
+\sup_{0<n_{\mathrm{prior}}<\delta}
+|R_{n_{\mathrm{prior}}}(\beta,\tau)|
+\le M(\beta,\tau),
+\qquad
+\mathbb{E}_{\Pi_0}[M(\beta,\tau)]<\infty.
+\]
+---
+
+
+#### Claim B.1 (Explicit prior ratio and quadratic form)
+
+For each \(n_{\mathrm{prior}} > 0\), let
+\[
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)
+:=
+\frac{
+\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau)
+}{
+\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau)
+}
+\]
+be the ratio of the ING and NG **prior kernels** defined in Section A.2.
+
+Then \(\tilde R_{n_{\mathrm{prior}}}\) can be written in the form
+\[
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+h_{n_{\mathrm{prior}}}(\beta)\,
+\tau^{c_p}\,
+\exp\!\bigl(-\tfrac{1}{2}\tau\,q_{n_{\mathrm{prior}}}(\beta)\bigr),
+\]
+where:
+
+- \(c_p\) is a constant depending only on \(p\),
+- \(q_{n_{\mathrm{prior}}}(\beta)\) is a quadratic form in \(\beta\) whose coefficients are continuous in
+  \(n_{\mathrm{prior}}\) and converge pointwise to finite limits as \(n_{\mathrm{prior}}\to 0^+\),
+- \(h_{n_{\mathrm{prior}}}(\beta)\) does not depend on \(\tau\) and satisfies
+  \(h_{n_{\mathrm{prior}}}(\beta)\to 1\) for each fixed \(\beta\) as \(n_{\mathrm{prior}}\to 0^+\).
+
+*Proof.*
+
+From Section A.2, the NG and ING prior kernels are
+\[
+\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau)
+\propto
+\tau^{a_0(n_{\mathrm{prior}})+p/2-1}
+\exp\!\left(
+-b_0(n_{\mathrm{prior}})\tau
+-\frac{\tau}{2}(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu)
+\right),
+\]
+\[
+\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau)
+\propto
+\tau^{a_0(n_{\mathrm{prior}})+p/2-1}
+\exp\!\left(
+-b_0(n_{\mathrm{prior}})\tau
+\right)
+\exp\!\left(
+-\frac{1}{2}(\beta-\mu)^\top\Sigma(n_{\mathrm{prior}})^{-1}(\beta-\mu)
+\right),
+\]
+with
+\[
+\Sigma_0
+=
+\frac{1-pwt}{pwt}\,(X^\top W_{\mathrm{obs}}X)^{-1},
+\qquad
+\Sigma(n_{\mathrm{prior}})
+=
+\frac{n_w}{n_{\mathrm{prior}}}\,
+\frac{\mathrm{Smarg}}{n_w - p}\,
+(X^\top W_{\mathrm{obs}}X)^{-1}.
+\]
+
+Assumption 1 ensures \(X^\top W_{\mathrm{obs}}X\) is positive definite, so both
+\(\Sigma_0^{-1}\) and \(\Sigma(n_{\mathrm{prior}})^{-1}\) are well defined.
+Assumptions 2–3 (\(n_w>p\), \(\mathrm{RSS}_w>0\)) ensure that the scalar
+multipliers in \(\Sigma(n_{\mathrm{prior}})\) are positive.
+Assumptions 4–5 (\(k\ge0\), \(k+p\ge2\)) ensure that the Gamma shapes and rates
+used in the kernels are strictly positive for all \(n_{\mathrm{prior}}>0\).
+
+The \(\tau\)-powers match (ING shape = NG shape \(+\;p/2\)), so
+\[
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+\frac{
+\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau)
+}{
+\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau)
+}
+=
+\exp\!\left(
+-\frac{1}{2}(\beta-\mu)^\top\Sigma(n_{\mathrm{prior}})^{-1}(\beta-\mu)
++\frac{\tau}{2}(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu)
+\right).
+\]
+
+Define
+\[
+q_{n_{\mathrm{prior}}}(\beta)
+:=
+-(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu),
+\qquad
+c_p := 0,
+\]
+and
+\[
+h_{n_{\mathrm{prior}}}(\beta)
+:=
+\exp\!\left(
+-\frac{1}{2}(\beta-\mu)^\top\Sigma(n_{\mathrm{prior}})^{-1}(\beta-\mu)
+\right).
+\]
+
+Then
+\[
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+h_{n_{\mathrm{prior}}}(\beta)\,
+\tau^{c_p}\,
+\exp\!\bigl(-\tfrac{1}{2}\tau\,q_{n_{\mathrm{prior}}}(\beta)\bigr),
+\]
+with \(q_{n_{\mathrm{prior}}}(\beta)\) a quadratic form in \(\beta\) that does **not**
+depend on \(\tau\) and, in fact, does not depend on \(n_{\mathrm{prior}}\) at all.
+It is therefore continuous in \(n_{\mathrm{prior}}\) and has a finite limit as
+\(n_{\mathrm{prior}}\to 0^+\).
+
+Using the explicit formula for \(\Sigma(n_{\mathrm{prior}})\),
+\[
+\Sigma(n_{\mathrm{prior}})^{-1}
+=
+\frac{n_{\mathrm{prior}}}{n_w}\,
+\frac{n_w - p}{\mathrm{Smarg}}\,
+(X^\top W_{\mathrm{obs}}X),
+\]
+we see that \(\Sigma(n_{\mathrm{prior}})^{-1}\to 0\) as \(n_{\mathrm{prior}}\to 0^+\).
+This uses Assumptions 2–3 to ensure the scalar prefactor is positive.
+Hence, for each fixed \(\beta\),
+\[
+h_{n_{\mathrm{prior}}}(\beta)
+=
+\exp\!\left(
+-\frac{1}{2}(\beta-\mu)^\top\Sigma(n_{\mathrm{prior}})^{-1}(\beta-\mu)
+\right)
+\longrightarrow
+\exp(0) = 1.
+\]
+
+This proves the claimed representation of \(\tilde R_{n_{\mathrm{prior}}}\) and the
+pointwise convergence \(h_{n_{\mathrm{prior}}}(\beta)\to 1\).
+\(\square\)
+
+
+#### Claim B.2 (Uniform envelope and integrability)
+
+Under Assumptions 1–3 and for \(0 < n_{\mathrm{prior}} < \delta\) as in Claim A.1, there exist constants
+\(C, c_1, c_2, c_3 > 0\) and a measurable function
+
+\[
+M(\beta,\tau)
+=
+C\,(1 + \tau^{c_1})\,\exp(-c_2 \tau)\,\exp\bigl(c_3 \|\beta\|^2\bigr)
+\]
+
+such that
+
+\[
+\bigl|R_{n_{\mathrm{prior}}}(\beta,\tau)\bigr|
+\le M(\beta,\tau)
+\quad\text{for all }(\beta,\tau)\text{ and }0 < n_{\mathrm{prior}} < \delta,
+\]
+
+and
+
+\[
+\int M(\beta,\tau)\,\Pi_0(\mathrm{d}\beta,\mathrm{d}\tau) < \infty.
+\]
+
+
+*Proof of Claim B.2.*
+
+Recall
+\[
+R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+\frac{
+\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau\mid y)
+}{
+\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau\mid y)
+}
+=
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)\,
+\frac{
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+},
+\]
+with \(\tilde R_{n_{\mathrm{prior}}}\) the prior–kernel ratio from Claim B.1 and
+\[
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+=
+\iint L(y\mid\beta,\tau)\,\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau)\,\mathrm{d}\beta\,\mathrm{d}\tau,
+\quad
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+=
+\iint L(y\mid\beta,\tau)\,\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau)\,\mathrm{d}\beta\,\mathrm{d}\tau.
+\]
+
+---
+
+### **Step 1: Envelope for \(\tilde R_{n_{\mathrm{prior}}}\).**
+
+From Claim B.1 and the explicit formulas in A.2,
+\[
+\log \tilde R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+-\tfrac12(\beta-\mu)^\top\Sigma(n_{\mathrm{prior}})^{-1}(\beta-\mu)
++\tfrac12\tau\,(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu).
+\]
+
+Assumption 1 ensures \(X^\top W_{\mathrm{obs}}X\) is positive definite, so both
+\(\Sigma_0^{-1}\) and \(\Sigma(n_{\mathrm{prior}})^{-1}\) exist.
+Assumptions 2–3 (\(n_w>p\), \(\mathrm{RSS}_w>0\)) ensure the scalar multipliers in
+\(\Sigma(n_{\mathrm{prior}})\) are positive.
+Assumptions 4–5 (\(k\ge0\), \(k+p\ge2\)) ensure the Gamma shapes and rates used in the
+kernels are strictly positive.
+
+For \(0<n_{\mathrm{prior}}<\delta\), Claim A.1 implies that the operator norms of
+\(\Sigma_0^{-1}\) and \(\Sigma(n_{\mathrm{prior}})^{-1}\) are uniformly bounded.
+Hence there exists \(C>0\) such that
+\[
+\bigl|\log \tilde R_{n_{\mathrm{prior}}}(\beta,\tau)\bigr|
+\le
+C\,(1+\tau)\,\|\beta-\mu\|^2
+\le
+C'\,(1+\tau)\,(1+\|\beta\|^2)
+\]
+for all \((\beta,\tau)\) and \(0<n_{\mathrm{prior}}<\delta\).
+Exponentiating and absorbing constants,
+\[
+\bigl|\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)\bigr|
+\le
+C_0\,(1+\tau^{c_1})\,\exp(-c_2\tau)\,\exp\bigl(c_3\|\beta\|^2\bigr)
+=: M_0(\beta,\tau),
+\]
+for suitable \(C_0,c_1,c_2,c_3>0\) independent of \(n_{\mathrm{prior}}\).
+This gives the desired functional form for an envelope of \(\tilde R_{n_{\mathrm{prior}}}\).
+
+---
+
+### **Step 2: Boundedness of the normalizing–constant ratio.**
+
+The maps
+\[
+n_{\mathrm{prior}}\mapsto Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}},
+\qquad
+n_{\mathrm{prior}}\mapsto Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+\]
+are continuous on \((0,\delta)\) because the integrands depend continuously on
+\(n_{\mathrm{prior}}\) and are dominated by an integrable envelope.
+The likelihood \(L(y\mid\beta,\tau)\) times the NG prior kernel, together with the
+uniform moment bounds from Lemma A (which rely on Assumptions 2–5 to ensure the
+Gamma parameters remain in compact subsets of \((0,\infty)\)), provide such domination.
+
+In particular, both \(Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}\) and
+\(Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}\) stay in compact subsets of \((0,\infty)\) for
+\(0<n_{\mathrm{prior}}<\delta\), so there exists \(K>0\) such that
+\[
+\frac{
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+}
+\in [K^{-1},K]
+\quad\text{for }0<n_{\mathrm{prior}}<\delta.
+\]
+
+---
+
+### **Step 3: Envelope for \(R_{n_{\mathrm{prior}}}\) and integrability under \(\Pi_0\).**
+
+Combining Steps 1–2,
+\[
+\bigl|R_{n_{\mathrm{prior}}}(\beta,\tau)\bigr|
+\le
+K\,M_0(\beta,\tau)
+=
+C\,(1+\tau^{c_1})\,\exp(-c_2\tau)\,\exp\bigl(c_3\|\beta\|^2\bigr)
+=: M(\beta,\tau),
+\]
+for all \((\beta,\tau)\) and \(0<n_{\mathrm{prior}}<\delta\), with \(C=K C_0\).
+
+Under the limiting NG law \(\Pi_0\) from Theorem 2, \(\tau\) has a Gamma distribution
+with shape \(a_0>1\) and rate \(b_0>0\), and \(\beta\mid\tau\) is Gaussian with covariance
+proportional to \(\tau^{-1}G^{-1}\).
+Assumptions 2–5 ensure these limiting parameters are strictly positive.
+For \(c_2>0\) small enough and \(c_3>0\) small enough, all mixed moments
+\(\mathbb{E}_{\Pi_0}[\tau^{k}\exp(c_3\|\beta\|^2)]\) with \(k\le c_1\) are finite, so
+\[
+\int M(\beta,\tau)\,\Pi_0(\mathrm{d}\beta,\mathrm{d}\tau)<\infty.
+\]
+
+This establishes the claimed envelope and integrability, proving Claim B.2.
+\(\square\)
+
+
+*Proof of Lemma B.*
+
+Write both posteriors as
+\[
+\pi^{(\cdot)}_{n_{\mathrm{prior}}}(\beta,\tau\mid y)
+\propto
+L(y\mid\beta,\tau)\,
+\pi^{(\cdot)}_{n_{\mathrm{prior}}}(\beta,\tau),
+\]
+with the common Gaussian likelihood \(L(y\mid\beta,\tau)\) from Section A.1.
+The likelihood cancels in the posterior ratio, so
+\[
+R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+\frac{
+\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau\mid y)
+}{
+\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau\mid y)
+}
+=
+\frac{
+\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}(\beta,\tau)
+}{
+\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}(\beta,\tau)
+}
+\cdot
+\frac{
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+}
+=
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)\,
+\frac{
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+},
+\]
+where \(\tilde R_{n_{\mathrm{prior}}}\) is the prior–kernel ratio from Claim B.1 and
+\[
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+=
+\iint L\,\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}},\qquad
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+=
+\iint L\,\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}.
+\]
+
+By Claim B.1,
+\[
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+h_{n_{\mathrm{prior}}}(\beta)\,\tau^{c_p}
+\exp\!\bigl(-\tfrac12\tau\,q_{n_{\mathrm{prior}}}(\beta)\bigr),
+\]
+with \(h_{n_{\mathrm{prior}}}(\beta)\to 1\) for each fixed \(\beta\) and
+\(q_{n_{\mathrm{prior}}}(\beta)\) a quadratic form whose coefficients are continuous in
+\(n_{\mathrm{prior}}\) and converge pointwise.
+Assumption 1 ensures \(X^\top W_{\mathrm{obs}}X\) is positive definite, so
+\(\Sigma_0^{-1}\) and \(\Sigma(n_{\mathrm{prior}})^{-1}\) are well defined.
+Assumptions 2–3 (\(n_w>p\), \(\mathrm{RSS}_w>0\)) ensure the scalar multipliers in
+\(\Sigma(n_{\mathrm{prior}})\) are positive.
+Assumptions 4–5 (\(k\ge0\), \(k+p\ge2\)) ensure the Gamma shapes and rates in the
+kernels are strictly positive.
+
+In our explicit construction, \(q_{n_{\mathrm{prior}}}(\beta)\) does not depend on
+\(n_{\mathrm{prior}}\) at all, and
+\[
+h_{n_{\mathrm{prior}}}(\beta)
+=
+\exp\!\left(
+-\tfrac12(\beta-\mu)^\top\Sigma(n_{\mathrm{prior}})^{-1}(\beta-\mu)
+\right)
+\to 1
+\]
+because \(\Sigma(n_{\mathrm{prior}})^{-1}\to 0\) as \(n_{\mathrm{prior}}\to 0^+\).
+Thus, for each fixed \((\beta,\tau)\),
+\[
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)\to 1.
+\]
+
+Next, write the normalizing–constant ratio as
+\[
+\frac{
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+}
+=
+\frac{
+\iint L\,\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+\iint L\,\pi^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+}
+=
+\frac{
+\iint L\,\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+\iint L\,\tilde R_{n_{\mathrm{prior}}}\,\pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}
+=
+\frac{1}{
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}\!\bigl[\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)\bigr]
+}.
+\]
+
+Claim B.2 provides a measurable envelope \(M(\beta,\tau)\) such that
+\[
+\sup_{0<n_{\mathrm{prior}}<\delta}
+|R_{n_{\mathrm{prior}}}(\beta,\tau)|
+\le M(\beta,\tau),
+\qquad
+\int M(\beta,\tau)\,\Pi_0(\mathrm{d}\beta,\mathrm{d}\tau)<\infty,
+\]
+where \(\Pi_0\) is the NG weak–prior limit from Theorem 2.
+Assumptions 2–5 ensure that the limiting Gamma parameters of \(\Pi_0\) are strictly
+positive, which guarantees integrability of the envelope.
+
+In particular, for \(n_{\mathrm{prior}}\) small, the normalizing–constant ratio stays in a
+bounded interval, so \(|\tilde R_{n_{\mathrm{prior}}}|\) is also dominated by a multiple of
+\(M\).
+Together with the pointwise convergence \(\tilde R_{n_{\mathrm{prior}}}\to 1\) and the
+uniform moment bounds from Lemma A (which rely on Assumptions 2–5), this yields, by
+dominated convergence,
+\[
+\mathbb{E}_{\Pi^{(\mathrm{NG})}_{n_{\mathrm{prior}}}}\!\bigl[\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)\bigr]
+\longrightarrow 1,
+\qquad
+\frac{
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+}
+\longrightarrow 1.
+\]
+
+Finally,
+\[
+R_{n_{\mathrm{prior}}}(\beta,\tau)
+=
+\tilde R_{n_{\mathrm{prior}}}(\beta,\tau)\,
+\frac{
+Z^{(\mathrm{NG})}_{n_{\mathrm{prior}}}
+}{
+Z^{(\mathrm{ING})}_{n_{\mathrm{prior}}}
+}
+\longrightarrow 1
+\quad\text{for each fixed }(\beta,\tau),
+\]
+and the same envelope \(M\) from Claim B.2 provides the required domination.
+This proves Lemma B.
+\(\square\)
+
+---
+
+### A.8 Summary
+
+The proof of Theorem 3 reduces to:
+
+- establishing uniform moment bounds for the NG path (Lemma A),
+- proving ratio convergence and domination (Lemma B),
+- applying dominated convergence to show ING $\approx$ NG for small \(n_{\mathrm{prior}}\),
+- and combining this with the NG weak‑prior limit (Theorem 2).
+
+Only Lemmas A and B require nontrivial work; all other steps follow from standard arguments in
+posterior convergence theory.
+
+
+
+### Appendix B: Derivation of Theorem 1 (Conjugate Normal–Gamma posterior)
+
+We sketch how each closed‑form expression in Theorem 1 follows from standard Normal–Gamma algebra
+under the calibration in §3.3.1–3.3.2; see [@Raiffa1961; @Gelman2013] for the underlying updates.
+
+#### B.1 Setup and joint kernel
+
+Start from the prior
+\[
+\beta \mid \tau \sim N\bigl(\mu,\;\tau^{-1}\Sigma_0\bigr),
+\qquad
+\tau \sim \Gamma(a_0,b_0),
+\]
+and the weighted Gaussian likelihood
+\[
+y \mid \beta,\tau \sim N\bigl(X\beta,\;\tau^{-1}W_{\mathrm{obs}}^{-1}\bigr),
+\]
+with
+\[
+G := X^\top W_{\mathrm{obs}}X,\qquad
+\hat\beta := G^{-1}X^\top W_{\mathrm{obs}}y,\qquad
+\mathrm{RSS}_w := (y-X\hat\beta)^\top W_{\mathrm{obs}}(y-X\hat\beta).
+\]
+
+Assumption 1 ensures \(G\) is positive definite, so \(G^{-1}\) exists.
+Assumption 2 ensures \(n_w>p\), so the weighted Gaussian likelihood is proper.
+Assumption 3 ensures \(\mathrm{RSS}_w>0\), so the marginal quadratic term is strictly positive.
+
+Under the Zellner calibration in §3.3.2,
+  \[
+  \Sigma_0
+  =
+  \frac{1-\mathrm{pwt}}{\mathrm{pwt}}\,G^{-1}
+  =
+  \frac{n_w}{n_{\mathrm{prior}}}\,G^{-1}.
+  \]
+
+
+and
+\[
+a_0 = \frac{n_{\mathrm{prior}}+k}{2},
+\qquad
+b_0 = \frac{n_{\mathrm{prior}}+k+p-2}{2}\,\frac{\mathrm{Smarg}}{n_w-p},
+\]
+
+with \(k\ge0\) and \(k+p\ge2\) by Assumptions 4–5, ensuring \(a_0>0\) and \(b_0>0\).
+
+The joint prior–likelihood kernel in \((\beta,\tau)\) is
+\[
+\pi(\beta,\tau\mid y)
+\propto
+\tau^{a_0-1}\exp(-b_0\tau)\,
+\tau^{p/2}\exp\!\Bigl(-\tfrac{\tau}{2}(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu)\Bigr)\,
+\tau^{n_w/2}\exp\!\Bigl(-\tfrac{\tau}{2}\mathrm{RSS}_w(\beta)\Bigr),
+\]
+where
+\[
+\mathrm{RSS}_w(\beta)
+=
+\mathrm{RSS}_w + (\beta-\hat\beta)^\top G(\beta-\hat\beta).
+\]
+
+Collecting powers of \(\tau\) gives the Gamma shape update; collecting quadratic forms in \(\beta\) and completing
+the square gives the Normal block.
+
+---
+
+#### B.2 Posterior Normal block: mean and dispersion‑free covariance
+
+The quadratic form in \(\beta\) is
+\[
+\frac{\tau}{2}
+\Bigl[
+(\beta-\hat\beta)^\top G(\beta-\hat\beta)
++
+(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu)
+\Bigr].
+\]
+
+Write
+\[
+G_{\mathrm{post}} := G + \Sigma_0^{-1},
+\]
+and complete the square:
+\[
+(\beta-\hat\beta)^\top G(\beta-\hat\beta)
++
+(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu)
+=
+(\beta-\mu_{\mathrm{post}})^\top G_{\mathrm{post}}(\beta-\mu_{\mathrm{post}})
++ \text{const},
+\]
+with
+\[
+\mu_{\mathrm{post}}
+=
+G_{\mathrm{post}}^{-1}\bigl(G\hat\beta + \Sigma_0^{-1}\mu\bigr).
+\]
+
+Using \(\Sigma_0^{-1} = \frac{\mathrm{pwt}}{1-\mathrm{pwt}}G = \frac{n_w}{n_{\mathrm{prior}}}G\), we have
+\[
+G_{\mathrm{post}}
+=
+\Bigl(1+\frac{n_w}{n_{\mathrm{prior}}}\Bigr)G
+=
+\frac{n_{\mathrm{prior}}+n_w}{n_{\mathrm{prior}}}\,G,
+\]
+so
+\[
+G_{\mathrm{post}}^{-1}
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,G^{-1}.
+\]
+
+Substituting into \(\mu_{\mathrm{post}}\),
+\[
+\mu_{\mathrm{post}}
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,\mu
++
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,\hat\beta,
+\]
+and the dispersion‑free posterior covariance is
+\[
+\Sigma_{0,\mathrm{post}}
+=
+G_{\mathrm{post}}^{-1}
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,G^{-1}
+=
+\frac{n_{\mathrm{prior}}+n_w}{n_w}\,\Sigma_0,
+\]
+which matches item (ii) of Theorem 1.
+
+
+
+
+
+---
+
+#### B.3 Posterior Gamma block: shape and rate
+
+To obtain the posterior Gamma update for \(\tau\), we must work with the **marginal** kernel
+\(\pi(\tau\mid y)\), not the conditional kernel \(\pi(\tau\mid\beta,y)\).
+This distinction matters because the conditional Normal density in \(\beta\mid\tau\) contains a factor
+\(\tau^{p/2}\), but this factor is exactly canceled when we integrate out \(\beta\).
+
+Start from the joint kernel
+\[
+\pi(\beta,\tau\mid y)
+\;\propto\;
+\tau^{a_0-1}\,e^{-b_0\tau}\;
+\tau^{p/2}\exp\!\Bigl(-\tfrac{\tau}{2}(\beta-\mu)^\top\Sigma_0^{-1}(\beta-\mu)\Bigr)\;
+\tau^{n_w/2}\exp\!\Bigl(-\tfrac{\tau}{2}\mathrm{RSS}_w(\beta)\Bigr).
+\]
+
+If we look only at the conditional kernel in \(\beta\mid\tau\), the exponent of \(\tau\) appears to be
+\[
+a_0 - 1 + \frac{p}{2} + \frac{n_w}{2}.
+\]
+
+However, the **marginal** Gamma update is obtained from
+\[
+\pi(\tau\mid y)
+\;\propto\;
+\tau^{a_0-1}\,e^{-b_0\tau}\;
+\tau^{n_w/2}
+\int
+\tau^{p/2}\exp\!\Bigl(-\tfrac{\tau}{2}Q(\beta)\Bigr)\,d\beta,
+\]
+where \(Q(\beta)\) is the quadratic form combining the likelihood and prior.
+
+The integral over \(\beta\) is a multivariate Gaussian integral:
+\[
+\int \tau^{p/2}\exp\!\Bigl(-\tfrac{\tau}{2}Q(\beta)\Bigr)\,d\beta
+=
+\tau^{p/2}\cdot (2\pi)^{p/2}\cdot \tau^{-p/2}\cdot |G_{\mathrm{post}}|^{-1/2}
+\exp\!\Bigl(-\tfrac{\tau}{2}Q(\mu_{\mathrm{post}})\Bigr).
+\]
+
+The crucial point is the cancellation:
+\[
+\tau^{p/2}\times\tau^{-p/2} = 1.
+\]
+
+Thus **no \(p/2\) term survives** in the marginal kernel for \(\tau\).
+
+After cancellation, the only remaining powers of \(\tau\) are
+\[
+a_0 - 1 + \frac{n_w}{2},
+\]
+so the posterior Gamma shape is
+\[
+a_n
+=
+a_0 + \frac{n_w}{2}
+=
+\frac{n_{\mathrm{prior}}+k}{2} + \frac{n_w}{2}
+=
+\frac{n_{\mathrm{prior}} + k + n_w}{2},
+\]
+matching item (iii) of Theorem 1.
+
+For the rate parameter, the Gaussian integral contributes the marginal quadratic term from §3.1:
+\[
+\frac{1}{2}\,\mathrm{Smarg}.
+\]
+
+Thus
+\[
+b_n = b_0 + \frac{1}{2}\,\mathrm{Smarg}
+=
+\frac{1}{2}\,\frac{n_{\mathrm{prior}}+k+p-2}{n_w-p}\,\mathrm{Smarg}
++
+\frac{1}{2}\,\mathrm{Smarg}
+=
+\frac{1}{2}\,\frac{n_{\mathrm{prior}}+k+n_w-2}{n_w-p}\,\mathrm{Smarg},
+\]
+which reduces to the expression in item (iv) under the calibration of §3.3.1.
+
+---
+
+#### B.4 Marginal moments of \(\beta\) and \(\sigma^2\)
+
+Given \(\tau\), the posterior factorizes as
+\[
+\beta\mid\tau,y \sim N\bigl(\mu_{\mathrm{post}},\;\tau^{-1}\Sigma_{0,\mathrm{post}}\bigr),
+\qquad
+\tau\mid y \sim \Gamma(a_n,b_n),
+\]
+with
+\[
+\mu_{\mathrm{post}}
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,\mu
++
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,\hat\beta,
+\qquad
+\Sigma_{0,\mathrm{post}}
+=
+\frac{n_{\mathrm{prior}}+n_w}{n_w}\,G^{-1},
+\]
+\[
+a_n
+=
+\frac{n_{\mathrm{prior}}+k+n_w}{2},
+\qquad
+b_n
+=
+\frac{n_{\mathrm{prior}}+k+n_w-2}{2}\,
+\frac{\mathrm{Smarg}}{n_w-p}.
+\]
+
+---
+
+**Marginal mean of \(\beta\).**  
+Using the law of total expectation,
+\[
+E[\beta\mid y]
+=
+E_\tau\bigl[E[\beta\mid\tau,y]\bigr]
+=
+E_\tau[\mu_{\mathrm{post}}]
+=
+\mu_{\mathrm{post}},
+\]
+since \(\mu_{\mathrm{post}}\) does not depend on \(\tau\). Thus
+\[
+E[\beta\mid y]
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}\,\mu
++
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,\hat\beta,
+\]
+a convex combination of the prior mean and the weighted least‑squares estimate, with weights
+\[
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}
+\quad\text{and}\quad
+\frac{n_w}{n_{\mathrm{prior}}+n_w},
+\]
+as in item (v).
+
+---
+
+**Marginal mean of \(\sigma^2 = \tau^{-1}\).**  
+For \(\tau\sim\Gamma(a_n,b_n)\) with shape–rate parameterization,
+\[
+E[\tau^{-1}\mid y]
+=
+\frac{b_n}{a_n-1},
+\quad\text{provided }a_n>1.
+\]
+
+Assumptions 4–5 (\(k\ge0\), \(k+p\ge2\)) together with Assumption 2 (\(n_w>p\)) ensure  
+\[
+a_n=\frac{n_{\mathrm{prior}}+k+n_w}{2}>1,
+\]
+so the expectation is well‑defined.
+
+Substituting the expressions for \(a_n\) and \(b_n\),
+\[
+E[\sigma^2\mid y]
+=
+\frac{
+\frac{n_{\mathrm{prior}}+k+n_w-2}{2}\,\frac{\mathrm{Smarg}}{n_w-p}
+}{
+\frac{n_{\mathrm{prior}}+k+n_w}{2}-1
+}
+=
+\frac{\mathrm{Smarg}}{n_w-p},
+\]
+which is exactly the residual‑variance estimator in item (vi).  
+Assumption 3 (\(\mathrm{RSS}_w>0\)) ensures \(\mathrm{Smarg}>0\).
+
+---
+
+**Marginal covariance of \(\beta\).**  
+By the law of total covariance,
+\[
+\mathrm{Cov}(\beta\mid y)
+=
+E_\tau\bigl[\mathrm{Cov}(\beta\mid\tau,y)\bigr]
++
+\mathrm{Cov}_\tau\bigl(E[\beta\mid\tau,y]\bigr).
+\]
+Since \(E[\beta\mid\tau,y]=\mu_{\mathrm{post}}\) does not depend on \(\tau\), the second term vanishes and
+\[
+\mathrm{Cov}(\beta\mid y)
+=
+E_\tau\bigl[\tau^{-1}\Sigma_{0,\mathrm{post}}\bigr]
+=
+E[\tau^{-1}\mid y]\;\Sigma_{0,\mathrm{post}}.
+\]
+
+We now compute both factors explicitly.
+
+---
+
+**Step 1: \(E[\tau^{-1}\mid y]\).**  
+From the Gamma block in Theorem 1,
+\[
+\tau\mid y \sim \Gamma(a_n,b_n),
+\qquad
+a_n = \frac{n_{\mathrm{prior}}+k+n_w}{2},
+\quad
+b_n = \frac{n_{\mathrm{prior}}+k+n_w-2}{2}\,\frac{\mathrm{Smarg}}{n_w-p}.
+\]
+
+Assumptions 4–5 together with Assumption 2 ensure \(a_n>1\), and Assumptions 2–3 ensure \(b_n>0\).  
+Thus the Gamma moment formula applies:
+\[
+E[\tau^{-1}\mid y] = \frac{b_n}{a_n-1}.
+\]
+
+Substitute:
+\[
+a_n-1
+=
+\frac{n_{\mathrm{prior}}+k+n_w}{2}-1
+=
+\frac{n_{\mathrm{prior}}+k+n_w-2}{2},
+\]
+so
+\[
+E[\tau^{-1}\mid y]
+=
+\frac{
+\frac{n_{\mathrm{prior}}+k+n_w-2}{2}\,\frac{\mathrm{Smarg}}{n_w-p}
+}{
+\frac{n_{\mathrm{prior}}+k+n_w-2}{2}
+}
+=
+\frac{\mathrm{Smarg}}{n_w-p}.
+\]
+
+---
+
+**Step 2: \(\Sigma_{0,\mathrm{post}}\).**  
+By conjugate Normal–Gamma algebra,
+\[
+\Sigma_{0,\mathrm{post}}
+=
+\bigl(\Sigma_0^{-1} + G\bigr)^{-1},
+\qquad
+G = X^\top W_{\mathrm{obs}}X.
+\]
+
+Assumption 1 ensures \(G\) is positive definite, so all inverses exist.
+
+Under the Zellner calibration,
+\[
+\Sigma_0
+=
+\frac{1-\mathrm{pwt}}{\mathrm{pwt}}\,G^{-1},
+\quad\text{so}\quad
+\Sigma_0^{-1}
+=
+\frac{\mathrm{pwt}}{1-\mathrm{pwt}}\,G.
+\]
+
+Hence
+\[
+\Sigma_0^{-1} + G
+=
+\Bigl(\frac{\mathrm{pwt}}{1-\mathrm{pwt}} + 1\Bigr)G
+=
+\frac{1}{1-\mathrm{pwt}}\,G,
+\]
+and therefore
+\[
+\Sigma_{0,\mathrm{post}}
+=
+(1-\mathrm{pwt})\,G^{-1}.
+\]
+
+Now use the mapping between \(\mathrm{pwt}\) and \(n_{\mathrm{prior}}\):
+\[
+\mathrm{pwt}
+=
+\frac{n_{\mathrm{prior}}}{n_{\mathrm{prior}}+n_w}
+\quad\Longrightarrow\quad
+1-\mathrm{pwt}
+=
+\frac{n_w}{n_{\mathrm{prior}}+n_w}.
+\]
+
+Thus
+\[
+\Sigma_{0,\mathrm{post}}
+=
+(1-\mathrm{pwt})\,G^{-1}
+=
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,G^{-1}.
+\]
+
+---
+
+**Step 3: Combine the pieces.**  
+Putting Steps 1 and 2 together,
+\[
+\mathrm{Cov}(\beta\mid y)
+=
+E[\tau^{-1}\mid y]\;\Sigma_{0,\mathrm{post}}
+=
+\frac{\mathrm{Smarg}}{n_w-p}\,
+\frac{n_w}{n_{\mathrm{prior}}+n_w}\,G^{-1},
+\]
+which is exactly item (vii) of Theorem 1.
+
+In particular, the covariance can be written as
+\[
+\mathrm{Cov}(\beta\mid y)
+=
+\Bigl(\text{residual variance estimate } \tfrac{\mathrm{Smarg}}{n_w-p}\Bigr)
+\times
+\Bigl(\text{shrinkage factor } \tfrac{n_w}{n_{\mathrm{prior}}+n_w}\Bigr)
+\times
+G^{-1},
+\]
+making explicit how larger \(n_{\mathrm{prior}}\) reduces the covariance relative to the weak‑prior (least‑squares)
+limit obtained when \(n_{\mathrm{prior}}\to 0^+\).
+
+This completes the derivation of the marginal moments in Theorem 1.

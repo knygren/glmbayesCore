@@ -1,14 +1,12 @@
 ---
-title: "Core 08: Implementation Companion for Independent Normal-Gamma"
+title: "Core 08: Accelerated EnvelopeBuild Implementation using OpenCL"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Core 08: Implementation Companion for Independent Normal-Gamma}
+  %\VignetteIndexEntry{Core 08: Accelerated EnvelopeBuild Implementation using OpenCL}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-bibliography: REFERENCES.bib
-reference-section-title: References
 ---
 
 ```{r, include = FALSE}
@@ -22,365 +20,201 @@ knitr::opts_chunk$set(
 library(glmbayesCore)
 ```
 
-# Core 08: Implementation Companion for Independent Normal-Gamma
+# Core 08: Accelerated EnvelopeBuild Implementation using OpenCL
 
 ## 1. Introduction
 
-This vignette documents the implementation of the **independent Normal-Gamma extension** for Gaussian regression, focusing on the internal workflow of:
+The `glmbayes` package constructs envelopes for accept–reject sampling by evaluating the negative log posterior (f2) and its gradient (f3) at each point of a **tangency grid**. The grid size grows with dimension (e.g., \(3^\ell\) points for \(\ell\) coefficients), and each grid point can be evaluated independently. These evaluations are **embarrassingly parallel** and are a natural target for GPU acceleration.
 
-1. `rIndepNormalGammaReg` (non-`_std`) - the top-level director of traffic for the independent Normal-Gamma sampling path; and
-2. `EnvelopeOrchestrator` - which composes the coefficient-envelope construction (`EnvelopeBuild`) with the dispersion-aware refinement (`EnvelopeDispersionBuild`).
+The optional **OpenCL** implementation accelerates these evaluations by running them on a GPU (or OpenCL-capable CPU). OpenCL is vendor-neutral and works across NVIDIA, AMD, and Intel hardware. When OpenCL is available and `use_opencl = TRUE`, the package uses GPU-accelerated evaluation inside `EnvelopeEval`, which is called by `EnvelopeBuild` and `EnvelopeDispersionBuild`. If OpenCL is not available or `use_opencl = FALSE`, the CPU path (`f2_f3_non_opencl`) is used instead. The package runs correctly in either case.
 
-The discussion then deep-dives into the **accept-reject sampler** used after the envelope is constructed:
-`rIndepNormalGammaReg_std` (serial) / `rIndepNormalGammaReg_std_parallel` (parallel).
+This chapter describes the OpenCL implementation: the two-layer design (kernel wrapper and kernel runner), how the OpenCL program is assembled from ported nmath/rmath functions, and how the pilot and safeguards integrate with the envelope build. For installation and availability checks, see **`vignette("Core-11", package = "glmbayesCore")`**.
 
-Theory justification and the underlying accept-reject / envelope construction are described in Core 04 (the independent Normal-Gamma extension theory) and in [@Nygren2006] for the base likelihood subgradient approach. Implementation of independent Normal--Gamma regression is discussed in [@GriffinBrown2010].
 
-For the fixed-dispersion coefficient-envelope implementation details, see Core 02.
+## 2. Architecture Overview
 
-Prior construction and the Gaussian calibration of `shape`, `rate`, `dispersion`, and coefficient covariances returned by `Prior_Setup()` are derived in **Core 09** (<https://knygren.r-universe.dev/articles/glmbayesCore/Core-09.html>).
+The OpenCL path consists of two layers:
 
-## 2. Core Function #1: `rIndepNormalGammaReg` (non-`_std`) - Internal Workflow
+| Layer | Function | Location | Role |
+|-------|----------|----------|------|
+| **Wrapper** | `f2_f3_opencl` | `kernel_wrappers.cpp` | Flatten R inputs, select kernel, load sources, call runner, reshape outputs |
+| **Runner** | `f2_f3_kernel_runner` | `kernel_runners.cpp` | Platform/device setup, buffer creation, kernel launch, readback |
 
-The entry point in C++ is `src/rIndepNormalGammaReg.cpp`, function `rIndepNormalGammaReg(...)`.
-At a high level, it performs the following stages:
+### 2.1 Call Path
 
-1. **Dispersion centering / refinement** via `EnvelopeCentering()` to obtain:
-   - `dispersion2` (the dispersion anchor used for the envelope), and
-   - `RSS_Post2` (the expected posterior weighted RSS used to update the Gamma precision parameters).
-2. **Posterior mode optimization** via `optim()` (BFGS) to obtain:
-   - posterior mode `bstar`, and
-   - Hessian `A1`.
-3. **Model standardization** via `glmb_Standardize_Model()` to obtain standardized inputs for envelope building:
-   `bstar2`, `A`, `x2_std`, `mu2_std`, `P2_std`, and transform matrices for back-transformation.
-4. **Envelope construction** via `EnvelopeOrchestrator()` (Step D):
-   - coefficient envelope via `EnvelopeBuild`,
-   - dispersion-aware refinement via `EnvelopeDispersionBuild`, and
-   - sorting of envelope components via `EnvelopeSort`.
-5. **Sampling** by delegating to the standardized accept-reject sampler:
-   - `rIndepNormalGammaReg_std` (serial) or
-   - `rIndepNormalGammaReg_std_parallel` (parallel),
-   depending on `use_parallel` and `n`.
-6. **Back-transform** to the original parameterization and assemble outputs.
-
-### 2.1 Stage A: `EnvelopeCentering()` for `dispersion2` and `RSS_Post2`
-
-`rIndepNormalGammaReg` calls:
-
-```r
-centering_out = EnvelopeCentering(y, x, mu, P, offset, wt, shape, rate, Gridtype, verbose)
-dispersion2 = centering_out$dispersion
-RSS_Post2   = centering_out$RSS_post
+```
+EnvelopeEval (EnvelopeEval.cpp)
+    |-- if use_opencl && pilot/check passes:
+    |       f2_f3_opencl() -> f2_f3_kernel_runner()
+    \-- else:
+            f2_f3_non_opencl() -> CPU famfuncs (f2_f3_binomial_logit, etc.)
 ```
 
-In implementation terms, `EnvelopeCentering()`:
-- initializes `dispersion2` from a weighted residual variance computed from `lm.wfit`,
-- iteratively refines `dispersion2` using a fixed-point style loop, and
-- updates the Gamma parameters using the expected posterior weighted RSS.
+`EnvelopeEval` receives the grid `G4` (coefficients at each tangency point), the design matrix, prior parameters, and family/link. It chooses the GPU or CPU path based on `use_opencl` and the outcome of the pilot (when applicable). The GPU path calls `f2_f3_opencl`, which assembles the OpenCL program and invokes `f2_f3_kernel_runner`; the CPU path calls `f2_f3_non_opencl`, which dispatches to the appropriate C++ family function.
 
-The key output for the dispersion-aware refinement is `RSS_Post2`, which drives the precision-rate update inside `EnvelopeOrchestrator`.
 
-### 2.2 Stage B: Posterior mode (`bstar`) and Hessian (`A1`)
+## 3. Program Construction
 
-After centering, `rIndepNormalGammaReg` performs posterior mode optimization using R's `optim()` with:
-- BFGS,
-- supplied functions `f2` and `f3` (negative log-posterior and its gradient),
-- `hessian = TRUE` to obtain a Hessian estimate `A1`.
+OpenCL kernels are not stored as single monolithic files. Instead, the package builds the program by **concatenating** several source components in a fixed order. This mirrors a C/C++ build where headers and libraries are included before the main source.
 
-The mode `bstar` and curvature `A1` are then used to standardize the model into a form suitable for envelope construction.
+### 3.1 Assembly Order
 
-### 2.3 Stage C: Standardization (`glmb_Standardize_Model`)
+The full program string is:
 
-`glmb_Standardize_Model()` transforms the model so that the prior mean is zero and the posterior curvature is represented in a standardized coordinate system.
-
-In implementation terms, the code extracts:
-- `bstar2` (standardized mode),
-- `A` (standardized Hessian / precision contribution),
-- `x2_std`, `mu2_std`, `P2_std` (standardized design and prior components),
-- `L2Inv`, `L3Inv` (matrices used later to back-transform sampled coefficients).
-
-For the full theoretical and implementation details of standardization, see Core 02.
-
-### 2.4 Stage D: `EnvelopeOrchestrator()` - envelope + dispersion refinement
-
-`rIndepNormalGammaReg` delegates the construction of the coefficient envelope and the dispersion-aware extension to `EnvelopeOrchestrator`.
-
-It passes:
-- standardized mode and curvature objects (`bstar2`, `A`),
-- standardized design/prior terms (`x2_std`, `mu2_std`, `P2_std`),
-- offsets/weights (`alpha`, `wt`),
-- envelope grid controls (`n`, `Gridtype`, `n_envopt`),
-- Gamma prior hyperparameters (`shape`, `rate`),
-- and centering outputs (`RSS_Post2`, plus bounds / truncation controls).
-
-The orchestrator returns:
-- `Env` (sorted envelope object including the PLSD component),
-- `gamma_list` (tilt parameters and dispersion bounds),
-- `UB_list` (the various constants used by the sampler accept-reject test),
-- and additional diagnostics including `low` / `upp`.
-
-### 2.5 Stage E: Delegation to `rIndepNormalGammaReg_std` / `_parallel`
-
-After envelope construction, the code selects:
-- serial sampler `rIndepNormalGammaReg_std(...)`, or
-- parallel sampler `rIndepNormalGammaReg_std_parallel(...)`,
-based on `use_parallel` and `n`.
-
-This is where the accept-reject loop actually executes and where `iters_out` is recorded.
-
-### 2.6 Stage F: Back-transform and return values
-
-The standardized samples `beta_out` are mapped back to the original parameterization using:
-- the inverse standardization transforms (`L2Inv`, `L3Inv`),
-- and the prior mean shift (`mu`).
-
-The returned structure mirrors the expected R-level contract:
-- samples (coefficients and dispersion),
-- plus runtime / iteration diagnostics (`iters_out`, `weight_out`).
-
-## 3. Core Function #2: `EnvelopeOrchestrator` - Composition of Envelope Steps
-
-`src/EnvelopeOrchestrator.cpp` provides a single orchestrator that composes:
-
-1. `EnvelopeBuild()` - fixed-dispersion coefficient envelope, and
-2. `EnvelopeDispersionBuild()` - dispersion-aware refinement for the independent Normal-Gamma extension,
-followed by:
-3. `EnvelopeSort()` on the R side.
-
-### 3.1 Orchestrator inputs and internal Gamma anchoring
-
-Inside `EnvelopeOrchestrator`, the Gamma posterior parameters for the dispersion precision are computed from:
-- the prior hyperparameters (`shape`, `rate`),
-- and the centering output `RSS_Post2`.
-
-The implementation computes:
-- `shape2 = shape + n_w/2`,
-- `rate3  = rate + RSS_Post2/2`,
-- and the dispersion anchor:
-  `d1_star = rate3 / (shape2 - 1)`.
-
-This anchor is used to rescale weights (`wt2 = wt / d1_star`) when building the coefficient envelope.
-
-### 3.2 Step 1: `EnvelopeBuild()` call (coefficient-envelope)
-
-The orchestrator calls `EnvelopeBuild(...)` in C++ with:
-- standardized mode (`bstar2`),
-- standardized curvature / precision object (`A`),
-- standardized design/prior pieces (`x2`, `mu2`, `P2`),
-- offsets (`alpha`) and weight scaling (`wt2`),
-- family/link fixed to Gaussian/identity.
-
-Implementation detail worth noting: the orchestrator uses internal policy around grid size and sorting to avoid redundant work when followed by the dispersion-aware build.
-
-### 3.3 Step 2 (Deep Dive): `EnvelopeDispersionBuild()` - dispersion-aware extension
-
-This subsection focuses on `EnvelopeDispersionBuild()` as the **extension-specific** computational workhorse for dispersion.
-
-#### 3.3.1 Inputs and the role of `RSS_Post2`
-
-`EnvelopeDispersionBuild` receives:
-- the coefficient-envelope object `Env` from `EnvelopeBuild`,
-- prior hyperparameters (`shape`, `rate`),
-- the standardized model pieces (`P`, `y`, `x2`, `alpha`, `mu`, `wt`),
-- the number of observations,
-- and critically:
-  - `RSS_post` = the centering output `RSS_Post2`,
-  - `RSS_ML` (currently `NA` in this path).
-
-At a conceptual level, `RSS_post` determines where the dispersion-axis Gamma proposal is anchored and how the dispersion refinement changes the proposal shape/rate parameters.
-
-#### 3.3.2 Dispersion interval construction (`low`, `upp`)
-
-The implementation uses:
-- `max_disp_perc` (default 0.99) as a central truncation mass level,
-- and optional `disp_lower` / `disp_upper` overrides,
-to produce the final dispersion truncation interval:
-`[low, upp]` on the dispersion scale.
-
-This interval becomes the domain over which all envelope components must dominate.
-
-#### 3.3.3 Anchor dispersion and face slopes
-
-The function computes an anchor dispersion (often the mode of the surrogate Gamma distribution on the dispersion scale) and uses it to evaluate:
-- face slopes / gradient-related quantities used in the dispersion-axis refinement.
-
-This anchor is used to extrapolate dispersion-dependent face constants to both ends of the dispersion interval.
-
-#### 3.3.4 RSS/UB minimization and construction of `UB_list`
-
-The dispersion-aware machinery constructs the constants required by the accept-reject sampler:
-- global residual-minimum quantity `RSS_Min`,
-- per-face `UB2min`,
-- along with the various log/linear constants and diagnostic maxima used in the acceptance bound.
-
-These populate `UB_list`, which is later consumed by `rIndepNormalGammaReg_std` to compute:
-- `UB1`, `UB2`, `UB3A`, `UB3B`,
-- and the final accept/reject `test` statistic.
-
-#### 3.3.5 Gamma tilt parameters (`gamma_list`)
-
-Finally, `EnvelopeDispersionBuild` updates the Gamma proposal parameters through the dispersion-axis correction logic.
-It returns:
-- `shape3` and `rate2`-type parameters for the precision proposal,
-- plus the resulting dispersion bounds (`disp_lower`, `disp_upper`),
-and a collection of diagnostics fields.
-
-#### 3.3.6 Returned object summary
-
-The main return object is a list with:
-- `Env_out` (the updated envelope with dispersion-aware PLSD / mixture structure),
-- `UB_list` (accept-reject constants and UB diagnostics),
-- `gamma_list` (Gamma proposal tilt params),
-- and additional diagnostics (e.g., anchor value, computed maxima, UB minima).
-
-This entire structure is consumed by the sampler in `rIndepNormalGammaReg_std`.
-
-### 3.4 Step 3: `EnvelopeSort()` (component reordering)
-
-`EnvelopeOrchestrator` then calls the R function `EnvelopeSort(...)` to reorder components based on probability mass in a way that improves simulation runtime.
-
-The sorted envelope and associated UB constants are carried forward into the accept-reject simulation.
-
-## 4. Simulation Execution: `rIndepNormalGammaReg_std` - Serial Accept-Reject Loop
-
-After `EnvelopeOrchestrator()` returns the sorted envelope together with the dispersion proposal parameters and the accept-reject constants, `rIndepNormalGammaReg_std` generates iid posterior draws using an envelope-based rejection sampler.
-
-Conceptually, each accepted draw consists of two pieces:
-
-1. a regression coefficient vector `beta` proposed from an envelope-restricted multivariate normal (face-wise), and
-2. a dispersion/precision draw `dispersion` (via a truncated inverse-Gamma proposal).
-
-The accept-reject decision is then made by checking that a bound constructed from `UB_list` and envelope-derived tangency quantities dominates the target density.
-
-### 4.1 Precomputation (`Inv_f3_precompute_disp`)
-
-Before the per-draw loop, the sampler builds a cache once:
-
-```r
-cache = Inv_f3_precompute_disp(cbars, y, x, mu, P, alpha, wt)
+```
+all_src = OPENCL.cl
+        + rmath (opencltools::load_kernel_library("rmath", package = "glmbayesCore"))
+        + dpq   (opencltools::load_kernel_library("dpq", package = "glmbayesCore"))
+        + nmath (opencltools::load_kernel_library("nmath", package = "glmbayesCore"))
+        + kernel file (opencltools::load_kernel_source(...), e.g. "src/f2_f3_binomial_logit.cl")
 ```
 
-This cache is reused inside the accept-reject loop so that repeated evaluations at dispersion-dependent tangency points avoid rebuilding expensive matrices.
+1. **OPENCL.cl** – Global configuration: extensions (`cl_khr_fp64`, `cl_khr_printf`), IEEE constants (`ML_NAN`, `ML_POSINF`), feature detection for `expm1`/`log1p`, and utility macros.
+2. **rmath** – Mathematical constants (M_E, M_PI, etc.) and distribution function declarations.
+3. **dpq** – R-style density/CDF macros (`R_D__0`, `R_DT_val`, etc.) used in give_log/lower_tail logic.
+4. **nmath** – Ported numerical routines (bd0, stirlerr, lgamma, dbinom, dpois, pnorm, etc.).
+5. **Kernel file** – The model-specific kernel (e.g., `f2_f3_binomial_logit.cl`) that computes f2 and f3 for each grid point.
 
-### 4.2 Proposal generation (per accepted draw)
+### 3.2 load_kernel_source and load_kernel_library
 
-For each draw index `i`, the sampler repeats a `while` loop until the proposal is accepted:
+Generic loaders live in **opencltools** (not re-exported from glmbayesCore):
 
-1. **Select an envelope face (component)**
-   - Draw an index `J` from the discrete distribution defined by `PLSD`.
-2. **Propose regression coefficients `beta` on the restricted interval**
-   - For each coordinate `j = 1,...,p`, sample from the restricted normal using the envelope bounds `loglt[J, ]` and `logrt[J, ]`.
-   - The restricted normal is centered using the face-specific anchoring values `-cbars(J, j)`.
-3. **Propose dispersion**
-   - Draw `dispersion` from the truncated proposal using:
-     `rinvgamma_ct_safe(shape3, rate2, disp_upper, disp_lower)`.
-4. **Update dispersion-dependent tangency quantities**
-   - With the proposed `dispersion`, recompute the dispersion-adjusted tangency point(s) by calling:
-     `Inv_f3_with_disp(cache, dispersion, cbars_small)`.
-   - Evaluate the log-likelihood at both:
-     - the updated tangency point (stored as `LL_New2`), and
-     - the candidate `beta` (stored as `LL_Test`).
-     The likelihood evaluations use weights adjusted as `wt2 = wt / dispersion`.
+- **`opencltools::load_kernel_source(relative_path, package = "glmbayesCore")`** – Loads a single `.cl` file from `inst/cl/`.
+- **`opencltools::load_kernel_library(subdir, package = "glmbayesCore")`** – Loads all `.cl` files in a subdirectory (e.g., `"nmath"`, `"rmath"`, `"dpq"`), parses `@provides` and `@depends` annotations, performs a **dependency-aware topological sort**, and concatenates the files so that dependents appear after their dependencies.
 
-### 4.3 Accept-reject test statistic
+The `@provides` and `@depends` tags allow modular, maintainable kernel code: each file declares what it provides and what it needs. See `?opencltools::load_kernel_library` for details.
 
-With the proposal `(beta, dispersion)` and the chosen face `J`, the sampler computes the acceptance bound via four non-negative surplus terms:
 
-- `UB1`: tangent-plane style surplus using `LL_New2` and the dispersion-adjusted anchoring (`cbars` and tangency points).
-- `UB2`: RSS-based surplus derived from `rss_face_at_disp(...)` and the global/per-face RSS minima `RSS_Min` and `UB2min[J]`.
-- `UB3A`: face-specific surplus term involving `lg_prob_factor[J]` and the function `g1_face_at_disp(...)`.
-- `UB3B`: dispersion-axis correction term involving the log-tilt components and precomputed maxima.
+## 4. Ported Math Libraries (nmath / rmath / dpq)
 
-Implementation-wise, it forms:
+The likelihood and gradient computations require statistical functions that match R's behavior. Because OpenCL C does not include these, the package **ports** a core set from R's nmath and rmath libraries to OpenCL C.
 
-```text
-test1 = LL_Test - UB1
-test  = test1 - (UB2 + UB3A + UB3B)
-test  = test - log_U2   (where U2 ~ Uniform(0,1))
-accept if test >= 0
-```
+### 4.1 nmath
 
-Equivalently, since `log_U2 = log(U2)`:
+| Module | Provides | Purpose |
+|--------|----------|---------|
+| nmath.cl | ML_*, ME_*, ISNAN, R_FINITE, ML_ERROR, etc. | Constants, error handling, validation macros |
+| log1p.cl | Rlog1p | Log(1+x) for numerical stability |
+| expm1.cl | expm1 | exp(x)-1 for numerical stability |
+| bd0.cl | bd0, ebd0, etc. | Poisson/binomial deviance terms |
+| stirlerr.cl | stirlerr | Stirling error for factorial terms |
+| lgamma.cl | lgammafn | Log-gamma |
+| gamma.cl | gammafn | Gamma function |
+| dbinom.cl | dbinom, dbinom_raw | Binomial density |
+| dpois.cl | dpois, dpois_raw | Poisson density |
+| dgamma.cl | dgamma | Gamma density |
+| dnorm.cl | dnorm4 | Normal density |
+| pnorm.cl | pnorm5, pnorm_both | Normal CDF (probit) |
+| pgamma.cl | pgamma | Gamma CDF (inverse link) |
+| d1mach.cl | d1mach | Machine constants |
+| chebyshev.cl | chebyshev_eval | Polynomial evaluation |
 
-```text
-accept iff  log(U2) <= (LL_Test - UB1) - (UB2 + UB3A + UB3B).
-```
+### 4.2 rmath
 
-The implementation also enforces sign constraints expected from a valid dominating envelope:
+`Rmath.cl` provides additional constants (M_E, M_PI, M_LN2, etc.) and distribution functions consistent with R's `Rmath` library.
 
-- `test1 <= 0`,
-- `UB2 >= 0` (with extra tolerance/diagnostics when `UB2` is numerically tiny),
-- `UB3A >= 0` and `UB3B >= 0`.
+### 4.3 dpq
 
-If any sign constraint is violated, the code throws a runtime error with context to help diagnose invalid envelope constants.
+`dpq.cl` and `dpq_prelude.cl` provide macros for density and CDF handling with `give_log` and `lower_tail`, matching R's DPQ (density, probability, quantile) conventions.
 
-### 4.4 Record outputs
+These ports ensure that the OpenCL kernels produce results **numerically consistent** with the CPU path and with R itself.
 
-Once accepted:
 
-The fields below are the ones from the envelope/UB structures that directly drive the sampler:
-- `PLSD`: selects the face index `J`;
-- `loglt` / `logrt` and `cbars`: define the restricted normal proposal for `beta` (and the face-centering);
-- `shape3`, `rate2`, `disp_lower`, `disp_upper`: define the dispersion proposal;
-- `RSS_Min`, `UB2min`, `lg_prob_factor`, `lmc1`, `lmc2`, and related precomputed maxima: define `UB1`-`UB3B` in the acceptance test.
+## 5. Family/Link Kernels
 
-- `beta_out[i, ]` stores the accepted coefficients,
-- `disp_out[i]` stores the accepted dispersion draw,
-- `iters_out[i]` records how many rejection attempts were needed for that accepted draw.
+Each supported family/link has a dedicated kernel file that implements the f2/f3 logic for that model.
 
-## 5. Dataflow: From `EnvelopeOrchestrator` Outputs to the Sampler
+| Family | Link | Kernel file |
+|--------|------|-------------|
+| binomial | logit | `f2_f3_binomial_logit.cl` |
+| binomial | probit | `f2_f3_binomial_probit.cl` |
+| binomial | cloglog | `f2_f3_binomial_cloglog.cl` |
+| poisson | log | `f2_f3_poisson.cl` |
+| Gamma | inverse | `f2_f3_gamma.cl` |
+| gaussian | identity | `f2_f3_gaussian.cl` |
 
-This section is a "developer dataflow map" connecting `EnvelopeOrchestrator` / `EnvelopeDispersionBuild` outputs to the serial accept-reject sampler.
+### 5.1 Kernel Structure
 
-### 5.1 What the sampler reads from `Env`
+Each kernel follows the same pattern:
 
-The sampler reads from `Env`:
-- `PLSD` (mixture component selection weights),
-- `loglt` / `logrt` (restricted normal coordinate bounds),
-- `logP` / `LLconst` and related constants used internally,
-- `cbars` (face gradients used to center restricted normals).
+1. **Work-item mapping** – `int j = get_global_id(0)`; one work item per grid point \(j\).
+2. **Prior term** – Compute \(P(\beta_j - \mu)\) and the quadratic form \(\tfrac{1}{2}(\beta_j - \mu)' P (\beta_j - \mu)\), accumulate into `qf[j]`.
+3. **Prior gradient** – Initialize local gradient with \(P(\beta_j - \mu)\).
+4. **Data loop** – For each observation \(i\), compute linear predictor, link, likelihood contribution, and gradient contribution. Use ported functions (`dbinom_raw`, `dpois_raw`, `lgamma`, `pnorm5`, etc.) as needed.
+5. **Write outputs** – `qf[j]` = negative log posterior; `grad[k*m1 + j]` = gradient (column-major layout).
 
-### 5.2 What the sampler reads from `gamma_list` / `UB_list`
+The kernels use a fixed `MAX_L2` for local arrays (e.g., 64); this limits the number of coefficients when using OpenCL. See the source for current limits.
 
-The sampler reads from:
 
-- `gamma_list`:
-  - `shape3` / `rate2` parameters,
-  - `disp_lower` / `disp_upper` truncation parameters on the dispersion proposal.
+## 6. f2_f3_opencl Flow
 
-- `UB_list`:
-  - `RSS_Min`,
-  - `UB2min`,
-  - and the global constants used for computing `UB3A` and `UB3B`,
-  - plus diagnostic maxima used in these corrections.
+The wrapper `f2_f3_opencl` in `kernel_wrappers.cpp` performs:
 
-This is the key interface that ensures the dispersion-aware envelope dominates the target on the allowed truncation domain.
+1. **Input flattening** – Convert R matrices/vectors (x, b, mu, P, alpha, y, wt) to contiguous C++ vectors in the layout expected by the runner.
+2. **Kernel selection** – Map `(family, link)` to `kernel_name` and `kernel_file` (e.g., binomial + logit → `f2_f3_binomial_logit`, `src/f2_f3_binomial_logit.cl`).
+3. **Program assembly** – Load OPENCL.cl, rmath, nmath, dpq, and the kernel file; concatenate into `all_src`.
+4. **Runner call** – Invoke `f2_f3_kernel_runner(all_src, kernel_name, l1, l2, m1, ...)` with flattened inputs and output buffers.
+5. **Output reshaping** – Copy `qf_flat` into an R vector; wrap `grad_flat` as an Armadillo matrix (m1 × l2) for return.
 
-## 6. Practical Knobs and Diagnostics
+The returned list has components `qf` (negative log posterior per grid point) and `grad` (gradient matrix).
 
-### 6.1 Tuning parameters
 
-Key arguments affecting the internal workflow:
-- `n` (number of iid draws) - affects how often sorting / envelope sizing is amortized,
-- `Gridtype` and `n_envopt` - controls envelope grid complexity,
-- `use_parallel` and `use_opencl` - controls whether the sampling and/or envelope evaluation is parallelized / accelerated,
-- `max_disp_perc` and optional `disp_lower` / `disp_upper` - controls truncation interval tightness.
+## 7. f2_f3_kernel_runner
 
-### 6.2 Interpreting `iters_out`
+The runner in `kernel_runners.cpp` handles the low-level OpenCL API:
 
-The vector `iters_out` captures the number of accept-reject attempts per accepted draw.
-Large values indicate a loose envelope (or expensive bounds), while values near 1 suggest a tight envelope and efficient acceptance.
+1. **Platform and device** – `clGetPlatformIDs`, `clGetDeviceIDs` (CL_DEVICE_TYPE_DEFAULT).
+2. **Context and queue** – `clCreateContext`, `clCreateCommandQueueWithProperties`.
+3. **Program** – `clCreateProgramWithSource` with the concatenated string, `clBuildProgram`.
+4. **Kernel** – `clCreateKernel` with the kernel name.
+5. **Buffers** – Create read-only buffers for X, B, mu, P, alpha, y, wt; write-only for qf and grad. Copy host data for inputs.
+6. **Launch** – `clEnqueueNDRangeKernel` with `global = m1` (one work item per grid point).
+7. **Readback** – `clEnqueueReadBuffer` for qf and grad.
+8. **Sanity check** – If both outputs are all zeros, throw (likely kernel failure).
+9. **Cleanup** – Release buffers, kernel, program, queue, context.
 
-### 6.3 Minimal examples
+The runner is GLM-specific and lives in the `glmbayes::opencl` namespace; the general OpenCL utilities (kernel loading, device enumeration) are in `openclPort`.
 
-For runnable examples that exercise the envelope construction and sampler path, see:
-- Core 04 (independent Normal-Gamma extension theory),
-- Core 02 (fixed-dispersion envelope build),
-- and the `inst/examples/` directory for end-to-end usage patterns.
 
-## 7. Cross-References
+## 8. Pilot and Safeguards
 
-- Core 02 for coefficient-envelope construction (`EnvelopeBuild`) and standardization (`glmb_Standardize_Model`).
-- Core 04 for the independent Normal-Gamma extension theory and the accept-reject decomposition.
-- Core 03 for dispersion accept-reject foundations in other Gaussian families (as relevant).
+For large grids (e.g., \(m_1 > 50{,}000\)), `EnvelopeEval` runs `f2_f3_opencl_pilot` before the full evaluation to estimate runtime.
 
+### 8.1 Pilot Logic
+
+- **Warm-up** – Run `f2_f3_opencl` on a small grid slice.
+- **Calibration** – Run on slices of ~1% and ~2% of the grid to estimate fixed cost and per-grid cost.
+- **Refined estimate** – Compute `refined_est_total_sec = per_grid_sec × m1`.
+- **5-minute safeguard** – If `refined_est_total_sec > 300`:
+  - **Interactive session**: Prompt `"Do you want to continue? [y/N]: "`.
+  - **Non-interactive session**: Proceed automatically (e.g., CI, batch).
+
+This mirrors the parallel sampling pilots in Core 07. The envelope build phase cannot be interrupted once the full OpenCL run starts, so the pilot gives users a chance to decline long runs.
+
+### 8.2 When the Pilot Runs
+
+The pilot runs when `m1_total > 50000` and `use_opencl` is true. For smaller grids, the full evaluation runs without a pilot.
+
+
+## 9. Installation and Availability
+
+OpenCL support is **optional**. The package compiles and runs without it; in that case, `use_opencl` is ignored and the CPU path is always used.
+
+To enable OpenCL:
+
+- Install OpenCL headers and development libraries (see **`vignette("Core-11", package = "glmbayesCore")`**).
+- Build **glmbayesCore** from source with OpenCL enabled (`configure` / `configure.win`).
+- Ensure **opencltools** and **nmathopencl** are installed and OpenCL-ready; ensure an ICD loader and vendor driver at runtime.
+
+Use `glmbayesCore_has_opencl()` to check availability and `diagnose_glmbayes()` for a full diagnostic report. Platform-specific steps (Windows, Linux, macOS) and AMD ROCm notes are in Core 11.
+
+
+## 10. Cross-References
+
+- **Core 03** – Simulation pipeline (optimization, standardization, envelope build, sampling)
+- **Core 06** – Envelope-related functions
+- **Core 07** – Parallel sampling (pilot pattern, 5-minute safeguard)
+- **Core 11** (`glmbayesCore`) – GPU acceleration: installation, `glmbayesCore_has_opencl`, `diagnose_glmbayes`
+- **`?EnvelopeBuild`**, **`?EnvelopeEval`** – use_opencl argument
+- **`?opencltools::load_kernel_library`**, **`?opencltools::load_kernel_source`** – Program assembly
+- **`?rglmb`**, **`?rlmb`** – `use_opencl` argument

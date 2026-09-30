@@ -1,637 +1,100 @@
 ---
-title: "Core 01: Overview of Estimation Procedures"
+title: "Core 01: Overview of the glmbayesCore package"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
-bibliography: REFERENCES.bib
-reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Core 01: Overview of Estimation Procedures}
+  %\VignetteIndexEntry{Core 01: Overview of the glmbayesCore package}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ```{r setup}
 library(glmbayesCore)
 ```
 
-# Core 01: Overview of Estimation Procedures
-
-## Introduction
-
-This vignette describes the computational architecture used by the glmbayesCore package to generate
-independent and identically distributed (iid) samples from Bayesian generalized linear models
-(GLMs). The central idea is that posterior simulation is handled by a small set of low-level
-simulation functions ("simfunctions") that implement either conjugate sampling formulas or
-envelope-based accept-reject methods. These simfunctions are called by higher-level modeling
-functions such as `glmb()` and `lmb()`, which provide formula interfaces, model frames, and
-S3 methods.
-
-The simfunctions implement both classical conjugate Bayesian updating and the likelihood-subgradient
-envelope methods of [@Nygren2006]. Companion vignettes document coefficient envelopes [@glmbayesSimmethods],
-Gamma-family dispersion envelopes [@glmbayesGammaVignette], and joint envelopes for Gaussian regression with independent Normal--Gamma priors [@glmbayesIndNormGammaVignette].
-
-This chapter begins by describing the role of `rglmb()`,  `rlmb()`and the `pfamily` system, which together
-determine which simfunction is used for a given model. Later sections describe the simfunctions
-themselves, the mapping between likelihood families and prior families, and the C++ routines used
-for envelope construction and sampling.
-
-
-## 1. rglmb/rlmb, pfamilies, and the Simulation Architecture
-
-The functions `rglmb()` and `rlmb()`are the minimalistic engines for Bayesian GLM simulation. They are called
-internally by `glmb()` and `lmb()` respectively, which provides formula-based interfaces similar to `glm()` and `lm()` respectively. In contrast, `rglmb()` and `rlmb()`works directly with numeric inputs and avoids the overhead of model frames, formulas, and method dispatches. Their main purpose is to generate iid posterior draws given:
-
-- a response vector `y`
-- a design matrix `x`
-- a likelihood family (e.g., `gaussian()`, `poisson()`, `binomial()`)
-- a prior family (`pfamily`)
-- optional weights, offsets, and envelope controls
-
-Unlike `glmb()`and `lmb(), `rglmb()` and `rlmb()` do not compute fitted values, residuals, or diagnostics. They simply
-dispatche to the correct simfunctions and return the resulting posterior draws. The lower overhead associated with these functions make them a good choice when calling the estimation procedures repeatedly (say as part of Gibbs sampling procedures). 
-
-
-### 1.1 How glmb and lmb use rglmb and rlmb respectively 
-
-The functions `glmb()` and `lmb()` are the high-level modeling interface. They:
-
-- parse formulas
-- construct model frames
-- handle missing data
-- attach S3 methods for printing, summarizing, predicting, and extracting diagnostics
-
-Once the model frames are constructed, `glmb()` and `lmb()`call `rglmb()` and `rlmb()`respectively to generate the posterior samples.
-
-Thus:
-
-glmb()  -->  rglmb()  -->  simfunction  -->  posterior draws
-
-and 
-
-lmb()  -->  rlmb()  -->  simfunction  -->  posterior draws
-
-respectively.
-
-This separation mirrors the classical distinction between `glm()`/ `lm()`and the underlying IRLS routines.
-
-
-
-
-### 1.2 pfamilies: the Bayesian analogue of family()
-
-In classical GLMs, the `family` object determines the likelihood and link. In glmbayes, the
-`pfamily` object plays the same role for priors. Each pfamily object:
-
-- names the prior family (`pfamily$pfamily`)
-- stores the prior hyperparameters (`pfamily$prior_list`)
-- records the likelihood families it supports (`pfamily$okfamilies`)
-- provides a function for the allowable links (`pfamily$plinks`)
-- embeds the simulation function to call (`pfamily$simfun`)
-
-This design mirrors the structure of `glm()`:  
-`family` determines the likelihood, and `pfamily` determines the prior and the sampling method.
-The combination `(family, pfamily)` uniquely determines which simfunction is used.
-
-To utilize pfamilies when calling the higher level `glmb()` and `lmb()` or the lower level
-`rglmb()` and `rlmb()` functions, users must provide the hyperparameters needed to populate the
-`pfamily$prior_list`. These hyperparameters vary across pfamilies largely based on whether the
-prior specified sets a prior for regression coefficients, dispersion parameters, or both jointly.
-
-The pfamilies currently implemented in glmbayesCore differ primarily in whether they place priors on
-regression coefficients, dispersion parameters, or both. The table below summarizes the
-hyperparameters associated with each pfamily.
-
----------------------------------------------------------------------------
-pfamily name                 Prior components in prior_list
----------------------------------------------------------------------------
-
-dNormal                     mu: prior mean vector for coefficients
-                            Sigma: prior covariance matrix
-                            dispersion: fixed dispersion (if applicable)
-
-dGamma                      shape: shape parameter for Gamma prior on precision
-                            rate: rate parameter for Gamma prior on precision
-                            beta: regression coefficients (used when updating
-                                  dispersion separately)
-                            max_disp_perc: percentile used to truncate the
-                                  posterior dispersion distribution
-                            disp_lower, disp_upper: optional user-specified
-                                  truncation bounds
-
-dNormal_Gamma               mu: prior mean vector for coefficients
-                            Sigma_0: prior covariance on precision-weighted scale
-                            shape: shape parameter for Gamma prior on precision
-                            rate: rate parameter for Gamma prior on precision
-                            (`prior_list` still uses component name `Sigma`.)
-
-dIndependent_Normal_Gamma   mu: prior mean vector for coefficients
-                            Sigma: prior covariance matrix
-                            shape: shape parameter for Gamma prior on precision
-                            rate: rate parameter for Gamma prior on precision
-                            max_disp_perc: percentile used to truncate the
-                                  posterior dispersion distribution
-                            disp_lower, disp_upper: optional user-specified
-                                  truncation bounds
-
----------------------------------------------------------------------------
-
-These pfamilies determine which simfunction is used. For example:
-
-- dNormal selects rNormal_reg
-- dGamma selects rGamma_reg
-- dNormal_Gamma selects rNormalGamma_reg
-- dIndependent_Normal_Gamma selects rindepNormalGamma_reg
-
-Because each pfamily embeds its own simulation function, `rglmb()` and `rlmb()` do not need to
-contain any special-case logic. Once the user supplies a pfamily object, the correct simfunction
-is already encoded inside it. This design mirrors the classical GLM architecture, where the
-family object determines the likelihood and link, but extends it to the Bayesian setting by
-allowing the prior to determine the sampling algorithm.
-
-As setting the prior parameters required for each pfamily can be a bit involved, the package provides the `Prior_Setup()` function which be used to extract default prior settings for these parameters while also allowing tailoring of the prior specification. Some of our earlier vignettes already covered this in details so it won't be discussed further here.
-
-
-### 1.3 The uniform simfunction interface
-
-All simfunctions in `simfunctions.R` share the same signature:
-
-simfun(n, y, x, prior_list,
-       offset = NULL, weights = 1,
-       family = gaussian(),
-       Gridtype = 2, n_envopt = NULL,
-       use_parallel = TRUE, use_opencl = FALSE,
-       verbose = FALSE)
-
-This uniform interface allows `rglmb()` and `rlmb()` to dispatch to any simfunction without special-case logic.
-It also allows users to change priors or likelihoods without altering their workflow, and it makes
-the simfunctions suitable for use inside Gibbs samplers or other custom algorithms.
-
-
-### 1.4 How rglmb and rlmb select the simfunction
-
-The internal logic of `rglmb()` is:
-
-1. The user supplies a likelihood `family` and a prior `pfamily`.
-2. `Prior_Setup()` constructs a `prior_list` containing the hyperparameters.
-3. `rglmb()` extracts from the `pfamily` object:
-   - the allowed likelihood families (`okfamilies`)
-   - the allowed links (`plinks`)
-   - the prior hyperparameters (`prior_list`)
-   - the simulation function (`simfun`)
-4. It checks that the requested likelihood family and link are compatible with the pfamily.
-5. It constructs a list of arguments to pass to the simfunction.
-6. It calls the simfunction, which performs the actual sampling.
-7. It attaches metadata (the pfamily, the simfunction call, and the arguments) and returns the result.
-
-The simfunction performs the actual sampling, either by conjugate formulas or by envelope-based
-accept-reject methods.
-
-
-### 1.5 The four core simfunctions
-
-The pfamily system dispatches to one of four simfunctions:
-
-- `rNormal_reg`
-- `rNormalGamma_reg`
-- `rindepNormalGamma_reg`
-- `rGamma_reg`
-
-These functions implement the sampling algorithms described in Appendices A2, A5, A6, and A7. The next
-section provides tables showing how likelihood families and pfamilies map to these simfunctions.
-
-### 1.6 Inspecting the Simulation Function Used: the `simfunction()` Generic
-
-The glmbayes package provides an S3 interface for inspecting which low-level simulation
-function (“simfunction”) was used during a call to `rglmb()` or `rlmb()`. This interface is
-accessed through the exported generic:
-
-```
-simfunction(object, ...)
-```
-
-When applied to an `rglmb` or `rlmb` result, this function returns an object of class
-`"simfunction"` containing:
-
-- the name of the simfunction used (e.g., `rNormal_reg`)
-- the call used to invoke the simfunction
-- the arguments passed to it, including the `prior_list` and `family` objects
-
-This provides a transparent view of the internal mechanics of the simulation step, which is
-useful for debugging, reproducibility, and understanding how pfamilies dispatch to specific
-simfunctions.
-
-For example:
-
-```
-fit <- rglmb(n = 10, y = y, x = X,
-             family = gaussian(),
-             pfamily = dNormal(mu, Sigma))
-
-simfunction(fit)
-```
-
-prints the simfunction name, the call, and all arguments used during sampling.
-
-The `print.simfunction()` method formats this information in a readable way, including a
-recursive display of the prior hyperparameters stored in `prior_list`. This interface is
-intentionally lightweight: it does not re-run the simfunction or modify the model object. It
-simply reports the simulation metadata recorded during the original call.
-
-
-
-### 1.7 Summary
-
-The combination of `glmb()`/`lmb()`, `rglmb()`/`rlmb()`, the pfamily system, and the simfunctions forms a flexible
-and extensible framework for Bayesian GLM simulation. The high-level modeling functions handle
-formula parsing and model construction, while the low-level simfunctions implement efficient
-posterior sampling using either conjugate formulas or envelope-based methods.
-
-The next section provides detailed mapping tables showing how families and pfamilies determine the
-appropriate simfunction and sampling method.
-
-
-## 2. Mapping Families and Pfamilies to Simulation Functions
-
-### 2.1 Mappings to Simulation Functions
-
-The table below summarizes how likelihood families, link functions, and pfamilies map to the
-simulation functions in `simfunctions.R`. The tables also indicates whether the sampling is conjugate or
-envelope-based. 
-
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| **Likelihood Family**| **Link**             | **Pfamily**                  | **Simfunction**              | **Method**                |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Gaussian             | identity             | dNormal                      | rNormal_reg                  | Conjugate MVN [C++]            |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Gaussian             | identity             | dGamma                       | rGamma_reg                   | Conjugate Gamma [R]       |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Gaussian             | identity             | dNormal_Gamma                | rNormalGamma_reg             | Conjugate Normal-Gamma [R]|
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Gaussian             | identity             | dIndependent_Normal_Gamma    | rindepNormalGamma_reg        | Envelope-based joint      |
-|                      |                      |                              |                              | sampler [C++]             |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Poisson              | log                  | dNormal                      | rNormal_reg                  | Envelope-based [C++]      |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Quasi-Poisson        | log                  | dNormal                      | rNormal_reg                  | Envelope-based [C++]      |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Binomial             | logit, probit,       | dNormal                      | rNormal_reg                  | Envelope-based [C++]      |
-|                      | cloglog              |                              |                              |                           |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Quasi-Binomial       | logit, probit,       | dNormal                      | rNormal_reg                  | Envelope-based [C++]      |
-|                      | cloglog              |                              |                              |                           |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Gamma                | log                  | dNormal                      | rNormal_reg                  | Envelope-based [C++]      |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-| Gamma                | log                  | dGamma                       | rGamma_reg                   | Envelope-based [C++]      |
-+----------------------+----------------------+------------------------------+------------------------------+---------------------------+
-
-
-
-### 2.2 Mapping Simulation Functions to Primary C++ Routines
-
-The table below lists the simulation functions that call C++ code, the likelihood families for which
-the C++ path is used, and the specific C++ source files and function names invoked. Only the primary
-simulation routines are shown here; envelope construction routines are documented separately in
-Appendices A5, A6, and A7.
-
-+----------------------+----------------------+----------------------+-------------------------------------------+
-| **Simfunction**      | **Family**           | **C++ File**         | **C++ Function(s) Called**                |
-+----------------------+----------------------+----------------------+-------------------------------------------+
-| rNormal_reg          | Gaussian             | rNormalReg.cpp       | rNormalReg_cpp_export                     |
-+----------------------+----------------------+----------------------+-------------------------------------------+
-| rNormal_reg          | All non-Gaussian     | rNormalGLM.cpp       | rNormalGLM_cpp_export                     |
-+----------------------+----------------------+----------------------+-------------------------------------------+
-| rindepNormalGamma_reg| Gaussian             | rIndepNormalGammaReg.cpp | rIndepNormalGammaReg_std_cpp_export   |
-|                      |                      |                      | rIndepNormalGammaReg_std_parallel_cpp_export |
-+----------------------+----------------------+----------------------+-------------------------------------------+
-| rGamma_reg           | Gaussian             | (none)               | (uses R-level rgamma or ctrgamma)         |
-+----------------------+----------------------+----------------------+-------------------------------------------+
-| rGamma_reg           | Gamma                | (none)               | (uses R-level ctrgamma)                   |
-+----------------------+----------------------+----------------------+-------------------------------------------+
-
-Notes:
-- `rNormal_reg` uses different C++ backends depending on whether the likelihood is Gaussian or non-Gaussian.
-- `rindepNormalGamma_reg` always uses C++ for the joint sampler.
-- `rGamma_reg` does not call a dedicated C++ simulation routine, but it does use the R-level `ctrgamma`
-  function for truncated Gamma proposals.
-- Envelope construction routines (`EnvelopeBuild`, `EnvelopeDispersionBuild_cpp`, etc.) are documented
-  separately and are not included in this table.
-
-
-## 3. Conjugate vs. Envelope-Based Sampling
-
-### 3.1 Conjugate Cases
-
-Several combinations of likelihood family and prior lead to closed-form posterior distributions:
-
-- Gaussian likelihood with Normal prior on beta
-- Gaussian likelihood with Normal-Gamma prior on (beta, tau)
-- Gaussian likelihood with Gamma prior on tau
-- Gamma likelihood with Gamma prior on tau (conjugate path)
-
-In these cases, the simfunctions use direct sampling from multivariate normal or gamma distributions.
-No envelope construction is required.
-
-### 3.2 Envelope-Based Cases
-
-When the posterior is not available in closed form, the simfunctions use the likelihood subgradient
-approach of Nygren and Nygren (2006). These cases include:
-
-- All non-Gaussian GLMs with Normal priors
-- Gaussian regression with independent Normal-Gamma priors
-- Gamma regression with Gamma prior on precision (non-conjugate path)
-
-The envelope-based samplers rely on:
-
-- Likelihood subgradient densities (JASA 2006)
-- Mixture envelopes (Appendix A5)
-- Dispersion envelopes (Appendix A6)
-- Joint envelopes for (beta,phi) (Appendix A7)
-
-These methods guarantee iid sampling even in high dimensions and for non-conjugate models.
-
-
-## 4. Theoretical Foundations and Cross-References
-
-The simulation functions are grounded in the following theoretical results:
-
-- [@Nygren2006]: likelihood-subgradient densities and bounds on acceptance rates.
-
-- [@glmbayesSimmethods]: implementation-oriented companion (this series, Core 02) for likelihood-subgradient samplers and the `.rNormalGLM_cpp` pipeline.
-
-- [@glmbayesGammaVignette]: accept--reject sampling for dispersion in Gamma regression (`rGamma_reg`).
-
-- [@glmbayesIndNormGammaVignette]: joint sampling for Gaussian regression with independent Normal--Gamma priors (`rindepNormalGamma_reg`).
-
-Together these provide the mathematical and implementation justification for the envelope-based methods in the simfunctions.
-
-
-## 5. Overview of Each Simulation Function
-
-As noted above, the function signatures for the simulation functions are the same. However, the functions differ in terms of the specific familes/links supported and in terms of the set of prior parameters required as part of the prior_list argument. Here we provide a summary view of the families/links supported by each function and then a more detailed overview of each function.
-
----------------------------------------------------------------------------
-Simfunction                  Supported Families and Links
----------------------------------------------------------------------------
-
-rNormal_reg                 gaussian(identity)
-                            poisson(log)
-                            quasipoisson(log)
-                            binomial(logit, probit, cloglog)
-                            quasibinomial(logit, probit, cloglog)
-                            Gamma(log)
-
-rNormalGamma_reg            gaussian(identity)
-
-rindepNormalGamma_reg       gaussian(identity)
-
-rGamma_reg                  gaussian(identity)
-                            Gamma(log)
-
----------------------------------------------------------------------------
-
-### 5.1 rNormal_reg
-
-**Purpose:**  
-Generates iid samples of regression coefficients beta for GLMs with Normal priors.
-
-Function signature:
-rNormal_reg(n, y, x, prior_list,
-            offset = NULL, weights = 1,
-            family = gaussian(),
-            Gridtype = 2, n_envopt = NULL,
-            use_parallel = TRUE, use_opencl = FALSE,
-            verbose = FALSE)
-
-Required prior_list components (from dNormal):
-- mu: prior mean vector for coefficients
-- Sigma: prior covariance matrix
-- dispersion: fixed dispersion (if applicable)
-
-**Conjugate case:**  
-Gaussian likelihood with Normal prior.  
-Sampling uses direct multivariate normal draws via `.rNormalReg_cpp`.
-
-**Envelope-based case:**  
-All non-Gaussian GLMs.  
-Uses `.rNormalGLM_cpp` and `EnvelopeBuild` to construct a likelihood-subgradient envelope.
-
-**Implementation sketch:**  
-1. Compute posterior mode using `optim` (non-Gaussian) or `lm.fit` (Gaussian).  
-2. Standardize model using `glmb_Standardize_Model`.  
-3. Build envelope using `EnvelopeBuild`.  
-4. Generate iid samples using accept-reject sampling.
-
-**References:**  
-[@Nygren2006]; [@glmbayesSimmethods].
-
-
-### 5.2 rNormalGamma_reg
-
-**Purpose:**  
-Conjugate Normal-Gamma regression for Gaussian likelihoods.
-
-Function signature:
-rNormalGamma_reg(n, y, x, prior_list,
-                  offset = NULL, weights = 1,
-                  family = gaussian(),
-                  Gridtype = 2, n_envopt = NULL,
-                  use_parallel = TRUE, use_opencl = FALSE,
-                  verbose = FALSE)
-
-Required prior_list components (from dNormal_Gamma):
-- mu: prior mean vector for coefficients
-- Sigma: prior covariance matrix
-- shape: shape parameter for Gamma prior on precision
-- rate: rate parameter for Gamma prior on precision
-
-**Method:**  
-Closed-form posterior for (beta, tau).  
-Draw tau from Gamma, then draw beta from conditional Normal.
-
-**Implementation sketch:**  
-1. Fit weighted least squares to obtain Btilde, IR, and S.  
-2. Compute posterior Gamma parameters for tau.  
-3. Draw tau and then beta = Btilde + IR %*% rnorm * sqrt(dispersion).
-
-**References:**  
-Conjugate Normal--Gamma regression [@Raiffa1961; @OHaganForster2004]; see also [@LindleySmith1972].
-
-
-### 5.3 rindepNormalGamma_reg
-
-**Purpose:**  
-Joint sampling of (beta, phi) for Gaussian regression with independent Normal-Gamma priors.
-
-Function signature:
-rindepNormalGamma_reg(n, y, x, prior_list,
-                            offset = NULL, weights = 1,
-                            family = gaussian(),
-                            Gridtype = 2, n_envopt = NULL,
-                            use_parallel = TRUE, use_opencl = FALSE,
-                            verbose = FALSE)
-
-Required prior_list components (from dIndependent_Normal_Gamma):
-- mu: prior mean vector for coefficients
-- Sigma: prior covariance matrix
-- shape: shape parameter for Gamma prior on precision
-- rate: rate parameter for Gamma prior on precision
-- max_disp_perc: percentile used to truncate dispersion support
-- disp_lower, disp_upper: optional user-specified truncation bounds
-
-**Method:**  
-Envelope-based joint sampler using a shared envelope over beta and dispersion bounds.
-
-**Backend:**  
-- `.rIndepNormalGammaReg_std_cpp`  
-- `EnvelopeDispersionBuild_cpp`  
-- `EnvelopeBuild`
-
-**Implementation sketch:**  
-1. Iteratively anchor dispersion using repeated Gaussian fits.  
-2. Standardize model and compute posterior mode.  
-3. Build coefficient envelope (EnvelopeBuild).  
-4. Build dispersion envelope (EnvelopeDispersionBuild_cpp).  
-5. Sample jointly from the standardized model.  
-6. Transform back to original scale.
-
-**References:**  
-[@glmbayesIndNormGammaVignette]; [@GriffinBrown2010].
-
-
-### 5.4 rGamma_reg
-
-**Purpose:**  
-Simulates dispersion parameters for Gaussian and Gamma families.
-
-Function signature:
-rGamma_reg(n, y, x, prior_list,
-           offset = NULL, weights = 1,
-           family = gaussian(),
-           Gridtype = 2, n_envopt = NULL,
-           use_parallel = TRUE, use_opencl = FALSE,
-           verbose = FALSE)
-
-Required prior_list components (from dGamma):
-- shape: shape parameter for Gamma prior on precision
-- rate: rate parameter for Gamma prior on precision
-- beta: regression coefficients (used when updating dispersion separately)
-- max_disp_perc: percentile used to truncate dispersion support
-- disp_lower, disp_upper: optional user-specified truncation bounds
-
-**Gaussian case:**  
-Conjugate Gamma posterior for precision tau.  
-Uses direct sampling or truncated sampling via `ctrgamma`.
-
-**Gamma family case:**  
-Non-conjugate.  
-Uses the A6 envelope-based sampler with a tangent envelope for the precision.
-
-**Backend:**  
-- `ctrgamma`  
-- A6 routines  
-- log-space utilities `logdiffexp`
-
-**Implementation sketch:**  
-1. Compute posterior mode for precision.  
-2. Build Gamma surrogate and tangency point.  
-3. Construct bounding function log_h.  
-4. Accept-reject sampling for precision.  
-5. Transform to dispersion.
-
-**References:**  
-[@glmbayesGammaVignette].
-
-
-## 6. Use in Gibbs Samplers and Custom Algorithms
-
-The simfunctions are designed to be lightweight and fast. They avoid the overhead of:
-
-- Model frames
-- Formulas
-- S3 objects
-- Diagnostic structures
-
-This makes them ideal for:
-
-- Gibbs sampling
-- Blocked MCMC
-- Variational approximations
-- Simulation studies
-- Algorithm prototyping
-
-They return only the essential components needed for further computation:
-coefficients, dispersion draws, posterior modes, envelopes, and iteration counts.
-
-
-## 7. Source Code and File Structure
-
-The core simulation routines are implemented in:
-
-- `simfunctions.R`
-
-This file contains the four primary simfunctions (`rNormal_reg`, `rNormalGamma_reg`,
-`rindepNormalGamma_reg`, `rGamma_reg`) and the R-level logic that interfaces with the
-C/C++ backends.
-
-### 7.1 C and C++ Backends Used by the Simfunctions
-
-Several simfunctions rely on optimized C/C++ routines for envelope construction, posterior mode
-evaluation, and sampling. These routines are located in the following source files:
-
-**Coefficient samplers (Normal priors):**
-- `rNormalReg.cpp`  
-  Backend for Gaussian–Normal conjugate sampling.
-- `rNormalGLM.cpp`  
-  Backend for non-Gaussian Normal-prior envelope sampling.
-
-**Joint Normal–Gamma samplers:**
-- `rIndepNormalGammaReg.cpp`  
-  Standard joint sampler for independent Normal–Gamma priors.
-- `rIndepNormalGammaReg.cpp`  
-  Parallelized version of the joint sampler.
-
-**Envelope construction routines:**
-- `EnvelopeBuild_c.cpp`  
-  Coefficient envelopes (Appendix A5).
-- `EnvelopeDispersionBuild_cpp.cpp`  
-  Dispersion envelopes for Gamma-family models (Appendix A7).
-
-**Model standardization:**
-- `glmb_Standardize_Model.R`  
-  R-level preprocessing used by all envelope-based samplers.
-
-### 7.2 Utility Functions
-
-The simfunctions also rely on several numerically robust utility routines:
-
-- `ctrgamma`  
-  Truncated Gamma sampler used in `rGamma_reg`.
-- `logdiffexp`  
-  Stable computation of log(exp(a) - exp(b)).
-- `p_inv_gamma`, `q_inv_gamma`, `r_invgamma`  
-  Inverse-Gamma CDF, quantile, and random-generation utilities.
-
-These utilities support the envelope-based samplers, truncated distributions, and dispersion
-updates used throughout the package.
-
-
-## 8. Summary
-
-The simulation functions described in this chapter form the computational backbone of the glmbayes package.
-They implement both classical conjugate sampling and modern envelope-based iid sampling. They are the
-recommended interface for custom samplers, Gibbs sampling, and research applications requiring direct access
-to the underlying algorithms.
-
-For further details, see the JASA paper and Appendices A5, A6, and A7.
-
-
-
+# Core 01: Overview of the glmbayesCore package
+
+**glmbayesCore** is the compiled sampling engine behind **glmbayes** (formula
+interface: `glmb()`, `lmb()`) and the in-development **lmebayes** mixed-model
+package. End users normally install **glmbayes**; this vignette orients
+developers and advanced users to what lives in Core and how the engine
+vignettes are numbered.
+
+Appendix-style **`Chapter-A*`** labels belong to **glmbayes** Part 5 only.
+Engine documentation here uses consecutive **`Core-01`** … **`Core-11`**
+topics (see table below). Formula-centric package overview and demos:
+**`vignette("Chapter-A01", package = "glmbayes")`**.
+
+## Ecosystem
+
+| Package | Role |
+|---------|------|
+| **glmbayesCore** | C++/OpenCL samplers, `pfamily`, `Prior_Setup()`, `rglmb()` / `rlmb()`, envelope pipeline |
+| **glmbayes** | User-facing GLM/LM Bayesian fits, S3 methods, tutorials (Chapters 00–18, appendices A01–A12) |
+| **lmebayes** *(dev)* | Mixed models on a staging fork (**lmebayesCore**); future engine docs may use **Core-20+** |
+
+## Primary R entry points
+
+- **`Prior_Setup()`**, **`Prior_Check()`** — default and custom priors (`prior.R`).
+- **`pfamily`** constructors (`dNormal`, `dNormal_Gamma`, …) — pair **`simfun`**
+  and **`pfun`** for posterior and prior draws.
+- **`rglmb()`**, **`rlmb()`** — matrix-input i.i.d. posterior samplers used by
+  **glmbayes** and block-Gibbs extensions.
+- **`glmbfamfunc()`**, **`EnvelopeBuild()`**, … — envelope construction and
+  simulation pipeline (`simulationpipeline.R`, `envelopeorchestrator.R`).
+
+Extension checklist (not yet a vignette): **`system.file("ADDING_PFAMILY.md", package = "glmbayesCore")`**.
+
+## Engine vignette index (`Core-02` … `Core-11`)
+
+Read in this order for implementation depth:
+
+| Vignette | Topic |
+|----------|--------|
+| **Core-02** | Estimation architecture; simfunctions and families |
+| **Core-03** | Likelihood subgradient densities; `.rNormalGLM_cpp` pipeline |
+| **Core-04** | Accept–reject: Gamma dispersion |
+| **Core-05** | Accept–reject: Gaussian regression, independent normal–gamma |
+| **Core-06** | Envelope-related functions (overview) |
+| **Core-07** | Parallel sampling (RcppParallel) |
+| **Core-08** | OpenCL-accelerated `EnvelopeBuild` |
+| **Core-09** | Implementation companion (independent normal–gamma) |
+| **Core-10** | Prior derivations for **`Prior_Setup()`** |
+| **Core-11** | OpenCL backend installation; large-model **`rglmb()`** |
+
+In R after install: `browseVignettes("glmbayesCore")` or
+`vignette("Core-06", package = "glmbayesCore")` for the envelope overview.
+
+## Legacy map (glmbayes appendices → Core)
+
+Historical **glmbayes** Part 5 appendix labels map to Core vignettes as follows:
+
+| glmbayes appendix | glmbayesCore |
+|-------------------|--------------|
+| A02 | Core-02 |
+| A05 | Core-03 |
+| A06 | Core-04 |
+| A07 | Core-05 |
+| A08 | Core-06 |
+| A09 | Core-07 |
+| A10 | Core-08 |
+| A11 | Core-09 |
+| A12 | Core-10 |
+| *(backend OpenCL install)* | Core-11 |
+
+**glmbayes-only appendices:** A01 (package overview), A03 (methods vs `glm`),
+A04 (directional tail diagnostics). User OpenCL tutorial with **`glmb()`**:
+**`vignette("Chapter-16", package = "glmbayes")`**.
+
+## Reserved numbers (future)
+
+- **Core-12** — planned knitted guide from **`ADDING_PFAMILY.md`** (extension authors).
+- **Core-20–Core-29** — reserved for mixed-model / block-Gibbs engine docs when
+  **lmebayesCore** merges back into **glmbayesCore** (user tutorials stay glmbayes Ch 17–18).
+
+No placeholder `.Rmd` files are shipped for these slots; this section records intent only.

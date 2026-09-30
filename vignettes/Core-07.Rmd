@@ -1,10 +1,10 @@
 ---
-title: "Core 07: Accelerated EnvelopeBuild Implementation using OpenCL"
+title: "Core 07: Parallel Sampling Implementation using RcppParallel"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Core 07: Accelerated EnvelopeBuild Implementation using OpenCL}
+  %\VignetteIndexEntry{Core 07: Parallel Sampling Implementation using RcppParallel}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,201 +20,207 @@ knitr::opts_chunk$set(
 library(glmbayesCore)
 ```
 
-# Core 07: Accelerated EnvelopeBuild Implementation using OpenCL
+# Core 07: Parallel Sampling Implementation using RcppParallel
 
 ## 1. Introduction
 
-The `glmbayes` package constructs envelopes for accept–reject sampling by evaluating the negative log posterior (f2) and its gradient (f3) at each point of a **tangency grid**. The grid size grows with dimension (e.g., \(3^\ell\) points for \(\ell\) coefficients), and each grid point can be evaluated independently. These evaluations are **embarrassingly parallel** and are a natural target for GPU acceleration.
+The `glmbayesCore` package uses **parallel sampling** for many envelope-based samplers because generating iid draws can be computationally expensive and acceptance rates may be low. By default, `use_parallel = TRUE`, so large fits often run on multiple cores via RcppParallel.
 
-The optional **OpenCL** implementation accelerates these evaluations by running them on a GPU (or OpenCL-capable CPU). OpenCL is vendor-neutral and works across NVIDIA, AMD, and Intel hardware. When OpenCL is available and `use_opencl = TRUE`, the package uses GPU-accelerated evaluation inside `EnvelopeEval`, which is called by `EnvelopeBuild` and `EnvelopeDispersionBuild`. If OpenCL is not available or `use_opencl = FALSE`, the CPU path (`f2_f3_non_opencl`) is used instead. The package runs correctly in either case.
+However, RcppParallel-based sampling **cannot be interrupted**. Once the main parallel loop starts, the R session is blocked until it completes. Users may experience the sampler as "freezing" during long runs. To address this, the package runs **pilots** that estimate how long sampling will take and, in interactive sessions, asks users to opt in or out before the non-interruptible phase begins.
 
-This chapter describes the OpenCL implementation: the two-layer design (kernel wrapper and kernel runner), how the OpenCL program is assembled from ported nmath/rmath functions, and how the pilot and safeguards integrate with the envelope build. For installation and availability checks, see **`vignette("Core-10", package = "glmbayesCore")`**.
+This chapter describes the parallel sampling implementation, the pilot logic, and the interactive safeguards. Parallel **envelope construction** (e.g., in `EnvelopeDispersionBuild`) uses a similar pilot pattern and is noted briefly. GPU acceleration via OpenCL is covered in Core 08.
 
 
-## 2. Architecture Overview
+## 2. Where Parallel Sampling Is Used
 
-The OpenCL path consists of two layers:
+Parallel sampling is used in two main C++ paths:
 
-| Layer | Function | Location | Role |
-|-------|----------|----------|------|
-| **Wrapper** | `f2_f3_opencl` | `kernel_wrappers.cpp` | Flatten R inputs, select kernel, load sources, call runner, reshape outputs |
-| **Runner** | `f2_f3_kernel_runner` | `kernel_runners.cpp` | Platform/device setup, buffer creation, kernel launch, readback |
+| Entry point | When | Notes |
+|-------------|------|-------|
+| `rNormalGLM_cpp` | Non-Gaussian GLMs (Poisson, binomial, Gamma, etc.) with `use_parallel = TRUE` and `n > 1` | Called by `rNormal_reg` |
+| `rIndepNormalGammaReg_cpp` | Gaussian with independent Normal–Gamma prior, `use_parallel = TRUE` and `n > 1` | Uses `rIndepNormalGammaReg_std_parallel_cpp` |
 
-### 2.1 Call Path
+**Serial fallback:** When `use_parallel = FALSE` or `n == 1`, the serial path is used instead. The serial path includes `Rcpp::checkUserInterrupt()` in its loop, so it can be interrupted (e.g., with Ctrl+C).
 
+
+## 3. Why Parallel Sampling Cannot Be Interrupted
+
+RcppParallel uses Intel TBB (Threading Building Blocks) to distribute work across multiple threads. The R main thread is blocked while `RcppParallel::parallelFor()` runs. R's `R_CheckUserInterrupt()` is not safe to call from worker threads, and there is no supported way to cancel a running TBB task from R. As a result:
+
+- During the parallel phase, Ctrl+C and similar interrupts do not reliably stop the run.
+- The session may appear to hang until the run completes.
+
+The pilot phase mitigates this by estimating runtime *before* the full parallel run and giving users a chance to decline.
+
+
+## 4. Pilot-Based Time Estimation and Opt-In
+
+The pilot flow consists of:
+
+1. **Pilot run** – A small serial or parallel batch (e.g., 1 draw or a few draws) to measure per-draw or per-observation time.
+2. **Calibration run** – A larger parallel batch (typically up to ~1% of `n`, capped so it takes at most ~5 minutes) to refine the time estimate.
+3. **Time estimate** – Extrapolation to the full sample size `n`.
+4. **Interactive safeguard** – If the estimate exceeds 5 minutes, the user is prompted in interactive sessions.
+5. **Non-interactive behavior** – In non-interactive sessions (e.g., R CMD check, batch jobs), the run proceeds automatically without prompting.
+
+**Threshold:** 300 seconds (5 minutes). Above this, the user is asked whether to continue.
+
+**Prompt:** `"Estimated simulation exceeds 5 minutes. Continue? [y/N]: "` (or similar).
+
+**Responses:** `y`, `yes`, `1`, or `continue` → proceed; `n`, `no`, `2`, or empty → stop with an informative error.
+
+
+## 5. rNormalGLM Pilot Logic (Non-Gaussian GLMs)
+
+For non-Gaussian GLMs (Poisson, binomial, Gamma, etc.), the `rNormalGLM` C++ path uses `run_rcppparallel_pilot()`:
+
+### 5.1 Single-Draw Test
+
+A single draw is generated in **serial** mode to measure per-draw time and to detect problems early.
+
+### 5.2 max_draws Cap and Zero Accepts
+
+If the pilot hits an internal `max_draws` cap with **zero** accepted draws, this indicates the envelope may be insufficiently tight. The code warns that:
+
+- The envelope may be too loose for the posterior.
+- The full run has no cap and cannot be interrupted.
+- If acceptance remains zero, the simulation may appear to hang indefinitely.
+
+Recommended actions include:
+- Set `use_opencl = TRUE` or increase the requested number of draws (which affects `n_envopt` and may tighten the envelope).
+- Try a different `Gridtype` to force a tighter envelope.
+- Strengthen the prior.
+
+An interactive prompt then asks: `"Enter 1 to continue full run, 2 to stop and return partial results: "`. If the user chooses 2, partial test results are returned and the full run is aborted.
+
+### 5.3 Calibration Run and Refined Estimate
+
+The calibration batch size is:
+
+\[
+m_{\text{stage}} = \min\left( \lceil 0.01 \cdot n \rceil,\; \lfloor 300000 / \text{est\_per\_draw\_ms} \rfloor \right),
+\]
+
+where 300000 ms $\approx$ 5 minutes. The calibration run uses `parallelFor(0, m_stage, worker)` to measure per-draw time empirically.
+
+From the calibration:
+
+- `per_candidate_sec` = calibration elapsed time / total candidates used
+- `est_per_draw_sec` = `per_candidate_sec` × `E_draws` (expected candidates per accepted draw)
+- `est_total_sec` = `est_per_draw_sec` × `n`
+
+### 5.4 Five-Minute Safeguard
+
+If `est_total_sec > 300`:
+
+- **Interactive:** Prompt `"Do you want to continue? [y/N]: "`
+- **Non-interactive:** Proceed automatically with a note.
+
+### 5.5 Diagnostics (verbose = TRUE)
+
+With `verbose = TRUE`, the pilot reports:
+
+- Estimated simulation time for `n` draws
+- Note that the phase uses RcppParallel and cannot be safely interrupted
+- Calibration elapsed time and number of draws
+- `avg_candidates_per_draw` (empirical) vs `E_draws`
+- `per_candidate_sec` and `est_per_draw_sec`
+
+
+## 6. rIndepNormalGammaReg Pilot Logic
+
+For Gaussian regression with independent Normal–Gamma priors, the pilot logic is similar in spirit but tailored to joint \((\beta, \phi)\) sampling:
+
+### 6.1 Single-Draw Test
+
+One observation is generated in serial mode to measure per-observation time.
+
+### 6.2 Calibration Run
+
+\[
+m_{\text{stage}} = \min\left( \lceil 0.01 \cdot n \rceil,\; \lfloor 300000 / \text{per\_obs\_ms\_serial} \rfloor \right).
+\]
+
+The calibration run is parallel: `parallelFor(0, m_stage, worker)`.
+
+### 6.3 Time Estimate
+
+- `per_obs_sec` = calibration elapsed time / `m_stage`
+- `est_total_sec` = `per_obs_sec` × `n`
+
+### 6.4 Five-Minute Safeguard
+
+Same as rNormalGLM: if `est_total_sec > 300`, prompt in interactive sessions.
+
+
+## 7. EnvelopeDispersionBuild Pilot (Envelope Construction)
+
+The RSS and UB2 steps in `EnvelopeDispersionBuild` use closed-form bounds
+(`bound_rss_over_dispersion` and `bound_ub2_over_dispersion`) and no longer
+perform RSS/UB2 minimization or pilot timing blocks.
+
+### 7.1 Five-Minute Safeguard
+
+Since minimization/pilots are disabled, the time-estimate safeguard is not used.
+
+
+## 8. Choosing Serial vs Parallel
+
+| Scenario | Recommendation |
+|----------|----------------|
+| **Debugging or small runs** | `use_parallel = FALSE` – serial path is interruptible |
+| **Large production runs** | `use_parallel = TRUE` – faster; rely on the pilot and prompt |
+| **Scripts / non-interactive** | No prompt; runs proceed automatically |
+
+To disable parallel sampling:
+
+```{r eval=FALSE}
+# Via the formula interface in glmbayes:
+# glmb(formula, data, family, pfamily, n = 5000, use_parallel = FALSE)
+# Via the matrix interface in glmbayesCore:
+rglmb(n = 5000, y, x, family, pfamily, use_parallel = FALSE)
 ```
-EnvelopeEval (EnvelopeEval.cpp)
-    |-- if use_opencl && pilot/check passes:
-    |       f2_f3_opencl() -> f2_f3_kernel_runner()
-    \-- else:
-            f2_f3_non_opencl() -> CPU famfuncs (f2_f3_binomial_logit, etc.)
-```
 
-`EnvelopeEval` receives the grid `G4` (coefficients at each tangency point), the design matrix, prior parameters, and family/link. It chooses the GPU or CPU path based on `use_opencl` and the outcome of the pilot (when applicable). The GPU path calls `f2_f3_opencl`, which assembles the OpenCL program and invokes `f2_f3_kernel_runner`; the CPU path calls `f2_f3_non_opencl`, which dispatches to the appropriate C++ family function.
+Serial sampling is slower but can be interrupted. Parallel sampling is faster but non-interruptible once the main loop starts.
 
 
-## 3. Program Construction
+## 9. Technical Details
 
-OpenCL kernels are not stored as single monolithic files. Instead, the package builds the program by **concatenating** several source components in a fixed order. This mirrors a C/C++ build where headers and libraries are included before the main source.
+### 9.1 RcppParallel Worker Pattern
 
-### 3.1 Assembly Order
+The parallel samplers use the standard RcppParallel `Worker` pattern:
 
-The full program string is:
+- A struct inheriting from `RcppParallel::Worker`
+- `operator()(size_t begin, size_t end)` processes the range `[begin, end)`
+- Shared outputs use `RcppParallel::RVector` or `RcppParallel::RMatrix` for thread-safe writes
+- Each thread has its own RNG state to avoid contention
 
-```
-all_src = OPENCL.cl
-        + rmath (opencltools::load_kernel_library("rmath", package = "glmbayesCore"))
-        + dpq   (opencltools::load_kernel_library("dpq", package = "glmbayesCore"))
-        + nmath (opencltools::load_kernel_library("nmath", package = "glmbayesCore"))
-        + kernel file (opencltools::load_kernel_source(...), e.g. "src/f2_f3_binomial_logit.cl")
-```
+### 9.2 Thread Safety
 
-1. **OPENCL.cl** – Global configuration: extensions (`cl_khr_fp64`, `cl_khr_printf`), IEEE constants (`ML_NAN`, `ML_POSINF`), feature detection for `expm1`/`log1p`, and utility macros.
-2. **rmath** – Mathematical constants (M_E, M_PI, etc.) and distribution function declarations.
-3. **dpq** – R-style density/CDF macros (`R_D__0`, `R_DT_val`, etc.) used in give_log/lower_tail logic.
-4. **nmath** – Ported numerical routines (bd0, stirlerr, lgamma, dbinom, dpois, pnorm, etc.).
-5. **Kernel file** – The model-specific kernel (e.g., `f2_f3_binomial_logit.cl`) that computes f2 and f3 for each grid point.
+- RNG: Thread-local state; no sharing across workers
+- Callbacks: The negative log-posterior and gradient functions (`f2`, `f3`) are called from workers; a mutex protects R callback invocations where needed
+- Output: Write-only ranges per worker; no overlapping writes
 
-### 3.2 load_kernel_source and load_kernel_library
+### 9.3 Dependencies
 
-Generic loaders live in **opencltools** (not re-exported from glmbayesCore):
-
-- **`opencltools::load_kernel_source(relative_path, package = "glmbayesCore")`** – Loads a single `.cl` file from `inst/cl/`.
-- **`opencltools::load_kernel_library(subdir, package = "glmbayesCore")`** – Loads all `.cl` files in a subdirectory (e.g., `"nmath"`, `"rmath"`, `"dpq"`), parses `@provides` and `@depends` annotations, performs a **dependency-aware topological sort**, and concatenates the files so that dependents appear after their dependencies.
-
-The `@provides` and `@depends` tags allow modular, maintainable kernel code: each file declares what it provides and what it needs. See `?opencltools::load_kernel_library` for details.
+- **RcppParallel** – Provides TBB and the `parallelFor` interface
+- **TBB** – Bundled with RcppParallel; no separate installation required
 
 
-## 4. Ported Math Libraries (nmath / rmath / dpq)
+## 10. Troubleshooting
 
-The likelihood and gradient computations require statistical functions that match R's behavior. Because OpenCL C does not include these, the package **ports** a core set from R's nmath and rmath libraries to OpenCL C.
-
-### 4.1 nmath
-
-| Module | Provides | Purpose |
-|--------|----------|---------|
-| nmath.cl | ML_*, ME_*, ISNAN, R_FINITE, ML_ERROR, etc. | Constants, error handling, validation macros |
-| log1p.cl | Rlog1p | Log(1+x) for numerical stability |
-| expm1.cl | expm1 | exp(x)-1 for numerical stability |
-| bd0.cl | bd0, ebd0, etc. | Poisson/binomial deviance terms |
-| stirlerr.cl | stirlerr | Stirling error for factorial terms |
-| lgamma.cl | lgammafn | Log-gamma |
-| gamma.cl | gammafn | Gamma function |
-| dbinom.cl | dbinom, dbinom_raw | Binomial density |
-| dpois.cl | dpois, dpois_raw | Poisson density |
-| dgamma.cl | dgamma | Gamma density |
-| dnorm.cl | dnorm4 | Normal density |
-| pnorm.cl | pnorm5, pnorm_both | Normal CDF (probit) |
-| pgamma.cl | pgamma | Gamma CDF (inverse link) |
-| d1mach.cl | d1mach | Machine constants |
-| chebyshev.cl | chebyshev_eval | Polynomial evaluation |
-
-### 4.2 rmath
-
-`Rmath.cl` provides additional constants (M_E, M_PI, M_LN2, etc.) and distribution functions consistent with R's `Rmath` library.
-
-### 4.3 dpq
-
-`dpq.cl` and `dpq_prelude.cl` provide macros for density and CDF handling with `give_log` and `lower_tail`, matching R's DPQ (density, probability, quantile) conventions.
-
-These ports ensure that the OpenCL kernels produce results **numerically consistent** with the CPU path and with R itself.
+| Symptom | Likely cause | Suggestion |
+|---------|--------------|------------|
+| Sampler appears to hang | Long parallel run | Use `verbose = TRUE` to see pilot estimates before the main run |
+| Zero accepts in pilot | Envelope too loose | Try `use_opencl = TRUE`, larger `n`, different `Gridtype`, or stronger prior |
+| Prompt never appears | Non-interactive session | Expected; runs proceed automatically in batch/CI |
+| Want to interrupt a run | Parallel phase has started | Cannot interrupt; use `use_parallel = FALSE` for interruptible runs |
 
 
-## 5. Family/Link Kernels
+## 11. Cross-References
 
-Each supported family/link has a dedicated kernel file that implements the f2/f3 logic for that model.
-
-| Family | Link | Kernel file |
-|--------|------|-------------|
-| binomial | logit | `f2_f3_binomial_logit.cl` |
-| binomial | probit | `f2_f3_binomial_probit.cl` |
-| binomial | cloglog | `f2_f3_binomial_cloglog.cl` |
-| poisson | log | `f2_f3_poisson.cl` |
-| Gamma | inverse | `f2_f3_gamma.cl` |
-| gaussian | identity | `f2_f3_gaussian.cl` |
-
-### 5.1 Kernel Structure
-
-Each kernel follows the same pattern:
-
-1. **Work-item mapping** – `int j = get_global_id(0)`; one work item per grid point \(j\).
-2. **Prior term** – Compute \(P(\beta_j - \mu)\) and the quadratic form \(\tfrac{1}{2}(\beta_j - \mu)' P (\beta_j - \mu)\), accumulate into `qf[j]`.
-3. **Prior gradient** – Initialize local gradient with \(P(\beta_j - \mu)\).
-4. **Data loop** – For each observation \(i\), compute linear predictor, link, likelihood contribution, and gradient contribution. Use ported functions (`dbinom_raw`, `dpois_raw`, `lgamma`, `pnorm5`, etc.) as needed.
-5. **Write outputs** – `qf[j]` = negative log posterior; `grad[k*m1 + j]` = gradient (column-major layout).
-
-The kernels use a fixed `MAX_L2` for local arrays (e.g., 64); this limits the number of coefficients when using OpenCL. See the source for current limits.
-
-
-## 6. f2_f3_opencl Flow
-
-The wrapper `f2_f3_opencl` in `kernel_wrappers.cpp` performs:
-
-1. **Input flattening** – Convert R matrices/vectors (x, b, mu, P, alpha, y, wt) to contiguous C++ vectors in the layout expected by the runner.
-2. **Kernel selection** – Map `(family, link)` to `kernel_name` and `kernel_file` (e.g., binomial + logit → `f2_f3_binomial_logit`, `src/f2_f3_binomial_logit.cl`).
-3. **Program assembly** – Load OPENCL.cl, rmath, nmath, dpq, and the kernel file; concatenate into `all_src`.
-4. **Runner call** – Invoke `f2_f3_kernel_runner(all_src, kernel_name, l1, l2, m1, ...)` with flattened inputs and output buffers.
-5. **Output reshaping** – Copy `qf_flat` into an R vector; wrap `grad_flat` as an Armadillo matrix (m1 × l2) for return.
-
-The returned list has components `qf` (negative log posterior per grid point) and `grad` (gradient matrix).
-
-
-## 7. f2_f3_kernel_runner
-
-The runner in `kernel_runners.cpp` handles the low-level OpenCL API:
-
-1. **Platform and device** – `clGetPlatformIDs`, `clGetDeviceIDs` (CL_DEVICE_TYPE_DEFAULT).
-2. **Context and queue** – `clCreateContext`, `clCreateCommandQueueWithProperties`.
-3. **Program** – `clCreateProgramWithSource` with the concatenated string, `clBuildProgram`.
-4. **Kernel** – `clCreateKernel` with the kernel name.
-5. **Buffers** – Create read-only buffers for X, B, mu, P, alpha, y, wt; write-only for qf and grad. Copy host data for inputs.
-6. **Launch** – `clEnqueueNDRangeKernel` with `global = m1` (one work item per grid point).
-7. **Readback** – `clEnqueueReadBuffer` for qf and grad.
-8. **Sanity check** – If both outputs are all zeros, throw (likely kernel failure).
-9. **Cleanup** – Release buffers, kernel, program, queue, context.
-
-The runner is GLM-specific and lives in the `glmbayes::opencl` namespace; the general OpenCL utilities (kernel loading, device enumeration) are in `openclPort`.
-
-
-## 8. Pilot and Safeguards
-
-For large grids (e.g., \(m_1 > 50{,}000\)), `EnvelopeEval` runs `f2_f3_opencl_pilot` before the full evaluation to estimate runtime.
-
-### 8.1 Pilot Logic
-
-- **Warm-up** – Run `f2_f3_opencl` on a small grid slice.
-- **Calibration** – Run on slices of ~1% and ~2% of the grid to estimate fixed cost and per-grid cost.
-- **Refined estimate** – Compute `refined_est_total_sec = per_grid_sec × m1`.
-- **5-minute safeguard** – If `refined_est_total_sec > 300`:
-  - **Interactive session**: Prompt `"Do you want to continue? [y/N]: "`.
-  - **Non-interactive session**: Proceed automatically (e.g., CI, batch).
-
-This mirrors the parallel sampling pilots in Core 06. The envelope build phase cannot be interrupted once the full OpenCL run starts, so the pilot gives users a chance to decline long runs.
-
-### 8.2 When the Pilot Runs
-
-The pilot runs when `m1_total > 50000` and `use_opencl` is true. For smaller grids, the full evaluation runs without a pilot.
-
-
-## 9. Installation and Availability
-
-OpenCL support is **optional**. The package compiles and runs without it; in that case, `use_opencl` is ignored and the CPU path is always used.
-
-To enable OpenCL:
-
-- Install OpenCL headers and development libraries (see **`vignette("Core-10", package = "glmbayesCore")`**).
-- Build **glmbayesCore** from source with OpenCL enabled (`configure` / `configure.win`).
-- Ensure **opencltools** and **nmathopencl** are installed and OpenCL-ready; ensure an ICD loader and vendor driver at runtime.
-
-Use `glmbayesCore_has_opencl()` to check availability and `diagnose_glmbayes()` for a full diagnostic report. Platform-specific steps (Windows, Linux, macOS) and AMD ROCm notes are in Core 10.
-
-
-## 10. Cross-References
-
-- **Core 02** – Simulation pipeline (optimization, standardization, envelope build, sampling)
-- **Core 05** – Envelope-related functions
-- **Core 06** – Parallel sampling (pilot pattern, 5-minute safeguard)
-- **Core 10** (`glmbayesCore`) – GPU acceleration: installation, `glmbayesCore_has_opencl`, `diagnose_glmbayes`
-- **`?EnvelopeBuild`**, **`?EnvelopeEval`** – use_opencl argument
-- **`?opencltools::load_kernel_library`**, **`?opencltools::load_kernel_source`** – Program assembly
-- **`?rglmb`**, **`?rlmb`** – `use_opencl` argument
+- **Core 03** – Simulation pipeline (optimization, standardization, envelope, sampling)
+- **Core 06** – Envelope-related functions
+- **Core 08** – OpenCL acceleration for envelope construction
+- **`?glmb`**, **`?rglmb`**, **`?lmb`**, **`?rlmb`** – `use_parallel` argument
+- **NEWS.md** – Parallel sampling and pilot-related changes

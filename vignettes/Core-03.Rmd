@@ -1,269 +1,544 @@
 ---
-title: "Core 03: Accept–Reject Sampling for Dispersion in Gamma Regression"
+title: "Core 03: Simulation Methods - Likelihood Subgradient Densities"
 author: "Kjell Nygren"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: REFERENCES.bib
 reference-section-title: References
 vignette: >
-  %\VignetteIndexEntry{Core 03: Accept–Reject Sampling for Dispersion in Gamma Regression}
+  %\VignetteIndexEntry{Core 03: Simulation Methods - Likelihood Subgradient Densities}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-
-```{r, include=FALSE}
+```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
 ```
 
+```{r setup}
+library(glmbayesCore)
+```
 
 
 
+## 1. Introduction
 
-# 1. Introduction 
+Many of the key models implemented in the `glmbayes` package make use of independent and identically distributed (iid) sampling procedures for models with log-concave likelihoods and multivariate normal priors. The implementation is based on [@Nygren2006]; the envelope function map and call graph are summarized in [@glmbayesChapterA08].
 
-This vignette explains the derivation of the posterior for the dispersion parameter
-in a Gamma GLM with log link, and the construction of a proposal distribution and bounding function 
-used for rejection sampling [@RobertCasella2004; @Devroye1986] in `rGamma_reg`.
+The objective of this vignette is to provide a detailed overview of the implementation of these simulation methods. To that end, this vignette contains the following:
 
-We consider a Gamma GLM with log link, where the mean is
+(i) An overview of the structure of the main `.cpp` function (`.rNormalGLM_cpp`) that serves as the "director of traffic" for the simulation pipeline and its connection to the underlying theory.
 
-\[
-\mu_i = \exp(x_i^\top \beta + \alpha_i),
-\]
+(ii) A detailed discussion of input validation and preprocessing steps, including dimension checks, dispersion adjustment, and offset transformation.
 
-and the dispersion parameter is \(\phi > 0\).  
-It is convenient to work with the **precision**
+(iii) An overview of the posterior optimization routine, including the use of user-supplied log-posterior and gradient functions, the BFGS method, and Hessian estimation.
 
-\[
-v = \frac{1}{\phi}.
-\]
+(iv) A discussion of how models are transformed into a standardized form suitable for envelope construction and simulation, with a deep dive into the `glmb_Standardize_Model()` function.
 
-Throughout this chapter, we treat the regression coefficients \(\beta\) and offsets \(\alpha_i\) as fixed and known.
+(v) A discussion of options for sizing the envelope functions and densities used during sampling, including computational implications and a deep dive into how the `EnvelopeOpt()` function determines envelope size.
 
+(vi) A deep dive into envelope construction with theoretical connections to the Nygren & Nygren (2006) paper, including the role of GPU acceleration for large models.
 
-## 1.2 Likelihood
+(vii) A discussion of how simulation is performed, including the use of parallel sampling to accelerate computation.
 
-We use the standard Gamma parameterization [@McCullagh1989; @Agresti2015].
+(viii) A discussion of how simulation output is converted back into the original model scale for use in higher-level functions.
 
-\[
-Y_i \mid v \sim \mathrm{Gamma}(\text{shape}=v,\ \text{rate}=v/\mu_i),
-\]
-
-so that
-
-\[
-\mathbb{E}(Y_i)=\mu_i,
-\qquad
-\mathrm{Var}(Y_i)=\frac{\mu_i^2}{v}.
-\]
-
-The log‑likelihood contribution of observation \(i\) is
-
-\[
-\ell_i(v)
-=
-v\log v
--
-v\log \mu_i
-+
-(v-1)\log y_i
--
-\log\Gamma(v)
--
-\frac{v}{\mu_i} y_i.
-\]
-
-With weights \(w_i\), the total log‑likelihood is
-
-\[
-\ell(v)
-=
-\sum_{i=1}^n
-w_i
-\left[
-v\log v
--
-v\log \mu_i
-+
-(v-1)\log y_i
--
-\log\Gamma(v)
--
-\frac{v}{\mu_i} y_i
-\right].
-\]
-
-## 1.3 Prior
-
-We place a Gamma prior on the precision:
-
-\[
-v \sim \mathrm{Gamma}(a_0, b_0),
-\qquad
-\log p(v)
-= a_0 \log b_0 \;-\; \log\Gamma(a_0)
-\;+\; (a_0 - 1)\log v \;-\; b_0 v.
-\]
-
-## 1.4. Posterior Log‑Density
-
-The posterior log‑density is
-
-\[
-f(v)
-=
-\ell(v)
-+
-\log p(v)
-\;-\; \log (C_{1})
-\]
-
-where \( C_{1}\) is a normalizing constant for the posterior density.
+This structure is designed to guide users through both the theoretical foundations and practical implementation of the simulation routines in `glmbayes`.
 
 
-# 2. The sampler
+## 2. Overview of the Main Simulation Function: `.rNormalGLM_cpp`
+
+The core simulation engine in the `glmbayes` package is the `.rNormalGLM_cpp` function, implemented in C++ via Rcpp. This function orchestrates the entire simulation pipeline, from preprocessing inputs to generating posterior samples. It serves as the "director of traffic," coordinating optimization, standardization, envelope sizing, envelope construction, and sampling. Below is a breakdown of its key components:
+
+(i) **Input Validation and Preprocessing**  
+Ensures consistency in dimensions across inputs (`x`, `y`, `mu`, `P`, `offset`, `wt`).  
+Adjusts weights for dispersion and initializes key variables.  
+Transforms the model so that the prior mean is zero, simplifying subsequent optimization.
+
+(ii) **Posterior Optimization**  
+Uses the `optim()` function with user-supplied negative log-posterior (`f2`) and corresponding gradient (`f3`) functions. 
+Applies the BFGS method to find the posterior mode.  
+Computes an approximate Hessian matrix at the mode, which is used in standardization.
+
+(iii) **Model Standardization**  
+Calls `glmb_Standardize_Model()` to transform the model into a standardized form.  
+Outputs include transformed design matrix, prior precision, posterior mode, and matrices for undoing the transformation.
+
+(iv) **Envelope Sizing**  
+Determines the appropriate size of the envelope used for sampling.  
+Balances computational cost with sampling efficiency.  
+Uses heuristics and diagnostics to guide envelope width and grid resolution.
+
+(v) **Envelope Construction**  
+Constructs an envelope for the standardized model using `EnvelopeBuild_c()`.  
+The envelope facilitates efficient sampling from the posterior.  
+Supports OpenCL acceleration for large models and grid sorting for small sample sizes.
+
+(vi) **Simulation Execution**  
+Chooses between serial and parallel sampling based on `use_parallel` and sample size `n`.  
+Executes the standardized sampler via `.rNormalGLM_std_cpp()` to generate samples.
+Verbose mode provides diagnostic timestamps.
+
+(vii) **Post-Processing and Output**  
+Applies reverse transformation to undo standardization.  
+Adds back the prior mean to the simulated coefficients.  
+Constructs the output list with coefficients, posterior mode, prior info, and envelope.
+
+This function encapsulates the full simulation workflow, making it a central component of the package. Its modular design allows for flexibility in model specification, optimization routines, and computational acceleration.
+
+## 3. Input Validation and Preprocessing
+
+The first step in the simulation pipeline ensures that all inputs are consistent and properly formatted. This includes:
+
+(i) **Dimension Checks**  
+Verifies that the number of rows and columns in `x`, `y`, `mu`, `P`, `offset`, and `wt` are compatible. Any mismatch triggers an error.
+
+(ii) **Dispersion Adjustment**  
+If the model family is Poisson or Binomial, the dispersion is set to 1. Otherwise, the user-supplied dispersion is used to scale the weights.
+
+(iii) **Offset Transformation**  
+Computes the transformed offset vector `alpha = x %*% mu + offset`, which is used to shift the model so that the prior mean becomes zero.
+
+(iv) **Initialization**  
+Sets up the starting values for optimization and prepares the input structures for subsequent steps.
+
+This preprocessing step ensures that the model is well-posed and that the optimization routine receives clean, consistent inputs.
+
+## 4. Posterior Optimization
+
+Once the inputs are validated, the function proceeds to estimate the posterior mode using numerical optimization:
+
+(i) **Objective and Gradient Functions**  
+The user supplies two functions — `f2` for the **negative** log-posterior and `f3` for the corresponding gradient — which are passed to the `optim()` routine.
+
+(ii) **Optimization Method**  
+The BFGS algorithm is used to minimize the negative log-posterior. The starting point is `start - mu`, reflecting the zero-centered prior.
+
+(iii) **Hessian Estimation**  
+The `optim()` function returns an approximate Hessian matrix at the mode. This matrix is used in the standardization step to transform the model into a form suitable for envelope construction.
+
+(iv) **Convergence Check**  
+If the optimizer fails to converge, the function halts with an error message.
+
+This step identifies the most probable parameter configuration under the posterior by minimizing its negative log-density, and prepares the curvature information needed for standardization.
 
 
-To build effective envelopes for the Gamma family with a Gamma prior for the precision, it is important to
-be able to center the proposal close to the center of the posterior. To enable this, we introduce the following proposal
-distribution and associated bounding function and establish key claims [@RobertCasella2004].
+## 5. Model Standardization with Theoretical Underpinnings: `glmb_Standardize_Model()`
 
-## 2.1 Proposal Distribution
+The theoretical results and formulas in the Nygren and Nygren (2006) paper assume that models are in a standardized form. The paper contains the following key definitions and remarks:
 
-Let \( \bar{c}(v_{\text{tangent}}) \) denote the gradient of \(-\ell(v)\) evaluated at the tangency point:
-\[
-\bar{c}(v_{\text{tangent}}) = -\ell'(v_{\text{tangent}}).
-\]
+(i) **Definition 3**: A probability model with a multivariate normal prior and log-concave likelihood function is in standard form if:
 
-We then define a gamma proposal distribution by:
+- The prior variance–covariance matrix is the identity matrix.  
+- The Hessian of the log-posterior density evaluated at the posterior mode is a diagonal matrix.
 
-\[
-v \sim \mathrm{Gamma}_{\text{prop}}\!\left(a_0 + \tfrac{1}{2}\sum_i w_i,\; b_0 - \bar{c}(v_{\text{tangent}})\right).
-\]
+(ii) **Remark 11**: If the log-likelihood function is concave and twice continuously differentiable, then a Cholesky decomposition of the posterior precision at the unique posterior mode (which always exists) can be used to reparameterize a model into one for which the posterior precision at the posterior mode is a diagonal matrix.
 
-where the log of the proposal distribution specifically takes the form
+(iii) **Remark 12**: Let `P` be a positive definite matrix. Then there exists a positive definite diagonal matrix `D` such that `P - D` also is a positive definite matrix.
 
-\[
-\begin{aligned}
-\log p_{prop}(v) & = (a_0+  \frac{1}{2}\sum_i w_i )\log [ b_0 - \bar{c}(v_{\text{tangent}})] \;-\; \log\Gamma(a_0+  \frac{1}{2}\sum_i w_i ) \\[4pt]
-&  \;+\; ((a_0+  \frac{1}{2}\sum_i w_i ) - 1)\log v \;-\; [ b_0 - \bar{c}(v_{\text{tangent}})] v.
-\end{aligned}
-\]
+(iv) **Remark 13**: Let `P` and `D` be as in the previous remark. It then follows that the following two models have the same posterior density:
+
+- A model with prior mean vector \(\mu\), prior precision matrix \(P\), and log-likelihood function \(LL(\theta)\).
+
+- A model with prior mean vector \(\mu\), prior precision matrix \(D\), and log-likelihood function  
+  \[
+  LL^{*}(\theta) = -0.5\,(\theta - \mu)^{T}(P - D)(\theta - \mu) + LL(\theta).
+  \]
+
+(v) **Remark 14**: Suppose that a model has a multivariate normal prior with a diagonal variance–covariance matrix. Also assume that the posterior precision at the posterior mode is a diagonal matrix. Then the model can be reparameterized into a model in standard form.
+
+(vi) **Remark 15**: If a probability model with a multivariate normal prior and log-concave likelihood function has a twice continuously differentiable log-likelihood function, then it can be reparameterized into a model in standard form.
+
+In addition to this standardized form, we further require that the prior mean vector is zero, which simplifies some of our formulas and implementation steps.
+
 ---
 
-In the implementation, this proposal is used in truncated form on the interval 
-\([v_{\min}, v_{\max}]\), with \(v_{\min}, v_{\max}\) derived from a curvature-based 
-Gamma surrogate and optional dispersion bounds.
+### Implementation Details: `glmb_Standardize_Model()`
 
-## 2.2 Bounding function
+The function `glmb_Standardize_Model()` implements this transformation in practice. It performs two key eigenvalue decompositions:
 
-Let $v_{\min}$ be lower bound for the precision $v$. We can then define a bounding function \(\log h(\cdot)\) by
+(i) The first decomposition diagonalizes the Hessian of the log-posterior at the posterior mode. This yields a transformation matrix `L2` that is used to normalize the posterior precision. The transformed design matrix and prior precision are updated accordingly.
 
+(ii) The second decomposition identifies a diagonal matrix \(\varepsilon\) such that the difference \(P - \varepsilon\) remains positive definite. This ensures that the transformed model has a diagonal prior precision and can be reparameterized into standard form. A scaling loop is used to find the largest possible \(\varepsilon\) that satisfies this condition.
+
+The function then applies a second transformation `L3` to finalize the standardization. This results in a model where both the prior and the data precision matrices are diagonal and that the prior precision matrix is the identity matrix, satisfying the theoretical conditions for standard form.
+
+The output includes:
+
+- Transformed posterior mode (`bstar2`)  
+- Transformed design matrix (`x2`)  
+- Prior contribution to the modified log-likelihood (`P2`): the part of the prior precision that is shifted to the log-likelihood  
+- Transformed prior mean (`mu2`, typically zero)  
+- Precision matrix for standardized data (`A`)  
+- Inverse transformation matrices (`L2Inv`, `L3Inv`) for undoing the standardization
+
+This implementation ensures that the model satisfies the theoretical conditions for standard form, enabling efficient envelope construction and posterior sampling. It also provides a modular and transparent framework for debugging and extending the standardization process in future versions of the package.
+
+
+## 6. Envelope Sizing
+
+The envelope sizing logic is governed by the `Gridtype` parameter, which controls how the grid points are selected for each dimension.
+
+**Gridtype Logic (Nygren & Nygren 2006)**
+
+Let \(a_i\) be the **data precision** for dimension \(i\) (i.e., \(A2[i,i]\)).  
+In a standardized model, the prior precision is the identity matrix, so the **posterior precision** becomes \(1 + a_i\).  
+Let \(\omega_i\) be the width parameter computed below.
+
+### 1. Gridtype 1: Static Threshold Test
+
+- If \( \sqrt{1 + a_i} \leq \frac{2}{\sqrt{\pi}} \approx 1.128379 \), then the expected number of candidate draws per accepted sample under a single tangent envelope is less than the limiting upper bound provided by the three-tangent envelope.  
+  Therefore, building more points does not meaningfully reduce rejections.
+
+  - Use a single-point envelope at the mode:  
+    \(G2[i] = \{\theta_i^{\ast}\}\), \(GIndex1[i] = \{4\}\)
+
+- Else: build a three-point envelope at  
+  \(\{\theta_i^{\ast} - \omega_i,\ \theta_i^{\ast},\ \theta_i^{\ast} + \omega_i\}\),  
+  \(GIndex1[i] = \{1,2,3\}\)
+
+### 2. Gridtype 2: Dynamic Envelope via `EnvelopeOpt(a, n)`
+
+- Rather than a fixed-bound test, this approach solves (per dimension) the cost tradeoff between:
+
+  - \(T_{\text{build}}(g_i) \propto g_i\) (linear grid-construction cost)  
+  - \(T_{\text{sample}}(n, \text{acc}_i(g_i)) \propto n / \text{acc}_i(g_i)\), where \(\text{acc}_i(g_i)\) is the approximate acceptance rate given \(g_i\) grid points
+
+- `EnvelopeOpt` returns \( \text{gridindex}[i] \in \{1, 3\} \) by minimizing \(T_{\text{build}} + T_{\text{sample}}\) under approximations from subgradient theory.
+
+- This allows more envelope points up front when \(n\) is large, because reduced rejections during sampling more than pay for the extra build cost.
+
+### 3. Gridtype 3: Always Three-Point Grid
+
+We now consider the sampling performance using the foregoing approach when the data are multivariate normal with a diagonal precision matrix given by `NP` for a positive definite diagonal matrix `P` and positive scalar `N`.
+
+**Theorem 3**: Consider a `k`-dimensional multivariate normal data model in standard form with precision as above, and let \( \tilde{a}^*(N) \) denote the value of \( \tilde{a} \) at `N`; then  
 \[
-\log h(v)
-=
-\ell(v)
--
-\bigl[\ell(v_{\text{tangent}})
--
-\bar{c}(v_{\text{tangent}})(v - v_{\text{tangent}})\bigr]
--
-\frac{1}{2}\Bigl(\sum_i w_i\Bigr)\log\!\left(\frac{v}{v_{\min}}\right).
+\lim_{N \to \infty} \tilde{a}^*(N) = \left( \frac{2}{\sqrt{\pi}} \right)^k
 \]
 
+**Proof**: This follows immediately from Theorem 2 in Nygren & Nygren (2006).
 
-It follows from the concavity of \(\ell(\cdot)\) and the fact that 
-\(\log(v/v_{\min}) \ge 0\) for \(v \ge v_{\min}\) that 
-\(\log h(v) \le 0\) for all \(v \ge v_{\min}\).
+### 4. Gridtype 4: Always Single-Point Grid (Mode Only)
 
-## 2.3 Equivalence Claim
-
-Throughout this section, all densities are understood on the truncated domain 
-\(v \in [v_{\min}, v_{\max}]\), with normalizing constants absorbed into \(C_1\) and \(C_2\).
-
-**Claim 1:**  
-
-The posterior log density $f(.)$ satisfies the property that 
-
-\[ f(v)=\log p_{prop}(v)+\log h(v) + C_{2} \]
-
-where \[\begin{aligned}
-C_{2} 
-& = \Bigl( -  \log (C_{1}) \\[4pt]
-& - [(a_0+  \frac{1}{2}\sum_i w_i ) \log\!\left(b_0 - \bar{c}(v_{\text{tangent}})\right) \;-\; \log\Gamma(a_0+  \frac{1}{2}\sum_i w_i )] \\[4pt]
-& + [a_0 \log b_0 \;-\; \log\Gamma(a_0) ] \\[4pt]
-& +[\ell(v_{\text{tangent}})+\bar{c}(v_{\text{tangent}})v_{\text{tangent}} ]\\[4pt]
-& - [\frac{1}{2}\sum_i w_i] \log v_{\text{min}}\Bigr)\end{aligned}
-\].
-
-**Proof:**
-
+Following Example 1 in Nygren & Nygren (2006), the expected number of candidate draws per accepted draw in the multivariate normal case is:  
 \[
-\begin{aligned}
-f(v) & = \log p(v) +\ell(v) - \log (C_{1}) \\[4pt]
-& = \Bigl( [a_0 \log b_0 \;-\; \log\Gamma(a_0)
-\;+\; (a_0 - 1)\log v \;-\; b_0 v]  \\[4pt]
-& + [[\frac{1}{2}\sum_i w_i] \log v - [-\bar{c}(v_{\text{tangent}}) v]   \\[4pt]
-& + [(a_0+  \frac{1}{2}\sum_i w_i )\log [ b_0 - \bar{c}(v_{\text{tangent}})] \;-\; \log\Gamma(a_0+  \frac{1}{2}\sum_i w_i )] \\[4pt]
-& - [a_0 \log b_0 \;-\; \log\Gamma(a_0) ] \Bigr) \\[4pt]
-&   + \Bigl(\ell(v) -  [[\frac{1}{2}\sum_i w_i] \log v -[- \bar{c}(v_{\text{tangent}}) v]] \Bigr) \\[4pt]
-& + \Bigl( -  \log (C_{1}) \\[4pt]
-& - [(a_0+  \frac{1}{2}\sum_i w_i )\log [ b_0 - \bar{c}(v_{\text{tangent}})] \;-\; \log\Gamma(a_0+  \frac{1}{2}\sum_i w_i )] \\[4pt]
-& + [a_0 \log b_0 \;-\; \log\Gamma(a_0) ] \Bigr) \\[4pt]
-& = \Bigl( [(a_0+  \frac{1}{2}\sum_i w_i )\log [ b_0 - \bar{c}(v_{\text{tangent}})] \;-\; \log\Gamma(a_0+  \frac{1}{2}\sum_i w_i )] \\[4pt]
-& + ((a_0+  \frac{1}{2}\sum_i w_i ) - 1)\log v \;-\; [ b_0 - \bar{c}(v_{\text{tangent}})]v  \Bigr) \\[4pt]
-&   + \Bigl(\ell(v) -  [[\frac{1}{2}\sum_i w_i] \log v -[- \bar{c}(v_{\text{tangent}}) v]] \\[4pt]
-& -[\ell(v_{\text{tangent}})+\bar{c}(v_{\text{tangent}})v_{\text{tangent}} ]  \\[4pt]
-& + [\frac{1}{2}\sum_i w_i] \log v_{\text{min}} \Bigr) \\[4pt]
-& + \Bigl( -  \log (C_{1}) \\[4pt]
-& - [(a_0+  \frac{1}{2}\sum_i w_i )\log [ b_0 - \bar{c}(v_{\text{tangent}})] \;-\; \log\Gamma(a_0+  \frac{1}{2}\sum_i w_i )] \\[4pt]
-& + [a_0 \log b_0 \;-\; \log\Gamma(a_0) ] \\[4pt]
-& +[\ell(v_{\text{tangent}})+\bar{c}(v_{\text{tangent}})v_{\text{tangent}} ]\\[4pt]
-& - [\frac{1}{2}\sum_i w_i] \log v_{\text{min}} \Bigr) \\[4pt]
-& = \log p_{prop}(v) \\[4pt]
-&   + \Bigl([\ell(v)-[\ell(v_{\text{tangent}})-\bar{c}(v_{\text{tangent}})(v - v_{\text{tangent}})]] \\[4pt]
-& - \frac{1}{2}\Bigl(\sum_i w_i\Bigr)\log\!\left(\frac{v}{v_{\min}}\right) \Bigr) \\[4pt]
-& + \Bigl( -  \log (C_{1}) \\[4pt]
-& - [(a_0+  \frac{1}{2}\sum_i w_i )\log [ b_0 - \bar{c}(v_{\text{tangent}})] \;-\; \log\Gamma(a_0+  \frac{1}{2}\sum_i w_i )] \\[4pt]
-& + [a_0 \log b_0 \;-\; \log\Gamma(a_0) ] \\[4pt]
-& +[\ell(v_{\text{tangent}})+\bar{c}(v_{\text{tangent}})v_{\text{tangent}} ]\\[4pt]
-& - [\frac{1}{2}\sum_i w_i] \log v_{\text{min}}\Bigr) \\[4pt]
-& = \log p_{prop}(v) + \log h(v) + C_{2}
-\end{aligned}
+\prod_{i=1}^{k} \sqrt{1 + a_i}
 \]
 
+where `k` is the number of dimensions. More generally, if the data are "normal-like," then we expect similar acceptance rates even for other generalized linear models.
 
-## 2.4 Implementation Outline
+---
 
-To implement the sampler, we proceed as follows:
+### Deep Dive: Gridtype 1 — Static Threshold Envelope
 
-1. **Find the posterior mode** \(v_\star\) using a Gamma‑surrogate fixed‑point iteration.
-2. **Approximate the posterior mean** \(v_{\text{mean}}\) using curvature at \(v_\star\) and a
-   Gamma surrogate \(\Gamma(\alpha_{\!bar}, \beta_{\!bar})\).
-3. **Set the tangency point** to
-   \[
-   v_{\text{tangent}} = v_{\text{mean}}.
-   \]
-4. **Build the proposal and bounding function** using \(v_{\text{tangent}}\) as above.
-5. **Sample** as follows:
-   - (a) Generate a candidate \(v_{\text{cand}}\) from the (possibly truncated) proposal
-     \(\mathrm{Gamma}(\text{shape}_\text{prop}, \text{rate}_\text{prop})\).
-   - (b) Draw \(u \sim \mathrm{Uniform}(0,1)\).
-   - (c) Accept if
-     \[
-     \log h(v_{\text{cand}}) - \log u > 0.
-     \]
+Gridtype 1 uses a simple threshold test to decide whether a single-point or three-point envelope should be constructed for each dimension. The key quantity is the posterior precision \( 1 + a_i \), and the threshold \( \frac{2}{\sqrt{\pi}} \approx 1.128379 \) arises from bounding the expected number of candidate draws per accepted sample.
 
-The accepted draws for \(v\) are then transformed to dispersion by \(\phi = 1/v\).
+If \( \sqrt{1 + a_i} \leq \frac{2}{\sqrt{\pi}} \), then the expected number of candidate draws per accepted sample under a single tangent envelope is less than the limiting upper bound provided by the three-tangent envelope. This implies that adding more grid points does not meaningfully reduce rejection rates, and a single tangent at the mode suffices.
+
+This logic is especially useful for low-variance dimensions, where the posterior is sharply peaked and additional tangents offer little marginal benefit. The resulting envelope is minimal and fast to construct:
+
+- Grid: \(\{\theta_i^{\ast}\}\)  
+- Index: \(\{4\}\) (single tangent at the mode)
+
+If the threshold is exceeded, a symmetric three-point grid is used:
+
+- Grid: \(\{\theta_i^{\ast} - \omega_i,\ \theta_i^{\ast},\ \theta_i^{\ast} + \omega_i\}\)  
+- Index: \(\{1, 2, 3\}\) (left, center, right tangents)
+
+The width parameter \( \omega_i \) is derived from the local curvature of the log-likelihood at the posterior mode. Specifically:
+
+\[
+\omega_i := \frac{ \sqrt{2} - \exp\left( -1.20491 - 0.7321 \sqrt{0.5 + a_i} \right) }{ \sqrt{1 + a_i} }
+\]
+
+Since \( \sqrt{1 + a_i} \) is the square root of the precision for dimension `i`, the inverse is essentially the standard deviation. When \( a_i \) is large, the second term approaches zero, so:
+
+\[
+\omega_i \approx \frac{ \sqrt{2} }{ \sqrt{1 + a_i} }
+\]
+
+and hence is essentially proportional to the standard deviation.
+
+---
+
+### Deep Dive: Gridtype 2 — Adaptive Envelope via `EnvelopeOpt()`
+
+Gridtype 2 uses a dynamic strategy to select the number of grid points per dimension based on a cost-benefit analysis. The goal is to minimize total runtime by balancing envelope construction cost against sampling efficiency.
+
+The tradeoff is formalized as:
+
+- \(T_{\text{build}}(g_i) \propto g_i\): cost of building \(g_i\) tangents in dimension \(i\)
+
+- \(T_{\text{sample}}(n, \text{acc}_i(g_i)) \propto n / \text{acc}_i(g_i)\): cost of drawing \(n\) samples given acceptance rate \(\text{acc}_i(g_i)\)
+
+The function `EnvelopeOpt(a_i, n)` solves this tradeoff using approximations from subgradient theory. Dimensions are ranked by decreasing posterior standard deviation — equivalently, by increasing values of \( 1 / (1 + a_i) \). Dimensions with larger `a_i` (i.e., sharper curvature) are more likely to benefit from additional tangents.
+
+The algorithm proceeds as follows:
+
+1. Rank dimensions by \( 1 / (1 + a_i) \)
+2. For each possible number of three-point dimensions (from 0 to `l1`):
+   - Assign three-point grids to the top-ranked dimensions
+   - Estimate total build cost and sampling cost
+   - Compute total evaluation cost: `evalest = T_build + T_sample`
+3. Select the configuration with minimal `evalest`
+
+This results in a vector `dimcount` where each entry is either `1` (single-point) or `3` (three-point), depending on the optimal tradeoff.
+
+This adaptive logic allows the simulation routine to scale efficiently across models of varying size and complexity, and reflects the theoretical insights from Nygren & Nygren (2006) on envelope efficiency.
+
+In the implementation of `EnvelopeOpt()`, the line
+
+```r
+intest[i] <- 3^(i-1)
+```
+
+represents the **grid construction cost** at iteration *i*. This term estimates the number of log‑likelihood and gradient evaluations required to build the envelope as more dimensions are promoted from single‑point to three‑point tangents:
+
+- At the start ($i = 1$), all dimensions use single‑point tangents, so the build cost is minimal.  
+- Each time a new dimension is switched to a three‑point tangent, the number of required evaluations grows multiplicatively.  
+- The factor $3^{\,i-1}$ captures this exponential growth: with each additional three‑point dimension, the grid size triples, and so does the number of evaluations needed to construct the envelope.
+
+In addition to the build cost term `intest[i]`, the function also tracks the **expected sampling cost** through the quantity
+
+```{r, eval=FALSE}
+slopeest[i] <- prod(scaleest[i,])
+```
+
+This term represents the **expected number of likelihood/gradient (slope) evaluations** required to obtain a valid draw under the current grid configuration:
+
+- At initialization, `scaleest[1,] <- sqrt(1 + a1)`, so  
+  \[
+  \text{slopeest}[1] \;=\; \prod_j \sqrt{1 + a_j},
+  \]  
+  which corresponds to the baseline rejection burden when all dimensions use single‑point tangents.  
+
+- Each time a dimension is promoted to a three‑point tangent, its entry in `scaleest` is replaced by the constant  
+  \[
+  \tfrac{2}{\sqrt{\pi}},
+  \]  
+  reflecting the improved acceptance bound for that dimension.  
+
+- Consequently, as more dimensions are switched to three‑point tangents, the product  
+  \[
+  \prod_j \text{scaleest}[i,j]
+  \]  
+  decreases, lowering the expected number of slope evaluations per accepted draw.  
+
+Thus, `slopeest[i]` captures the **sampling efficiency** of the envelope:
+
+- **Large** `slopeest` values → more rejections, higher per‑draw cost.  
+- **Smaller** `slopeest` values → fewer rejections, more efficient sampling.  
+
+Together with the build cost term `intest[i]`, the total evaluation cost is
+
+\[
+\text{evalest}[i] \;=\; \underbrace{3^{\,i-1}}_{\text{build cost}} \;+\; \underbrace{n \cdot \text{slopeest}[i]}_{\text{sampling cost}}.
+\]
+
+This balance ensures that the algorithm adaptively chooses the grid size that minimizes the **combined cost** of envelope construction and sampling.
+
+- **Build cost** grows rapidly as more dimensions are promoted.  
+- **Sampling cost** decreases because acceptance rates improve with additional tangents.  
+
+The optimizer selects the configuration that minimizes this total. Intuitively:
+
+- For **small sample sizes** ($n$ small), the build cost dominates, so the algorithm favors fewer three‑point tangents.  
+- For **large sample sizes** ($n$ large), the sampling cost dominates, so the algorithm invests more in upfront grid construction to reduce rejections later.
 
 
+When GPU acceleration is available through OpenCL, the Grid construction can be performed in parallel, reducing the amount of time that components takes. To that end, we modify the call to the function to reflect the lower Grid contruction cost by passing a scaled up sample size (which yields the same optimization result).
+
+```cpp
+  int core_CNT = opencl_core_count_for_scaling();  // opencltools::get_opencl_core_count()
+  
+  if (verbose) {
+    Rcpp::Rcout << "[INFO] OpenCL core count = " << core_CNT << "\n";
+  }
+  
+  // Second row in G1b here is the posterior mode
+  
+  
+  
+  NumericVector gridindex(l1);
+  
+  if(Gridtype==2){
+    // Temporarily scale n to encourage richer envelopes when GPU parallelism is available
+    int scaled_n = std::max(1, n * core_CNT);
+    
+    if (verbose) {
+      Rcpp::Rcout << "[INFO] Scaling n from " << n << " to " << scaled_n
+                  << " for envelope optimization.\n";
+    }
+    
+    gridindex = EnvelopeOpt(a_2, scaled_n);
+    
+    //gridindex=EnvelopeOpt(a_2,n);
+  }
+```
 
 
+## 6. Building the Envelope
+
+The implementation of `EnvelopeBuild` follows the envelope construction in Nygren & Nygren (2006) for models in standard form (see Section 3–3.3). The outline below captures the process when each dimension involves three-point tangents. If some dimensions involve only one-point tangents, only the mid-point is used and the intervals become the full real-number line. 
 
 
+### 1. Compute width parameters \( \omega_i \) from the diagonal precision matrix
 
+Let \( \theta^{\ast} \) denote the unique posterior mode. For each dimension \( i \), define:
+
+\[
+\omega_{i} := \frac{\sqrt{2} - \exp\left(-1.20491 - 0.7321 \sqrt{0.5 - \frac{\partial^{2} \log f(\theta^{\ast} \mid y)}{\partial \theta_{i}^{2}}} \right)}{\sqrt{1 - \frac{\partial^{2} \log f(\theta^{\ast} \mid y)}{\partial \theta_{i}^{2}}}}
+\]
+
+The widths \( \omega_i \) are derived from the local curvature of the log-likelihood at the posterior mode. This ensures that the three-interval construction per dimension yields an envelope whose efficiency does not deteriorate with sample size.
+
+### 2. Construct intervals around the posterior mode \( \theta^\star \)
+
+Set:
+
+\[
+\ell_{i,1} = \theta^{\ast}_{i} - 0.5\,\omega_{i}, \quad
+\ell_{i,2} = \theta^{\ast}_{i} + 0.5\,\omega_{i}
+\]
+
+Then define three intervals per dimension:
+
+\[
+A_{i,1} = (-\infty,\ell_{i,1}), \quad
+A_{i,2} = [\ell_{i,1},\ell_{i,2}], \quad
+A_{i,3} = (\ell_{i,2},\infty)
+\]
+
+Let \( J_{i} = \{1,2,3\} \) and define \( J = \prod_{i=1}^{p} J_{i} \), which has \( 3^{p} \) elements. Each \( j \in J \) is a vector \( (j_{1},\ldots,j_{p}) \), and we define:
+
+\[
+A^{\ast}_{j} = \prod_{i=1}^{p} A_{i,j_{i}}
+\]
+
+The collection \( A^{\ast} = \{A^{\ast}_{j} : j \in J\} \) forms a partition of \( \Theta \).
+
+### 3. Select tangency points \( \theta^\star \pm \omega_i \)
+
+For each \( j \in J \), define index sets:
+
+\[
+C_{j1} = \{i : j_{i} = 1\}, \quad
+C_{j2} = \{i : j_{i} = 2\}, \quad
+C_{j3} = \{i : j_{i} = 3\}
+\]
+
+Tangency points \( \bar{\theta}_{j} \) are defined componentwise by:
+
+\[
+\bar{\theta}_{j,i} =
+\begin{cases}
+\theta^{\ast}_{i} - \omega_{i}, & i \in C_{j1} \\
+\theta^{\ast}_{i},              & i \in C_{j2} \\
+\theta^{\ast}_{i} + \omega_{i}, & i \in C_{j3}
+\end{cases}
+\]
+
+These tangency points ensure the envelope touches the log-likelihood at representative points in each interval, guaranteeing dominance and tightness.
+
+### 4. Build the full grid of tangency points
+
+The Cartesian product of per-dimension partitions yields the \( 3^p \) restricted densities described in the paper, ensuring coverage of the full parameter space.
+
+### 5. Evaluate negative log-likelihood and gradients at each grid point
+
+This step constructs the likelihood subgradient densities and facilitates accept–reject sampling. The subgradients \( c(\bar{\theta}) \) are part of the definitions of likelihood subgradient densities (see Definition 2). Both subgradients and negative log-likelihoods (via \( h_{\bar{\theta}}(.) \)) are used during the accept–reject procedure.
+
+- On CPU: via `f2_*` and `f3_*` routines  
+- On GPU: via `f2_f3_opencl`, which computes both together
+
+### 6. Call `Set_Grid_C2_pointwise` to evaluate restricted multivariate normal log-densities
+
+(Claim 2; Remark 5)  
+Each restricted density corresponds to a subset of the partition, normalized as in Remark 5.
+
+### 7. Call `setlogP_C2` to compute component log-probabilities and constants
+
+(Remark 6)  
+The constants \( \tilde{a} \) and mixture weights \( \tilde{p}_i \) are computed explicitly as in Remark 6, ensuring proper normalization of the mixture envelope.
+
+### 8. Normalize probabilities (`PLSD`) and optionally sort grid components
+
+(Claim 2)  
+Normalization ensures the mixture of restricted densities forms a valid dominating density for the posterior. Sorting improves sampling efficiency.
+
+
+## 7. Simulation Execution
+
+The standardized sampler called through `.rNormalGLM_std_cpp()` uses the envelope to generate posterior samples via rejection sampling. This routine is called internally by `.rNormalGLM_cpp()`, which in turn is invoked by the user-facing function `rNormal_reg()`. Together, these routines implement envelope-based sampling for generalized linear models with log-concave likelihood functions and multivariate normal priors.
+
+The envelope provides a mixture of restricted likelihood–subgradient densities, each defined over a region \( A_i \), with associated mixture weights \( \tilde{p}_i \) stored in `PLSD`. The sampling proceeds as follows:
+
+1. **Draw a region index.**  
+   A region index \( J(i) \) is drawn from the discrete distribution defined by `PLSD`.
+
+2. **Draw a candidate from the restricted density.**  
+   A candidate \( \theta_i \) is drawn from the restricted density \( q^{\bar{\theta}_{J(i)}}_{A_{J(i)}} \), using the normal CDF bounds `loglt` and `logrt`, and subgradient vector `cbars`. Simulation for each dimension uses the internal C++ function `ctrnorm_cpp()`, which explicitly uses these inputs.
+
+3. **Compute the log-likelihood at the candidate.**  
+   The log-likelihood \( \log f(y \mid \theta_i) \) is computed and stored in `testll[0]` using the appropriate likelihood function `f2`.
+
+The acceptance test is performed using the inequality
+\[
+\log(U_2) \le \mathrm{LLconst}[J(i)] + \mathrm{cbars}[J(i), ]^{T} \theta_i + \log f(y \mid \theta_i),
+\]
+which is equivalent to
+\[
+\log(U_2) \le \log f(y \mid \theta_i) - \left( \log f(y \mid \bar{\theta}_{J(i)}) - c(\bar{\theta}_{J(i)})^{T}(\theta_i - \bar{\theta}_{J(i)}) \right).
+\]
+
+Where:
+- **`LLconst[J(i)]`:** stores the precomputed quantity
+  \[
+  -\log f(y \mid \bar{\theta}_{J(i)}) - c(\bar{\theta}_{J(i)})^{T} \bar{\theta}_{J(i)},
+  \]
+  computed during envelope construction via `setlogP_C2()`.
+- **`cbars[J(i), ]`:** the precomputed subgradient vector \( c(\bar{\theta}_{J(i)}) \), extracted via `cbars(J(i), _)`. It defines the exponential tilt direction used to evaluate the envelope.
+- **`testll[0]`:** the log-likelihood at the candidate draw \( \theta_i \), evaluated using the model specified by `family` and `link`.
+- **\(-\log(U_2)\):** the threshold from a uniform draw \( U_2 \sim \mathrm{Unif}(0,1) \).
+
+The right-hand side of this inequality is always non-positive, and equals zero when \( \theta_i = \bar{\theta}_{J(i)} \). This reflects the fact that the envelope is tangent to the log-likelihood at each \( \bar{\theta}_j \), and lies above it elsewhere.
+
+This procedure guarantees that accepted samples are drawn from the posterior \( \pi(\theta \mid y) \). The envelope ensures bounded rejection probability, and the mixture structure allows efficient sampling across regions. The output `out` contains accepted draws, and `draws` records the number of attempts per sample.
+
+The components returned by `EnvelopeBuild()` are used in specific steps of the sampling procedure as follows:
+
+- **`PLSD`**: used to randomly select a region index \( J(i) \) from the envelope mixture.  
+- **`loglt` and `logrt`**: define the truncated normal bounds for each dimension, used together with `cbars` to generate candidate values \( \theta_i \).  
+- **`cbars`**: provides the subgradient vectors \( c(\bar{\theta}_j) \) used both for candidate generation and for computing the acceptance test.  
+- **`LLconst`**: stores precomputed constants used in the acceptance inequality, avoiding recomputation of posterior terms at tangency points.  
+- **`logU`**: stores the per-dimension log-density contributions for each region, computed during envelope setup. These values are summed to produce `logP`, which determines the mixture weights `PLSD`.  
+- **`logP`**: contains the total log-probabilities for each grid component, which are normalized to form the mixture weights `PLSD`.  
+- **`thetabars`**: stores the tangency points \( \bar{\theta}_j \) used to define subgradients and region-specific densities.  
+- **`GridIndex`**: encodes the sampling type (tail, center, line) used for each dimension and region, guiding how each coordinate is simulated.  
+
+## 8. Post-Processing and Output
+
+This section documents the exact reverse transformations applied to sampled draws and the structure of the object returned by `.rNormalGLM_cpp`.
+
+### 8.1 Reverse-transformation pipeline
+- **Undo L3 transform**: left-multiply the matrix of standardized draws by `L3Inv`.  
+- **Undo L2 transform**: left-multiply the result by `L2Inv`.  
+- **Restore prior mean**: add the original prior mean vector `mu` to every draw.  
+- **Optional diagnostics**: recompute the user-supplied log-posterior at the transformed draws when requested.
+
+### 8.2 Returned object (fields you can rely on)
+- **coefficients**: n × k matrix of posterior draws on the original parameter scale (returned as `trans(out2)` in the C++ routing function).  
+- **coef.mode**: k-vector containing the posterior mode on the original scale (optimizer output + `mu`).  
+- **dispersion**: final dispersion used (1 for Poisson/Binomial; user value otherwise).  
+- **Prior**: list with components **mean** and **Precision** (original `mu` and `P`).  
+- **offset**: offset vector passed through.  
+- **prior.weights**: original weights (before dispersion scaling).  
+- **y**, **x**: data echoed for convenience.  
+- **fit**: the full `optim()` return list used to obtain the posterior mode and Hessian.  
+- **iters**: integer vector of attempts per accepted draw (sampler output).  
+- **Envelope**: envelope artifact returned by `EnvelopeBuild_c` (mixture weights, tangency points, `LLconst`, `cbars`, `loglt`, `logrt`, `GridIndex`, etc.).
 
