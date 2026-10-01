@@ -63,6 +63,106 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rNormalGLMGroups_cpp_export
+Rcpp::List rNormalGLMGroups_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& offset, const Rcpp::NumericVector& wt, const Rcpp::NumericVector& dispersion, const Rcpp::NumericMatrix& mu, const Rcpp::List& P_blocks, bool prior_by_block, const Rcpp::List& row_blocks, const Rcpp::Function& f2, const Rcpp::Function& f3, const std::string& family, const std::string& link, int Gridtype, int n_envopt, bool use_parallel, bool use_opencl, bool verbose);
+RcppExport SEXP _glmbayesCore_rNormalGLMGroups_cpp_export(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP offsetSEXP, SEXP wtSEXP, SEXP dispersionSEXP, SEXP muSEXP, SEXP P_blocksSEXP, SEXP prior_by_blockSEXP, SEXP row_blocksSEXP, SEXP f2SEXP, SEXP f3SEXP, SEXP familySEXP, SEXP linkSEXP, SEXP GridtypeSEXP, SEXP n_envoptSEXP, SEXP use_parallelSEXP, SEXP use_openclSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type dispersion(dispersionSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type P_blocks(P_blocksSEXP);
+    Rcpp::traits::input_parameter< bool >::type prior_by_block(prior_by_blockSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type row_blocks(row_blocksSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f2(f2SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f3(f3SEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type family(familySEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type link(linkSEXP);
+    Rcpp::traits::input_parameter< int >::type Gridtype(GridtypeSEXP);
+    Rcpp::traits::input_parameter< int >::type n_envopt(n_envoptSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_parallel(use_parallelSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_opencl(use_openclSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(rNormalGLMGroups_cpp_export(n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rNormalRegGroups_cpp_export
+Rcpp::List rNormalRegGroups_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& offset, const Rcpp::NumericVector& wt, const Rcpp::NumericVector& dispersion, const Rcpp::NumericMatrix& mu, const Rcpp::List& P_blocks, bool prior_by_block, const Rcpp::List& row_blocks, const Rcpp::Function& f2, const Rcpp::Function& f3, int Gridtype);
+RcppExport SEXP _glmbayesCore_rNormalRegGroups_cpp_export(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP offsetSEXP, SEXP wtSEXP, SEXP dispersionSEXP, SEXP muSEXP, SEXP P_blocksSEXP, SEXP prior_by_blockSEXP, SEXP row_blocksSEXP, SEXP f2SEXP, SEXP f3SEXP, SEXP GridtypeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type dispersion(dispersionSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type P_blocks(P_blocksSEXP);
+    Rcpp::traits::input_parameter< bool >::type prior_by_block(prior_by_blockSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List& >::type row_blocks(row_blocksSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f2(f2SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f3(f3SEXP);
+    Rcpp::traits::input_parameter< int >::type Gridtype(GridtypeSEXP);
+    rcpp_result_gen = Rcpp::wrap(rNormalRegGroups_cpp_export(n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, Gridtype));
+    return rcpp_result_gen;
+END_RCPP
+}
+// group_rNormalReg_cpp_export
+Rcpp::List group_rNormalReg_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, SEXP group, SEXP prior_list, SEXP prior_lists, const Rcpp::NumericVector& offset, const Rcpp::NumericVector& wt, const Rcpp::Function& f2, const Rcpp::Function& f3, int Gridtype);
+RcppExport SEXP _glmbayesCore_group_rNormalReg_cpp_export(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP groupSEXP, SEXP prior_listSEXP, SEXP prior_listsSEXP, SEXP offsetSEXP, SEXP wtSEXP, SEXP f2SEXP, SEXP f3SEXP, SEXP GridtypeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type prior_list(prior_listSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type prior_lists(prior_listsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f2(f2SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f3(f3SEXP);
+    Rcpp::traits::input_parameter< int >::type Gridtype(GridtypeSEXP);
+    rcpp_result_gen = Rcpp::wrap(group_rNormalReg_cpp_export(n, y, x, group, prior_list, prior_lists, offset, wt, f2, f3, Gridtype));
+    return rcpp_result_gen;
+END_RCPP
+}
+// group_rNormalGLM_cpp_export
+Rcpp::List group_rNormalGLM_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, SEXP group, SEXP prior_list, SEXP prior_lists, const Rcpp::NumericVector& offset, const Rcpp::NumericVector& wt, const Rcpp::Function& f2, const Rcpp::Function& f3, const std::string& family, const std::string& link, int Gridtype, int n_envopt, bool use_parallel, bool use_opencl, bool verbose);
+RcppExport SEXP _glmbayesCore_group_rNormalGLM_cpp_export(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP groupSEXP, SEXP prior_listSEXP, SEXP prior_listsSEXP, SEXP offsetSEXP, SEXP wtSEXP, SEXP f2SEXP, SEXP f3SEXP, SEXP familySEXP, SEXP linkSEXP, SEXP GridtypeSEXP, SEXP n_envoptSEXP, SEXP use_parallelSEXP, SEXP use_openclSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type prior_list(prior_listSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type prior_lists(prior_listsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type wt(wtSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f2(f2SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function& >::type f3(f3SEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type family(familySEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type link(linkSEXP);
+    Rcpp::traits::input_parameter< int >::type Gridtype(GridtypeSEXP);
+    Rcpp::traits::input_parameter< int >::type n_envopt(n_envoptSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_parallel(use_parallelSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_opencl(use_openclSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(group_rNormalGLM_cpp_export(n, y, x, group, prior_list, prior_lists, offset, wt, f2, f3, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rIndepNormalGammaReg_cpp_export
 Rcpp::List rIndepNormalGammaReg_cpp_export(int n, const Rcpp::NumericVector& y, const Rcpp::NumericMatrix& x, const Rcpp::NumericVector& mu, const Rcpp::NumericMatrix& P, const Rcpp::NumericVector& offset, const Rcpp::NumericVector& wt, double shape, double rate, double max_disp_perc, Rcpp::Nullable<Rcpp::NumericVector> disp_lower, Rcpp::Nullable<Rcpp::NumericVector> disp_upper, int Gridtype, int n_envopt, bool use_parallel, bool use_opencl, bool verbose, bool progbar);
 RcppExport SEXP _glmbayesCore_rIndepNormalGammaReg_cpp_export(SEXP nSEXP, SEXP ySEXP, SEXP xSEXP, SEXP muSEXP, SEXP PSEXP, SEXP offsetSEXP, SEXP wtSEXP, SEXP shapeSEXP, SEXP rateSEXP, SEXP max_disp_percSEXP, SEXP disp_lowerSEXP, SEXP disp_upperSEXP, SEXP GridtypeSEXP, SEXP n_envoptSEXP, SEXP use_parallelSEXP, SEXP use_openclSEXP, SEXP verboseSEXP, SEXP progbarSEXP) {
@@ -464,6 +564,10 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_glmbayesCore_rNormalGLM_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalGLM_cpp_export, 18},
     {"_glmbayesCore_rNormalReg_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalReg_cpp_export, 14},
+    {"_glmbayesCore_rNormalGLMGroups_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalGLMGroups_cpp_export, 19},
+    {"_glmbayesCore_rNormalRegGroups_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalRegGroups_cpp_export, 13},
+    {"_glmbayesCore_group_rNormalReg_cpp_export", (DL_FUNC) &_glmbayesCore_group_rNormalReg_cpp_export, 11},
+    {"_glmbayesCore_group_rNormalGLM_cpp_export", (DL_FUNC) &_glmbayesCore_group_rNormalGLM_cpp_export, 17},
     {"_glmbayesCore_rIndepNormalGammaReg_cpp_export", (DL_FUNC) &_glmbayesCore_rIndepNormalGammaReg_cpp_export, 18},
     {"_glmbayesCore_rNormalGammaReg_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalGammaReg_cpp_export, 13},
     {"_glmbayesCore_rGammaGaussian_cpp_export", (DL_FUNC) &_glmbayesCore_rGammaGaussian_cpp_export, 11},

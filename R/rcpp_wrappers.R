@@ -56,6 +56,44 @@
 
 #' @noRd
 #' @keywords internal
+.rNormalGLMGroups_cpp <- function(n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, family = "binomial", link = "logit", Gridtype = 2L, n_envopt = -1L, use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE) {
+  .Call(`_glmbayesCore_rNormalGLMGroups_cpp_export`, n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
+}
+
+#' @noRd
+#' @keywords internal
+.rNormalRegGroups_cpp <- function(
+    n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks,
+    f2, f3, Gridtype = 2L
+) {
+  .Call(`_glmbayesCore_rNormalRegGroups_cpp_export`,
+        n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks,
+        f2, f3, Gridtype)
+}
+
+#' @noRd
+#' @keywords internal
+.group_rNormalReg_cpp <- function(
+    n, y, x, group, prior_list, prior_lists, offset, wt, f2, f3, Gridtype = 2L
+) {
+  .Call(`_glmbayesCore_group_rNormalReg_cpp_export`,
+        n, y, x, group, prior_list, prior_lists, offset, wt, f2, f3, Gridtype)
+}
+
+#' @noRd
+#' @keywords internal
+.group_rNormalGLM_cpp <- function(
+    n, y, x, group, prior_list, prior_lists, offset, wt, f2, f3,
+    family = "binomial", link = "logit", Gridtype = 2L, n_envopt = -1L,
+    use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE
+) {
+  .Call(`_glmbayesCore_group_rNormalGLM_cpp_export`,
+        n, y, x, group, prior_list, prior_lists, offset, wt, f2, f3,
+        family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
+}
+
+#' @noRd
+#' @keywords internal
 .rIndepNormalGammaReg_cpp <- function(n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar) {
   .Call(`_glmbayesCore_rIndepNormalGammaReg_cpp_export`, n, y, x, mu, P, offset, wt, shape, rate, max_disp_perc, disp_lower, disp_upper, Gridtype, n_envopt, use_parallel, use_opencl, verbose, progbar)
 }

@@ -73,6 +73,7 @@ The core is organized under the `glmbayes::` namespace:
 | `glmbayes::fam` | `famfuncs.h`, `famfuncs_*.cpp` | Negative log-posterior (`f2`) and gradient (`f3`) for gaussian, poisson, binomial, Gamma |
 | `glmbayes::env` | `EnvelopeBuild*.cpp`, `EnvelopeEval.cpp`, `EnvelopeSort.cpp`, `EnvelopeSize.cpp`, `Set_Grid.cpp`, `Set_LogP.cpp` | Piecewise-exponential envelope construction (Nygren & Nygren, 2006) |
 | `glmbayes::sim` | `rNormalGLM.cpp`, `rIndepNormalGammaReg.cpp`, `rNormalGammaReg.cpp`, `rNormalReg.cpp`, `rGammaGamma.cpp`, `rGammaGaussian.cpp` | Posterior samplers |
+| `glmbayes::sim::group` | `simfuncs_groups.h`, `group_utils.cpp`, `rNormalRegGroups.cpp`, `rNormalGLMGroups.cpp` | Row-group partition, prior layout, groupwise draws |
 | `glmbayes::rng` | `rng_utils.cpp` | Thread-safe RNG wrappers for parallel sampling |
 | `glmbayes::progress` | `progress_utils.cpp` | Optional progress bar support |
 
@@ -235,7 +236,7 @@ They are not exported from this tree today.
 | Setup | `model_setup()`, `Prior_Setup_lmebayes()`, `pfamily_list()` |
 | Matrix drivers | `rlmerb()`, `rglmerb()` |
 | Two-block / sweep | `rGLMM_reg*`, `rLMM_reg*`, `rGLMM_sweep()`, `two_block_*`, `plot_sweep_history_diag()` |
-| Block helpers | `build_mu_all()`, ICM helpers, `block_rNormalReg()` / `block_rNormalGLM()` |
+| Row-group helpers | `normalize_group()`, `.group_rNormalReg_cpp()` / `.group_rNormalGLM_cpp()` (see **lmebayesCore** for Gibbs “block” APIs) |
 
 Typical **lmebayes** workflow (via **lmebayesCore** for now):
 `model_setup()` → `Prior_Setup_lmebayes()` → `pfamily_list(ps)` →

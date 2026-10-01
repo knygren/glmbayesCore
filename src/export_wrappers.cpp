@@ -2,6 +2,7 @@
 #include "Envelopefuncs.h"
 #include "openclPort.h"
 #include "simfuncs.h"
+#include "simfuncs_groups.h"
 
 using namespace openclPort;
 using namespace glmbayes::env;
@@ -76,6 +77,108 @@ Rcpp::List rNormalReg_cpp_export(
     n, y, x, mu, P, offset, wt,
     dispersion, f2, f3, start,
     family, link, Gridtype
+  );
+}
+
+// [[Rcpp::export]]
+Rcpp::List rNormalGLMGroups_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::NumericVector& dispersion,
+    const Rcpp::NumericMatrix& mu,
+    const Rcpp::List& P_blocks,
+    bool prior_by_block,
+    const Rcpp::List& row_blocks,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const std::string& family = "binomial",
+    const std::string& link   = "logit",
+    int Gridtype = 2,
+    int n_envopt = -1,
+    bool use_parallel = true,
+    bool use_opencl = false,
+    bool verbose = false
+) {
+  return glmbayes::sim::group::rNormalGLMGroups(
+    n, y, x, offset, wt,
+    dispersion,
+    mu, P_blocks, prior_by_block, row_blocks,
+    f2, f3,
+    family, link, Gridtype,
+    n_envopt, use_parallel, use_opencl, verbose
+  );
+}
+
+// [[Rcpp::export]]
+Rcpp::List rNormalRegGroups_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::NumericVector& dispersion,
+    const Rcpp::NumericMatrix& mu,
+    const Rcpp::List& P_blocks,
+    bool prior_by_block,
+    const Rcpp::List& row_blocks,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    int Gridtype = 2
+) {
+  return glmbayes::sim::group::rNormalRegGroups(
+    n, y, x, offset, wt,
+    dispersion,
+    mu, P_blocks, prior_by_block, row_blocks,
+    f2, f3,
+    Gridtype
+  );
+}
+
+// [[Rcpp::export]]
+Rcpp::List group_rNormalReg_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP group,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    int Gridtype = 2
+) {
+  return glmbayes::sim::group::group_rNormalReg_cpp_export(
+    n, y, x, group, prior_list, prior_lists, offset, wt, f2, f3, Gridtype
+  );
+}
+
+// [[Rcpp::export]]
+Rcpp::List group_rNormalGLM_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP group,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const std::string& family = "binomial",
+    const std::string& link   = "logit",
+    int Gridtype = 2,
+    int n_envopt = -1,
+    bool use_parallel = true,
+    bool use_opencl = false,
+    bool verbose = false
+) {
+  return glmbayes::sim::group::group_rNormalGLM_cpp_export(
+    n, y, x, group, prior_list, prior_lists, offset, wt, f2, f3,
+    family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose
   );
 }
 

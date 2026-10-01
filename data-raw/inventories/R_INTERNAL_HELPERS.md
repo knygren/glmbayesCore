@@ -25,6 +25,19 @@ Index: [R_FUNCTION_INVENTORY.md](R_FUNCTION_INVENTORY.md).
 | `.ing_stop_if_prior_exceeds_data` | `ing_prior_guard.R` | Guard against prior dominating data |
 | `DIC_Info` | `dic_info.R` | DIC / information criteria helper |
 
+## Row-block partition (mixed-model stack)
+
+| Symbol | File | Role |
+|--------|------|------|
+| `normalize_group()` | `normalize_group.R` | Canonicalize `group=` (`@export`) |
+| `Prior_SetupGroup()` | `Prior_SetupGroup.R` | Independent `Prior_Setup()` per row block (`@export`; `print.Prior_SetupGroup` S3) |
+| `rNormal_reg_group()`, `rNormalGLM_reg_group()` | `simfunction_group.R` | Public row-group sim (R wrappers on `.group_*_cpp`) |
+| `pfamily_list()`, `pfamily_list.Prior_SetupGroup()` | `pfamily_list.R`, `Prior_SetupGroup.R` | Per-block `pfamily` lists from `Prior_SetupGroup` |
+| `.group_rNormalReg_cpp()`, `.group_rNormalGLM_cpp()` | `rcpp_wrappers.R` | High-level row-group exports (partition + prior payload + per-group sampler) |
+| `.rNormalRegGroups_cpp()`, `.rNormalGLMGroups_cpp()` | `rcpp_wrappers.R` | Low-level group loops (pre-built `mu`, `P_blocks`, `row_blocks`) |
+
+C++ (`glmbayes::sim::group`, `simfuncs_groups.h`): `group_utils.cpp`, `rNormalRegGroups.cpp`, `rNormalGLMGroups.cpp`.
+
 ## Parallelism
 
 | Symbol | File | Role |

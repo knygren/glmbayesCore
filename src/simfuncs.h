@@ -16,6 +16,8 @@
  *     - rGammaGamma.cpp
  *     - glmb_Standardize_Model.cpp
  *
+ *   Row-group samplers: @ref simfuncs_groups.h (`glmbayes::sim::group`).
+ *
  * @section UsedBy
  *   These functions are consumed by:
  *     - export_wrappers.cpp 
