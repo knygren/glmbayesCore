@@ -78,10 +78,10 @@ determine dispersion bounds when not explicitly supplied.}
 (\eqn{\sigma^2}). Must be strictly greater than \code{disp_lower}.}
 
 \item{use_parallel}{Logical. Whether to allow parallel computation inside
-\link[glmbayes]{EnvelopeDispersionBuild}.}
+\link{EnvelopeDispersionBuild}.}
 
 \item{use_opencl}{Logical. Whether to allow OpenCL acceleration inside
-\link[glmbayes]{EnvelopeBuild}.}
+\link{EnvelopeBuild}.}
 
 \item{verbose}{Logical. Whether to print detailed progress and timing
 messages.}
@@ -97,7 +97,7 @@ PLSD component inserted by the dispersion‑aware refinement step.}
 \item{\code{UB_list}}{Updated UB‑list including reordered
 \code{lg_prob_factor} and \code{UB2min}.}
 \item{\code{diagnostics}}{Diagnostic quantities returned by
-\link[glmbayes]{EnvelopeDispersionBuild}, useful for debugging or envelope
+\link{EnvelopeDispersionBuild}, useful for debugging or envelope
 visualization.}
 \item{\code{low}}{Lower dispersion bound used.}
 \item{\code{upp}}{Upper dispersion bound used.}
@@ -110,9 +110,9 @@ simulation for Bayesian Gaussian regression with Normal–Gamma priors.
 
 This function coordinates:
 \itemize{
-\item fixed‑dispersion envelope construction via \link[glmbayes]{EnvelopeBuild},
-\item dispersion‑refined envelope construction via \link[glmbayes]{EnvelopeDispersionBuild},
-\item envelope sorting and reindexing via \link[glmbayes]{EnvelopeSort}, and
+\item fixed‑dispersion envelope construction via \link{EnvelopeBuild},
+\item dispersion‑refined envelope construction via \link{EnvelopeDispersionBuild},
+\item envelope sorting and reindexing via \link{EnvelopeSort}, and
 \item UB‑list alignment (reordered \code{lg_prob_factor} and \code{UB2min}).
 }
 
@@ -507,11 +507,11 @@ env_out
 }
 \seealso{
 \itemize{
-\item \link[glmbayes]{EnvelopeBuild} – fixed‑dispersion envelope construction
-\item \link[glmbayes]{EnvelopeDispersionBuild} – dispersion‑aware envelope refinement
-\item \link[glmbayes]{EnvelopeSort} – envelope sorting and reindexing
-\item \link[glmbayes]{EnvelopeCentering} – \code{RSS_Post2} and dispersion anchor
-\item \link[glmbayes]{glmb_Standardize_Model} – standardized inputs for the orchestrator
+\item \link{EnvelopeBuild} – fixed‑dispersion envelope construction
+\item \link{EnvelopeDispersionBuild} – dispersion‑aware envelope refinement
+\item \link{EnvelopeSort} – envelope sorting and reindexing
+\item \link{EnvelopeCentering} – \code{RSS_Post2} and dispersion anchor
+\item \link{glmb_Standardize_Model} – standardized inputs for the orchestrator
 \item \code{\link{rindepNormalGamma_reg}} – full Normal–Gamma workflow (R + C++)
 \item \code{\link{rlmb}}, \code{\link{rglmb}}, \code{\link{simfuncs}} – higher-level sampling entry points
 \item Vignettes \code{Core-05}, \code{Core-06}, \code{Core-09}; cited as

@@ -69,9 +69,9 @@ EnvelopeCentering <- function(y, x, mu, P, offset, wt, shape, rate,
 #'
 #' This function coordinates:
 #'
-#' * fixed‑dispersion envelope construction via \link[glmbayes]{EnvelopeBuild},
-#' * dispersion‑refined envelope construction via \link[glmbayes]{EnvelopeDispersionBuild},
-#' * envelope sorting and reindexing via \link[glmbayes]{EnvelopeSort}, and
+#' * fixed‑dispersion envelope construction via \link{EnvelopeBuild},
+#' * dispersion‑refined envelope construction via \link{EnvelopeDispersionBuild},
+#' * envelope sorting and reindexing via \link{EnvelopeSort}, and
 #' * UB‑list alignment (reordered `lg_prob_factor` and `UB2min`).
 #'
 #' It is typically used inside *.cpp routines such as
@@ -109,9 +109,9 @@ EnvelopeCentering <- function(y, x, mu, P, offset, wt, shape, rate,
 #' @param disp_upper Optional numeric. Upper bound for the dispersion
 #'   (\eqn{\sigma^2}). Must be strictly greater than \code{disp_lower}.
 #' @param use_parallel Logical. Whether to allow parallel computation inside
-#'   \link[glmbayes]{EnvelopeDispersionBuild}.
+#'   \link{EnvelopeDispersionBuild}.
 #' @param use_opencl Logical. Whether to allow OpenCL acceleration inside
-#'   \link[glmbayes]{EnvelopeBuild}.
+#'   \link{EnvelopeBuild}.
 #' @param verbose Logical. Whether to print detailed progress and timing
 #'   messages.
 #'
@@ -126,7 +126,7 @@ EnvelopeCentering <- function(y, x, mu, P, offset, wt, shape, rate,
 #'   \item{\code{UB_list}}{Updated UB‑list including reordered
 #'     \code{lg_prob_factor} and \code{UB2min}.}
 #'   \item{\code{diagnostics}}{Diagnostic quantities returned by
-#'     \link[glmbayes]{EnvelopeDispersionBuild}, useful for debugging or envelope
+#'     \link{EnvelopeDispersionBuild}, useful for debugging or envelope
 #'     visualization.}
 #'   \item{\code{low}}{Lower dispersion bound used.}
 #'   \item{\code{upp}}{Upper dispersion bound used.}
@@ -372,11 +372,11 @@ EnvelopeCentering <- function(y, x, mu, P, offset, wt, shape, rate,
 #' \insertAllCited{}
 #'
 #' @seealso
-#' * \link[glmbayes]{EnvelopeBuild} – fixed‑dispersion envelope construction
-#' * \link[glmbayes]{EnvelopeDispersionBuild} – dispersion‑aware envelope refinement
-#' * \link[glmbayes]{EnvelopeSort} – envelope sorting and reindexing
-#' * \link[glmbayes]{EnvelopeCentering} – \code{RSS_Post2} and dispersion anchor
-#' * \link[glmbayes]{glmb_Standardize_Model} – standardized inputs for the orchestrator
+#' * \link{EnvelopeBuild} – fixed‑dispersion envelope construction
+#' * \link{EnvelopeDispersionBuild} – dispersion‑aware envelope refinement
+#' * \link{EnvelopeSort} – envelope sorting and reindexing
+#' * \link{EnvelopeCentering} – \code{RSS_Post2} and dispersion anchor
+#' * \link{glmb_Standardize_Model} – standardized inputs for the orchestrator
 #' * \code{\link{rindepNormalGamma_reg}} – full Normal–Gamma workflow (R + C++)
 #' * \code{\link{rlmb}}, \code{\link{rglmb}}, \code{\link{simfuncs}} – higher-level sampling entry points
 #' * Vignettes \code{Core-05}, \code{Core-06}, \code{Core-09}; cited as
