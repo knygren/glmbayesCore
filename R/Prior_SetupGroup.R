@@ -312,9 +312,13 @@ pfamily_list.Prior_SetupGroup <- function(object, ptypes = NULL, ...) {
         if (is.null(disp)) {
           disp <- 1
         }
+        Sig <- ps$Sigma
+        if (is.matrix(Sig)) {
+          Sig <- (Sig + t(Sig)) / 2
+        }
         dNormal(
           mu         = ps$mu,
-          Sigma      = ps$Sigma,
+          Sigma      = Sig,
           dispersion = disp
         )
       },
@@ -327,9 +331,13 @@ pfamily_list.Prior_SetupGroup <- function(object, ptypes = NULL, ...) {
             call. = FALSE
           )
         }
+        Sig0 <- ps$Sigma_0
+        if (is.matrix(Sig0)) {
+          Sig0 <- (Sig0 + t(Sig0)) / 2
+        }
         dNormal_Gamma(
           mu      = ps$mu,
-          Sigma_0 = ps$Sigma_0,
+          Sigma_0 = Sig0,
           shape   = ps$shape,
           rate    = ps$rate
         )
@@ -343,9 +351,13 @@ pfamily_list.Prior_SetupGroup <- function(object, ptypes = NULL, ...) {
             call. = FALSE
           )
         }
+        Sig <- ps$Sigma
+        if (is.matrix(Sig)) {
+          Sig <- (Sig + t(Sig)) / 2
+        }
         dIndependent_Normal_Gamma(
           mu    = ps$mu,
-          Sigma = ps$Sigma,
+          Sigma = Sig,
           shape = ps$shape_ING,
           rate  = ps$rate
         )

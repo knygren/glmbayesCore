@@ -49,3 +49,17 @@ test_that("pfamily_list.Prior_SetupGroup builds dNormal pfamilies per block", {
   expect_identical(names(pf), names(ps))
   expect_true(all(vapply(pf, function(p) inherits(p, "pfamily"), logical(1L))))
 })
+
+test_that("pfamily_list.Prior_SetupGroup matches lmebayesCore Ex example (3 covariates)", {
+  data("iris", package = "datasets")
+  ps_block <- Prior_SetupGroup(
+    Sepal.Length ~ Sepal.Width + Petal.Length,
+    group = "Species",
+    data = iris,
+    family = gaussian()
+  )
+  pf <- suppressMessages(pfamily_list(ps_block))
+  expect_equal(names(pf), names(ps_block))
+  pf_ng <- suppressMessages(pfamily_list(ps_block, ptypes = "dNormal_Gamma"))
+  expect_equal(attr(pf_ng, "ptypes"), stats::setNames(rep("dNormal_Gamma", 3L), names(ps_block)))
+})

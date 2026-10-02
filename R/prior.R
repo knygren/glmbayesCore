@@ -1058,6 +1058,16 @@ if (!is.null(sd)) {
   ## ---------------------------------------------------------------------------
   ## Step 11: Assemble and return PriorSetup object.
   ## ---------------------------------------------------------------------------
+  ## vcov() and Gaussian calibration can leave Sigma (or Sigma_0) asymmetric at
+  ## floating-point epsilon; dNormal() validates with isSymmetric() (same issue
+  ## as Prior_Setup_GLMM — see symmetrization there).
+  if (is.matrix(Sigma)) {
+    Sigma <- (Sigma + t(Sigma)) / 2
+  }
+  if (!is.null(Sigma_0_out) && is.matrix(Sigma_0_out)) {
+    Sigma_0_out <- (Sigma_0_out + t(Sigma_0_out)) / 2
+  }
+
   prior_list <- list(
     mu = mu,
     Sigma = Sigma,
