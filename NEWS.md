@@ -9,6 +9,15 @@
   **`check_identifiability()`**, **`model_setup()`**, **`glmmtmb_reference_helpers.R`**.
 * **`model_setup()`** supports full **`dispformula`** (pooled and per-group via
   **glmmTMB** reference fits for Gaussian models).
+
+## Mixed-model prior setup (Step 4 migration)
+
+* **`Prior_Setup_GLMM()`**, **`dGamma_list()`** (generic + GLMM method), and
+  **`pfamily_list.Prior_Setup_GLMM`** copied from **lmebayesCore** (originals
+  retained there).
+* Supporting helpers: **`mer_prior_helpers.R`**, **`pwt_measurement_group_calibration.R`**;
+  **`inst/DGAMMA_LIST_MARGINAL_AND_BOUNDS.md`**, **`inst/ING_TRUNCATION_WINDOW.md`**.
+
 * **`inst/COPYRIGHTS`** and **`Authors@R`** updated for dependency API credit.
 
 ## Vignettes

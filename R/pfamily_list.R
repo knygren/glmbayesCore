@@ -23,9 +23,13 @@
 #'     Row-block \code{\link{Prior_SetupGroup}} results: one \code{pfamily} per
 #'     block. \code{ptypes}, allowed families, and examples are documented on
 #'     \code{\link{Prior_SetupGroup}}.}
+#'   \item{\code{Prior_Setup_GLMM}}{
+#'     Mixed-model \code{\link{Prior_Setup_GLMM}} results: one \code{pfamily} per
+#'     random-effect coefficient (see \strong{Details} above).}
 #' }
 #'
-#' @seealso \code{\link{Prior_SetupGroup}}, \code{\link{pfamily}},
+#' @seealso \code{\link{Prior_SetupGroup}}, \code{\link{Prior_Setup_GLMM}},
+#'   \code{\link{pfamily}},
 #'   \code{\link{dNormal}}, \code{\link{dNormal_Gamma}},
 #'   \code{\link{dIndependent_Normal_Gamma}}
 #' @export
