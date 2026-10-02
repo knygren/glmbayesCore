@@ -39,11 +39,39 @@ Simon Davies. The R implementation of glm() was originally written by Simon
 Davies under Ross Ihaka and has since been extensively maintained by the R
 Core Team.
 
+Mixed-Model Design Code (Provenance)
+------------------------------------
+
+R files implementing mixed-model design extraction (for example
+R/lme4_design_utilities.R and R/mer_design_support.R) were migrated from
+the lmebayesCore package (forked from glmbayesCore, 2026-07) and are
+copyright Kjell Nygren under the same GPL-2 license as glmbayesCore. They
+call third-party APIs but do not vendor lme4, Matrix, reformulas, or glmmTMB
+source code.
+
+lme4, Matrix, and reformulas (API Dependencies)
+-----------------------------------------------
+
+Design extraction uses the public APIs of the lme4 package (for example
+lFormula, lmer, glmer, VarCorr, mkLmerDevfun), the Matrix package for sparse
+model matrices, and the reformulas package (for example findbars and nobars).
+No source code from those packages is included in glmbayesCore; authorship
+and copyright for those packages are defined in their respective DESCRIPTION
+files and licenses.
+
+glmmTMB (API Dependency)
+--------------------------
+
+When dispformula requests per-group observation dispersion, model_setup()
+fits a reference model via the glmmTMB package API (glmmTMB(), fixef(),
+vcov(), etc.). No glmmTMB source code is bundled in glmbayesCore.
+
 Package Dependencies
 --------------------
 
 The package links to or imports external R packages including Rcpp,
-RcppArmadillo, RcppParallel, MASS, Rdpack, opencltools, and nmathopencl.
-These packages are not bundled in glmbayesCore; their authorship and copyright
-are governed by their own package metadata and licenses. Additional OpenCL
-Mathlib sources used at runtime may come from the imported nmathopencl package.
+RcppArmadillo, RcppParallel, MASS, Rdpack, opencltools, nmathopencl, lme4,
+Matrix, reformulas, and glmmTMB. These packages are not bundled in glmbayesCore; their
+authorship and copyright are governed by their own package metadata and
+licenses. Additional OpenCL Mathlib sources used at runtime may come from the
+imported nmathopencl package.

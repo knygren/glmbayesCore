@@ -52,6 +52,12 @@ Other contributors:
   \item Simon Davies (Original R glm implementation) [contributor]
   \item Morten Welinder (Portions of R Mathlib) [contributor, copyright holder]
   \item Martin Maechler (Portions of R Mathlib) [contributor]
+  \item Douglas Bates (mixed-model formula and reference-fit conventions via the lme4 API) [contributor]
+  \item Ben Bolker (lme4/reformulas mixed-model APIs; glmmTMB reference fits (dispformula)) [contributor]
+  \item Steven Walker (mixed-model formula module via the lme4 API) [contributor]
+  \item Anna Ly (random-effects formula parsing via the reformulas API) [contributor]
+  \item Mollie Brooks (glmmTMB reference-fit API for per-group dispersion (dispformula)) [contributor]
+  \item Kasper Kristensen (glmmTMB reference-fit API for per-group dispersion (dispformula)) [contributor]
   \item The Khronos Group Inc (OpenCL API headers in inst/include/CL (Apache License 2.0)) [copyright holder]
 }
 

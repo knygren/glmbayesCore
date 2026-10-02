@@ -1,8 +1,8 @@
 Package: glmbayesCore
 Type: Package
 Title: Core C++ Sampling Engine for 'glmbayes'
-Version: 0.5.5
-Date: 2026-09-28
+Version: 0.6.0
+Date: 2026-10-02
 Authors@R: c(
     person("Kjell", "Nygren", role = c("aut", "cre"),
            email = "kjell.a.nygren@gmail.com"),
@@ -20,6 +20,18 @@ Authors@R: c(
            comment = "Portions of R Mathlib"),
     person("Martin", "Maechler", role = "ctb",
            comment = "Portions of R Mathlib"),
+    person("Douglas", "Bates", role = "ctb",
+           comment = "mixed-model formula and reference-fit conventions via the lme4 API"),
+    person("Ben", "Bolker", role = "ctb",
+           comment = "lme4/reformulas mixed-model APIs; glmmTMB reference fits (dispformula)"),
+    person("Steven", "Walker", role = "ctb",
+           comment = "mixed-model formula module via the lme4 API"),
+    person("Anna", "Ly", role = "ctb",
+           comment = "random-effects formula parsing via the reformulas API"),
+    person("Mollie", "Brooks", role = "ctb",
+           comment = "glmmTMB reference-fit API for per-group dispersion (dispformula)"),
+    person("Kasper", "Kristensen", role = "ctb",
+           comment = "glmmTMB reference-fit API for per-group dispersion (dispformula)"),
     person("The Khronos Group Inc", role = "cph",
            comment = "OpenCL API headers in inst/include/CL (Apache License 2.0)")
     )
@@ -30,13 +42,19 @@ Description: Core C++ engine for 'glmbayes': envelope-based iid linear and
     Nygren (2006) <doi:10.1198/016214506000000357>. Intended as a developer
     backend for the 'glmbayes' formula interface; end users should use
     'glmbayes' for modelling with interfaces analogous to 'lm' and 'glm'.
-    Mixed-model engines are planned for a future release.
+    Experimental mixed-model design utilities use the 'lme4', 'Matrix',
+    'reformulas', and 'glmmTMB' packages (API only; no bundled third-party
+    source).
 License: GPL-2
 Copyright: see file COPYRIGHTS
 URL: https://github.com/knygren/glmbayesCore
 BugReports: https://github.com/knygren/glmbayesCore/issues
 Imports:
     stats,
+    lme4,
+    Matrix,
+    reformulas,
+    glmmTMB,
     Rcpp (>= 1.1.1),
     RcppParallel,
     Rdpack (>= 0.11-0),
@@ -46,6 +64,7 @@ RdMacros: Rdpack
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, opencltools
 Depends: MASS, R (>= 3.5.0)
 Suggests:
+    lmebayesCore,
     glmbayes,
     coda,
     bayesrules,

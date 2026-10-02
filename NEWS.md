@@ -1,4 +1,15 @@
-# glmbayesCore (unreleased)
+# glmbayesCore 0.6.0
+
+## Mixed-model design (Steps 1–3 migration)
+
+* **`Imports: lme4, Matrix, reformulas, glmmTMB`** for experimental mixed-model
+  setup (public APIs only).
+* Internal design stack copied from **lmebayesCore** (originals retained there):
+  **`lme4_design_utilities.R`**, **`mer_design_support.R`**, **`mer_family.R`**,
+  **`check_identifiability()`**, **`model_setup()`**, **`glmmtmb_reference_helpers.R`**.
+* **`model_setup()`** supports full **`dispformula`** (pooled and per-group via
+  **glmmTMB** reference fits for Gaussian models).
+* **`inst/COPYRIGHTS`** and **`Authors@R`** updated for dependency API credit.
 
 ## Vignettes
 
