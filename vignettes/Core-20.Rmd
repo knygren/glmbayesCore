@@ -1,0 +1,229 @@
+---
+title: "Core 20: Mixed-model design and priors in glmbayesCore — overview"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Core 20: Mixed-model design and priors in glmbayesCore — overview}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# Core 20: Mixed-model design and priors — overview
+
+This vignette opens **Part 4** of the **glmbayesCore** documentation. Part 4
+covers the functions in **glmbayesCore** that prepare a hierarchical
+(mixed-effects) model for Bayesian sampling:
+
+1. building the sampler design from an `lme4`-style formula and checking that
+   the model is identified;
+2. calibrating default priors for both levels of the hierarchy from a
+   classical reference fit;
+3. turning those calibrated priors into `pfamily` objects that a sampler can
+   use;
+4. drawing group-specific coefficients for many groups in one call.
+
+These are the building blocks behind **`lmerb()`** and **`glmerb()`** in
+**lmebayes**. The intended readers are developers and advanced users who want
+to understand, debug or reuse those pieces.
+
+The user-facing surface is small (nine exported functions plus their `print`
+methods). The code behind it is not: about sixty internal helpers spread
+over a dozen files. The Part 4 vignettes therefore document each exported
+function at two levels:
+
+- **User interface:** arguments, return values and examples.
+- **Lineage:** a call tree showing which helpers run, in which order and for
+  what purpose, with a table describing each helper and where it lives.
+
+For a user-level tutorial on fitting mixed models, see
+`vignette("Chapter-17", package = "glmbayes")` (linear mixed models) and
+`vignette("Chapter-18", package = "glmbayes")` (generalized linear mixed
+models).
+
+## 1. Where these functions sit
+
+```
+lmebayes        lmerb() / glmerb()                       formula front door
+                     |
+glmbayesCore    model_setup()          design + reference fit + identifiability
+  (Part 4)           |                                        (Core 20-S01)
+                Prior_Setup_GLMM()     Block 1 / Block 2 prior calibration
+                     |                                        (Core 20-S02)
+                pfamily_list()         Block 2 pfamilies, one per RE coefficient
+                dGamma_list()          Block 1 per-group sigma^2 priors
+                     |                                        (Core 20-S03)
+lmebayesCore    rlmerb() / rglmerb()   two-block Gibbs engines (staging)
+                     |
+glmbayesCore    rNormal_reg_group()    Block 1 groupwise draws (Core 20-S04)
+                rNormalGLM_reg_group()
+                rNormal_reg(), rindepNormalGamma_reg(), envelopes
+                                       iid samplers (Parts 2 and 3)
+```
+
+A typical end-user call chain is:
+
+```r
+design <- model_setup(formula, data = dat)          # optional inspection
+ps     <- Prior_Setup_GLMM(formula, data = dat)     # calibrated priors
+pf     <- pfamily_list(ps)                          # Block 2 pfamilies
+fit    <- lmebayes::lmerb(formula, data = dat, pfamily_list = pf)
+```
+
+For Gaussian models with a separate measurement variance per group
+(`dispformula = ~ group`), `dGamma_list(ps)` supplies the per-group
+dispersion priors that `lmerb()` takes as `dispersion_ranef`.
+
+The two-block Gibbs engines (`rlmerb()`, `rglmerb()`, `rLMM_reg*()`,
+`rGLMM_reg*()`, `two_block_*()`) are still developed in the staging package
+**lmebayesCore**. Part 5 of these vignettes (Core 25–29) is reserved for them
+once they move back into **glmbayesCore**.
+
+## 2. The two-block structure
+
+All Part 4 functions use the same vocabulary. Groups are indexed
+\(j = 1, \dots, J\) (for example schools). Random-effect coefficients are
+indexed \(k = 1, \dots, p_{\mathrm{re}}\) (for example a random intercept and
+two random slopes). For Gaussian models:
+
+\[
+y_{ij} \mid b_j, \sigma^2_j \sim N\!\left(D_{ij}^\top b_j,\; \sigma^2_j\right),
+\qquad
+b_{jk} \mid \gamma_k, \tau^2_k \sim N\!\left(W_{k,j}^\top \gamma_k,\; \tau^2_k\right).
+\]
+
+- **Block 1 (within group).** Each group has its own coefficient vector
+  \(b_j\), with design rows \(D_{ij}\). Given the population-level parameters,
+  the \(b_j\) are conditionally independent across groups. For Gaussian models
+  Block 1 also carries the measurement variance. It is either pooled
+  (\(\sigma^2_j = \sigma^2\)) or estimated separately for each group.
+- **Block 2 (population).** For each random coefficient \(k\), the \(J\)
+  group values \(b_{\cdot k}\) are regressed on group-level covariates
+  \(W_k\) (one row per group). The coefficients \(\gamma_k\) are the
+  `lme4` "fixed effects", and \(\tau^2_k\) is the between-group variance.
+
+`Prior_Setup_GLMM()` names its output fields to match: fields starting with
+`pop.` belong to Block 2 and fields starting with `group.` belong to Block 1.
+The design returned by `model_setup()` uses the same prefixes: `groupef.*`
+for Block 1 diagnostics and `popef.*` for Block 2 diagnostics.
+
+## 3. What Part 4 covers
+
+| Vignette | Exported functions | Topic |
+|----------|--------------------|-------|
+| **Core 20-S01** | `model_setup()`, `check_identifiability()` | Formula → sampler design; reference `lmer`/`glmer`/`glmmTMB` fit; two-level identifiability |
+| **Core 20-S02** | `Prior_Setup_GLMM()` | Calibrating Block 1 and Block 2 priors; pooled versus per-group measurement dispersion |
+| **Core 20-S03** | `pfamily_list()`, `dGamma_list()` | Calibrated settings → `pfamily` objects for the sampler |
+| **Core 20-S04** | `Prior_SetupGroup()`, `normalize_group()`, `rNormal_reg_group()`, `rNormalGLM_reg_group()` | Independent per-group priors and groupwise samplers (R and C++) |
+
+Each subsection is self-contained. Code in S01–S03 uses the `big_word_club`
+data from the suggested package **bayesrules** and only runs when that
+package is installed. S04 uses `iris` and simulated data.
+
+## 4. Package-wide lineage
+
+The chart below shows every exported Part 4 function and the internal stages
+it runs. Each subsection expands one branch down to individual helpers.
+
+```
+model_setup()                                                 [S01]
+ ├─ extract_re_hyper_matrices()        formula → y, D, group, W
+ ├─ lme4::lmer() / lme4::glmer()       reference fit (always)
+ ├─ extract_mer_variance_components()  Psi (tau^2), residual sigma^2
+ ├─ .lmebayes_fit_glmmtmb_reference()  per-group dispersion fit (optional)
+ └─ check_identifiability()            Level 1 and Level 2 checks
+
+Prior_Setup_GLMM()                                            [S02]
+ ├─ model_setup()                      (whole branch above)
+ ├─ convergence + structure checks
+ ├─ resolve prior-strength arguments   pop.pwt / pop.nprior / pop.sd / pop.mu
+ ├─ null intercept reference fit       pop.intercept_source = "null_model"
+ ├─ Block 2 Normal priors              pop.prior_list[[k]]$mu, $Sigma
+ ├─ Block 2 tau^2 centres              compute_gaussian_prior() per k
+ ├─ Block 2 Gamma priors + windows     pop.ing_prior
+ └─ Block 1 sigma^2 priors             group.ing_prior (pooled or per group)
+     └─ group.alpha_target search      (per-group, optional)
+
+pfamily_list(<Prior_Setup_GLMM>)                              [S03]
+ └─ dNormal() / dIndependent_Normal_Gamma()   one per RE coefficient
+dGamma_list(<Prior_Setup_GLMM>)                               [S03]
+ └─ dGamma()                                  one per group
+
+Prior_SetupGroup()                                            [S04]
+ ├─ normalize_group()
+ └─ Prior_Setup()                             one per group
+pfamily_list(<Prior_SetupGroup>)                              [S04]
+ └─ dNormal() / dNormal_Gamma() / dIndependent_Normal_Gamma()
+rNormal_reg_group() / rNormalGLM_reg_group()                  [S04]
+ └─ C++: normalize groups + priors → per-group rNormalReg / rNormalGLM
+```
+
+## 5. Where the code lives
+
+| File (`R/`) | Contents |
+|-------------|----------|
+| `model_setup.R` | `model_setup()`, `print.model_setup()`, reference-fit convergence and argument helpers |
+| `lme4_design_utilities.R` | Formula parsing and design extraction on top of `lme4::lFormula()`: `extract_re_hyper_matrices()`, fixed-column classification, `Z` restructuring, variance-component extraction |
+| `glmmtmb_reference_helpers.R` | `dispformula` classification, the `glmmTMB` reference fit, and accessors that read fixed effects, covariances, group coefficients and per-group \(\sigma^2_j\) from either an `lme4` or a `glmmTMB` fit |
+| `check_identifiability.R` | `check_identifiability()` and the per-group classical-GLM estimability check |
+| `Prior_Setup_GLMM.R` | `Prior_Setup_GLMM()`, its `print` method, and resolvers for `pop.*` arguments |
+| `mer_prior_helpers.R` | Block 1 and Block 2 dispersion-prior calibration: marginal \(\hat\tau^2_k\) and \(\hat\sigma^2_j\) centres, Gamma shape/rate, truncation windows |
+| `pwt_measurement_group_calibration.R` | The `group.alpha_target` search for per-group prior weights |
+| `pfamily_list.R`, `pfamily_list_Prior_Setup_GLMM.R` | `pfamily_list()` generic, its `print` method and the `Prior_Setup_GLMM` method |
+| `dGamma_list.R`, `dGamma_list_Prior_Setup_GLMM.R` | `dGamma_list()` generic, its `print` method and the `Prior_Setup_GLMM` method |
+| `Prior_SetupGroup.R` | `Prior_SetupGroup()`, its `print` and `pfamily_list` methods, and row-block helpers |
+| `normalize_group.R` | `normalize_group()` |
+| `simfunction_group.R` | `rNormal_reg_group()`, `rNormalGLM_reg_group()` |
+| `rcpp_wrappers.R` | `.group_rNormalReg_cpp()`, `.group_rNormalGLM_cpp()` (thin `.Call` wrappers) |
+| `mer_family.R`, `mer_design_support.R` | Family normalization; weights/offset normalization |
+
+| File (`src/`) | Contents |
+|---------------|----------|
+| `group_utils.cpp` | Group partition and prior normalization; the two `group_*_cpp_export` entry points |
+| `rNormalRegGroups.cpp` | Per-group loop calling the Gaussian `rNormalReg` sampler |
+| `rNormalGLMGroups.cpp` | Per-group loop calling the GLM envelope sampler `rNormalGLM` |
+| `simfuncs_groups.h` | Declarations for the above (`glmbayes::sim::group` namespace) |
+
+## 6. Naming conventions for helpers
+
+Most Part 4 code moved here from **lmebayesCore**, and the helper names
+still show where it came from. Four patterns help when reading the source:
+
+| Pattern | Meaning |
+|---------|---------|
+| `.lmebayes_*` | Internal helpers (`@noRd`) from the mixed-model stack. The prefix is historical; they are defined and used in **glmbayesCore**. |
+| `.prior_setup_group_*` | Internal helpers used only by `Prior_SetupGroup()` and its methods. |
+| `.group_*_cpp`, `*_cpp_export` | R wrappers and C++ entry points for the groupwise samplers. |
+| plain names with `@keywords internal` (e.g. `extract_re_hyper_matrices()`, `classify_lme4_fixed_columns()`) | Documented design utilities that are **not exported**. Call them with `glmbayesCore:::` when exploring a design interactively; their interfaces may change. |
+
+## 7. Requirements and current limitations
+
+- **One grouping factor.** `model_setup()` supports models with exactly one
+  grouping factor, such as `(1 + x || school_id)`.
+- **Uncorrelated random effects.** Random terms with more than one
+  coefficient must use `||` (diagonal random-effect covariance).
+- **Fixed-effect structure.** Each fixed effect must be one of three things:
+  a group-level covariate, a population mean slope for a term that also has
+  a random slope, or a cross-level interaction with a random slope. See
+  Core 20-S01.
+- **Per-group dispersion is Gaussian only.** `dispformula = ~ group` and
+  `dGamma_list()` require `family = gaussian()`.
+- **Weights and offsets.** `weights` and `offset` are stored on the design
+  and used by the classical reference fit. Not every mixed-model sampler
+  route uses them yet.
+
+## 8. Related documentation in the package
+
+- `system.file("ING_TRUNCATION_WINDOW.md", package = "glmbayesCore")`: the
+  default truncation windows for the Block 2 \(\tau^2_k\) under independent
+  Normal–Gamma priors.
+- `system.file("DGAMMA_LIST_MARGINAL_AND_BOUNDS.md", package = "glmbayesCore")`:
+  the derivation of the per-group measurement-dispersion priors returned by
+  `dGamma_list()`.
+- `vignette("Core-10", package = "glmbayesCore")`: the single-level
+  `Prior_Setup()` derivations that `Prior_Setup_GLMM()` extends, including
+  `compute_gaussian_prior()`.

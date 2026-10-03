@@ -82,7 +82,7 @@ classical reference fit share the same rows.}
 \code{na.action}.  Stored on the returned design as length-\code{n}
 \code{weights} (default all ones).  Mixed-model sampler engines that
 still hard-code unit weights do not consume this vector yet; see
-\code{\link[lmebayesCore:Prior_Setup_GLMM]{Prior_Setup_GLMM}}.}
+\code{\link{Prior_Setup_GLMM}}.}
 
 \item{na.action}{A function indicating what should happen when \code{data}
 contain \code{NA}s (default \code{na.omit}, as in \code{lmer}).  Passed
@@ -122,7 +122,7 @@ pooled-dispersion \code{lmer}/\code{glmer} fit, regardless of
 \code{dispformula}. \code{~<group_name>} additionally requires
 \code{family = gaussian()} (no observation-level dispersion parameter
 to model per group otherwise). Mirrors the \code{dispformula} argument
-on \code{\link[lmebayesCore:Prior_Setup_GLMM]{Prior_Setup_GLMM}} and on
+on \code{\link{Prior_Setup_GLMM}} and on
 \code{lmerb()}/\code{glmerb()} in \pkg{lmebayes}; all three are
 independent arguments that must be kept consistent by the caller.}
 
@@ -184,7 +184,7 @@ fit on \code{formula} with the same \code{dispformula} (Gaussian
 models only), fit via the same \code{data}/\code{REML}/
 \code{control}-derived arguments as \code{lmer}. This is
 \strong{additive}: \code{lmer}/\code{glmer} are never replaced by a
-\code{glmmTMB} fit. \code{\link[lmebayesCore:Prior_Setup_GLMM]{Prior_Setup_GLMM}} and
+\code{glmmTMB} fit. \code{\link{Prior_Setup_GLMM}} and
 \code{lmerb()} (in \pkg{lmebayes}) reuse \code{glmmTMB_fit} as their
 per-group-dispersion calibration reference instead of fitting
 \code{glmmTMB} a second time.}
@@ -204,7 +204,7 @@ estimable (family-specific MLE/dispersion check); see
 \item{\code{popef.deficient}}{Negation of \code{popef.rank}.}
 \item{\code{popef.rank_ok}}{Scalar \code{TRUE} only when every
 \code{popef.rank} entry is \code{TRUE}; required by
-\code{\link[lmebayesCore:Prior_Setup_GLMM]{Prior_Setup_GLMM}} to derive default hyperpriors
+\code{\link{Prior_Setup_GLMM}} to derive default hyperpriors
 automatically.}
 }
 }
@@ -253,7 +253,7 @@ and copies its fields onto the returned design object -- see
 (including the family-specific estimability checks and how
 \code{popef.rank_ok} is derived). Non-estimable groups are flagged but
 retained in the \code{lmer}/\code{glmer} fit;
-\code{\link[lmebayesCore:Prior_Setup_GLMM]{Prior_Setup_GLMM}} excludes them when calibrating priors,
+\code{\link{Prior_Setup_GLMM}} excludes them when calibrating priors,
 and requires \code{popef.rank_ok = TRUE} to derive default hyperpriors
 automatically.
 

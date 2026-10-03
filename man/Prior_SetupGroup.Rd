@@ -135,7 +135,7 @@ block ID.
 
 \subsection{Contrast with hierarchical mixed-model setup}{
 
-\code{\link[lmebayesCore:Prior_Setup_GLMM]{Prior_Setup_GLMM}} calibrates a
+\code{\link{Prior_Setup_GLMM}} calibrates a
 \strong{hierarchical} prior (one reference \code{lmer}/\code{glmer} fit,
 Block~2 hyperpriors, cross-group shrinkage). \code{Prior_SetupGroup()}
 calibrates \strong{independent} priors per row block with no shared
@@ -191,5 +191,5 @@ pf$setosa$prior_list$mu
 \code{\link{Prior_Setup}}, \code{\link{multi_prior_setup}},
 \code{\link{normalize_group}}, \code{\link{pfamily_list}},
 \code{\link{rNormal_reg_group}}, \code{\link{rNormalGLM_reg_group}},
-\code{\link[lmebayesCore:Prior_Setup_GLMM]{Prior_Setup_GLMM}}
+\code{\link{Prior_Setup_GLMM}}
 }

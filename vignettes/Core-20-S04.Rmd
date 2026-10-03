@@ -1,0 +1,344 @@
+---
+title: "Core 20-S04: Row-group priors and samplers"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Core 20-S04: Row-group priors and samplers}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r setup}
+library(glmbayesCore)
+```
+
+# Core 20-S04: Row-group priors and samplers
+
+In the two-block Gibbs samplers, Block 1 draws a coefficient vector \(b_j\)
+for every group \(j\). Given Block 2, those draws are **conditionally
+independent**: each group is a separate Bayesian regression on its own rows,
+with its own prior. **glmbayesCore** provides the pieces for that step:
+
+- `normalize_group()`: turns a group specification into a standard row
+  partition;
+- `Prior_SetupGroup()`: runs `Prior_Setup()` (Core 10) separately on each
+  group's rows;
+- `pfamily_list()`: converts those priors into one `pfamily` per group;
+- `rNormal_reg_group()` and `rNormalGLM_reg_group()`: draw every group's
+  coefficients in one call. A C++ loop runs the same samplers as
+  `rNormal_reg()` and `rNormalGLM_reg()` (Parts 2 and 3) on each group.
+
+These functions also work on their own, for any model that fits a separate
+regression per group with no pooling. Unlike `Prior_Setup_GLMM()`
+(Core 20-S02), `Prior_SetupGroup()` shares no \(\gamma\) or \(\tau^2\) across
+groups.
+
+## 1. User interface
+
+### 1.1 Group specifications and `normalize_group()`
+
+```r
+normalize_group(group, l2)
+```
+
+Every function in this vignette accepts the grouping (`group`) in one of
+three forms, where \(l_2\) is the number of rows:
+
+| Form | Example | Notes |
+|------|---------|-------|
+| factor or vector of length \(l_2\) | `iris$Species` | Factor level order is kept; other vectors are converted with `factor()` |
+| group sizes (length \(k < l_2\)) | `c(2, 3)` | Rows must already be stored group by group; sizes must sum to \(l_2\) |
+| list of row-index vectors | `list(a = c(1, 3), b = c(2, 4, 5))` | Must not overlap and must together cover `1:l2` |
+
+`Prior_SetupGroup()` also accepts a column name in `data`. The return value
+is a list with the number of groups `k`, labels `ids`, sizes `l2_blocks`,
+contiguous start positions `starts` and row indices `rows`.
+
+### 1.2 `Prior_SetupGroup()`
+
+```r
+Prior_SetupGroup(formula, group, family = gaussian(), data = NULL,
+                 weights = NULL, subset = NULL, na.action = na.fail,
+                 offset = NULL, contrasts = NULL,
+                 pwt = NULL, pwt_default_low = 0.01, pwt_default_high = 0.05,
+                 n_prior = NULL, sd = NULL, dispersion = NULL,
+                 intercept_source, effects_source, mu = NULL, k = 1, ...)
+print(x, blocks = NULL, ...)
+```
+
+- Families: `gaussian()`, `poisson()`, `binomial()`.
+- The six calibration arguments `pwt`, `n_prior`, `sd`, `mu`, `dispersion`
+  and `k` take either the usual `Prior_Setup()` form (applied to every
+  group) or a **list named by group** with one value per group. A `NULL`
+  element keeps the default for that group.
+- Returns a named list of class `"Prior_SetupGroup"`, one `Prior_Setup()`
+  result per group. Its attributes are `call`, `formula`, `group` and
+  `group_info` (the `normalize_group()` result).
+- `print()` shows a header. `blocks =` (names or indices) also prints the
+  selected groups' setups.
+
+`pfamily_list(<Prior_SetupGroup>, ptypes)` builds one `pfamily` per group:
+
+| `ptypes` | Constructor call | Requires |
+|----------|------------------|----------|
+| `"dNormal"` (default) | `dNormal(mu, Sigma, dispersion)` (dispersion 1 if absent) | any family |
+| `"dNormal_Gamma"` | `dNormal_Gamma(mu, Sigma_0, shape, rate)` | Gaussian |
+| `"dIndependent_Normal_Gamma"` | `dIndependent_Normal_Gamma(mu, Sigma, shape_ING, rate)` | Gaussian |
+
+### 1.3 `rNormal_reg_group()` and `rNormalGLM_reg_group()`
+
+```r
+rNormal_reg_group(n, y, x, group, prior_list = NULL, prior_lists = NULL,
+                  offset = NULL, weights = 1, Gridtype = 2L)
+
+rNormalGLM_reg_group(n, y, x, group, prior_list = NULL, prior_lists = NULL,
+                     offset = NULL, weights = 1, family = gaussian(),
+                     Gridtype = 2L, n_envopt = NULL, use_parallel = TRUE,
+                     use_opencl = FALSE, verbose = FALSE, progbar = FALSE)
+```
+
+| Argument | Role |
+|----------|------|
+| `n` | Draws per group. Use `n = 1` (one Gibbs step); the returned matrices hold one draw per group |
+| `y`, `x`, `group` | Response, design (same columns in every group) and grouping |
+| `prior_list` | One prior for all groups (`mu`, `P` or `Sigma`, `dispersion`). Group-specific variants: `mu` as an \(l_1 \times k\) matrix, `P`/`Sigma` as a list, `dispersion` with one value per group, or a `blocks` sublist |
+| `prior_lists` | Alternatively, a list with one prior per group, **in group order** (`ids` from `normalize_group()`). Length 1 is recycled |
+| `offset`, `weights` | Length 1 or \(l_2\); split by group like `y` |
+| `family` | `rNormalGLM_reg_group()` only: `poisson`, `binomial`, `quasipoisson`, `quasibinomial` or `Gamma` (not `gaussian`) |
+| `Gridtype`, `n_envopt`, `use_parallel`, `use_opencl`, `verbose` | Envelope settings passed to each group's sampler (Core 06–08) |
+
+`rNormal_reg_group()` needs `dispersion` in every group's prior; it holds
+\(\sigma^2\) fixed for the draw. For families without a dispersion parameter,
+`rNormalGLM_reg_group()` sets it to 1.
+
+Both return a list (class `"rNormal_reg_group"` or `"rNormalGLM_reg_group"`):
+
+| Field | Content |
+|-------|---------|
+| `coefficients` | \(k \times l_1\) matrix: one draw per group (rows named by group) |
+| `coef.mode` | \(k \times l_1\) matrix of posterior modes |
+| `dispersion` | Dispersion used for each group |
+| `group_info` | `normalize_group()` result |
+| `group_results` | Each group's full sampler output |
+| `prior_lists` | Each group's prior after normalization (`mu`, `Sigma`, `P`, …) |
+| `n`, `k`, `l1`, `l2`, `y`, `x`, `offset`, `prior.weights`, `call` (and `family`) | Inputs and dimensions |
+
+## 2. Examples
+
+### 2.1 Group partitions
+
+```{r normalize}
+str(normalize_group(factor(c("a", "a", "b", "b", "b")), l2 = 5L))
+str(normalize_group(c(2L, 3L), l2 = 5L))
+str(normalize_group(list(g1 = c(1L, 3L), g2 = c(2L, 4L, 5L)), l2 = 5L))
+```
+
+### 2.2 Independent priors per species
+
+```{r psg}
+ps_block <- Prior_SetupGroup(
+  Sepal.Length ~ Sepal.Width + Petal.Length,
+  group  = "Species",
+  data   = iris,
+  family = gaussian()
+)
+ps_block
+names(ps_block)
+ps_block$setosa$mu
+ps_block$setosa$dispersion
+```
+
+Use a different prior weight for each species, keeping the default for
+versicolor:
+
+```{r psg-pergroup}
+ps_block2 <- Prior_SetupGroup(
+  Sepal.Length ~ Sepal.Width + Petal.Length,
+  group  = "Species",
+  data   = iris,
+  family = gaussian(),
+  pwt    = list(setosa = 0.05, versicolor = NULL, virginica = 0.2)
+)
+sapply(ps_block2, function(p) p$PriorSettings$pwt[1])
+```
+
+### 2.3 Converting to `pfamily` objects
+
+```{r psg-pf}
+pf <- pfamily_list(ps_block)
+attr(pf, "ptypes")
+str(pf$setosa$prior_list)
+
+pf_ng <- pfamily_list(ps_block, ptypes = "dNormal_Gamma")
+attr(pf_ng, "ptypes")
+```
+
+### 2.4 Gaussian group draws with one shared prior
+
+```{r rnrg}
+set.seed(42)
+n_groups <- 3L
+n_per    <- 10L
+grp      <- rep(seq_len(n_groups), each = n_per)
+x        <- cbind(1, rnorm(n_groups * n_per))
+colnames(x) <- c("(Intercept)", "X1")
+b_true   <- matrix(c(5, 0.5, 3, -0.2, 7, 0.3), nrow = n_groups, byrow = TRUE)
+sigma2   <- 1.5
+y        <- rowSums(x * b_true[grp, ]) + rnorm(nrow(x), sd = sqrt(sigma2))
+
+prior_list <- list(
+  mu         = rep(0, ncol(x)),
+  Sigma      = diag(100, ncol(x)),
+  dispersion = sigma2
+)
+
+out <- rNormal_reg_group(n = 1L, y = y, x = x, group = grp,
+                         prior_list = prior_list)
+out$coefficients
+out$coef.mode
+```
+
+Each row is one group. Compare `coef.mode` with `b_true`.
+
+### 2.5 Gaussian group draws with per-group priors from `Prior_SetupGroup()`
+
+The `prior_list` inside each `dNormal` element of `pfamily_list(ps_block)`
+has the form `prior_lists` expects. Because `prior_lists` is matched **by
+position**, order it by the group levels:
+
+```{r rnrg-iris}
+X_iris <- model.matrix(~ Sepal.Width + Petal.Length, data = iris)
+prior_lists <- lapply(pf[levels(iris$Species)], function(p) p$prior_list)
+
+out_iris <- rNormal_reg_group(
+  n           = 1L,
+  y           = iris$Sepal.Length,
+  x           = X_iris,
+  group       = iris$Species,
+  prior_lists = prior_lists
+)
+out_iris$coef.mode
+out_iris$dispersion
+```
+
+### 2.6 Non-Gaussian group draws
+
+```{r rnglmrg}
+set.seed(1)
+grp2 <- factor(rep(c("A", "B"), each = 15L))
+x2 <- cbind(1, rnorm(length(grp2)))
+colnames(x2) <- c("(Intercept)", "x1")
+eta <- x2 %*% c(-0.5, 0.3) + ifelse(grp2 == "A", 0, 0.4)
+y2 <- rpois(length(grp2), exp(eta))
+
+out_glm <- rNormalGLM_reg_group(
+  n            = 1L,
+  y            = y2,
+  x            = x2,
+  group        = grp2,
+  prior_list   = list(mu = rep(0, 2), P = diag(10, 2), dispersion = 1),
+  family       = poisson(),
+  use_parallel = FALSE
+)
+out_glm$coefficients
+out_glm$coef.mode
+```
+
+Here the prior is given by its precision `P`. `Sigma` works too.
+
+## 3. Lineage
+
+### 3.1 `Prior_SetupGroup()` and its `pfamily_list()` method
+
+```
+Prior_SetupGroup(formula, group, family, data, ..., pwt, n_prior, sd, mu,
+                 dispersion, k)
+ ├─ family check (gaussian / poisson / binomial)
+ ├─ .prior_setup_group_formula_block_meta()        model frame + partition
+ │   ├─ stats::model.frame()
+ │   ├─ .prior_setup_group_resolve_block()          column name / vector / list → group
+ │   ├─ normalize_group()                           exported
+ │   └─ stats::model.matrix()                       predictor names
+ ├─ .prior_setup_group_resolve_calibration_arg()    x6: shared value or named per-group list
+ └─ for each group b:
+     ├─ .prior_setup_group_rows_to_data_subset()     model-frame rows → data rows
+     └─ Prior_Setup(formula, subset = rows_b, ...)   exported (Core 10)
+
+print.Prior_SetupGroup(x, blocks)
+ ├─ .prior_setup_group_select_named_list_keys()
+ └─ print.PriorSetup() for each selected group
+
+pfamily_list.Prior_SetupGroup(object, ptypes)
+ └─ for each group:
+     ├─ "dNormal"                    → dNormal(mu, (Sigma + t(Sigma))/2, dispersion)
+     ├─ "dNormal_Gamma"              → dNormal_Gamma(mu, Sigma_0, shape, rate)
+     └─ "dIndependent_Normal_Gamma"  → dIndependent_Normal_Gamma(mu, Sigma, shape_ING, rate)
+```
+
+### 3.2 The groupwise samplers (R to C++)
+
+```
+rNormal_reg_group()                    rNormalGLM_reg_group()
+  R/simfunction_group.R                  R/simfunction_group.R
+  ├─ recycle offset / weights            ├─ family + link checks, recycle offset / weights
+  ├─ glmbfamfunc(gaussian())             ├─ glmbfamfunc(family)       f2 / f3 callbacks
+  └─ .group_rNormalReg_cpp()             └─ .group_rNormalGLM_cpp()   R/rcpp_wrappers.R
+        │  .Call                                │  .Call
+        ▼                                       ▼
+  group_rNormalReg_cpp_export()          group_rNormalGLM_cpp_export()     src/group_utils.cpp
+  ├─ normalize_group_cpp()               ├─ normalize_group_cpp()
+  │   └─ split_factor_rows()             │   └─ split_factor_rows()
+  ├─ normalize_prior_for_groups_cpp()    ├─ normalize_prior_for_groups_cpp()
+  │   ├─ base_prior_block()              │   ├─ base_prior_block()
+  │   │   └─ prior_list_to_P_Sigma()     │   │   └─ prior_list_to_P_Sigma()
+  │   └─ rep_list_blocks()               │   └─ rep_list_blocks()
+  ├─ require dispersion in each group    │
+  ├─ prior_payload_from_groups()         ├─ prior_payload_from_groups()
+  └─ rNormalRegGroups()                  └─ rNormalGLMGroups()
+       src/rNormalRegGroups.cpp               src/rNormalGLMGroups.cpp
+       for each group b:                      for each group b:
+       ├─ slice y, x, offset, wt              ├─ slice y, x, offset, wt
+       ├─ mu / P / dispersion for b           ├─ mu / P / dispersion for b
+       └─ glmbayes::sim::rNormalReg()         └─ glmbayes::sim::rNormalGLM()
+            (Gaussian conjugate draw)               (envelope accept-reject; Parts 2-3)
+```
+
+### 3.3 Helper reference: R
+
+| Helper | File | Role |
+|--------|------|------|
+| `.prior_setup_group_formula_block_meta()` | `Prior_SetupGroup.R` | Builds the model frame once, resolves `group` against it and partitions the rows |
+| `.prior_setup_group_resolve_block()` | `Prior_SetupGroup.R` | Converts a column name, vector or list into a group vector aligned with model-frame rows |
+| `.prior_setup_group_resolve_calibration_arg()` | `Prior_SetupGroup.R` | Turns one calibration argument into a per-group list; checks names exactly match the group IDs |
+| `.prior_setup_group_rows_to_data_subset()` | `Prior_SetupGroup.R` | Maps model-frame row positions back to `data` rows for `Prior_Setup(subset = )` |
+| `.prior_setup_group_select_named_list_keys()` | `Prior_SetupGroup.R` | Resolves `blocks =` for `print.Prior_SetupGroup()` |
+| `.group_rNormalReg_cpp()`, `.group_rNormalGLM_cpp()` | `rcpp_wrappers.R` | `.Call` wrappers for the C++ entry points |
+| `.rNormalRegGroups_cpp()`, `.rNormalGLMGroups_cpp()` | `rcpp_wrappers.R` | Lower-level wrappers that call the per-group loops directly with an already normalized partition and prior; not called by the exported functions in this vignette |
+| `glmbfamfunc()` | `simulationpipeline.R` | Exported; returns the family's log-posterior (`f2`) and gradient (`f3`) callbacks |
+
+### 3.4 Helper reference: C++ (`glmbayes::sim::group`)
+
+| Function | File | Role |
+|----------|------|------|
+| `group_rNormalReg_cpp_export()`, `group_rNormalGLM_cpp_export()` | `group_utils.cpp` | Entry points: normalize the partition and priors, then call the per-group loop |
+| `normalize_group_cpp()`, `split_factor_rows()` | `group_utils.cpp` | C++ equivalent of `normalize_group()` |
+| `normalize_prior_for_groups_cpp()` | `group_utils.cpp` | Expands `prior_list` / `prior_lists` / `blocks` / matrix `mu` into one prior per group |
+| `prior_list_to_P_Sigma()`, `base_prior_block()` | `group_utils.cpp` | Check symmetry and positive definiteness; fill in whichever of `P` and `Sigma` is missing; check dimensions |
+| `rep_list_blocks()` | `group_utils.cpp` | Copies one prior to all groups |
+| `prior_payload_from_groups()` | `group_utils.cpp` | Packs per-group priors into the `mu` matrix / `P_blocks` / `dispersion` layout; detects when all groups share one prior |
+| `rNormalRegGroups()`, `rNormalGLMGroups()` | `rNormalRegGroups.cpp`, `rNormalGLMGroups.cpp` | Per-group loops: slice data, select that group's prior, call the single-model sampler, and collect draws and modes |
+| `slice_*`, `*_for_block`, `validate_row_blocks*`, `coef*_row_from_block*` | same files | Small slicing and validation utilities used by the loops |
+
+## 4. Role in the mixed-model samplers
+
+In `lmerb()` and `glmerb()`, each Gibbs iteration draws Block 1 with these
+row-group samplers. Each group's prior mean comes from the current Block 2
+draw (\(W_{k,j}^\top \gamma_k\) for each coefficient \(k\)), and its prior
+covariance from the current \(\tau^2_k\). The Gibbs engines that build these
+per-sweep priors are in **lmebayesCore**. The per-group draw itself is the
+**glmbayesCore** code shown here.

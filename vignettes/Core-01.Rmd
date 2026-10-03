@@ -36,7 +36,7 @@ topics (see table below). Formula-centric package overview and demos:
 |---------|------|
 | **glmbayesCore** | C++/OpenCL samplers, `pfamily`, `Prior_Setup()`, `rglmb()` / `rlmb()`, envelope pipeline |
 | **glmbayes** | User-facing GLM/LM Bayesian fits, S3 methods, tutorials (Chapters 00–18, appendices A01–A12) |
-| **lmebayes** *(dev)* | Mixed models on a staging fork (**lmebayesCore**); future engine docs may use **Core-20+** |
+| **lmebayes** *(dev)* | Mixed models: `lmerb()` / `glmerb()`. Setup layer in **glmbayesCore** (Part 4, Core-20); Gibbs engines staged in **lmebayesCore** |
 
 ## Primary R entry points
 
@@ -50,9 +50,19 @@ topics (see table below). Formula-centric package overview and demos:
 
 Extension checklist (not yet a vignette): **`system.file("ADDING_PFAMILY.md", package = "glmbayesCore")`**.
 
-## Engine vignette index (`Core-02` … `Core-11`)
+## Vignette index by Part
 
-Read in this order for implementation depth:
+The vignettes are grouped into Parts, as in **glmbayes**. Numbers are
+permanent identifiers, so a Part need not use consecutive numbers.
+Subsections use the `Core-NN-S0M` pattern.
+
+**Part 1: Orientation**
+
+| Vignette | Topic |
+|----------|--------|
+| **Core-01** | This overview |
+
+**Part 2: Estimation and accept–reject sampling**
 
 | Vignette | Topic |
 |----------|--------|
@@ -60,15 +70,33 @@ Read in this order for implementation depth:
 | **Core-03** | Likelihood subgradient densities; `.rNormalGLM_cpp` pipeline |
 | **Core-04** | Accept–reject: Gamma dispersion |
 | **Core-05** | Accept–reject: Gaussian regression, independent normal–gamma |
+| **Core-09** | Implementation companion (independent normal–gamma) |
+| **Core-10** | Prior derivations for **`Prior_Setup()`** |
+
+**Part 3: Envelopes, parallel CPU, and OpenCL**
+
+| Vignette | Topic |
+|----------|--------|
 | **Core-06** | Envelope-related functions (overview) |
 | **Core-07** | Parallel sampling (RcppParallel) |
 | **Core-08** | OpenCL-accelerated `EnvelopeBuild` |
-| **Core-09** | Implementation companion (independent normal–gamma) |
-| **Core-10** | Prior derivations for **`Prior_Setup()`** |
 | **Core-11** | OpenCL backend installation; large-model **`rglmb()`** |
 
-In R after install: `browseVignettes("glmbayesCore")` or
-`vignette("Core-06", package = "glmbayesCore")` for the envelope overview.
+**Part 4: Mixed-model design and priors (enabling `lmerb()`)**
+
+| Vignette | Topic |
+|----------|--------|
+| **Core-20** | Overview: two-block structure, package-wide lineage chart, file map, helper naming |
+| **Core-20-S01** | `model_setup()`, `check_identifiability()` |
+| **Core-20-S02** | `Prior_Setup_GLMM()`: Block 1 / Block 2 prior calibration |
+| **Core-20-S03** | `pfamily_list()`, `dGamma_list()` |
+| **Core-20-S04** | `Prior_SetupGroup()`, `normalize_group()`, `rNormal_reg_group()`, `rNormalGLM_reg_group()` |
+
+**Part 5: Two-block Gibbs engines** (reserved; see below)
+
+In R after install: `browseVignettes("glmbayesCore")`,
+`vignette("Core-06", package = "glmbayesCore")` for the envelope overview, or
+`vignette("Core-20", package = "glmbayesCore")` for the mixed-model setup.
 
 ## Legacy map (glmbayes appendices → Core)
 
@@ -93,8 +121,11 @@ A04 (directional tail diagnostics). User OpenCL tutorial with **`glmb()`**:
 
 ## Reserved numbers (future)
 
-- **Core-12** — planned knitted guide from **`ADDING_PFAMILY.md`** (extension authors).
-- **Core-20–Core-29** — reserved for mixed-model / block-Gibbs engine docs when
-  **lmebayesCore** merges back into **glmbayesCore** (user tutorials stay glmbayes Ch 17–18).
+- **Core-12** — planned knitted guide from **`ADDING_PFAMILY.md`** (extension
+  authors), Part 1.
+- **Core-21–Core-24** — further Part 4 material as needed.
+- **Core-25–Core-29** — Part 5, the two-block Gibbs engines (`rlmerb()`,
+  `rglmerb()`, `rLMM_reg*`, `rGLMM_reg*`, `two_block_*`) once they move back
+  from **lmebayesCore** (user tutorials stay in glmbayes Ch 17–18).
 
 No placeholder `.Rmd` files are shipped for these slots; this section records intent only.

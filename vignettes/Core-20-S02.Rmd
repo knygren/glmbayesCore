@@ -1,0 +1,451 @@
+---
+title: "Core 20-S02: Calibrating mixed-model priors with Prior_Setup_GLMM()"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Core 20-S02: Calibrating mixed-model priors with Prior_Setup_GLMM()}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+has_br <- requireNamespace("bayesrules", quietly = TRUE)
+```
+
+```{r setup}
+library(glmbayesCore)
+```
+
+# Core 20-S02: Calibrating mixed-model priors with `Prior_Setup_GLMM()`
+
+`Prior_Setup_GLMM()` is the mixed-model counterpart of `Prior_Setup()`
+(Core 10). It calls `model_setup()` (Core 20-S01), uses the classical
+reference fit, and returns calibrated default priors for **both** blocks of
+the hierarchy:
+
+- **Block 2 (population, `pop.*` fields).** For each random coefficient
+  \(k\): a Normal prior on the group-level regression coefficients
+  \(\gamma_k\) (the `lme4` fixed effects), a centre for the between-group
+  variance \(\tau^2_k\), and a Gamma prior on the precision \(1/\tau^2_k\)
+  with a truncation window.
+- **Block 1 (within group, `group.*` fields).** For Gaussian models, a Gamma
+  prior on the measurement precision. It is either pooled (\(1/\sigma^2\)) or
+  calibrated separately for each group (\(1/\sigma^2_j\)).
+
+As with `Prior_Setup()`, the defaults are set up so the priors carry a small,
+explicit fraction of the information in the data.
+
+## 1. User interface
+
+### 1.1 Arguments
+
+**Passed through to `model_setup()`.** `formula`, `data`, `family`, `REML`,
+`control`, `start`, `verbose`, `subset`, `weights`, `na.action`, `offset`,
+`contrasts`, `dispformula`. These have the meanings described in
+Core 20-S01. One difference: when `control = NULL` and the family is
+Gaussian, `Prior_Setup_GLMM()` uses `lmerControl(optimizer = "bobyqa")` with
+a larger iteration limit.
+
+**Block 2: priors on \(\gamma_k\).** Supply at most one of `pop.pwt`,
+`pop.nprior` and `pop.sd`. Each can be a scalar, or a list with one element
+per random coefficient. Each element can be a scalar or a vector with one
+value per column of `W[[k]]`.
+
+| Argument | Default | Role |
+|----------|---------|------|
+| `pop.pwt` | `NULL` | Prior weight \(w \in (0,1)\); prior covariance = reference `vcov` × \((1-w)/w\) |
+| `pop.pwt_default_low`, `pop.pwt_default_high` | `0.01`, `0.05` | Defaults for `pop.pwt`, chosen per coefficient by \(p_k < 14\) or \(p_k \ge 14\) |
+| `pop.nprior` | `NULL` | Effective prior sample size in **group** units, \(n = J\,w/(1-w)\) |
+| `pop.sd` | `NULL` | Prior standard deviations on the coefficient scale |
+| `pop.intercept_source` | `"null_model"` | Prior mean of the overall intercept: from a random-intercept-only fit, or from the full model |
+| `pop.effects_source` | `"null_effects"` | Prior means of all other \(\gamma\): zero, or from the full model |
+| `pop.mu` | `NULL` | Explicit prior means; overrides the two `*_source` arguments for the coefficients supplied |
+
+**Block 2: priors on \(\tau^2_k\).**
+
+| Argument | Default | Role |
+|----------|---------|------|
+| `pop.dispersion.pwt` / `pop.dispersion.nprior` | `NULL` | Strength of the Gamma prior on \(1/\tau^2_k\) (at most one); derived from `pop.pwt` when both are `NULL` |
+| `pop.max_disp_perc` | `0.99` | Tail probability for the \(\tau^2_k\) truncation window (scalar or one per coefficient) |
+
+**Block 1: priors on \(\sigma^2\) (Gaussian only).**
+
+| Argument | Default | Role |
+|----------|---------|------|
+| `group.dispersion.pwt` / `group.dispersion.nprior` | `NULL` (→ `0.01`) | Strength of the Gamma prior on the measurement precision (at most one); `group.dispersion.pwt` may be a vector with one value per group |
+| `group.max_disp_perc` | `0.99` | Tail probability for the \(\sigma^2\) truncation window(s) (scalar or one per group) |
+| `group.alpha_target` | `0.01` | Per-group `dispformula` only: target rate of out-of-bounds Block 1 draws; searches for each group's prior weight. `NULL` disables the search. |
+
+### 1.2 Returned fields
+
+| Field(s) | Block | Content |
+|----------|-------|---------|
+| `pop.prior_list` | 2 | Named list, one entry per random coefficient: `mu`, `Sigma`, `dispersion` (\(\hat\tau^2_k\) centre) |
+| `pop.pwt`, `pop.nprior`, `pop.sd`, `pop.mu` | 2 | The values actually used, in the same shape the matching argument accepts |
+| `pop.dispersion.pwt`, `pop.dispersion.nprior` | 2 | Strength of the \(\tau^2_k\) prior, one value per coefficient |
+| `pop.ing_prior` | 2 | One entry per coefficient: Gamma `shape`, `rate`, `disp_lower`, `disp_upper`, `max_disp_perc` |
+| `pop.dispersion.ref` | 2 | Classical \(\hat\tau^2_k\) from the reference fit (diagnostic) |
+| `group.ing_prior` | 1 | Pooled: one list (`shape`, `rate`, `disp_lower`, `disp_upper`, …). Per group: a named list with one entry per group |
+| `group.dispersion` | 1 | \(\hat\sigma^2\) centre (pooled scalar or per-group vector), with a `"source"` attribute |
+| `group.dispersion.pwt`, `group.dispersion.nprior`, `group.max_disp_perc`, `group.alpha_target`, `group.pwt_calibration` | 1 | Block 1 prior strength, windows and (per group) the `alpha_target` search table |
+| `group.Sigma`, `group.tau_sd` | 1 | Diagonal random-effect covariance \(\mathrm{diag}(\hat\tau^2_k)\) and its square roots |
+| `group.dispersion.ref`, `group.dispersion.fit` | 1 | Per-group classical \(\hat\sigma^2_j\) and the `glmmTMB` fit (per-group `dispformula` only) |
+| `design`, `mer_fit`, `fit_ref`, `calibration_source` | — | The `model_setup()` object, the `lme4` fit, the fit used for calibration and which one it was (`"lme4"` or `"glmmTMB"`) |
+| `block_formula` | — | Within-group formula `y ~ 1 + <random slopes>` used for Block 1 calibration |
+| `formula`, `family`, `data`, `dispformula`, `pop.intercept_source`, `pop.effects_source` | — | Inputs |
+
+## 2. Example: Big Word Club
+
+This vignette uses the full-rank Big Word Club data from Core 20-S01.
+
+```{r data, eval = has_br}
+data(big_word_club, package = "bayesrules")
+dat <- big_word_club
+dat$school_id <- factor(dat$school_id)
+dat <- subset(
+  dat,
+  !is.na(score_ppvt) &
+    !is.na(invalid_ppvt) & invalid_ppvt == 0L &
+    complete.cases(dat[, c(
+      "score_ppvt", "distracted_a1", "distracted_ppvt",
+      "private_school", "title1", "free_reduced_lunch", "school_id"
+    )])
+)
+
+form_lmer <- score_ppvt ~
+  private_school + title1 + free_reduced_lunch +
+  distracted_ppvt + distracted_a1 +
+  free_reduced_lunch:distracted_a1 +
+  (1 + distracted_ppvt + distracted_a1 || school_id)
+
+design0 <- model_setup(form_lmer, data = dat, fit_mer = FALSE)
+dat <- subset(dat, school_id %in% names(design0$groupef.rank)[design0$groupef.rank])
+dat$school_id <- droplevels(dat$school_id)
+```
+
+### 2.1 Pooled measurement dispersion (`dispformula = ~1`)
+
+```{r pooled, eval = has_br}
+ps_pooled <- Prior_Setup_GLMM(form_lmer, data = dat, pop.pwt = 0.01)
+ps_pooled
+```
+
+### 2.2 Block 2: Normal priors on \(\gamma_k\)
+
+```{r pop-prior, eval = has_br}
+names(ps_pooled$pop.prior_list)
+ps_pooled$pop.prior_list[["(Intercept)"]]$mu
+ps_pooled$pop.prior_list[["(Intercept)"]]$Sigma
+```
+
+`Sigma` is the reference fit's covariance for the fixed effects in
+`W[["(Intercept)"]]`, scaled by \((1-w)/w\). This is the same convention
+`Prior_Setup()` uses for single-level models. The prior mean of the overall
+intercept comes from a random-intercept-only reference fit, and the other
+means are zero (the defaults for `pop.intercept_source` and
+`pop.effects_source`).
+
+The three ways of expressing prior strength are always returned with the
+values actually used. You can inspect them, edit one and pass it back:
+
+```{r pop-shapes, eval = has_br}
+ps_pooled$pop.nprior
+ps_pooled$pop.sd[["distracted_a1"]]
+```
+
+```{r pop-feedback, eval = has_br}
+np <- ps_pooled$pop.nprior
+np[["(Intercept)"]][] <- 5
+ps_np <- Prior_Setup_GLMM(form_lmer, data = dat, pop.nprior = np)
+rbind(
+  default   = ps_pooled$pop.sd[["(Intercept)"]],
+  nprior_5  = ps_np$pop.sd[["(Intercept)"]]
+)
+```
+
+Raising the effective prior sample size of the intercept regression from
+about \(0.01 J/0.99\) to 5 schools tightens those prior standard deviations.
+The other coefficients keep their defaults.
+
+### 2.3 Block 2: the \(\tau^2_k\) centres and Gamma priors
+
+For Gaussian models, `pop.prior_list[[k]]$dispersion` is **not** the
+classical \(\hat\tau^2_k\). It treats the reference fit's group coefficients
+\(\hat b_{\cdot k}\) as data for the regression
+\(b_{\cdot k} \sim N(W_k\gamma_k, \tau^2_k I_J)\) under the Normal prior
+above, and takes the marginal variance centre returned by
+`compute_gaussian_prior()` (Core 10). The classical value is kept in
+`pop.dispersion.ref`:
+
+```{r pop-tau2, eval = has_br}
+rbind(
+  centre    = sapply(ps_pooled$pop.prior_list, `[[`, "dispersion"),
+  classical = ps_pooled$pop.dispersion.ref
+)
+```
+
+`pop.ing_prior` holds the Gamma prior on \(1/\tau^2_k\) used when
+`pfamily_list()` builds independent Normal–Gamma priors (Core 20-S03). With
+\(n_0\) = `pop.dispersion.nprior` and \(p_k\) = `ncol(W[[k]])`:
+
+\[
+\text{shape} = \frac{n_0 + 1 + p_k}{2}, \qquad
+\text{rate} = \hat\tau^2_k \,\frac{n_0 + p_k - 1}{2},
+\]
+
+so the implied prior mean of \(\tau^2_k\) equals the centre. The truncation
+window (`disp_lower`, `disp_upper`) comes from quantiles of the
+*limiting posterior* \(\Gamma\!\left(\tfrac{J+1}{2}, \hat\tau^2_k\tfrac{J-1}{2}\right)\).
+This window does not widen as the prior gets weaker. See
+`system.file("ING_TRUNCATION_WINDOW.md", package = "glmbayesCore")`.
+
+```{r pop-ing, eval = has_br}
+str(ps_pooled$pop.ing_prior[["(Intercept)"]])
+```
+
+### 2.4 Block 1: the pooled measurement-precision prior
+
+With `dispformula = ~1`, `group.ing_prior` describes a single Gamma prior
+on \(1/\sigma^2\). Its centre `group.dispersion` pools within-group marginal
+residual sums of squares across schools (see Section 3, Stage 10). Its
+strength is `group.dispersion.pwt` (default 0.01) relative to the total
+number of observations.
+
+```{r group-pooled, eval = has_br}
+ps_pooled$group.dispersion
+str(ps_pooled$group.ing_prior[c("shape", "rate", "disp_lower", "disp_upper")])
+```
+
+### 2.5 Per-group measurement dispersion (`dispformula = ~ school_id`)
+
+With `dispformula = ~ school_id` (Gaussian only), each school gets its own
+\(\sigma^2_j\). `model_setup()` adds a `glmmTMB` reference fit with a
+separate dispersion per school. That fit becomes the calibration reference
+for **every** calibrated quantity (`calibration_source = "glmmTMB"`), not
+just the Block 1 priors.
+
+```{r per-group, eval = has_br}
+ps_group <- Prior_Setup_GLMM(
+  form_lmer,
+  data                 = dat,
+  pop.pwt              = 0.01,
+  dispformula          = ~school_id,
+  group.max_disp_perc  = 0.8,
+  group.dispersion.pwt = 0.1,
+  group.alpha_target   = NULL
+)
+ps_group$calibration_source
+```
+
+`group.ing_prior` is now a named list with one entry per school:
+
+```{r per-group-table, eval = has_br}
+gi  <- ps_group$group.ing_prior
+fld <- function(nm) vapply(gi, function(e) {
+  v <- e[[nm]]
+  if (is.null(v)) NA_real_ else as.numeric(v)[1]
+}, numeric(1))
+
+head(data.frame(
+  n_j        = fld("n_j"),
+  sigma2_hat = fld("sigma2_hat"),
+  shape_ING  = fld("shape_ING"),
+  rate       = fld("rate"),
+  disp_lower = fld("disp_lower"),
+  disp_upper = fld("disp_upper")
+))
+```
+
+Three settings control these per-group priors:
+
+- `group.dispersion.pwt`: each school's prior weight relative to its own
+  sample size \(n_j\). It may be one value per school.
+- `group.max_disp_perc`: the tail probability for each school's window.
+  Narrower windows usually raise the sampler's acceptance rate.
+- `group.alpha_target`: when set (default 0.01), searches for each school's
+  smallest prior weight that keeps the predicted rate of Block 1 draws
+  outside the sampler's stable region below the target. It only ever
+  strengthens the prior relative to `group.dispersion.pwt`. It runs a
+  Monte Carlo calculation per school, so it is disabled here to keep the
+  example fast.
+
+### 2.6 Non-Gaussian families and failed defaults
+
+For `binomial()`, `poisson()` and `Gamma()`, the reference fit is `glmer()`.
+There is no Block 1 measurement variance, so `group.*` dispersion fields are
+`NULL`. `pop.prior_list[[k]]$dispersion` is then the classical
+\(\hat\tau^2_k\).
+
+Default hyperpriors need a converged reference fit, a fixed main effect for
+every random slope, and \(\hat\tau^2_k > 0\) for every random coefficient.
+Otherwise `Prior_Setup_GLMM()` stops with an error that lists each problem.
+The usual fix is to add the missing fixed effect or drop a random term whose
+variance is estimated at zero.
+
+## 3. Lineage: what runs inside `Prior_Setup_GLMM()`
+
+### 3.1 Call tree
+
+The stages run in this order. Helper names are `@noRd` internals unless
+marked "exported" or "internal doc".
+
+```
+Prior_Setup_GLMM(formula, data, ..., pop.*, group.*)
+ │
+ ├─ STAGE 1  argument checks
+ │   └─ check_pwt_scalar() (local), "at most one of" checks, family normalization,
+ │      default lmerControl(optimizer = "bobyqa")
+ │
+ ├─ STAGE 2  design and reference fits
+ │   └─ model_setup()                                  exported (S01)
+ │
+ ├─ STAGE 3  choose the calibration reference
+ │   ├─ .lmebayes_dispformula_kind()                    "pooled" / "group"
+ │   ├─ .lmebayes_mer_convergence_issues(design$lmer)   must be converged
+ │   └─ [dispformula = ~<group>]
+ │       ├─ .lmebayes_glmmtmb_convergence_issues(design$glmmTMB_fit)
+ │       ├─ extract_glmmtmb_variance_components()       tau^2_k from glmmTMB
+ │       └─ .lmebayes_glmmtmb_group_sigma2()            classical sigma^2_j
+ │
+ ├─ STAGE 4  fixed effects and structural checks
+ │   ├─ .lmebayes_reference_fixef(fit_ref)              gamma-hat (lme4 or glmmTMB)
+ │   ├─ .lmebayes_reference_vcov(fit_ref)               Var(gamma-hat)
+ │   └─ fe_name_for() (local)                           map W[[k]] columns → fixef names;
+ │                                                      stop if missing or tau^2_k = 0
+ │
+ ├─ STAGE 5  resolve prior-strength arguments
+ │   ├─ .lmebayes_default_pwt_list()                    pop.pwt = NULL → 0.01 / 0.05 per k
+ │   ├─ .lmebayes_resolve_pwt()                         scalar/list → named list per k
+ │   ├─ .lmebayes_resolve_mu_override()     ┐
+ │   ├─ .lmebayes_resolve_nprior_override() ├─ .lmebayes_resolve_override_list()
+ │   ├─ .lmebayes_resolve_sd_override()     ┘
+ │   └─ .lmebayes_resolve_disp_prior()                  pop.dispersion.pwt <-> nprior
+ │
+ ├─ STAGE 6  null intercept fit  [pop.intercept_source = "null_model"]
+ │   ├─ lme4::lmer/glmer(y ~ 1 + (1 | g))  or  .lmebayes_fit_glmmtmb_reference()
+ │   └─ .lmebayes_mer_convergence_issues() / .lmebayes_glmmtmb_convergence_issues()
+ │
+ ├─ STAGE 7  Block 2 Normal priors                     → pop.prior_list[[k]]$mu, $Sigma
+ │   └─ Sigma_k = vcov[fe_k, fe_k] * outer(s, s),  s = sqrt((1 - w) / w)
+ │
+ ├─ STAGE 8  Block 2 tau^2_k centres  [gaussian]       → pop.prior_list[[k]]$dispersion
+ │   ├─ .lmebayes_block_formula_from_re()               block_formula (used in Stage 10)
+ │   └─ for each k:
+ │       ├─ .lmebayes_reference_b_component()           b-hat_.k from coef(fit_ref)
+ │       │   └─ .lmebayes_reference_coef()
+ │       └─ .lmebayes_compute_ing_prior_cal_tau2_hyper()
+ │           └─ compute_gaussian_prior()                exported (Core 10)
+ │
+ ├─ STAGE 9  Block 2 Gamma priors and windows          → pop.ing_prior
+ │   ├─ .lmebayes_expand_scalar_or_vector(pop.max_disp_perc)
+ │   └─ .lmebayes_ing_limiting_posterior_window()
+ │
+ ├─ STAGE 10 Block 1 sigma^2 priors  [gaussian]        → group.ing_prior, group.dispersion
+ │   ├─ .lmebayes_resolve_measurement_disp_prior()      pooled strength (n-scale)
+ │   ├─ [pooled]
+ │   │   ├─ .lmebayes_pooled_measurement_smarg_from_groups()
+ │   │   │   └─ .lmebayes_measurement_group_smarg_cal()     (each group, see below)
+ │   │   └─ .lmebayes_calibrate_ing_prior_measurement()
+ │   │       └─ .lmebayes_ing_prior_quantile_window()
+ │   └─ [per group]
+ │       ├─ .lmebayes_resolve_measurement_disp_prior_group()  per-group strength
+ │       ├─ .lmebayes_expand_scalar_or_vector(group.max_disp_perc)
+ │       └─ .lmebayes_calibrate_ing_prior_measurement_group()
+ │           ├─ .lmebayes_measurement_group_smarg_cal()     (each group)
+ │           ├─ .lmebayes_ing_prior_quantile_window()
+ │           └─ .lmebayes_ing_prior_list_from_cal()
+ │
+ │   .lmebayes_measurement_group_smarg_cal()   shared by both branches
+ │    ├─ .lmebayes_ing_prior_measurement_group_glm_inputs()  within-group lm, V0, sd
+ │    │   └─ .lmebayes_block_formula_prior_mu()               Prior_Setup-style means
+ │    ├─ Omega_j[k,k] = W_j[[k]] Sigma_k W_j[[k]]'              gamma uncertainty
+ │    └─ .lmebayes_compute_ing_prior_cal_from_sigma()
+ │        └─ compute_gaussian_prior()
+ │
+ ├─ STAGE 11 group.alpha_target search  [gaussian, per group, non-NULL target]
+ │   ├─ .lmebayes_calibrate_pwt_measurement_group()
+ │   │   ├─ .lmebayes_reference_fixef()
+ │   │   ├─ .lmebayes_ing_prior_quantile_window()
+ │   │   ├─ .two_block_truncated_omega_moments()
+ │   │   └─ stats::uniroot()  per group
+ │   ├─ .lmebayes_resolve_measurement_disp_prior_group()   with calibrated weights
+ │   └─ .lmebayes_calibrate_ing_prior_measurement_group()  re-run with them
+ │
+ └─ STAGE 12 assemble the "Prior_Setup_GLMM" object
+```
+
+### 3.2 Helper reference
+
+**Reference-fit accessors** (`R/glmmtmb_reference_helpers.R`). These hide
+the difference between an `lme4` fit and a `glmmTMB` fit, so Stages 4–11
+work unchanged for both.
+
+| Helper | Role |
+|--------|------|
+| `.lmebayes_dispformula_kind()` | Validates `dispformula`; returns `"pooled"` or `"group"` |
+| `.lmebayes_fit_glmmtmb_reference()` | Fits `glmmTMB()` with the given `dispformula` (also used for the null fit in Stage 6) |
+| `.lmebayes_glmmtmb_convergence_issues()` | Convergence code and Hessian checks for a `glmmTMB` fit |
+| `.lmebayes_reference_fixef()`, `.lmebayes_reference_vcov()`, `.lmebayes_reference_coef()` | Conditional-model `fixef()`, `vcov()`, `coef()` from either fit type |
+| `extract_glmmtmb_variance_components()` (internal doc) | `Psi` (\(\hat\tau^2_k\)) from a `glmmTMB` fit, aligned with `groupef.names` |
+| `.lmebayes_glmmtmb_group_sigma2()` | Per-group classical \(\hat\sigma^2_j\) from the dispersion model |
+
+**Argument resolvers** (`R/Prior_Setup_GLMM.R`, `R/mer_prior_helpers.R`)
+
+| Helper | Role |
+|--------|------|
+| `.lmebayes_default_pwt_list()` | Default `pop.pwt` per coefficient: `pop.pwt_default_low` if \(p_k < 14\), else `pop.pwt_default_high` |
+| `.lmebayes_resolve_pwt()` | Validates `pop.pwt` and converts it to a named list of named vectors aligned with `W[[k]]` columns |
+| `.lmebayes_resolve_override_list()` | Shared resolver for list-shaped overrides (`NULL` elements keep defaults) |
+| `.lmebayes_resolve_mu_override()`, `.lmebayes_resolve_nprior_override()`, `.lmebayes_resolve_sd_override()` | `pop.mu`, `pop.nprior`, `pop.sd` through the shared resolver |
+| `.lmebayes_resolve_disp_prior()` | Converts between `pop.dispersion.pwt` and `pop.dispersion.nprior` (\(n_k = J w_k/(1-w_k)\)); default from mean `pop.pwt` |
+| `.lmebayes_expand_scalar_or_vector()` | "Scalar or one value per unit" expander for `*.max_disp_perc` (also used by `dGamma_list()`) |
+| `.lmebayes_resolve_measurement_disp_prior()` | Pooled Block 1 strength: \(n_{\mathrm{prior}} = w/(1-w)\,n\) |
+| `.lmebayes_resolve_measurement_disp_prior_group()` | Per-group Block 1 strength: \(n_{\mathrm{prior},j} = w_j/(1-w_j)\,n_j\) |
+| `.lmebayes_ing_prior_is_grouped()` | Tells the pooled and per-group shapes of `group.ing_prior` apart (used by `print` and `dGamma_list()`) |
+
+**Dispersion calibration** (`R/mer_prior_helpers.R`)
+
+| Helper | Role |
+|--------|------|
+| `.lmebayes_block_formula_from_re()` | Builds the within-group formula `y ~ 1 + <random slopes>` |
+| `.lmebayes_reference_b_component()` | Group coefficients \(\hat b_{\cdot k}\) (one per group, in level order) from `coef(fit_ref)` |
+| `.lmebayes_compute_ing_prior_cal_tau2_hyper()` | Block 2 \(\hat\tau^2_k\) centre: OLS of \(\hat b_{\cdot k}\) on \(W_k\), then `compute_gaussian_prior()` with the Stage 7 prior |
+| `.lmebayes_ing_limiting_posterior_window()` | \(\tau^2_k\) window from limiting-posterior Gamma quantiles |
+| `.lmebayes_ing_prior_measurement_group_glm_inputs()` | One group's within-group regression inputs: design, response, OLS covariance \(V_0\), and prior standard deviations from `group.tau_sd` |
+| `.lmebayes_block_formula_prior_mu()` | `Prior_Setup()`-style prior means on one group's data |
+| `.lmebayes_measurement_group_smarg_cal()` | Per-group prior covariance plus \(\Omega_j\) (uncertainty in \(\gamma\) carried through group \(j\)'s row of each \(W_k\)), then `compute_gaussian_prior()` |
+| `.lmebayes_compute_ing_prior_cal_from_sigma()` | Thin wrapper calling `compute_gaussian_prior()` with the group inputs |
+| `.lmebayes_pooled_measurement_smarg_from_groups()` | Pooled \(\hat\sigma^2 = \sum_j S_{\mathrm{marg},j} / (n - J p_{\mathrm{re}})\); falls back to intercept-only residuals for a group whose within-group design is singular |
+| `.lmebayes_calibrate_ing_prior_measurement()` | Pooled Block 1 Gamma `shape`/`rate` matched to the pooled centre, plus window |
+| `.lmebayes_calibrate_ing_prior_measurement_group()` | Per-group Block 1 calibration: `sigma2_hat`, `shape_ING`, `rate`, `n_j`, window, `max_disp_perc` for each group |
+| `.lmebayes_ing_prior_list_from_cal()` | Packs one group's `compute_gaussian_prior()` output into its `group.ing_prior` entry |
+| `.lmebayes_ing_prior_quantile_window()` | `disp_lower`/`disp_upper` from Gamma quantiles at a given tail probability |
+| `.lmebayes_print_ing_prior_measurement_group_compare()` | Developer diagnostic; not called by `Prior_Setup_GLMM()` |
+
+**`group.alpha_target` search** (`R/pwt_measurement_group_calibration.R`)
+
+| Helper | Role |
+|--------|------|
+| `.lmebayes_calibrate_pwt_measurement_group()` | For each group, simulates the Block 1 draw distribution and uses `uniroot()` to find the smallest prior weight meeting the target. The result is never below the supplied weight; it also returns the table stored as `group.pwt_calibration` |
+| `.two_block_truncated_omega_moments()` | Mean and variance of a truncated Gamma precision, used by the search criterion |
+
+### 3.3 How the stages map to returned fields
+
+| Returned field | Produced in stage |
+|----------------|-------------------|
+| `design`, `mer_fit` | 2 |
+| `fit_ref`, `calibration_source`, `group.dispersion.ref`, `group.dispersion.fit` | 3 |
+| `pop.pwt`, `pop.nprior`, `pop.sd`, `pop.mu`, `pop.dispersion.pwt`, `pop.dispersion.nprior` | 5, 7 |
+| `pop.prior_list[[k]]$mu`, `$Sigma` | 6, 7 |
+| `pop.prior_list[[k]]$dispersion`, `block_formula` | 8 |
+| `pop.dispersion.ref`, `group.Sigma`, `group.tau_sd` | 3, 8 |
+| `pop.ing_prior`, `pop.max_disp_perc` | 9 |
+| `group.ing_prior`, `group.dispersion`, `group.dispersion.pwt`, `group.dispersion.nprior`, `group.max_disp_perc` | 10, 11 |
+| `group.alpha_target`, `group.pwt_calibration` | 11 |
+
+## 4. Next
+
+Core 20-S03 converts `ps_pooled` and `ps_group` into `pfamily` objects with
+`pfamily_list()` and `dGamma_list()`.

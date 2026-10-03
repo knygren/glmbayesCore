@@ -1,4 +1,4 @@
-# Step 4: Prior_Setup_GLMM tests (glmbayesCore; parity vs lmebayesCore optional).
+# Step 4: Prior_Setup_GLMM tests (glmbayesCore).
 
 test_that("Prior_Setup_GLMM: pooled group.dispersion is A12 3.3.4 S_marg center", {
   dat <- lme4::sleepstudy
@@ -197,7 +197,7 @@ test_that("Prior_Setup_GLMM: dispformula = ~1 keeps the pooled lme4 reference", 
   expect_null(ps$group.dispersion.fit)
   expect_null(ps$group.dispersion.ref)
   expect_false(is.null(ps$group.ing_prior))
-  expect_false(lmebayesCore:::.lmebayes_ing_prior_is_grouped(ps$group.ing_prior))
+  expect_false(glmbayesCore:::.lmebayes_ing_prior_is_grouped(ps$group.ing_prior))
 })
 
 test_that("Prior_Setup_GLMM: dispformula = ~group routes calibration through glmmTMB", {
@@ -231,7 +231,7 @@ test_that("Prior_Setup_GLMM: dispformula = ~group routes calibration through glm
   ## list of lists) calibration, selected by dispformula: only the
   ## per-group shape is calibrated here.
   expect_false(is.null(ps$group.ing_prior))
-  expect_true(lmebayesCore:::.lmebayes_ing_prior_is_grouped(ps$group.ing_prior))
+  expect_true(glmbayesCore:::.lmebayes_ing_prior_is_grouped(ps$group.ing_prior))
   expect_length(ps$group.ing_prior, nlevels(dat$Subject))
   for (lev in levels(dat$Subject)) {
     expect_equal(

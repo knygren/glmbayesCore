@@ -1,0 +1,301 @@
+---
+title: "Core 20-S03: From calibrated priors to pfamily objects — pfamily_list() and dGamma_list()"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Core 20-S03: From calibrated priors to pfamily objects — pfamily_list() and dGamma_list()}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+has_br <- requireNamespace("bayesrules", quietly = TRUE)
+```
+
+```{r setup}
+library(glmbayesCore)
+```
+
+# Core 20-S03: From calibrated priors to `pfamily` objects
+
+`Prior_Setup_GLMM()` (Core 20-S02) returns calibrated prior *settings*.
+Samplers instead take `pfamily` objects, the same prior-family objects
+`rglmb()` and `rlmb()` use (see `?pfamily`). Each one bundles a `prior_list`
+with the simulation function that knows how to use it. Two functions do the
+conversion:
+
+- **`pfamily_list()`**: one `pfamily` per random coefficient, for the
+  **Block 2** regressions of \(b_{\cdot k}\) on \(W_k\). This is the
+  `pfamily_list` argument of `lmerb()` and `glmerb()`.
+- **`dGamma_list()`**: one `dGamma()` per group, for the **Block 1**
+  measurement variance when each group has its own \(\sigma^2_j\). This is
+  the `dispersion_ranef` argument of `lmerb()`.
+
+## 1. User interface
+
+### 1.1 `pfamily_list()`
+
+```r
+pfamily_list(object, ptypes = NULL, ...)
+print(x, components = NULL, ...)
+```
+
+`pfamily_list()` is an S3 generic with two methods:
+
+| Method | One `pfamily` per | Allowed `ptypes` | Documented in |
+|--------|-------------------|------------------|---------------|
+| `pfamily_list.Prior_Setup_GLMM()` | random coefficient \(k\) | `"dNormal"` (default), `"dIndependent_Normal_Gamma"` | this vignette |
+| `pfamily_list.Prior_SetupGroup()` | row group | `"dNormal"` (default), `"dNormal_Gamma"`, `"dIndependent_Normal_Gamma"` | Core 20-S04 |
+
+`ptypes` can be a single string applied to every element, or one string per
+element (named or in order). The result has class
+`c("pfamily_list", "list")` and an attribute `"ptypes"` recording the
+resolved choice. `print()` shows all elements by default. Use
+`components =` (names or indices) to show a subset.
+
+For a `Prior_Setup_GLMM` object, component \(k\) is built from
+`pop.prior_list[[k]]` and `pop.ing_prior[[k]]`:
+
+| `ptypes[k]` | Constructor call | Effect in the sampler |
+|-------------|------------------|-----------------------|
+| `"dNormal"` | `dNormal(mu, Sigma, dispersion = tau2_k)` | \(\tau^2_k\) fixed at the calibrated centre |
+| `"dIndependent_Normal_Gamma"` | `dIndependent_Normal_Gamma(mu, Sigma, shape, rate, disp_lower, disp_upper)` | \(\tau^2_k\) also sampled, with a truncated Gamma prior on \(1/\tau^2_k\) |
+
+The independent Normal–Gamma choice requires \(n_0 \le J\)
+(`pop.dispersion.nprior` at most the number of groups, or equivalently
+`pop.dispersion.pwt` at most 0.5).
+
+### 1.2 `dGamma_list()`
+
+```r
+dGamma_list(object, ...)
+## S3 method for class 'Prior_Setup_GLMM'
+dGamma_list(object, max_disp_perc_measurement = NULL, ...)
+print(x, groups = NULL, ...)
+```
+
+Requires a Gaussian `Prior_Setup_GLMM()` object fitted with
+`dispformula = ~<group>`. Otherwise it stops with a message saying what to
+change. Group \(j\) gets
+
+```r
+dGamma(shape = shape_ING_j, rate = rate_j, beta = <placeholder>,
+       Inv_Dispersion = TRUE, max_disp_perc = mdp_j,
+       disp_lower = lower_j, disp_upper = upper_j)
+```
+
+with values from `group.ing_prior[[j]]`. `max_disp_perc_measurement = NULL`
+reuses each group's stored window. A scalar or a vector with one value per
+group recomputes the windows without re-running `Prior_Setup_GLMM()`. The
+result has class `c("dGamma_list", "list")` and three attributes:
+
+| Attribute | Content |
+|-----------|---------|
+| `window_diagnostics` | Data frame, one row per group: `n_j`, `sigma2_hat`, `shape_ING`, `rate`, `max_disp_perc`, `disp_lower`, `disp_upper` |
+| `measurement_prior_group` | The same `shape`/`rate`/`disp_lower`/`disp_upper` values as named vectors, in the form the per-group Gaussian engines take |
+| `group.dispersion.fit`, `calibration_source` | Carried over from the setup so `lmerb()` can reuse the `glmmTMB` fit |
+
+## 2. Example
+
+Same data and formula as Core 20-S02, with one pooled-dispersion setup and
+one per-group setup.
+
+```{r data, eval = has_br}
+data(big_word_club, package = "bayesrules")
+dat <- big_word_club
+dat$school_id <- factor(dat$school_id)
+dat <- subset(
+  dat,
+  !is.na(score_ppvt) &
+    !is.na(invalid_ppvt) & invalid_ppvt == 0L &
+    complete.cases(dat[, c(
+      "score_ppvt", "distracted_a1", "distracted_ppvt",
+      "private_school", "title1", "free_reduced_lunch", "school_id"
+    )])
+)
+
+form_lmer <- score_ppvt ~
+  private_school + title1 + free_reduced_lunch +
+  distracted_ppvt + distracted_a1 +
+  free_reduced_lunch:distracted_a1 +
+  (1 + distracted_ppvt + distracted_a1 || school_id)
+
+design0 <- model_setup(form_lmer, data = dat, fit_mer = FALSE)
+dat <- subset(dat, school_id %in% names(design0$groupef.rank)[design0$groupef.rank])
+dat$school_id <- droplevels(dat$school_id)
+
+ps_pooled <- Prior_Setup_GLMM(form_lmer, data = dat, pop.pwt = 0.01)
+
+ps_group <- Prior_Setup_GLMM(
+  form_lmer,
+  data                 = dat,
+  pop.pwt              = 0.01,
+  dispformula          = ~school_id,
+  group.max_disp_perc  = 0.8,
+  group.dispersion.pwt = 0.1,
+  group.alpha_target   = NULL
+)
+```
+
+### 2.1 Normal priors with fixed \(\tau^2_k\) (default)
+
+```{r pf-normal, eval = has_br}
+pf <- pfamily_list(ps_pooled)
+class(pf)
+attr(pf, "ptypes")
+print(pf, components = "distracted_a1")
+```
+
+Each element is an ordinary `pfamily`. Its `prior_list` holds the values the
+sampler reads:
+
+```{r pf-prior-list, eval = has_br}
+str(pf[["distracted_a1"]]$prior_list)
+```
+
+### 2.2 Independent Normal–Gamma priors (sample \(\tau^2_k\))
+
+```{r pf-ing, eval = has_br}
+pf_ing <- pfamily_list(ps_pooled, ptypes = "dIndependent_Normal_Gamma")
+attr(pf_ing, "ptypes")
+str(pf_ing[["(Intercept)"]]$prior_list[c("shape", "rate", "disp_lower", "disp_upper")])
+```
+
+These are exactly `ps_pooled$pop.ing_prior[["(Intercept)"]]`.
+
+### 2.3 Mixing prior types
+
+Sample \(\tau^2\) for the random intercept only:
+
+```{r pf-mixed, eval = has_br}
+re <- names(ps_pooled$pop.prior_list)
+ptypes_mixed <- stats::setNames(
+  c("dIndependent_Normal_Gamma", rep("dNormal", length(re) - 1L)),
+  re
+)
+attr(pfamily_list(ps_pooled, ptypes = ptypes_mixed), "ptypes")
+```
+
+### 2.4 Per-group measurement-variance priors
+
+A pooled setup has no per-group calibration:
+
+```{r dg-pooled-error, eval = has_br}
+try(dGamma_list(ps_pooled))
+```
+
+With the per-group setup:
+
+```{r dg, eval = has_br}
+disp_pf <- dGamma_list(ps_group)
+length(disp_pf)
+print(disp_pf, groups = 1:2)
+head(attr(disp_pf, "window_diagnostics"), 3L)
+```
+
+### 2.5 Changing the truncation windows
+
+```{r dg-wide, eval = has_br}
+disp_pf_wide <- dGamma_list(ps_group, max_disp_perc_measurement = 0.95)
+cbind(
+  narrow = head(attr(disp_pf,      "window_diagnostics")$disp_upper, 3L),
+  wide   = head(attr(disp_pf_wide, "window_diagnostics")$disp_upper, 3L)
+)
+```
+
+A wider window covers more of each \(\sigma^2_j\) posterior but usually
+lowers the sampler's acceptance rate. The recomputed window uses the
+**posterior** shape \(\text{shape}_{ING} + n_j/2\) with a rate matched to
+`sigma2_hat`. The prior handed to the sampler (`shape_ING`, `rate`) does not
+change.
+
+### 2.6 Pooled measurement dispersion
+
+With `dispformula = ~1` there is a single \(\sigma^2\). Its Gamma
+calibration (`shape`, `rate`, `disp_lower`, `disp_upper`) is in
+`ps_pooled$group.ing_prior`, so no list is needed.
+
+### 2.7 Putting it together
+
+```r
+fit <- lmebayes::lmerb(
+  form_lmer, data = dat,
+  pfamily_list     = pfamily_list(ps_group),
+  dispersion_ranef = dGamma_list(ps_group),
+  dispformula      = ~school_id
+)
+```
+
+`dispformula` must be the same in `Prior_Setup_GLMM()` and `lmerb()`. The
+two arguments are independent, so the caller has to keep them consistent.
+
+## 3. Lineage
+
+### 3.1 Call trees
+
+```
+pfamily_list(object, ptypes)                    generic (R/pfamily_list.R)
+ └─ pfamily_list.Prior_Setup_GLMM()             R/pfamily_list_Prior_Setup_GLMM.R
+     ├─ validate / recycle / reorder ptypes     against names(pop.prior_list)
+     ├─ n_prior_for() (local)                   pop.dispersion.nprior[k], or J w/(1-w)
+     └─ for each RE coefficient k:
+         ├─ "dNormal"
+         │    └─ dNormal(mu, Sigma, dispersion)                      exported
+         └─ "dIndependent_Normal_Gamma"
+              ├─ stop if n_prior_k > J
+              ├─ pop.ing_prior[[k]]   (or, if absent, rebuild with
+              │                        .lmebayes_ing_limiting_posterior_window())
+              └─ dIndependent_Normal_Gamma(mu, Sigma, shape, rate,
+                                           disp_lower, disp_upper)   exported
+
+print.pfamily_list(x, components)
+ ├─ .pfamily_list_select_keys()                 names / indices → keys
+ └─ print.pfamily() for each selected element
+
+dGamma_list(object, ...)                        generic (R/dGamma_list.R)
+ └─ dGamma_list.Prior_Setup_GLMM()              R/dGamma_list_Prior_Setup_GLMM.R
+     ├─ stop unless gaussian and
+     │   .lmebayes_ing_prior_is_grouped(group.ing_prior)
+     ├─ .lmebayes_expand_scalar_or_vector()     max_disp_perc_measurement → per group
+     ├─ for each group j:
+     │   ├─ [window override] .lmebayes_ing_prior_quantile_window(
+     │   │        shape_ING + n_j/2, sigma2_hat * (shape_ING + n_j/2 - 1), mdp_j)
+     │   └─ dGamma(shape_ING, rate, Inv_Dispersion = TRUE, ...)      exported
+     └─ attach window_diagnostics, measurement_prior_group,
+        group.dispersion.fit, calibration_source
+
+print.dGamma_list(x, groups)
+ ├─ .lmebayes_select_named_list_keys()
+ └─ print.pfamily() for each selected group
+```
+
+### 3.2 Helper reference
+
+| Helper | File | Role |
+|--------|------|------|
+| `pfamily_list.Prior_Setup_GLMM()` | `pfamily_list_Prior_Setup_GLMM.R` | Block 2 method; one `pfamily` per random coefficient |
+| `pfamily_list.Prior_SetupGroup()` | `Prior_SetupGroup.R` | Row-group method (Core 20-S04) |
+| `.pfamily_list_select_keys()` | `pfamily_list.R` | Resolves `components =` for `print.pfamily_list()` |
+| `dGamma_list.Prior_Setup_GLMM()` | `dGamma_list_Prior_Setup_GLMM.R` | Block 1 method; one `dGamma()` per group |
+| `.lmebayes_select_named_list_keys()` | `dGamma_list.R` | Resolves `groups =` for `print.dGamma_list()` |
+| `.lmebayes_ing_prior_is_grouped()` | `Prior_Setup_GLMM.R` | Tells the per-group and pooled `group.ing_prior` shapes apart |
+| `.lmebayes_expand_scalar_or_vector()` | `mer_prior_helpers.R` | Recycles or reorders `max_disp_perc_measurement` to one value per group |
+| `.lmebayes_ing_prior_quantile_window()` | `mer_prior_helpers.R` | Gamma-quantile window when a group's tail probability changes |
+| `.lmebayes_ing_limiting_posterior_window()` | `mer_prior_helpers.R` | Fallback \(\tau^2_k\) window for setups without `pop.ing_prior` |
+| `dNormal()`, `dIndependent_Normal_Gamma()`, `dGamma()` | `pfamily.R` | Exported constructors; see `?pfamily` and Core 02 |
+
+### 3.3 Where the values come from
+
+| `pfamily` field | Source in `Prior_Setup_GLMM()` (stage numbers from Core 20-S02) |
+|-----------------|-------------------------------------------------------|
+| Block 2 `mu`, `Sigma` | `pop.prior_list[[k]]` (Stage 7) |
+| Block 2 `dispersion` (dNormal) | `pop.prior_list[[k]]$dispersion` (Stage 8) |
+| Block 2 `shape`, `rate`, `disp_lower`, `disp_upper` | `pop.ing_prior[[k]]` (Stage 9) |
+| Block 1 `shape`, `rate`, window | `group.ing_prior[[j]]` (Stages 10–11) |
+
+## 4. Next
+
+Core 20-S04 covers the row-group samplers that draw the Block 1 group
+coefficients given Block 2.

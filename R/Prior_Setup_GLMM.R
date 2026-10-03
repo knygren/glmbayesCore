@@ -67,7 +67,7 @@
 #'
 #'   \strong{Not fully active for mixed-model sampling yet.} They affect the
 #'   classical reference fit used for prior calibration. Low-level
-#'   \code{\link[lmebayesCore:two_block_rNormal_reg]{two_block_rNormal_reg}} already accepts and echoes
+#'   \code{two_block_rNormal_reg()} already accepts and echoes
 #'   \code{prior.weights}/\code{offset2} when passed explicitly; high-level
 #'   mixed routes that still hard-code unit weights / zero offset (and ICM /
 #'   prior-weight algebra that assume unit weights) do not consume
@@ -520,7 +520,7 @@
 #'   \item Each RE variance \eqn{\tau^2_k} from the reference fit is strictly positive.
 #' }
 #' @seealso \code{\link{model_setup}}, \code{\link{Prior_Setup}},
-#'   \code{\link[lmebayesCore:build_mu_all]{build_mu_all}},
+#'   \code{build_mu_all()},
 #'   \code{\link{pfamily_list}}, \code{\link{dGamma_list}}
 #' @example inst/examples/Ex_Prior_Setup_GLMM.R
 #' @export

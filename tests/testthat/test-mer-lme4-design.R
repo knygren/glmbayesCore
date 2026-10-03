@@ -1,91 +1,67 @@
-test_that("extract_re_hyper_matrices matches lmebayesCore (sleepstudy)", {
-  skip_if_not_installed("lmebayesCore")
-
+test_that("extract_re_hyper_matrices: sleepstudy design structure", {
   dat <- lme4::sleepstudy
   f <- Reaction ~ Days + (Days || Subject)
 
-  old <- lmebayesCore:::extract_re_hyper_matrices(f, data = dat)
-  new <- glmbayesCore:::extract_re_hyper_matrices(f, data = dat)
+  out <- glmbayesCore:::extract_re_hyper_matrices(f, data = dat)
 
-  expect_identical(old$group_name, new$group_name)
-  expect_identical(old$groupef.names, new$groupef.names)
-  expect_equal(old$y, new$y)
-  expect_equal(old$weights, new$weights)
-  expect_equal(old$offset, new$offset)
-  expect_equal(old$D, new$D)
-  expect_equal(old$W, new$W)
-  expect_equal(old$popef.moderation, new$popef.moderation)
-  expect_identical(old$group, new$group)
+  expect_identical(out$group_name, "Subject")
+  expect_identical(out$groupef.names, c("(Intercept)", "Days"))
+  expect_length(out$y, nrow(dat))
+  expect_equal(nrow(out$D), length(out$y))
+  J <- nlevels(out$group)
+  expect_equal(nrow(out$W[[1L]]), J)
+  expect_equal(nrow(out$W[[2L]]), J)
+  expect_identical(as.character(out$group), as.character(dat$Subject))
+  expect_identical(attr(out$group, "group_name"), "Subject")
+  expect_length(out$weights, length(out$y))
+  expect_length(out$offset, length(out$y))
 })
 
-test_that("is_single_factor_model agrees with lmebayesCore", {
-  skip_if_not_installed("lmebayesCore")
-
+test_that("is_single_factor_model: single vs multiple grouping factors", {
   dat <- lme4::sleepstudy
   f_ok <- Reaction ~ Days + (Days || Subject)
   f_bad <- Reaction ~ Days + (Days || Subject) + (1 | Dummy)
 
-  expect_identical(
-    lmebayesCore:::is_single_factor_model(f_ok, data = dat),
-    glmbayesCore:::is_single_factor_model(f_ok, data = dat)
-  )
-  expect_identical(
-    lmebayesCore:::is_single_factor_model(f_bad, data = dat),
-    glmbayesCore:::is_single_factor_model(f_bad, data = dat)
-  )
+  expect_true(glmbayesCore:::is_single_factor_model(f_ok, data = dat))
+  expect_false(glmbayesCore:::is_single_factor_model(f_bad, data = dat))
 })
 
-test_that("model_setup matches lmebayesCore (sleepstudy)", {
-  skip_if_not_installed("lmebayesCore")
-
+test_that("model_setup: sleepstudy design and reference fit", {
   dat <- lme4::sleepstudy
   f <- Reaction ~ Days + (Days || Subject)
-  args <- list(formula = f, data = dat, REML = TRUE)
 
-  old <- do.call(lmebayesCore::model_setup, args)
-  new <- do.call(glmbayesCore::model_setup, args)
+  ms <- glmbayesCore::model_setup(formula = f, data = dat, REML = TRUE)
 
-  expect_equal(old$y, new$y)
-  expect_equal(old$D, new$D)
-  expect_equal(old$W, new$W)
-  expect_equal(old$Psi, new$Psi, tolerance = 1e-6)
-  expect_equal(old$dispersion, new$dispersion, tolerance = 1e-6)
-  expect_identical(old$groupef.names, new$groupef.names)
-  expect_identical(old$groupef.rank, new$groupef.rank)
-  expect_identical(old$popef.rank_ok, new$popef.rank_ok)
+  expect_s4_class(ms$lmer, "merMod")
+  expect_identical(ms$group_name, "Subject")
+  expect_identical(ms$groupef.names, c("(Intercept)", "Days"))
+  expect_true(ms$popef.rank_ok)
+  expect_type(ms$Psi, "double")
+  expect_true(all(is.finite(ms$Psi)))
 })
 
-test_that("model_setup: dispformula ~ Subject matches lmebayesCore (glmmTMB)", {
-  skip_if_not_installed("lmebayesCore")
-
+test_that("model_setup: dispformula ~ Subject stores glmmTMB reference fit", {
+  skip_if_not_installed("glmmTMB")
   dat <- lme4::sleepstudy
   f <- Reaction ~ Days + (Days || Subject)
-  args <- list(
+
+  ms <- glmbayesCore::model_setup(
     formula = f,
     data = dat,
     dispformula = ~Subject
   )
 
-  old <- do.call(lmebayesCore::model_setup, args)
-  new <- do.call(glmbayesCore::model_setup, args)
-
-  expect_false(is.null(old[["glmmTMB_fit"]]))
-  expect_false(is.null(new[["glmmTMB_fit"]]))
-  expect_equal(
-    stats::fitted(old[["glmmTMB_fit"]]),
-    stats::fitted(new[["glmmTMB_fit"]]),
-    tolerance = 1e-5
-  )
+  expect_false(is.null(ms$glmmTMB_fit))
+  expect_s3_class(ms$glmmTMB_fit, "glmmTMB")
+  expect_s4_class(ms$lmer, "merMod")
 })
 
-test_that("check_identifiability matches lmebayesCore on model_setup design", {
-  skip_if_not_installed("lmebayesCore")
-
+test_that("check_identifiability on model_setup design (sleepstudy)", {
   ms <- glmbayesCore::model_setup(
     Reaction ~ Days + (Days || Subject),
     data = lme4::sleepstudy
   )
-  args <- list(
+  id <- glmbayesCore::check_identifiability(
     y = ms$y,
     D = ms$D,
     group = ms$group,
@@ -93,9 +69,8 @@ test_that("check_identifiability matches lmebayesCore on model_setup design", {
     family = gaussian(),
     group_name = ms$group_name
   )
-  old <- do.call(lmebayesCore::check_identifiability, args)
-  new <- do.call(glmbayesCore::check_identifiability, args)
 
-  expect_identical(old$groupef.rank, new$groupef.rank)
-  expect_identical(old$popef.rank_ok, new$popef.rank_ok)
+  expect_length(id$groupef.rank, nlevels(ms$group))
+  expect_true(all(id$groupef.rank))
+  expect_true(id$popef.rank_ok)
 })

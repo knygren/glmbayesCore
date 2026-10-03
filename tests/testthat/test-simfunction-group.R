@@ -50,7 +50,7 @@ test_that("pfamily_list.Prior_SetupGroup builds dNormal pfamilies per block", {
   expect_true(all(vapply(pf, function(p) inherits(p, "pfamily"), logical(1L))))
 })
 
-test_that("pfamily_list.Prior_SetupGroup matches lmebayesCore Ex example (3 covariates)", {
+test_that("pfamily_list.Prior_SetupGroup: iris three-covariate block (3 covariates)", {
   data("iris", package = "datasets")
   ps_block <- Prior_SetupGroup(
     Sepal.Length ~ Sepal.Width + Petal.Length,

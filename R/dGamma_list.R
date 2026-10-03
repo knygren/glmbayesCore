@@ -41,7 +41,7 @@
 #' @section What it costs:
 #' Supplying the result as \code{dispersion_ranef} turns \eqn{J} residual
 #' variances into parameters (see \dQuote{What the prior choices mean} in
-#' \code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}}). The posterior is then no longer Gaussian, so
+#' \samp{rLMM_reg()}). The posterior is then no longer Gaussian, so
 #' draws are no longer exact: they come from the final sweep of a
 #' calibrated chain, and a pilot stage runs first. Because a value must be
 #' drawn for every group at every sweep, per-group dispersion is
@@ -55,7 +55,7 @@
 #' moments, and accept-reject candidates per draw.
 #'
 #' @seealso \code{\link{dGamma}}, \code{\link{Prior_Setup_GLMM}},
-#'   \code{\link{pfamily_list}}, \code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}}
+#'   \code{\link{pfamily_list}}, \samp{rLMM_reg()}
 #' @example inst/examples/Ex_dGamma_list.R
 #' @order 1
 #' @export

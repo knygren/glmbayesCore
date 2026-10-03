@@ -1,0 +1,361 @@
+---
+title: "Core 20-S01: Model setup and identifiability"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Core 20-S01: Model setup and identifiability}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+has_br <- requireNamespace("bayesrules", quietly = TRUE)
+```
+
+```{r setup}
+library(glmbayesCore)
+```
+
+# Core 20-S01: Model setup and identifiability
+
+`model_setup()` is the first step in every mixed-model workflow in
+**glmbayesCore**. It takes an `lme4`-style formula and returns three things
+in one object of class `"model_setup"`:
+
+- the **sampler design**: the response `y`, the within-group design matrix
+  `D`, the grouping factor `group`, and one group-level hyper-design matrix
+  `W[[k]]` per random-effect coefficient;
+- a **reference classical fit**: `lmer()` for Gaussian models, `glmer()`
+  otherwise, plus an optional `glmmTMB` fit with per-group dispersion. These
+  are used later to calibrate priors;
+- **identifiability diagnostics** from `check_identifiability()` at both
+  levels of the hierarchy.
+
+Section 1 covers the user interface, Section 2 walks through an example and
+Section 3 documents the internal lineage.
+
+## 1. User interface
+
+### 1.1 Formula rules
+
+`model_setup()` accepts the formula language of `lme4::lmer()`, with three
+structural rules:
+
+1. **Exactly one grouping factor**, for example `school_id`.
+2. **`||` for more than one random coefficient.** The sampler treats the
+   random-effect covariance as diagonal, so write
+   `(1 + x || school_id)` rather than `(1 + x | school_id)`. A random
+   intercept alone must be written `(1 | school_id)`; `lme4` does not accept
+   `(1 || school_id)`.
+3. **Each fixed effect must be one of three types:**
+   - a *group-level (level-2) covariate*: constant within each group, such
+     as `private_school`;
+   - a *population mean slope*: an observation-level covariate that also has
+     a random slope, such as `distracted_ppvt`;
+   - a *cross-level interaction* between a level-2 covariate and a random
+     slope, such as `free_reduced_lunch:distracted_a1`.
+
+Any other fixed term (for example an observation-level covariate with no
+matching random slope) is rejected with an error naming the offending
+columns.
+
+These rules let `model_setup()` split the `lme4` fixed effects into one
+group-level regression per random coefficient:
+
+| Random coefficient \(k\) | Columns of `W[[k]]` |
+|--------------------------|---------------------|
+| `(Intercept)` | intercept plus **all** level-2 covariates |
+| a random slope with a cross-level moderator | intercept (the population mean slope) plus the moderator |
+| any other random slope | intercept only (the population mean slope) |
+
+### 1.2 Arguments
+
+| Argument | Default | Role |
+|----------|---------|------|
+| `formula` | — | Two-sided `lme4` formula obeying Section 1.1 |
+| `data` | `NULL` | Data frame (falls back to the formula environment) |
+| `family` | `gaussian()` | `gaussian()` uses `lmer()`; other families use `glmer()` |
+| `REML` | `TRUE` | Passed to `lmer()` (and `glmmTMB`); ignored by `glmer()` |
+| `control`, `start`, `verbose` | `NULL`, `NULL`, `0L` | Passed to the reference fit |
+| `subset`, `weights`, `na.action`, `offset`, `contrasts` | — | Applied identically to design extraction and every reference fit, so they use the same rows |
+| `devFunOnly` | `FALSE` | As in `lmer()` |
+| `fit_mer` | `TRUE` | `FALSE` skips all reference fits and returns design and identifiability only |
+| `dispformula` | `~1` | `~1` (pooled \(\sigma^2\)) or `~<group>` (per-group \(\sigma^2_j\), Gaussian only; adds a `glmmTMB` fit) |
+| `...` | — | Passed to `lme4::lFormula()` and the reference fit |
+
+### 1.3 Returned fields
+
+| Field(s) | Content |
+|----------|---------|
+| `y`, `weights`, `offset` | Response, prior weights (ones by default) and offset (zeros by default), aligned with the rows of `D` |
+| `D` | \(n \times p_{\mathrm{re}}\) matrix; column \(k\) is each observation's loading on random coefficient \(k\) |
+| `group`, `group_name` | Grouping factor (with `attr(group, "group_name")`) and its name |
+| `groupef.names` | Random-coefficient names; equal to `colnames(D)` and `names(W)` |
+| `W` | Named list of \(J \times p_k\) hyper-design matrices, one row per group |
+| `popef.moderation` | Data frame of cross-level interactions (`interaction_col`, `moderator`, `random_slope`) |
+| `lmer` or `glmer` | Reference fit (`NULL` if `fit_mer = FALSE`) |
+| `varcorr`, `Psi`, `dispersion` | `VarCorr()` table, named vector of \(\hat\tau^2_k\), residual \(\hat\sigma^2\) |
+| `glmmTMB_fit` | Per-group-dispersion reference fit, or `NULL` |
+| `groupef.rank`, `groupef.estimable`, `groupef.glm_check` | Level 1 diagnostics (Section 2.4) |
+| `popef.rank`, `popef.deficient`, `popef.rank_ok` | Level 2 diagnostics (Section 2.4) |
+| `formula`, `family`, `call`, `terms`, `data`, `dispformula` | Inputs, recorded as in `lm()`/`glm()` |
+
+### 1.4 `check_identifiability()`
+
+`check_identifiability(y, D, group, W, family = gaussian(), group_name, verbose = FALSE)`
+runs the identifiability checks on any `D`/`group`/`W` triple.
+`model_setup()` calls it internally, but it is exported so that hand-built
+designs can be checked too (Section 2.5). `group` must be a factor,
+`colnames(D)` must equal `names(W)`, and each `W[[k]]` must have one row per
+level of `group`, in level order. With `verbose = TRUE` it reports progress
+through `message()`.
+
+## 2. Example: Big Word Club
+
+The examples in Part 4 use the `big_word_club` data from **bayesrules**:
+students (observations) nested in schools (groups), with a vocabulary test
+score as the response.
+
+```{r data, eval = has_br}
+data(big_word_club, package = "bayesrules")
+dat <- big_word_club
+dat$school_id <- factor(dat$school_id)
+dat <- subset(
+  dat,
+  !is.na(score_ppvt) &
+    !is.na(invalid_ppvt) & invalid_ppvt == 0L &
+    complete.cases(dat[, c(
+      "score_ppvt", "distracted_a1", "distracted_ppvt",
+      "private_school", "title1", "free_reduced_lunch", "school_id"
+    )])
+)
+
+form_lmer <- score_ppvt ~
+  private_school + title1 + free_reduced_lunch +
+  distracted_ppvt + distracted_a1 +
+  free_reduced_lunch:distracted_a1 +
+  (1 + distracted_ppvt + distracted_a1 || school_id)
+```
+
+The model has three random coefficients per school: an intercept and two
+slopes. The fixed part has three school-level covariates, two population
+mean slopes and one cross-level interaction.
+
+```{r design, eval = has_br}
+design <- model_setup(form_lmer, data = dat)
+design
+```
+
+### 2.1 The sampler design
+
+```{r design-D, eval = has_br}
+dim(design$D)
+colnames(design$D)
+design$group_name
+nlevels(design$group)
+```
+
+### 2.2 The hyper-design matrices
+
+```{r design-W, eval = has_br}
+lapply(design$W, colnames)
+design$popef.moderation
+```
+
+These follow the table in Section 1.1. The random intercept is regressed on
+all three school-level covariates. The `distracted_a1` slope has its
+population mean plus the moderator `free_reduced_lunch`. The
+`distracted_ppvt` slope has only its population mean.
+
+### 2.3 The reference fit
+
+```{r design-ref, eval = has_br}
+class(design$lmer)
+design$Psi
+design$dispersion
+```
+
+`Psi` holds the classical between-school variance \(\hat\tau^2_k\) of each
+random coefficient, and `dispersion` holds the residual \(\hat\sigma^2\).
+Set `fit_mer = FALSE` to skip the reference fits:
+
+```{r design-only, eval = has_br}
+design_only <- model_setup(form_lmer, data = dat, fit_mer = FALSE)
+is.null(design_only$lmer)
+```
+
+### 2.4 Identifiability at two levels
+
+**Level 1 (within each group).** Can the coefficient vector \(b_j\) be
+estimated from group \(j\)'s data alone?
+
+- `groupef.rank`: `TRUE` when the rows of `D` for group \(j\) have full
+  column rank.
+- `groupef.estimable`: full rank **and** a family-specific check passes.
+  For Gaussian models the group needs more observations than coefficients
+  (\(n_j > p_{\mathrm{re}}\)) so its residual variance is estimable. For
+  binomial, Poisson and Gamma models a classical `glm()` is fitted to the
+  group and must give finite estimates. This catches, for example, complete
+  separation or an all-zero count response.
+- `groupef.glm_check`: a data frame with a short note for each group that
+  failed the family-specific check.
+
+**Level 2 (across groups).** For each random coefficient \(k\),
+`popef.rank[k]` is `TRUE` when `W[[k]]`, restricted to the Level 1
+estimable groups, has full column rank. `popef.rank_ok` is `TRUE` when this
+holds for every \(k\).
+
+```{r ident, eval = has_br}
+table(design$groupef.rank)
+table(design$groupef.estimable)
+design$popef.rank
+design$popef.rank_ok
+```
+
+Groups that fail Level 1 stay in the reference fit. `Prior_Setup_GLMM()`
+needs `popef.rank_ok = TRUE` to derive default hyperpriors. The Part 4
+examples keep only full-rank groups before calibrating priors:
+
+```{r full-rank, eval = has_br}
+full_rank <- names(design$groupef.rank)[design$groupef.rank]
+dat_fr <- subset(dat, school_id %in% full_rank)
+dat_fr$school_id <- droplevels(dat_fr$school_id)
+
+design_fr <- model_setup(form_lmer, data = dat_fr, fit_mer = FALSE)
+all(design_fr$groupef.rank)
+nlevels(design_fr$group)
+```
+
+### 2.5 Calling `check_identifiability()` directly
+
+```{r ident-direct}
+set.seed(1)
+J <- 8L; n_j <- 6L
+group <- factor(rep(paste0("g", seq_len(J)), each = n_j))
+x1 <- rnorm(J * n_j)
+D <- cbind("(Intercept)" = 1, x1 = x1)
+y <- 1 + x1 + rnorm(J * n_j)
+W <- list(
+  "(Intercept)" = matrix(1, J, 1, dimnames = list(NULL, "(Intercept)")),
+  x1            = matrix(1, J, 1, dimnames = list(NULL, "(Intercept)"))
+)
+
+ident <- check_identifiability(
+  y = y, D = D, group = group, W = W,
+  family = gaussian(), group_name = "group", verbose = TRUE
+)
+ident$popef.rank_ok
+```
+
+Now make one group's covariate constant. Its slope can no longer be
+estimated from that group alone, so it fails Level 1:
+
+```{r ident-direct-fail}
+D_bad <- D
+D_bad[group == "g3", "x1"] <- 0.5
+ident_bad <- check_identifiability(
+  y = y, D = D_bad, group = group, W = W, group_name = "group"
+)
+ident_bad$groupef.rank
+```
+
+## 3. Lineage: what runs inside `model_setup()`
+
+### 3.1 Call tree
+
+```
+model_setup(formula, data, family, ..., fit_mer, dispformula)
+ │
+ ├─ .lmebayes_normalize_family()              family string/function → family object
+ │
+ ├─ extract_re_hyper_matrices()               ── STAGE A: sampler design
+ │   ├─ is_single_factor_model()              exactly one grouping factor?
+ │   ├─ .lmebayes_validate_uncorrelated_re_formula()
+ │   │   └─ is_fixed_effects_only()           reject (1 || g) and correlated (x | g)
+ │   ├─ lme4::lFormula()                      model frame, X, reTrms
+ │   ├─ classify_lme4_fixed_columns()         split X into level-1 / level-2 columns
+ │   ├─ classify_crosslevel_re_moderation()   level-1 columns → mean slopes,
+ │   │                                        cross-level moderators, or disallowed
+ │   ├─ get_lme4_components()                 X, sparse Z and its row/column maps
+ │   │   └─ .lme4_Z_random_column_map(), .lme4_Z_random_row_map(),
+ │   │      .lme4_label_Z_random_sparse()
+ │   ├─ extract_lme4_fixed_group_matrix()     one row per group: level-2 X  → W
+ │   │   └─ classify_lme4_fixed_columns()
+ │   ├─ extract_re_Z_obs()                    sparse Z → dense n x p_re matrix D
+ │   └─ .lmebayes_weights_offset_from_frame() weights/offset aligned with y
+ │       └─ .lmebayes_normalize_weights(), .lmebayes_normalize_offset()
+ │
+ ├─ .lmebayes_dispformula_kind()              "pooled" (~1) or "group" (~<group>)
+ │
+ ├─ [fit_mer = TRUE]                          ── STAGE B: reference fits
+ │   ├─ .lmebayes_mer_optional_args()         forward only supplied args
+ │   ├─ lme4::lmer() | lme4::glmer()          always (backs design$lmer / $glmer)
+ │   ├─ lme4::isSingular()                    message() if singular
+ │   ├─ extract_mer_variance_components()     VarCorr → Psi, dispersion
+ │   └─ [gaussian & dispformula = ~<group>]
+ │       └─ .lmebayes_fit_glmmtmb_reference() glmmTMB(..., dispformula)
+ │
+ └─ check_identifiability()                   ── STAGE C: diagnostics
+     ├─ Level 1 rank:   Matrix::rankMatrix() on each D_j
+     ├─ Level 1 estimability:
+     │   └─ .lmebayes_block_glm_estimable()
+     │       └─ .lmebayes_glm_estimable_precheck()   quick family-specific rejects
+     │          then stats::glm() per group           (binomial/poisson/Gamma)
+     └─ Level 2 rank:   Matrix::rankMatrix() on W[[k]][estimable groups, ]
+```
+
+### 3.2 Helper reference
+
+**Stage A — design extraction** (`R/lme4_design_utilities.R` unless noted)
+
+| Helper | Role |
+|--------|------|
+| `extract_re_hyper_matrices()` | Orchestrates Stage A; returns the bare `"model_setup"` list (`y`, `D`, `group`, `W`, `popef.moderation`, `weights`, `offset`) |
+| `is_single_factor_model()` | `TRUE` when `lFormula()` finds exactly one grouping factor |
+| `is_fixed_effects_only()` | `TRUE` when there are no random-effect bars |
+| `.lmebayes_validate_uncorrelated_re_formula()` | Stops on `(1 || g)` and on correlated multi-coefficient terms |
+| `classify_lme4_fixed_columns()` | Splits the fixed-effect matrix into columns that are constant within groups (level 2) and columns that vary within groups (level 1) |
+| `classify_crosslevel_re_moderation()` | Sorts level-1 columns into population mean slopes, `moderator:slope` interactions (`popef.moderation`) and disallowed columns |
+| `get_lme4_components()` | Wraps `lFormula()`; returns `X`, the sparse random-effects `Z`, group factors and labelled row/column maps of `Z` |
+| `.lme4_Z_random_column_map()`, `.lme4_Z_random_row_map()`, `.lme4_label_Z_random_sparse()` | Label the columns of `lme4`'s stacked `Z` by group, coefficient and level |
+| `extract_lme4_fixed_group_matrix()` | Collapses the level-2 columns of `X` to one row per group; the source of every `W[[k]]` |
+| `extract_re_Z_obs()` | Collapses the stacked sparse `Z` (one column per group × coefficient) to the dense \(n \times p_{\mathrm{re}}\) matrix `D` |
+| `.lmebayes_weights_offset_from_frame()` (`mer_design_support.R`) | Reads `model.weights()` / `model.offset()` from the model frame and normalizes them to length \(n\) |
+| `.lmebayes_normalize_family()` (`mer_family.R`) | Accepts a family name, function or object and returns a family object |
+
+**Stage B — reference fits**
+
+| Helper | File | Role |
+|--------|------|------|
+| `.lmebayes_mer_optional_args()` | `model_setup.R` | Collects `start`/`subset`/`weights`/`na.action`/`offset`/`contrasts` only if supplied, so `lmer()` sees the same call as a direct user call |
+| `extract_mer_variance_components()` | `lme4_design_utilities.R` | Maps `VarCorr()` rows to `Psi` (named by `groupef.names`) and the residual variance |
+| `.lmebayes_dispformula_kind()` | `glmmtmb_reference_helpers.R` | Validates `dispformula`; returns `"pooled"` or `"group"` |
+| `.lmebayes_fit_glmmtmb_reference()` | `glmmtmb_reference_helpers.R` | Fits `glmmTMB(formula, dispformula = ~<group>)`; stored as `design$glmmTMB_fit` and reused by `Prior_Setup_GLMM()` |
+| `.lmebayes_mer_convergence_issues()` | `model_setup.R` | Not called here; returns convergence problems of a `merMod` for `Prior_Setup_GLMM()` (S02) |
+| `.lmebayes_stop_if_nondefault_weights_offset()` | `model_setup.R` | Not called here; a guard sampler engines call before ignoring non-default `weights`/`offset` |
+
+**Stage C — identifiability** (`R/check_identifiability.R`)
+
+| Helper | Role |
+|--------|------|
+| `check_identifiability()` | Exported; runs Level 1 rank, Level 1 estimability and Level 2 rank in that order |
+| `.lmebayes_block_glm_estimable()` | Level 1 estimability for each full-rank group: an \(n_j > p\) check for Gaussian models, a classical `glm()` fit for binomial/Poisson/Gamma |
+| `.lmebayes_glm_estimable_precheck()` | Rejects before fitting: a single outcome level (binomial), an all-zero response (Poisson), non-positive values or no residual df (Gamma) |
+
+### 3.3 Exploring the internals
+
+The non-dot design utilities are documented internally and can be called
+with `:::`. For example, to see how the fixed columns were classified:
+
+```{r internals, eval = has_br}
+fr <- lme4::lFormula(form_lmer, data = dat_fr)
+cls <- glmbayesCore:::classify_lme4_fixed_columns(fr$X, fr$reTrms$flist[[1]])
+str(cls, max.level = 1)
+```
+
+## 4. Next
+
+Core 20-S02 takes the full-rank design and uses `Prior_Setup_GLMM()` to
+calibrate priors for both blocks.

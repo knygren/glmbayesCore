@@ -24,7 +24,7 @@ non-empty \code{colnames(D)} (random-effect coefficient names).}
 \code{factor}); \code{levels(group)} fixes the row order assumed by
 \code{W} and names \code{groupef.rank}/\code{groupef.estimable} in the
 return value -- there is no separate \code{group_levels} argument.
-Unlike \code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}}, \code{group_name} is a separate argument
+Unlike \samp{rLMM_reg()}, \code{group_name} is a separate argument
 here (see below) rather than derived from \code{group} via
 \code{substitute()}.}
 
@@ -38,9 +38,9 @@ same logic \code{\link{model_setup}} uses. Defaults to \code{gaussian()}.}
 \item{group_name}{Display name of the grouping factor (e.g.
 \code{"school_id"}), used only in error and \code{verbose} messages
 (not in any computation). Defaults to \code{attr(group, "group_name")}
-(the convention already used by \code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}}); must be
+(the convention already used by \samp{rLMM_reg()}); must be
 resolvable to a non-empty string, either this way or by passing it
-explicitly. Unlike \code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}}, there is no fallback to
+explicitly. Unlike \samp{rLMM_reg()}, there is no fallback to
 \code{substitute(group)} -- this function may be called on matrices that
 are not bare variables.}
 
@@ -78,7 +78,7 @@ check on the level-1 design \code{D}, followed by a Level~2 (across-group)
 rank check on the level-2 design matrices \code{W}, restricted to the
 Level-1-estimable groups. Takes the same \code{D}/\code{group}/\code{W}
 matrix inputs (and the same conventions -- see Details) as
-\code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}}/\code{\link[lmebayesCore:rGLMM_reg]{rGLMM_reg}}, so it can be run directly
+\samp{rLMM_reg()}/\samp{rGLMM_reg()}, so it can be run directly
 on hand-built matrices from those matrix-level workflows, or on
 \code{model_setup()}'s \code{design$D}/\code{design$group}/
 \code{design$W} directly, without requiring a full \code{lmer}/\code{glmer}
@@ -115,7 +115,7 @@ groups from Level 1 (\code{groupef.estimable}), each level-2 design matrix
 \code{W[[k]]} is checked for full column rank (\code{popef.rank}), using
 only the rows at the estimable positions (row \eqn{j} of \code{W[[k]]}
 corresponds to \code{levels(group)[j]}, exactly as in
-\code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}}). Rank deficiency at this level means the level-2
+\samp{rLMM_reg()}). Rank deficiency at this level means the level-2
 hyperparameters are not identified by the data, even as the number of
 estimable groups grows. The scalar \code{popef.rank_ok} is \code{TRUE}
 only when every \code{popef.rank} entry is \code{TRUE}.
@@ -128,7 +128,7 @@ match deeper in the rank/estimability computation:
 \item \code{D} must have unique, non-empty \code{colnames(D)}: these are
 the random-effect coefficient names used to key \code{W} (there is no
 separate \code{groupef.names} argument to override them, matching
-\code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}}).
+\samp{rLMM_reg()}).
 \item \code{group} must be a \code{factor} (not coerced from a character
 vector); \code{levels(group)} fixes the row order assumed by
 \code{W} (there is no separate \code{group_levels} argument).
@@ -160,7 +160,7 @@ ident$popef.rank_ok
 }
 \seealso{
 \code{\link{model_setup}},
-\code{\link[lmebayesCore:rLMM_reg]{rLMM_reg}},
-\code{\link[lmebayesCore:rGLMM_reg]{rGLMM_reg}},
+\samp{rLMM_reg()},
+\samp{rGLMM_reg()},
 \code{\link{extract_re_hyper_matrices}}
 }

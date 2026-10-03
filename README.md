@@ -17,14 +17,17 @@ The relationship to the broader ecosystem parallels how `StanHeaders` /
 the infrastructure layer; **glmbayes** and the in-development **lmebayes**
 are the user-facing packages built on top of it.
 
-**Current staging note.** This tree currently ships the iid GLM/LM envelope
-engine used by **glmbayes**. Mixed-model (LMM/GLMM / two-block) engines are
-still part of the long-term **glmbayesCore** API and are under active
-development in the temporary
-[lmebayesCore](https://github.com/knygren/lmebayesCore) fork (consumed by
-[lmebayes](https://github.com/knygren/lmebayes)). Think of **lmebayesCore**
-as a development holding package: features return here gradually once the
-iid backend is stable (CRAN / **glmbayes** re-import path).
+**Current staging note.** This tree ships the iid GLM/LM envelope engine used
+by **glmbayes**, plus the mixed-model **setup** layer used by **lmerb()**:
+design and identifiability (`model_setup()`, `check_identifiability()`),
+prior calibration (`Prior_Setup_GLMM()`, `Prior_SetupGroup()`), `pfamily`
+builders (`pfamily_list()`, `dGamma_list()`) and row-group samplers
+(`rNormal_reg_group()`, `rNormalGLM_reg_group()`). The two-block Gibbs
+**engines** (`rlmerb()`, `rglmerb()`, `rLMM_reg*`, `rGLMM_reg*`,
+`two_block_*`) are still developed in the temporary
+[lmebayesCore](https://github.com/knygren/lmebayesCore) fork, which
+[lmebayes](https://github.com/knygren/lmebayes) uses. **lmebayesCore** is a
+holding package: features move back here once they are stable.
 
 ---
 
@@ -99,6 +102,10 @@ Kernel loading for exploration uses **opencltools**; runtime GPU assembly uses
 | `rglmb.R` / `rlmb.R` | Matrix-input samplers — the primary R-level interface for **glmbayes** |
 | `envelopeorchestrator.R` | R orchestration of multi-step envelope building and optional GPU dispatch |
 | `compute_gaussian_prior.R` | Gaussian-specific prior calibration utilities |
+| `model_setup.R` / `check_identifiability.R` | Mixed-model design extraction, reference `lmer`/`glmer` fit, two-level identifiability |
+| `Prior_Setup_GLMM.R` | Block 1 / Block 2 prior calibration for mixed models |
+| `pfamily_list*.R` / `dGamma_list*.R` | Calibrated setups → named lists of `pfamily` objects |
+| `Prior_SetupGroup.R` / `normalize_group.R` / `simfunction_group.R` | Row-group priors, partitions and groupwise samplers |
 
 C++ → R callback inventory (both packages): see **glmbayes**
 [`data-raw/CPP_R_CALLBACK_INVENTORY.md`](https://github.com/knygren/glmbayes/blob/main/data-raw/CPP_R_CALLBACK_INVENTORY.md).
@@ -199,9 +206,10 @@ function — not changes to `rglmb()` itself.
 
 ## Function overview
 
-Symbols below are exported from **glmbayesCore** today (iid path). End users
-typically load **glmbayes** (or **lmebayes** for mixed models). Mixed-model
-exports temporarily ship from **lmebayesCore** and will return here.
+Symbols below are exported from **glmbayesCore** today. End users typically
+load **glmbayes** (or **lmebayes** for mixed models). The mixed-model setup
+functions are exported here; the two-block Gibbs engines still ship from
+**lmebayesCore** and will return here.
 
 ### Shared with **glmbayes** (iid GLM / LM)
 
@@ -226,21 +234,32 @@ exports temporarily ship from **lmebayesCore** and will return here.
 | `EnvelopeBuild()`, `EnvelopeOrchestrator()`, `EnvelopeSize()`, … | Accept–reject envelope machinery |
 | `pnorm_ct()`, `rnorm_ct()`, `pinvgamma_ct()`, `rgamma_ct()`, … | Truncated-distribution C++ callbacks |
 
-### Planned mixed-model API (temporary **lmebayesCore**; returns here)
+### Mixed-model setup (exported; used by **lmebayes**)
 
-These are part of the long-term **glmbayesCore** surface for **lmebayes**.
-They are not exported from this tree today.
+These functions prepare a single-grouping-factor mixed model for the
+two-block Gibbs samplers. They are documented in vignette Part 4
+([Core 20](#part-4-mixed-model-design-and-priors-enabling-lmerb)).
+
+| Function | Role |
+|----------|------|
+| `model_setup()` | `lmer`-style formula → sampler design (`y`, `D`, `group`, `W`), reference `lmer`/`glmer` (and optional per-group-dispersion `glmmTMB`) fit |
+| `check_identifiability()` | Within-group (Block 1) and across-group (Block 2) identifiability checks |
+| `Prior_Setup_GLMM()` | Calibrated Block 2 (`pop.*`) and Block 1 (`group.*`) priors from the reference fit |
+| `pfamily_list()` | Block 2 `dNormal` / `dIndependent_Normal_Gamma` priors, one per random-effect coefficient (also a `Prior_SetupGroup` method) |
+| `dGamma_list()` | Per-group measurement-dispersion `dGamma` priors (Gaussian, `dispformula = ~group`) |
+| `Prior_SetupGroup()`, `normalize_group()` | Independent per-group `Prior_Setup()` and row-group partitions |
+| `rNormal_reg_group()`, `rNormalGLM_reg_group()` | Conditionally independent groupwise draws (Block 1 building block) |
+
+### Mixed-model engines (temporary **lmebayesCore**; return here)
 
 | Area | Examples |
 |------|----------|
-| Setup | `model_setup()`, `Prior_Setup_lmebayes()`, `pfamily_list()` |
 | Matrix drivers | `rlmerb()`, `rglmerb()` |
 | Two-block / sweep | `rGLMM_reg*`, `rLMM_reg*`, `rGLMM_sweep()`, `two_block_*`, `plot_sweep_history_diag()` |
-| Row-group helpers | `normalize_group()`, `.group_rNormalReg_cpp()` / `.group_rNormalGLM_cpp()` (see **lmebayesCore** for Gibbs “block” APIs) |
 
-Typical **lmebayes** workflow (via **lmebayesCore** for now):
-`model_setup()` → `Prior_Setup_lmebayes()` → `pfamily_list(ps)` →
-`lmerb()` / `glmerb()`.
+Typical **lmebayes** workflow:
+`model_setup()` → `Prior_Setup_GLMM()` → `pfamily_list(ps)` (and
+`dGamma_list(ps)` for per-group dispersion) → `lmerb()` / `glmerb()`.
 
 ---
 
@@ -311,18 +330,26 @@ install.packages(c("opencltools", "nmathopencl"),
 
 ## Vignettes
 
-**glmbayesCore** includes consecutive engine vignettes **`Core-01`** … **`Core-11`**
-(package overview, estimation procedures, likelihood-subgradient samplers,
-envelope construction, parallel CPU sampling, OpenCL acceleration, and prior
-derivations for **`Prior_Setup()`**). Appendix-style **`Chapter-A*`** names belong
-to **glmbayes** Part 5 only.
+The **glmbayesCore** vignettes are grouped into **Parts**, following the
+same scheme as **glmbayes**. Vignette numbers (`Core-NN`) are permanent
+identifiers and are not renumbered, so a Part need not use consecutive
+numbers. Subsections use the `Core-NN-S0M` pattern, as in
+**glmbayes** `Chapter-02-S0M`. Appendix-style **`Chapter-A*`** names belong
+to **glmbayes** only.
 
 After installing from [R-Universe](https://knygren.r-universe.dev/glmbayesCore), use the
 links below or in R: `vignette("Core-01", package = "glmbayesCore")`,
 `browseVignettes("glmbayesCore")`.
 
+### Part 1: Orientation
+
 - **Core 01 — Overview of the glmbayesCore package**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-01.html
+
+### Part 2: Estimation and accept–reject sampling
+
+How the iid samplers draw from each posterior, and how `Prior_Setup()`
+calibrates the priors they use.
 
 - **Core 02 — Overview of Estimation Procedures**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-02.html
@@ -336,6 +363,17 @@ links below or in R: `vignette("Core-01", package = "glmbayesCore")`,
 - **Core 05 — Accept–Reject Sampling for gaussian Regression models with independent normal-gamma priors**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-05.html
 
+- **Core 09 — Implementation Companion for Independent Normal-Gamma**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Core-09.html
+
+- **Core 10 — Technical Derivations for Priors Returned by `Prior_Setup()`**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Core-10.html
+
+### Part 3: Envelopes, parallel CPU, and OpenCL
+
+How envelopes are built and how that work is spread across CPU threads or a
+GPU.
+
 - **Core 06 — Overview of Envelope Related Functions**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-06.html
 
@@ -345,14 +383,38 @@ links below or in R: `vignette("Core-01", package = "glmbayesCore")`,
 - **Core 08 — Accelerated EnvelopeBuild Implementation using OpenCL**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-08.html
 
-- **Core 09 — Implementation Companion for Independent Normal-Gamma**  
-  https://knygren.r-universe.dev/articles/glmbayesCore/Core-09.html
-
-- **Core 10 — Technical Derivations for Priors Returned by `Prior_Setup()`**  
-  https://knygren.r-universe.dev/articles/glmbayesCore/Core-10.html
-
 - **Core 11 — Large models: GPU acceleration using OpenCL (backend installation)**  
   https://knygren.r-universe.dev/articles/glmbayesCore/Core-11.html
+
+### Part 4: Mixed-model design and priors (enabling lmerb)
+
+The setup layer behind `lmerb()` / `glmerb()` in **lmebayes**: design,
+identifiability, two-block prior calibration, and conversion to `pfamily`
+objects. The user-level tutorials are **glmbayes** Chapters 17 and 18.
+
+- **Core 20 — Mixed-model design and priors in glmbayesCore: overview**  
+  https://knygren.r-universe.dev/articles/glmbayesCore/Core-20.html
+
+  - **Core 20-S01 — Model setup and identifiability** (`model_setup()`, `check_identifiability()`)  
+    https://knygren.r-universe.dev/articles/glmbayesCore/Core-20-S01.html
+
+  - **Core 20-S02 — Calibrating mixed-model priors** (`Prior_Setup_GLMM()`)  
+    https://knygren.r-universe.dev/articles/glmbayesCore/Core-20-S02.html
+
+  - **Core 20-S03 — From calibrated priors to pfamily objects** (`pfamily_list()`, `dGamma_list()`)  
+    https://knygren.r-universe.dev/articles/glmbayesCore/Core-20-S03.html
+
+  - **Core 20-S04 — Row-group priors and samplers** (`Prior_SetupGroup()`, `normalize_group()`, `rNormal_reg_group()`, `rNormalGLM_reg_group()`)  
+    https://knygren.r-universe.dev/articles/glmbayesCore/Core-20-S04.html
+
+### Part 5: Two-block Gibbs engines (reserved)
+
+Numbers **Core 25–29** are reserved for the two-block Gibbs engines
+(`rlmerb()`, `rglmerb()`, `rLMM_reg*`, `rGLMM_reg*`, `two_block_*`). Until
+those engines move back from
+[lmebayesCore](https://github.com/knygren/lmebayesCore), their
+documentation lives in that package. **Core 12** is reserved for a
+developer guide on adding a new `pfamily` (today in `inst/ADDING_PFAMILY.md`).
 
 ---
 
@@ -393,11 +455,12 @@ A complete bibliography is in `inst/REFERENCES.bib`.
 
 ## Future plans
 
-- **Reintegrate mixed-model stack from temporary lmebayesCore:** Gradually
-  merge LMM/GLMM setup (`model_setup`, `Prior_Setup_lmebayes`,
-  `pfamily_list`), matrix drivers (`rlmerb` / `rglmerb`), and two-block /
-  block-ING engines back into **glmbayesCore**, then point **lmebayes** at
-  this package again and retire **lmebayesCore**.
+- **Reintegrate mixed-model engines from temporary lmebayesCore:** The
+  LMM/GLMM setup layer (`model_setup`, `Prior_Setup_GLMM`, `pfamily_list`,
+  `dGamma_list`) is now in **glmbayesCore**. Next, merge the matrix drivers
+  (`rlmerb` / `rglmerb`) and the two-block / block-ING engines (vignette
+  Part 5), then point **lmebayes** at this package again and retire
+  **lmebayesCore**.
 - **Sweep-outer drivers and `sweep_history` on all two-block paths:**
   Mixed-model sampling should use a **sweep-outer** loop (all chains
   complete inner sweep `m`, then `m+1`, …) on every route, for consistency

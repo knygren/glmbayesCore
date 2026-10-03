@@ -64,7 +64,6 @@ RdMacros: Rdpack
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, opencltools
 Depends: MASS, R (>= 3.5.0)
 Suggests:
-    lmebayesCore,
     glmbayes,
     coda,
     bayesrules,
