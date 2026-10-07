@@ -23,7 +23,7 @@ truncation window below does not depend on `n0`).  Because
 `rate = tau2_k * (shape - 1)`, the implied inverse-Gamma
 prior on `tau2` has mean exactly `tau2_k` for every `n0` and `p_k`.
 
-The sampler (`glmbayesCore::two_block_rNormal_reg_v2`) requires *both*
+The sampler (`two_block_rNormal_reg`) requires *both*
 truncation bounds: each `tau2_k` draw is hard-truncated to
 `[disp_lower, disp_upper]` by renormalized inverse-CDF sampling.  A fixed,
 two-sided window serves three purposes:

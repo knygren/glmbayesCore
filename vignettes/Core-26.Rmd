@@ -1,0 +1,154 @@
+---
+title: "Core 26: Two-block Gibbs engine (C++)"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Core 26: Two-block Gibbs engine (C++)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r setup}
+library(glmbayesCore)
+```
+
+# Core 26: Two-block Gibbs engine (C++)
+
+This vignette is the C++ half of **Part 5**. The R call tree is **Core-25**.
+The code here is the native half of the `lmerb()` sampler: per-group prior
+means, the population update, and the independent-block envelope sampler
+used when the measurement variance is random.
+
+## 1. Namespaces and files
+
+| File | Namespace | What `lmerb` uses it for |
+|------|-----------|--------------------------|
+| `src/two_block_population.cpp` | `glmbayes::sim::twoblock` | Population one-chain update |
+| `src/two_block_groups.cpp` | `glmbayes::sim::twoblock` | `two_block_build_mu_all()` |
+| `src/block_rIndepNormalGammaReg.cpp` | `glmbayes::env::group` | Independent-block ING envelopes |
+| `src/twoBlockGibbs.cpp` | `glmbayes::sim::twoblock` | Alternate Gibbs driver; see below |
+| `src/export_wrappers.cpp` | global | Rcpp `.Call` entry points |
+| `src/simfuncs_twoblock.h` | — | Declarations for `sim::twoblock` |
+| `src/Envelopefuncs_group.h` | — | Declarations for `env::group` |
+
+`export_wrappers.cpp` is the only file that exports symbols to R. The
+`.Call` names did not change when the implementations moved into
+`sim::twoblock` and `env::group`.
+
+From inside `sim::twoblock`, an unqualified call to `group::` resolves to
+`glmbayes::sim::group` (the existing within-group samplers), and an
+unqualified `rNormalReg` / `rIndepNormalGammaReg` resolves to
+`glmbayes::sim`.
+
+## 2. The three calls `lmerb` makes
+
+`R/rcpp_wrappers_two_block.R` keeps three wrappers:
+
+| R wrapper | `.Call` symbol | C++ function |
+|-----------|----------------|--------------|
+| `.two_block_build_mu_all_cpp()` | `two_block_build_mu_all_cpp_export` | `two_block_build_mu_all()` |
+| `.two_block_block2_one_chain_cpp()` | `two_block_population_one_chain_cpp_export` | `two_block_population_one_chain_cpp_export()` |
+| `.rIndepNormalGammaRegBlockInd_cpp()` | `rIndepNormalGammaRegBlockInd_cpp_export` | `rIndepNormalGammaRegBlockInd()` |
+
+### Prior means
+
+`build_mu_all()` with `use_cpp = TRUE` (the default) calls
+`two_block_build_mu_all()`. That is the path used when the sweep saves the
+last prior-mean matrix, and when `lmerb_posterior_mean()` and
+`rLMMNormal_joint_iid()` rebuild \(\mu\). During the groups prep inside
+`rGLMM_sweep()`, `build_mu_all()` is called with `use_cpp = FALSE`, so that
+step stays in `build_mu_all_r()`.
+
+`two_block_build_mu_all()` uses `MuAllBuilder`: it caches the group-level
+design matrices and the row order of `group_levels`, then forms
+
+\[
+\mu_{k j} = W_{k,j}^\top \gamma_k.
+\]
+
+### Population update
+
+Each sweep, after the groups update, `.two_block_block2_all_chains()` calls
+`two_block_block2_one_chain_cpp()` once per chain. The C++ function:
+
+1. aligns the current group coefficients \(b_{\cdot k}\) to the rows of
+   \(W_k\) (`two_block_align_b_to_xhyper_cpp()`);
+2. calls `rglmb()` once per random-effect component, with that component's
+   `pfamily`;
+3. writes the new \(\gamma_k\), and, for an
+   `dIndependent_Normal_Gamma` component, the new \(\tau^2_k\) and the
+   envelope iteration count.
+
+`two_block_gaussian_family_r()`, `two_block_coef_draw_from_rglmb()`,
+`two_block_update_fixef_row()`, and `two_block_rglmb_iter_count_r()` are
+file-local helpers of that one-chain update.
+
+The groups update in the same sweep calls `rNormal_reg_group()`, which
+enters the existing `glmbayes::sim::group` sampler.
+
+### Random measurement dispersion
+
+`.rIndepNormalGammaRegBlockInd_cpp()` is one orchestrator. Inside
+`rIndepNormalGammaRegBlockInd()` the order is:
+
+```
+BlockEnvelopeCentering()
+BlockEnvelopeBuild()
+BlockEnvelopeDispersionBuildInd()
+BlockEnvelopeSimInd()
+```
+
+Centering and build are shared with the older joint-product sampler.
+`BlockEnvelopeDispersionBuildInd()` and `BlockEnvelopeSimInd()` treat groups
+as independent, which is the sampler `lmerb` runs. R calls only the
+orchestrator; centering, build, dispersion, and simulation run inside it.
+
+## 3. Functions marked for later deletion
+
+A source comment `lmerb-unused` marks C++ functions that sit off the current
+`lmerb` path. They remain compiled. Deleting them is a separate change.
+
+| Location | Marked functions | Why they are unused |
+|----------|------------------|---------------------|
+| `src/twoBlockGibbs.cpp` | `two_block_rNormal_reg_cpp_export()`, `groups_prior_list()`, `population_prior_prep()`, `population_mu_P_prep()`, and the file-local symmetry checks | The R engines call `rGLMM_sweep()`, not this inlined Gibbs driver |
+| `src/two_block_groups.cpp` | `two_block_groups_one_chain_impl()`, `two_block_groups_one_chain_from_mu_P_impl()`, `two_block_groups_one_chain_orchestrate_impl()`, `two_block_groups_prior_with_tau2()`, `two_block_groups_iters_mean()`, `two_block_reorder_b_to_group_levels()`, and the batch slice helpers | The sweep's groups half is the R path in Core-25 |
+| `src/block_rIndepNormalGammaReg.cpp` | `BlockEnvelopeDispersionBuild()`, `BlockEnvelopeSim()`, `rIndepNormalGammaRegBlock()` | Joint product-face sampler. `lmerb` calls the `Ind` orchestrator |
+| `src/export_wrappers.cpp` | The `.Call` wrappers for the rows above, plus the piece exports `BlockEnvelopeCentering_cpp_export`, `BlockEnvelopeBuild_cpp_export`, `BlockEnvelopeDispersionBuildInd_cpp_export`, `BlockEnvelopeSimInd_cpp_export`, and `two_block_align_b_to_xhyper_cpp_export` | No R caller. The implementations of centering, build, the `Ind` steps, and align stay, because the orchestrator and the population update call them directly |
+
+`two_block_build_mu_all()`, `two_block_population_one_chain_cpp_export()`,
+`two_block_align_b_to_xhyper_cpp()`, `BlockEnvelopeCentering()`,
+`BlockEnvelopeBuild()`, `BlockEnvelopeDispersionBuildInd()`,
+`BlockEnvelopeSimInd()`, and `rIndepNormalGammaRegBlockInd()` are not marked.
+
+## 4. Call map
+
+```
+rGLMM_sweep()                              R, Core-25
+    groups half
+        build_mu_all_r()                   R
+        rNormal_reg_group()
+            group_rNormalReg_cpp_export    glmbayes::sim::group  (existing)
+    population half
+        two_block_population_one_chain_cpp_export
+            two_block_align_b_to_xhyper_cpp
+            rglmb()                        existing iid sampler
+
+build_mu_all(use_cpp = TRUE)
+    two_block_build_mu_all()
+
+.rIndepNormalGammaRegBlockInd_cpp()
+    rIndepNormalGammaRegBlockInd()
+        BlockEnvelopeCentering()
+        BlockEnvelopeBuild()
+        BlockEnvelopeDispersionBuildInd()
+        BlockEnvelopeSimInd()
+```
+
+Symbol names that changed on the way into **glmbayesCore**, and the list of
+`.Call` entries, are also in
+`system.file("TWO_BLOCK_CPP_CALLS.md", package = "glmbayesCore")`.

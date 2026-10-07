@@ -3,6 +3,8 @@
 #include "openclPort.h"
 #include "simfuncs.h"
 #include "simfuncs_groups.h"
+#include "simfuncs_twoblock.h"
+#include "Envelopefuncs_group.h"
 
 using namespace openclPort;
 using namespace glmbayes::env;
@@ -717,3 +719,464 @@ double UB2_cpp_export(
 }
 */
 
+
+// =============================================================================
+// Two-block Gibbs and block-ING entry points (lmerb engines).
+// =============================================================================
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List two_block_rNormal_reg_cpp_export(
+    int n,
+    int m_convergence,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    const Rcpp::List& x_hyper,
+    const Rcpp::List& prior_list_block1,
+    SEXP dispersion_block1,
+    SEXP ddef_block1,
+    const Rcpp::List& pfamily_list,
+    const Rcpp::List& fixef_start,
+    const Rcpp::CharacterVector& group_levels,
+    const std::string& family,
+    const std::string& link,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const Rcpp::Function& f2_gauss,
+    const Rcpp::Function& f3_gauss,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    int Gridtype = 2,
+    int n_envopt = 1,
+    bool use_parallel = true,
+    bool use_opencl = false,
+    bool verbose = false,
+    bool progbar = true
+) {
+  return glmbayes::sim::twoblock::two_block_rNormal_reg_cpp_export(
+    n, m_convergence, y, x, block, x_hyper,
+    prior_list_block1, dispersion_block1, ddef_block1,
+    pfamily_list, fixef_start, group_levels,
+    family, link, f2, f3, f2_gauss, f3_gauss,
+    offset, wt, Gridtype, n_envopt,
+    use_parallel, use_opencl, verbose, progbar
+  );
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericMatrix two_block_build_mu_all_cpp_export(
+    const Rcpp::List& x_hyper,
+    const Rcpp::List& fixef,
+    const Rcpp::CharacterVector& re_names,
+    const Rcpp::CharacterVector& group_levels
+) {
+  return glmbayes::sim::twoblock::two_block_build_mu_all(
+    x_hyper, fixef, re_names, group_levels
+  );
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List two_block_groups_prior_with_tau2_cpp_export(
+    const Rcpp::List& base_prior,
+    const Rcpp::NumericVector& tau2_vec,
+    const Rcpp::CharacterVector& ptypes,
+    const Rcpp::CharacterVector& re_names,
+    const Rcpp::NumericMatrix& mu_all
+) {
+  return glmbayes::sim::twoblock::two_block_groups_prior_with_tau2(
+    base_prior, tau2_vec, ptypes, re_names, mu_all
+  );
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+double two_block_groups_iters_mean_cpp_export(const Rcpp::List& block_out) {
+  return glmbayes::sim::twoblock::two_block_groups_iters_mean(block_out);
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List two_block_batch_fixef_chain_cpp_export(
+    const Rcpp::List& batch_fixef,
+    int chain_i,
+    const Rcpp::CharacterVector& re_names
+) {
+  return glmbayes::sim::twoblock::fixef_list_from_batch_chain(
+    batch_fixef, chain_i, re_names
+  );
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::NumericVector two_block_batch_tau2_chain_row_cpp_export(
+    const Rcpp::NumericMatrix& batch_tau2,
+    int chain_i
+) {
+  return glmbayes::sim::twoblock::batch_tau2_chain_row(batch_tau2, chain_i);
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::NumericVector two_block_batch_b_assign_slice_cpp_export(
+    Rcpp::NumericVector b_store,
+    int chain_i,
+    Rcpp::NumericMatrix b_draw
+) {
+  Rcpp::NumericVector out = Rcpp::clone(b_store);
+  glmbayes::sim::twoblock::batch_b_assign_slice(out, chain_i, b_draw);
+  return out;
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::NumericVector two_block_batch_iters_ranef_add_cpp_export(
+    Rcpp::NumericVector iters_ranef,
+    int chain_i,
+    double iters_mean
+) {
+  Rcpp::NumericVector out = Rcpp::clone(iters_ranef);
+  glmbayes::sim::twoblock::batch_iters_ranef_add(out, chain_i, iters_mean);
+  return out;
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List two_block_groups_one_chain_draw_cpp_export(
+    int chain_i,
+    const Rcpp::List& batch_fixef,
+    const Rcpp::NumericVector& tau2_i,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& Z,
+    SEXP groups,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    const Rcpp::List& x_hyper,
+    const Rcpp::CharacterVector& re_names,
+    const Rcpp::CharacterVector& group_levels,
+    const Rcpp::CharacterVector& ptypes,
+    const Rcpp::List& block1_prior,
+    bool is_gaussian,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const Rcpp::Function& f2_gauss,
+    const Rcpp::Function& f3_gauss,
+    const std::string& family,
+    const std::string& link,
+    int Gridtype,
+    int n_envopt
+) {
+  return glmbayes::sim::twoblock::two_block_groups_one_chain_impl(
+    chain_i, batch_fixef, tau2_i, y, Z, groups, offset, wt,
+    x_hyper, re_names, group_levels, ptypes, block1_prior,
+    is_gaussian, f2, f3, f2_gauss, f3_gauss, family, link,
+    Gridtype, n_envopt
+  );
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List two_block_groups_one_chain_cpp_export(
+    int chain_i,
+    Rcpp::NumericVector b_store,
+    Rcpp::NumericVector iters_ranef,
+    const Rcpp::List& batch_fixef,
+    const Rcpp::NumericMatrix& batch_tau2,
+    const Rcpp::List& design,
+    const Rcpp::List& block1_prior,
+    SEXP family,
+    const Rcpp::CharacterVector& ptypes,
+    const Rcpp::CharacterVector& re_names,
+    const Rcpp::CharacterVector& group_levels,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const Rcpp::Function& f2_gauss,
+    const Rcpp::Function& f3_gauss,
+    bool use_cpp_tau2_row,
+    bool use_cpp_b_slice,
+    bool use_cpp_iters_ranef_add
+) {
+  return glmbayes::sim::twoblock::two_block_groups_one_chain_orchestrate_impl(
+    chain_i, b_store, iters_ranef, batch_fixef, batch_tau2, design,
+    block1_prior, family, ptypes, re_names, group_levels,
+    f2, f3, f2_gauss, f3_gauss,
+    use_cpp_tau2_row, use_cpp_b_slice, use_cpp_iters_ranef_add
+  );
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List two_block_groups_one_chain_from_mu_P_cpp_export(
+    const Rcpp::NumericMatrix& mu_all,
+    const Rcpp::NumericMatrix& P,
+    SEXP dispersion,
+    SEXP ddef,
+    const Rcpp::List& design,
+    SEXP family,
+    const Rcpp::CharacterVector& re_names,
+    const Rcpp::CharacterVector& group_levels,
+    const Rcpp::Function& f2,
+    const Rcpp::Function& f3,
+    const Rcpp::Function& f2_gauss,
+    const Rcpp::Function& f3_gauss
+) {
+  return glmbayes::sim::twoblock::two_block_groups_one_chain_from_mu_P_impl(
+    mu_all, P, dispersion, ddef, design, family, re_names, group_levels,
+    f2, f3, f2_gauss, f3_gauss
+  );
+}
+
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::NumericMatrix two_block_reorder_b_to_group_levels_cpp_export(
+    Rcpp::NumericMatrix b_draw,
+    SEXP block_ids,
+    Rcpp::CharacterVector group_levels
+) {
+  return glmbayes::sim::twoblock::two_block_reorder_b_to_group_levels(
+    b_draw, block_ids, group_levels
+  );
+}
+
+// lmerb-unused export: candidate for deletion. The implementation stays;
+// lmerb reaches it through another entry point.
+// [[Rcpp::export]]
+Rcpp::NumericVector two_block_align_b_to_xhyper_cpp_export(
+    Rcpp::NumericVector b_vec,
+    Rcpp::NumericMatrix X_k,
+    Rcpp::CharacterVector group_levels
+) {
+  return glmbayes::sim::twoblock::two_block_align_b_to_xhyper_cpp(
+    b_vec, X_k, group_levels
+  );
+}
+
+// [[Rcpp::export]]
+Rcpp::List two_block_population_one_chain_cpp_export(
+    const Rcpp::NumericMatrix& b_i,
+    const Rcpp::List& fixef_rows,
+    const Rcpp::NumericVector& tau2_i,
+    const Rcpp::NumericVector& iters_i,
+    const Rcpp::List& x_hyper,
+    const Rcpp::CharacterVector& group_levels,
+    const Rcpp::List& pfamily_list,
+    const Rcpp::CharacterVector& ptypes,
+    const Rcpp::CharacterVector& re_names
+) {
+  return glmbayes::sim::twoblock::two_block_population_one_chain_cpp_export(
+    b_i, fixef_rows, tau2_i, iters_i, x_hyper, group_levels,
+    pfamily_list, ptypes, re_names
+  );
+}
+
+// lmerb-unused export: candidate for deletion. The implementation stays;
+// lmerb reaches it through another entry point.
+// [[Rcpp::export]]
+Rcpp::List BlockEnvelopeCentering_cpp_export(
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    double shape,
+    double rate,
+    double max_disp_perc,
+    Rcpp::Nullable<double> disp_lower,
+    Rcpp::Nullable<double> disp_upper,
+    int p_re = -1,
+    int n_rss_iter = 10,
+    bool verbose = false
+) {
+  return glmbayes::env::group::BlockEnvelopeCentering(
+    y, x, block, prior_list, prior_lists,
+    offset, wt, shape, rate, max_disp_perc,
+    disp_lower, disp_upper, p_re, n_rss_iter, verbose
+  );
+}
+
+// lmerb-unused export: candidate for deletion. The implementation stays;
+// lmerb reaches it through another entry point.
+// [[Rcpp::export]]
+Rcpp::List BlockEnvelopeBuild_cpp_export(
+    const Rcpp::List& centering_out,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    double max_disp_perc,
+    Rcpp::Nullable<double> disp_lower,
+    Rcpp::Nullable<double> disp_upper,
+    int n = 1,
+    int Gridtype = 3,
+    int n_envopt = -1,
+    double RSS_ML = NA_REAL,
+    bool use_parallel = true,
+    bool use_opencl = false,
+    bool verbose = false
+) {
+  Rcpp::Nullable<int> n_envopt_nullable(
+    n_envopt < 0 ? R_NilValue : Rcpp::wrap(n_envopt)
+  );
+  return glmbayes::env::group::BlockEnvelopeBuild(
+    centering_out, y, x, block, prior_list, prior_lists,
+    offset, wt, max_disp_perc, disp_lower, disp_upper,
+    n, Gridtype, n_envopt_nullable, RSS_ML,
+    use_parallel, use_opencl, verbose
+  );
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List BlockEnvelopeDispersionBuild_cpp_export(
+    const Rcpp::List& build_out,
+    const Rcpp::List& centering_out,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    double shape,
+    double rate,
+    double max_disp_perc,
+    Rcpp::Nullable<double> disp_lower,
+    Rcpp::Nullable<double> disp_upper,
+    double RSS_ML = NA_REAL,
+    bool use_parallel = true,
+    bool verbose = false
+) {
+  return glmbayes::env::group::BlockEnvelopeDispersionBuild(
+    build_out, centering_out, y, x, block,
+    offset, wt, shape, rate, max_disp_perc,
+    disp_lower, disp_upper, RSS_ML,
+    use_parallel, verbose
+  );
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List BlockEnvelopeSim_cpp_export(
+    const Rcpp::List& build_out,
+    int n = 1,
+    bool progbar = false,
+    bool verbose = false
+) {
+  return glmbayes::env::group::BlockEnvelopeSim(
+    build_out, n, progbar, verbose
+  );
+}
+
+// lmerb-unused: candidate for deletion (not on the lmerb path).
+// [[Rcpp::export]]
+Rcpp::List rIndepNormalGammaRegBlock_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    int p_re,
+    int n_rss_iter,
+    int Gridtype,
+    int n_envopt,
+    double RSS_ML,
+    bool use_parallel,
+    bool use_opencl,
+    bool progbar,
+    bool verbose,
+    const Rcpp::CharacterVector& group_levels,
+    const Rcpp::CharacterVector& re_names
+) {
+  Rcpp::Nullable<int> n_envopt_nullable(
+    n_envopt < 0 ? R_NilValue : Rcpp::wrap(n_envopt)
+  );
+  return glmbayes::env::group::rIndepNormalGammaRegBlock(
+    n, y, x, block, prior_list, prior_lists,
+    offset, wt, p_re, n_rss_iter, Gridtype, n_envopt_nullable,
+    RSS_ML, use_parallel, use_opencl, progbar, verbose,
+    group_levels, re_names
+  );
+}
+
+// lmerb-unused export: candidate for deletion. The implementation stays;
+// lmerb reaches it through another entry point.
+// [[Rcpp::export]]
+Rcpp::List BlockEnvelopeDispersionBuildInd_cpp_export(
+    const Rcpp::List& build_out,
+    const Rcpp::List& centering_out,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    double shape,
+    double rate,
+    double max_disp_perc,
+    Rcpp::Nullable<double> disp_lower,
+    Rcpp::Nullable<double> disp_upper,
+    double RSS_ML = NA_REAL,
+    bool use_parallel = true,
+    bool verbose = false
+) {
+  return glmbayes::env::group::BlockEnvelopeDispersionBuildInd(
+    build_out, centering_out, y, x, block,
+    offset, wt, shape, rate, max_disp_perc,
+    disp_lower, disp_upper, RSS_ML,
+    use_parallel, verbose
+  );
+}
+
+// lmerb-unused export: candidate for deletion. The implementation stays;
+// lmerb reaches it through another entry point.
+// [[Rcpp::export]]
+Rcpp::List BlockEnvelopeSimInd_cpp_export(
+    const Rcpp::List& build_out,
+    int n = 1,
+    bool progbar = false,
+    bool verbose = false
+) {
+  return glmbayes::env::group::BlockEnvelopeSimInd(
+    build_out, n, progbar, verbose
+  );
+}
+
+// [[Rcpp::export]]
+Rcpp::List rIndepNormalGammaRegBlockInd_cpp_export(
+    int n,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericMatrix& x,
+    SEXP block,
+    SEXP prior_list,
+    SEXP prior_lists,
+    const Rcpp::NumericVector& offset,
+    const Rcpp::NumericVector& wt,
+    int p_re,
+    int n_rss_iter,
+    int Gridtype,
+    int n_envopt,
+    double RSS_ML,
+    bool use_parallel,
+    bool use_opencl,
+    bool progbar,
+    bool verbose,
+    const Rcpp::CharacterVector& group_levels,
+    const Rcpp::CharacterVector& re_names
+) {
+  Rcpp::Nullable<int> n_envopt_nullable(
+    n_envopt < 0 ? R_NilValue : Rcpp::wrap(n_envopt)
+  );
+  return glmbayes::env::group::rIndepNormalGammaRegBlockInd(
+    n, y, x, block, prior_list, prior_lists,
+    offset, wt, p_re, n_rss_iter, Gridtype, n_envopt_nullable,
+    RSS_ML, use_parallel, use_opencl, progbar, verbose,
+    group_levels, re_names
+  );
+}

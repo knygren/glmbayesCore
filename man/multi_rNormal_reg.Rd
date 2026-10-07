@@ -65,6 +65,13 @@ with one entry per response column.  The list path allows each column of
 
 glmbayes Simulation Functions
 \code{\link{multi_rlmb}()},
-\code{\link{simfuncs}}
+\code{\link{rGLMM_Re_Draw}()},
+\code{\link{rGLMM_sweep}()},
+\code{\link{rLMMNormal_joint_iid}()},
+\code{\link{rLMM_reg}},
+\code{\link{simfuncs}},
+\code{\link{two_block_optimize_pilot_cost}()},
+\code{\link{two_block_rate}()},
+\code{\link{two_block_tv_bound}()}
 }
 \concept{simfuncs}

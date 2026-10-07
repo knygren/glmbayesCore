@@ -57,7 +57,14 @@ glmbayesCore    model_setup()          design + reference fit + identifiability
                 pfamily_list()         Block 2 pfamilies, one per RE coefficient
                 dGamma_list()          Block 1 per-group sigma^2 priors
                      |                                        (Core 20-S03)
-lmebayesCore    rlmerb() / rglmerb()   two-block Gibbs engines (staging)
+lmebayesCore    rlmerb()               formula front door (still staging)
+                     |
+glmbayesCore    rLMMNormal_reg()       matrix engines (Core-25)
+  (Part 5)      rLMMindepNormalGamma_reg()
+                rLMMNormal_joint_iid()
+                rGLMM_sweep()
+                lmerb_posterior_mean()
+                C++ population update and ING envelopes (Core-26)
                      |
 glmbayesCore    rNormal_reg_group()    Block 1 groupwise draws (Core 20-S04)
                 rNormalGLM_reg_group()
@@ -78,10 +85,14 @@ For Gaussian models with a separate measurement variance per group
 (`dispformula = ~ group`), `dGamma_list(ps)` supplies the per-group
 dispersion priors that `lmerb()` takes as `dispersion_ranef`.
 
-The two-block Gibbs engines (`rlmerb()`, `rglmerb()`, `rLMM_reg*()`,
-`rGLMM_reg*()`, `two_block_*()`) are still developed in the staging package
-**lmebayesCore**. Part 5 of these vignettes (Core 25–29) is reserved for them
-once they move back into **glmbayesCore**.
+The two-block helpers `lmerb()` calls (`rGLMM_sweep()`, the rate and pilot
+functions, `lmerb_posterior_mean()`) are documented in
+`vignette("Core-25", package = "glmbayesCore")`, and the C++ population
+update and independent-block envelopes in
+`vignette("Core-26", package = "glmbayesCore")`. The matrix engines
+(`rLMMNormal_reg()`, `rLMMindepNormalGamma_reg()`, `rLMMNormal_joint_iid()`)
+are in this package. `rlmerb()`, `rglmerb()`, and `rGLMM_reg*()` are still
+in **lmebayesCore**.
 
 ## 2. The two-block structure
 
@@ -227,3 +238,7 @@ still show where it came from. Four patterns help when reading the source:
 - `vignette("Core-10", package = "glmbayesCore")`: the single-level
   `Prior_Setup()` derivations that `Prior_Setup_GLMM()` extends, including
   `compute_gaussian_prior()`.
+- `vignette("Core-25", package = "glmbayesCore")`: the R two-block helpers
+  `lmerb()` calls (sweep, posterior mean, rate bound, pilot).
+- `vignette("Core-26", package = "glmbayesCore")`: the C++ population
+  update, `build_mu_all()`, and independent-block envelopes.

@@ -65,6 +65,7 @@ LinkingTo: Rcpp, RcppArmadillo, RcppParallel, opencltools
 Depends: MASS, R (>= 3.5.0)
 Suggests:
     glmbayes,
+    ggplot2,
     coda,
     bayesrules,
     bayestestR,

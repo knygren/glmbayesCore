@@ -17,6 +17,8 @@
  *     - EnvelopeBuild_Ind_Normal_Gamma.cpp
  *     - EnvelopeDispersionBuild.cpp
  *
+ *   Group-factored envelopes: @ref Envelopefuncs_group.h (`glmbayes::env::group`).
+ *
  * @section UsedBy
  *   These functions are consumed by:
  *     - EnvelopeOrchestrator.cpp (high‑level orchestration)
@@ -242,6 +244,9 @@ void EnvelopeSet_Grid_C2(Rcpp::NumericMatrix GIndex,  Rcpp::NumericMatrix cbars,
 void EnvelopeSet_Grid_C2_pointwise(Rcpp::NumericMatrix GIndex,  Rcpp::NumericMatrix cbars, Rcpp::NumericMatrix Lint,Rcpp::NumericMatrix Down,Rcpp::NumericMatrix Up,Rcpp::NumericMatrix lglt,Rcpp::NumericMatrix lgrt,Rcpp::NumericMatrix lgct,Rcpp::NumericMatrix logU,Rcpp::NumericMatrix logP);
 
 List   EnvelopeSet_LogP(NumericMatrix logP,NumericVector NegLL,NumericMatrix cbars,NumericMatrix G3);
+
+
+/// Group-factored envelopes: Envelopefuncs_group.h (glmbayes::env::group).
 
 } //env
 

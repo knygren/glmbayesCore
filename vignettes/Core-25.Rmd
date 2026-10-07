@@ -1,0 +1,347 @@
+---
+title: "Core 25: Two-block Gibbs helpers for lmerb (R)"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Core 25: Two-block Gibbs helpers for lmerb (R)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r setup}
+library(glmbayesCore)
+```
+
+# Core 25: Two-block Gibbs helpers for lmerb (R)
+
+This vignette is the R half of **Part 5**. It documents the two-block
+helpers that `lmerb()` needs and that now live in **glmbayesCore**. The C++
+they call is **Core-26**.
+
+Part 4 (Core-20 through Core-20-S04) builds the design and the priors.
+Part 5 is the sampler that consumes them. `lmerb()` and `rlmerb()` are still
+in **lmebayes** / **lmebayesCore**. The matrix engines they call
+(`rLMMNormal_reg()`, `rLMMindepNormalGamma_reg()`, `rLMMNormal_joint_iid()`,
+and the known-variance and estimated-variance routes) are in this package.
+
+Block 1 is the within-group update (the group coefficients \(b\) and, when
+it is random, \(\sigma^2\)). Block 2 is the population update (\(\gamma\) and
+\(\tau^2\)). In the C++ names those halves are *groups* and *population*.
+
+## 1. What the engines call
+
+`rlmerb()` is still in **lmebayesCore**. From there the matrix engines are:
+
+```
+rLMMNormal_reg
+    .rLMM_validate_matrix_inputs
+    .rLMM_validate_fixed_dispersion_prior_list
+        .rLMM_validate_fixed_dispersion_vector
+    .lmebayes_resolve_group_name
+    .two_block_validate_pfamily_list
+    .two_block_summarize_pfamily_list
+    rLMMNormal_reg_known_vcov
+        .rLMM_validate_sim_method
+        rLMMNormal_reg_known_vcov_iid                 sim_method = "DEFAULT"
+            .rLMMNormal_reg_run_iid
+                rLMMNormal_joint_iid
+                    .lmerb_posterior_normal_system
+                    .lmerb_posterior_system_cholesky
+                    build_mu_all
+                .rLMM_format_v2_out
+                    .two_block_as_staged_names
+                .lmebayes_assemble_reg_result
+        rLMMNormal_reg_known_vcov_two_bg              sim_method = "TWO_BLOCK_GIBBS"
+            .rLMM_P_from_pfamily_list
+            .rLMMNormal_reg_run
+                .two_block_validate_block1_prior
+                .rLMM_icm_at_start
+                    .two_block_icm_at_start
+                .rLMM_calibrate_m_convergence
+                    .rLMM_rate_calibration_meta
+                    two_block_rate_from_pfamily_list
+                    two_block_l_for_tv
+                    .two_block_cap_inner_sweeps
+                rGLMM_sweep
+                .two_block_tau2_start_from_pfamily
+                .rLMM_format_sweep_out
+                .lmebayes_assemble_reg_result
+    rLMMNormal_reg_estimated_vcov                     sim_method accepted; Gibbs only
+        .rLMMNormal_reg_run_with_pilot
+            rGLMM_sweep
+            .lmebayes_assemble_reg_result
+
+rLMMNormal_joint_iid
+    .two_block_measurement_prior_list
+    .lmerb_posterior_normal_system
+    .lmerb_posterior_system_cholesky
+    build_mu_all
+
+rLMMindepNormalGamma_reg                              legacy outer loop
+    .rLMM_validate_dGamma_dispersion_prior_list
+    .rLMM_dispersion_fix_from_prior_list
+    .rLMM_icm_at_start
+    .rLMM_calibrate_m_convergence
+    rGamma_reg                                        one sigma^2 draw per replicate
+    .rLMM_observation_mu
+    .rLMMNormal_reg_run
+    .rLMM_b_matrix_from_coefficients
+    .rLMM_format_v2_out
+    .lmebayes_assemble_reg_result
+
+rLMMindepNormalGamma_reg_known_vcov                   rlmerb route, all dNormal
+rLMMindepNormalGamma_reg_estimated_vcov               rlmerb route, some ING
+    .rLMM_validate_ing_measurement_prior_list
+        .rLMM_ing_measurement_prior_from_dGamma_pooled
+        .rLMM_ing_measurement_prior_from_dGamma_group
+    .rLMMIngNormal_reg_run_with_pilot
+        .lmebayes_groupef_rank_from_Z
+        .rLMM_measurement_rate_inputs
+            .rLMM_measurement_disp_upper_for_rate
+        .two_block_combine_rate_envelopes
+        .two_block_pilot_marginal_ub_from_coefficients
+        .rGLMM_sweep_ing_block1
+            .two_block_block1_ing_all_chains
+                .two_block_block1_ing_one_chain
+                    .two_block_block1_ing_prior_list_one_chain
+                    .two_block_block1_prep_one_chain
+                    .two_block_block1_envelope_draw_one_chain
+                        .rIndepNormalGammaRegBlockInd_cpp     pooled sigma^2
+                    .two_block_block1_ing_group_draw_one_chain
+                        .rLMM_ing_prior_list_for_group
+                        .rLMM_ing_one_group_draw              per-group sigma^2
+                            .rLMM_ing_prior_draw_one_group
+                                .rLMM_ing_sample_sigma2
+                            .rLMM_ing_prior_list_subset
+                .two_block_batch_b_assign_slice
+                .two_block_batch_iters_ranef_add
+            .two_block_block2_all_chains
+            .rGLMM_sweep_save_ing
+        .rLMM_format_ing_sweep_out
+        .lmebayes_assemble_reg_result
+```
+
+`sim_method = "DEFAULT"` on a fully Gaussian model with fixed variance
+components draws independent replicates from the exact normal posterior.
+Every estimated-variance route uses `rGLMM_sweep()`.
+
+## 2. The sweep
+
+`rGLMM_sweep()` (`R/rGLMM_sweep.R`) runs `n_chains` replicate chains for
+`inner_sweeps` sweeps. Each sweep updates every chain's groups state, then
+every chain's population state.
+
+```
+rGLMM_sweep()
+    .rGLMM_sweep_initialize()
+    .two_block_tau2_start_from_pfamily()
+        .two_block_tau2_ref_from_pfamily()          R/two_block_tau2_ref.R
+    .two_block_block1_all_chains()                  groups update, in R
+        .two_block_block1_prep_all_chains()
+            .two_block_block1_prep_one_chain()
+                .two_block_batch_fixef_chain()
+                build_mu_all(use_cpp = FALSE)
+                    build_mu_all_r()
+                .two_block_block1_prior_with_tau2()
+                    .two_block_block1_prior_with_tau2_r()
+        .two_block_block1_draw_all_chains()
+            rGLMM_Re_Draw()
+                .two_block_block1_draw_block()
+                    rNormal_reg_group()             Gaussian lmerb
+            .two_block_block1_draw_reorder()
+                .two_block_block1_reorder_b_r()
+                .two_block_block1_iters_mean_r()
+    .two_block_block2_all_chains()                  population update
+        two_block_block2_one_chain_cpp()
+            .two_block_block2_one_chain_cpp()       C++ one chain (Core-26)
+    .two_block_snapshot_fixef_stats()
+    .two_block_snapshot_fixef_cov()
+    .two_block_snapshot_disp_stats()
+    .rGLMM_sweep_save()
+        build_mu_all()                              default use_cpp = TRUE
+    .two_block_build_sweep_history()
+```
+
+The groups half of the sweep is R. `use_cpp` for the prior refresh, the row
+reorder, and the envelope-iteration summary is `FALSE` on this path, so the
+`_r` helpers run. `use_cpp_block2` must be `TRUE`: the population half is
+the C++ one-chain update. The arguments `use_cpp_tau2_row`,
+`use_cpp_b_slice`, and `use_cpp_iters_ranef_add` are accepted by
+`rGLMM_sweep()` and ignored there.
+
+Progress bars (`.two_block_progbar_prefix()`, `.two_block_progress_bar()`,
+`.two_block_progress_bar_finish()`) and `.two_block_lapply_chains()` sit
+under the same loops. `.two_block_ensure_batch_b_dimnames()` restores
+dimnames on the group-coefficient array after each groups update.
+
+| File | Role in the sweep |
+|------|-------------------|
+| `R/rGLMM_sweep.R` | `rGLMM_sweep()` |
+| `R/two_block_batch_gibbs.R` | Batch state, groups update, population dispatch, snapshots |
+| `R/two_block_lmm_staged_sweep_outer.R` | `.rLMMNormal_reg_run_with_pilot()`, `.rLMM_format_sweep_out()` |
+| `R/build_mu_all.R` | `build_mu_all()`, `build_mu_all_r()`, `.lmerb_validate_design()` |
+| `R/rcpp_wrappers_two_block.R` | `.two_block_build_mu_all_cpp()`, `.two_block_block2_one_chain_cpp()` |
+| `R/two_block_sweep_history.R` | History object and `print.two_block_sweep_history()` |
+
+`.rLMMNormal_reg_run_with_pilot()` is the estimated-variance wrapper: an
+optional pilot stage, then a main `rGLMM_sweep()`, then
+`.rLMM_format_sweep_out()`.
+
+### Sweep history
+
+`rGLMM_sweep()` always stores a `two_block_sweep_history` object.
+`print()` dispatches to `print.two_block_sweep_history()`, which calls
+`.two_block_filter_sweep_history_table()`,
+`.two_block_print_sweep_history_body()`,
+`.two_block_print_disp_history_body()`, and
+`.two_block_sweep_history_header_n()`.
+`.two_block_fixef_mode_at()` (in `R/two_block_batch_gibbs.R`) looks up the
+iterated-conditional-mean reference while the history is built.
+
+### Random measurement dispersion
+
+When Block 1 dispersion is random, the groups update is the independent-block
+envelope sampler. `.rGLMM_sweep_ing_block1()` in `R/rLMM_reg.R` drives it
+and calls:
+
+| Function | File | Role |
+|----------|------|------|
+| `.two_block_batch_b_assign_slice()` | `R/two_block_batch_gibbs.R` | Write one chain's \(b\) (R reference) |
+| `.two_block_batch_iters_ranef_add()` | `R/two_block_batch_gibbs.R` | Add envelope iteration counts (R reference) |
+| `.rIndepNormalGammaRegBlockInd_cpp()` | `R/rcpp_wrappers_two_block.R` | One `.Call` for centering, build, dispersion, and simulation |
+
+Each of those batch helpers requires its `use_cpp_*` flag to be `FALSE`.
+
+## 3. Posterior mean
+
+Gaussian `lmerb()` with `simulate = FALSE`, and the Gibbs start when the
+caller does not supply `fixef_start`, both use the exact joint mean.
+
+```
+.two_block_icm_at_start()                     R/two_block_measurement_prior.R
+    .two_block_normalize_family()             R/two_block_rNormal_reg.R
+    .two_block_measurement_prior_list()
+    lmerb_posterior_mean()                    R/lmebayes_posterior_icm.R
+        .lmerb_validate_design()
+        .lmerb_validate_measurement_prior_list()
+        .lmerb_posterior_normal_system()
+        .lmerb_posterior_b_given_gamma()
+            build_mu_all()
+```
+
+`.two_block_icm_at_start()` requires `family` to be Gaussian.
+
+`lmerb_posterior_covariance()` solves the same system for
+\(M^{-1}\), the exact covariance of the stacked population coefficients.
+Convergence plots (still in **lmebayesCore**) use it.
+`rLMMNormal_joint_iid()` Cholesky-factors the same system through
+`.lmerb_posterior_system_cholesky()`.
+
+`R/two_block_rNormal_reg.R` holds the checks the engines share:
+`.two_block_validate_block1_prior()`,
+`.lmebayes_resolve_group_name()`, `.two_block_validate_pfamily_list()`, and
+`.two_block_summarize_pfamily_list()`.
+
+Plug-in \(\tau^2\) values live in `R/two_block_tau2_ref.R`:
+
+| Function | Used for |
+|----------|----------|
+| `.two_block_tau2_plug_in_from_pfamily()` | One component: fixed dispersion, or \(E[\tau^2]\) for an inverse-gamma component |
+| `.two_block_tau2_plug_in_vector()` | Named vector of those plug-ins |
+| `.rLMM_P_from_pfamily_list()` | \(P = \mathrm{diag}(1/\tau^2_k)\) for the known-variance two-block route |
+| `.two_block_tau2_ref_from_pfamily()` | Chain start and rate calibration (`rate/shape` for an inverse-gamma component) |
+| `.two_block_tau2_start_from_dispersion_draws()` | Main-stage start from pilot dispersion draws |
+
+## 4. Rate bound and pilot
+
+`two_block_rate_from_pfamily_list()` builds the Remark-8 rate used to choose
+`inner_sweeps`. The stack is in `R/two_block_ergodicity.R`:
+
+```
+two_block_rate_from_pfamily_list()
+    two_block_rate()
+        .two_block_rate_inputs()
+        .two_block_S_P11()
+        .two_block_gen_eigen()
+            .two_block_print_remark8_precision_stop()
+        .two_block_warn_lambda_star_slow()
+            .two_block_lambda_star_slow_threshold()
+            .two_block_lambda_star_one_tol()
+two_block_l_for_tv()
+    two_block_tv_bound()
+        .two_block_tv_bound_one()
+            .two_block_erfn()
+    .two_block_uncertified_l_fallback()
+    .two_block_cap_inner_sweeps()
+```
+
+`print.two_block_rate()` prints a rate object.
+`two_block_mode_weights()` and `print.two_block_mode_weights()` support the
+pilot upper bound.
+
+Pilot planning is `R/two_block_pilot_cost.R` and `R/two_block_pilot_helpers.R`.
+The estimated-variance engine (still in **lmebayesCore**) calls
+`.two_block_pilot_will_run()`, `.two_block_resolve_pilot_plan()`,
+`.two_block_print_pilot_plan()`, `.two_block_pilot_ub_from_coefficients()`,
+and `.two_block_print_pilot_stage_diagnostics()`.
+`.two_block_validate_gap_tol()` (`R/two_block_measurement_prior.R`) checks
+the optional gap tolerance. `.two_block_m_pilot_from_gap()` turns a gap
+tolerance into a pilot sweep count.
+`.two_block_as_staged_names()` labels pilot and main output.
+
+```
+.two_block_resolve_pilot_plan()
+    two_block_optimize_pilot_cost()
+        two_block_pilot_sampling_cost()
+            two_block_m_convergence_for_pilot_start()
+                two_block_d0_pilot_start()
+                two_block_l_for_tv()
+.two_block_pilot_ub_from_coefficients()
+    .two_block_pilot_chisq_test()
+        .two_block_fixef_colmeans()
+    two_block_mode_weights()
+```
+
+When the measurement variance is also random, the bound is the envelope of
+the population rate and a marginal groups rate
+(`R/two_block_ergodicity_ing_marginal.R`):
+
+```
+.two_block_pilot_marginal_ub_from_coefficients()
+    .two_block_lambda_star_marginal_over_draws()
+        .two_block_marginal_group_setup()
+            .two_block_shape_rate_group_lookup()
+.two_block_combine_rate_envelopes()
+```
+
+## 5. Files
+
+| File | Contents |
+|------|----------|
+| `R/rLMM_reg.R` | `rLMMNormal_reg()`, `rLMMindepNormalGamma_reg()`, and their routes |
+| `R/rLMMNormal_joint_iid.R` | Exact iid draws for known variance components |
+| `R/lmebayes_reg_result.R` | `.lmebayes_assemble_reg_result()`, `.lmebayes_groupef_rank_from_Z()` |
+| `R/rGLMM_sweep.R` | Sweep driver |
+| `R/two_block_batch_gibbs.R` | Groups and population batch steps |
+| `R/two_block_lmm_staged_sweep_outer.R` | Pilot-then-main wrapper |
+| `R/two_block_sweep_history.R` | History build and print method |
+| `R/build_mu_all.R` | Per-group prior means |
+| `R/rcpp_wrappers_two_block.R` | The three `.Call` wrappers `lmerb` uses |
+| `R/lmebayes_posterior_icm.R` | Exact Gaussian mean and covariance |
+| `R/two_block_measurement_prior.R` | Measurement-prior list and Gaussian start |
+| `R/two_block_rNormal_reg.R` | Shared input checks |
+| `R/two_block_tau2_ref.R` | \(\tau^2\) plug-ins |
+| `R/two_block_ergodicity.R` | Rate, total-variation bound, mode weights |
+| `R/two_block_pilot_cost.R` | Pilot cost and the resolved pilot plan |
+| `R/two_block_pilot_helpers.R` | Pilot diagnostics and the coefficient upper bound |
+| `R/two_block_ergodicity_ing_marginal.R` | Marginal groups rate bound |
+
+These functions are in the package namespace. Export, and the move of
+`rlmerb()` itself, are later steps. See **Core-26** for the C++ behind
+`build_mu_all()`, the population one-chain update, and the independent-block
+envelope sampler.

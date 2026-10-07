@@ -17,6 +17,7 @@
  *     - glmb_Standardize_Model.cpp
  *
  *   Row-group samplers: @ref simfuncs_groups.h (`glmbayes::sim::group`).
+ *   Two-block Gibbs: @ref simfuncs_twoblock.h (`glmbayes::sim::twoblock`).
  *
  * @section UsedBy
  *   These functions are consumed by:
@@ -205,6 +206,10 @@ Rcpp::List rGammaGamma(
     Rcpp::Nullable<double> disp_upper,
     bool verbose = false
 );
+
+
+
+/// Two-block Gibbs: simfuncs_twoblock.h (glmbayes::sim::twoblock).
 
 Rcpp::List glmb_Standardize_Model(
     NumericVector y, 

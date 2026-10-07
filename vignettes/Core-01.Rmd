@@ -36,7 +36,7 @@ topics (see table below). Formula-centric package overview and demos:
 |---------|------|
 | **glmbayesCore** | C++/OpenCL samplers, `pfamily`, `Prior_Setup()`, `rglmb()` / `rlmb()`, envelope pipeline |
 | **glmbayes** | User-facing GLM/LM Bayesian fits, S3 methods, tutorials (Chapters 00–18, appendices A01–A12) |
-| **lmebayes** *(dev)* | Mixed models: `lmerb()` / `glmerb()`. Setup layer in **glmbayesCore** (Part 4, Core-20); Gibbs engines staged in **lmebayesCore** |
+| **lmebayes** *(dev)* | Mixed models: `lmerb()` / `glmerb()`. Setup in **glmbayesCore** (Part 4, Core-20). `rLMM*` engines, two-block helpers, and C++ in Part 5 (Core-25, Core-26). `lmerb()` / `rlmerb()` still staged in **lmebayesCore** |
 
 ## Primary R entry points
 
@@ -92,7 +92,12 @@ Subsections use the `Core-NN-S0M` pattern.
 | **Core-20-S03** | `pfamily_list()`, `dGamma_list()` |
 | **Core-20-S04** | `Prior_SetupGroup()`, `normalize_group()`, `rNormal_reg_group()`, `rNormalGLM_reg_group()` |
 
-**Part 5: Two-block Gibbs engines** (reserved; see below)
+**Part 5: Two-block Gibbs engines for `lmerb()`**
+
+| Vignette | Topic |
+|----------|--------|
+| **Core-25** | R helpers: sweep, posterior mean, rate bound, pilot |
+| **Core-26** | C++: population update, `build_mu_all`, independent-block envelopes |
 
 In R after install: `browseVignettes("glmbayesCore")`,
 `vignette("Core-06", package = "glmbayesCore")` for the envelope overview, or
@@ -124,8 +129,9 @@ A04 (directional tail diagnostics). User OpenCL tutorial with **`glmb()`**:
 - **Core-12** — planned knitted guide from **`ADDING_PFAMILY.md`** (extension
   authors), Part 1.
 - **Core-21–Core-24** — further Part 4 material as needed.
-- **Core-25–Core-29** — Part 5, the two-block Gibbs engines (`rlmerb()`,
-  `rglmerb()`, `rLMM_reg*`, `rGLMM_reg*`, `two_block_*`) once they move back
-  from **lmebayesCore** (user tutorials stay in glmbayes Ch 17–18).
+- **Core-27–Core-29** — rest of Part 5, once `rlmerb()` moves from
+  **lmebayesCore** (user tutorials stay in glmbayes Ch 17–18). Core-25 and
+  Core-26 document the helpers, the `rLMM*` engines, and the C++ already
+  in this package.
 
 No placeholder `.Rmd` files are shipped for these slots; this section records intent only.
