@@ -26,7 +26,8 @@ rGLMM_sweep(
   use_cpp_tau2_row = TRUE,
   use_cpp_b_slice = TRUE,
   use_cpp_iters_ranef_add = TRUE,
-  use_cpp_block2 = TRUE
+  use_cpp_block2 = TRUE,
+  rwt = 0.01
 )
 }
 \arguments{
@@ -91,6 +92,10 @@ envelope iteration counts in R.}
 
 \item{use_cpp_block2}{Must be \code{TRUE}. Block~2 uses
 \code{\link{two_block_block2_one_chain_cpp}} (native C++ align + \code{rglmb}).}
+
+\item{rwt}{Ridge weight in \code{(0, 1]}, default \code{0.01}. Forwarded to
+Block~1 and not used by the current draw or sweep count. The default
+leaves existing callers unchanged.}
 }
 \value{
 A list with components \code{fixef_draws}, \code{dispersion_fixef_draws},

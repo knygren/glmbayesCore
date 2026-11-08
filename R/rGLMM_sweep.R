@@ -48,6 +48,9 @@
 #' @param use_cpp_b_slice Accepted and ignored. Block~1 stores \code{b} in R.
 #' @param use_cpp_iters_ranef_add Accepted and ignored. Block~1 accumulates
 #'   envelope iteration counts in R.
+#' @param rwt Ridge weight in \code{(0, 1]}, default \code{0.01}. Forwarded to
+#'   Block~1 and not used by the current draw or sweep count. The default
+#'   leaves existing callers unchanged.
 #' @return A list with components \code{fixef_draws}, \code{dispersion_fixef_draws},
 #'   \code{iters_fixef_draws}, \code{iters_ranef_draws}, \code{coefficients},
 #'   \code{mu_all_last}, and \code{sweep_history} (class
@@ -77,7 +80,8 @@ rGLMM_sweep <- function(
     use_cpp_tau2_row = TRUE,
     use_cpp_b_slice = TRUE,
     use_cpp_iters_ranef_add = TRUE,
-    use_cpp_block2 = TRUE
+    use_cpp_block2 = TRUE,
+    rwt = 0.01
 ) {
   if (is.null(ptypes)) {
     ptypes <- vapply(pfamily_list, function(pf) pf$pfamily, character(1))
@@ -150,7 +154,8 @@ rGLMM_sweep <- function(
       progbar_finish_newline  = FALSE,
       use_cpp_tau2_row        = use_cpp_tau2_row,
       use_cpp_b_slice         = use_cpp_b_slice,
-      use_cpp_iters_ranef_add = use_cpp_iters_ranef_add
+      use_cpp_iters_ranef_add = use_cpp_iters_ranef_add,
+      rwt                     = rwt
     )
 
     batch$b           <- b1$b

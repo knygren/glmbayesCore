@@ -1,0 +1,719 @@
+---
+title: "Core 30: Sweep length for rglmerb — convergence bounds for log-concave group likelihoods"
+author: "Kjell Nygren"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+reference-section-title: References
+vignette: >
+  %\VignetteIndexEntry{Core 30: Sweep length for rglmerb — convergence bounds for log-concave group likelihoods}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(glmbayesCore)
+```
+
+# Core 30: Sweep length for `rglmerb`
+
+This vignette gives an explicit sweep count for the two-block Gibbs sampler
+behind `rglmerb()`, when each group's log-likelihood is log-concave and its
+curvature is bounded below. The count is the non-Gaussian counterpart of
+the bound `rlmerb()` already uses.
+
+For a Gaussian linear mixed model with fixed variance components,
+`two_block_rate()` returns the largest eigenvalue `lambda_star` of the
+rate matrix in @Nygren2020. `two_block_l_for_tv()` inverts that
+total-variation bound, and the engine stores `m_convergence` equal to
+`two_block_l_for_tv(rate, tv_tol, method = "theorem3") + 1L`. The added
+sweep covers the group-effect draw, which lags the population block
+$\gamma$ by one update.
+
+For a non-Gaussian family the same function, called with weights at the
+mode, is a local-Gaussian heuristic. The bounds below replace that
+heuristic. If each group log-likelihood has curvature at least
+$C_{i,\min}$, the sampler contracts at the exact rate
+$\rho^{\mathrm{G}}(C_{\min})$ of the Gaussian hierarchical model with
+those precisions. Corollary 5.1 turns a total-variation tolerance $\tau$
+into a sweep count $k$ for a start between the marginal mode of $\gamma$
+and its mean. The sampler then uses
+
+\[
+m_{\mathrm{convergence}} = k + 1.
+\]
+
+For the logit and Poisson the global floor is $0$, and that rate falls
+toward $1$ as the prior on $\gamma$ weakens. A ridge modification, mixing
+each log-likelihood with its quadratic approximation at a weight
+$\omega$, restores a floor that does not depend on the prior. Theorem 6.4
+is then a bound on the distance from the modified sampler to the true
+posterior. $\Psi_i$ and $\Lambda$ are treated as fixed.
+
+## 1. Model, sampler, and assumptions
+
+### 1.1 Model
+
+For $\gamma\in\mathbb{R}^p$ and groups $i=1,\ldots,J$ with
+$\beta_i\in\mathbb{R}^q$,
+
+\[
+\gamma\sim\mathcal{N}_p(\mu_\gamma,\Lambda^{-1}),
+\qquad
+\beta_i\mid\gamma\sim\mathcal{N}_q(H_i\gamma,\Psi_i),
+\qquad
+p(y_i\mid\beta_i)=e^{\ell_i(\beta_i)},
+\]
+
+with $H_i\in\mathbb{R}^{q\times p}$, $\Psi_i\succ 0$, and
+$\Lambda\succeq 0$. Write
+
+\[
+A_i=\Psi_i^{-1}H_i,
+\qquad
+P_0=\Lambda+\sum_i H_i^{\top}\Psi_i^{-1}H_i,
+\]
+
+and assume $P_0\succ 0$.
+
+$P_0$ is the precision of $\gamma$ given all the group effects: the
+precision of the block-2 conditional. It is neither the prior precision
+$\Lambda$ nor the posterior precision of $\gamma$, and it does not depend
+on the data.
+
+### 1.2 Sampler
+
+One iteration from $\gamma$:
+
+1. **Block 1.** Draw
+   $\beta_i\sim f_i(\cdot\mid\gamma)\propto
+   e^{\ell_i(\beta)}\phi_q(\beta;H_i\gamma,\Psi_i)$, independently over $i$.
+2. **Block 2.** Draw
+   \[
+   \gamma'\sim\mathcal{N}_p\bigl(
+     P_0^{-1}(\Lambda\mu_\gamma+\textstyle\sum_i A_i^{\top}\beta_i),\;
+     P_0^{-1}\bigr).
+   \]
+
+$K$ denotes the kernel of the $\gamma$-chain and $\pi_\gamma$ the marginal
+posterior of $\gamma$. $K$ is reversible with respect to $\pi_\gamma$ and
+has a non-negative spectrum [@LiuWongKong1994].
+$\mathcal{L}(\gamma^{(k)})$ is the law after $k$ iterations from a fixed
+$\gamma^{(0)}$.
+
+### 1.3 Assumption
+
+**Assumption LC.** Each $\ell_i$ is concave on $\mathbb{R}^q$, with
+locally Lipschitz gradient, and
+
+\[
+C_{i,\min}\preceq -\nabla^2\ell_i(\beta)\preceq C_{i,\max}
+\]
+
+for almost every $\beta$, for symmetric
+$0\preceq C_{i,\min}\preceq C_{i,\max}$. The upper bound may be infinite.
+It is used only for lower bounds on the rate.
+
+Each group's likelihood carries at least the information of a Gaussian
+observation with precision $C_{i,\min}$, and at most that of one with
+precision $C_{i,\max}$.
+
+### 1.4 Rate quantities
+
+**Definition 2.1.** For a collection $C=(C_i)$ of positive semidefinite
+matrices,
+
+\[
+\tilde A(C)
+=P_0^{-1/2}
+\Bigl[\sum_i A_i^{\top}(C_i+\Psi_i^{-1})^{-1}A_i\Bigr]
+P_0^{-1/2},
+\qquad
+\rho^{\mathrm{G}}(C)=\lambda_{\max}\bigl(\tilde A(C)\bigr).
+\]
+
+$\rho^{\mathrm{G}}(C)$ is the exact $L^2$ convergence rate of the two-block
+sampler in the Gaussian hierarchical model with group-likelihood precision
+$C_i$. `two_block_rate()` computes this eigenvalue when
+$C_i$ is the Gaussian (or mode-weight) precision. Write
+
+\[
+\rho_{\mathrm{hi}}=\rho^{\mathrm{G}}(C_{\min}),
+\qquad
+\rho_{\mathrm{lo}}=\lambda_{\min}\bigl(\tilde A(C_{\max})\bigr),
+\]
+\[
+K_i^{\mathrm{lo}}=C_{i,\min}+\Psi_i^{-1},
+\qquad
+K_i^{\mathrm{hi}}=C_{i,\max}+\Psi_i^{-1}.
+\]
+
+For scalar $\gamma$ and $\beta_i$,
+
+\[
+\rho_{\mathrm{hi}}
+=\frac{1}{P_0}\sum_i\frac{H_i^2}{\Psi_i(1+c_{i,\min}\Psi_i)}.
+\]
+
+**Definition 2.2 (admissible reference set).** With $\bar\gamma$ and
+$\gamma^\star$ the mean and mode of $\pi_\gamma$,
+
+\[
+\mathcal{C}
+=\Bigl\{c:\ E_{\pi_\gamma}\|\tilde\gamma-c\|_{P_0}^2
+\le\frac{p}{1-\rho_{\mathrm{hi}}}\Bigr\}
+=\Bigl\{c:\ \|c-\bar\gamma\|_{P_0}^2
+\le\frac{p}{1-\rho_{\mathrm{hi}}}
+-\operatorname{tr}\bigl(P_0\operatorname{Cov}_{\pi_\gamma}\bigr)\Bigr\}.
+\]
+
+It is a closed ellipsoid in the $P_0$-metric, centered at the posterior
+mean, and it contains the segment $[\gamma^\star,\bar\gamma]$
+(Lemma 3.8).
+
+**Notation.** $\|v\|_M=(v^{\top}Mv)^{1/2}$. $\preceq$ is the Loewner
+order. $\varphi$ and $\Phi$ are the standard normal density and
+distribution function.
+
+## 2. Lemmas
+
+**Lemma 3.1 (tilt representation).** With
+$V_i(\beta)=-\ell_i(\beta)+\tfrac12\beta^{\top}\Psi_i^{-1}\beta$,
+
+\[
+f_i(\beta\mid\gamma)\propto\exp\{\theta_i^{\top}\beta-V_i(\beta)\},
+\qquad
+\theta_i=A_i\gamma,
+\]
+
+and $K_i^{\mathrm{lo}}\preceq\nabla^2 V_i\preceq K_i^{\mathrm{hi}}$ almost
+everywhere.
+
+**Lemma 3.2 (covariance sandwich).**
+$(K_i^{\mathrm{hi}})^{-1}\preceq\operatorname{Cov}(\beta_i\mid\gamma)
+\preceq(K_i^{\mathrm{lo}})^{-1}$.
+
+*Proof.* The upper bound is Brascamp--Lieb. The lower bound is the
+Cramér--Rao inequality for the location family,
+$\operatorname{Cov}\succeq(E\nabla^2 V_i)^{-1}$, which holds because
+$\nabla V_i$ is locally Lipschitz.
+
+**Lemma 3.3 (drift and curvature of $\pi_\gamma$).** With
+$d(\gamma)=E[\gamma'\mid\gamma]$ and
+$R(\gamma)=\sum_i A_i^{\top}\operatorname{Cov}(\beta_i\mid\gamma)\,A_i$,
+
+\[
+\nabla d=P_0^{-1}R(\gamma),
+\qquad
+-\nabla^2\log\pi_\gamma=P_0-R(\gamma),
+\qquad
+R_{\mathrm{lo}}\preceq R(\gamma)\preceq R_{\mathrm{hi}},
+\]
+
+where
+$R_{\mathrm{lo/hi}}=\sum_i A_i^{\top}(K_i^{\mathrm{hi/lo}})^{-1}A_i$.
+Consequently
+
+\[
+-\nabla^2\log\pi_\gamma
+\succeq K_\gamma:=P_0-R_{\mathrm{hi}}
+\succeq(1-\rho_{\mathrm{hi}})P_0.
+\]
+
+*Proof.* For an exponential tilt, the derivative of the mean in $\theta$ is
+the covariance. Differentiating $\log\int e^{\ell_i}\phi$ twice in
+$\gamma$ gives the second identity. Then apply Lemma 3.2.
+
+**Lemma 3.4 (quantile Lipschitz bound).** If
+$g_s\propto e^{sw-U(w)}$ on $\mathbb{R}$ with $U''\ge\kappa>0$ in the
+sense of distributions, the $u$-quantile $w_u(s)$ satisfies
+$0\le\partial_s w_u\le 1/\kappa$.
+
+*Proof.* With $G(w)=\int_{-\infty}^{w}(\mu_s-t)g_s(t)\,dt$, one has
+$\partial_s w_u=G(w_u)/g_s(w_u)\ge 0$. Let $H=g_s/\kappa-G$. Then
+$H'=g_s\bigl(w-U'(w)/\kappa+s/\kappa-\mu_s\bigr)$, whose bracket is
+non-increasing, so $H'$ changes sign at most once, from positive to
+negative. Since $H(\pm\infty)=0$, one has $H\ge 0$.
+
+**Lemma 3.5 (one-dimensional projections).** If $X$ has density
+$\propto e^{\theta^{\top}x-V(x)}$ with $\nabla^2 V\succeq K\succ 0$ and
+$a\in\mathbb{R}^q$, then $a^{\top}X$ has a log-concave density with
+curvature at least $(a^{\top}K^{-1}a)^{-1}$. If $\theta=sa$, the law of
+$a^{\top}X$ is a one-parameter tilt in $s$ of a fixed base.
+
+*Proof.* Strong log-concavity passes to linear marginals with the
+projected constant [@SaumardWellner2014].
+
+**Lemma 3.6 (tilts in $W_2$).** In the setting of Lemma 3.5,
+
+\[
+\mathrm{KL}(\mu_\theta\|\mu_{\theta'})
+\le\tfrac12\|\theta-\theta'\|^2_{K^{-1}},
+\qquad
+W_{2,K}(\mu_\theta,\mu_{\theta'})\le\|\theta-\theta'\|_{K^{-1}}.
+\]
+
+*Proof.* The Kullback--Leibler divergence is the Bregman divergence of the
+log-partition function, whose Hessian is
+$\operatorname{Cov}\preceq K^{-1}$. The $W_2$ bound is Talagrand's
+inequality in the coordinates $K^{1/2}x$.
+
+**Lemma 3.7 (second moment about the mode).** If
+$-\nabla^2\log\pi\succeq K\succ 0$ on $\mathbb{R}^p$, with mode $x^\star$
+and mean $\bar x$, then $E\|X-x^\star\|_K^2\le p$ and
+$\operatorname{Cov}(X)\preceq K^{-1}$.
+
+*Proof.* Integration by parts gives
+$E[\nabla U(X)^{\top}(X-x^\star)]=p$, and
+$\nabla U(x)^{\top}(x-x^\star)\ge\|x-x^\star\|_K^2$. The covariance bound
+is Brascamp--Lieb.
+
+**Lemma 3.8 (the mode--mean segment is admissible).** Every
+$c\in[\gamma^\star,\bar\gamma]$ belongs to $\mathcal{C}$.
+
+*Proof.* Let $K=(1-\rho_{\mathrm{hi}})P_0$, which is valid by Lemma 3.3.
+For $c$ on the segment, $\|c-\bar\gamma\|_K\le\|\gamma^\star-\bar\gamma\|_K$,
+so
+
+\[
+E\|\tilde\gamma-c\|_K^2
+=\operatorname{tr}(K\operatorname{Cov})+\|c-\bar\gamma\|_K^2
+\le E\|\tilde\gamma-\gamma^\star\|_K^2
+\le p
+\]
+
+by Lemma 3.7. Divide by $1-\rho_{\mathrm{hi}}$.
+
+**Lemma 3.9 (Gaussian smoothing).**
+
+\[
+\bigl\|\mathcal{N}(\mu,P_0^{-1})-\mathcal{N}(\tilde\mu,P_0^{-1})\bigr\|_{\mathrm{TV}}
+=2\Phi\bigl(\tfrac12\|\mu-\tilde\mu\|_{P_0}\bigr)-1
+\le\frac{\|\mu-\tilde\mu\|_{P_0}}{\sqrt{2\pi}}.
+\]
+
+**Lemma 3.10 (spectral bound from contraction).** If
+$W_1(K(x,\cdot),K(y,\cdot))\le\rho\,\|x-y\|_{P_0}$ for all $x,y$, then the
+$L^2(\pi_\gamma)$ spectral radius $\rho_\star$ of $K$ on mean-zero
+functions satisfies $\rho_\star\le\rho$ [@Ollivier2009].
+
+## 3. Main theorem
+
+**Theorem 4.1.** Under Assumption LC:
+
+1. **Contraction.** There is a coupling of one iteration from $\gamma$ and
+   from $\tilde\gamma$ with
+   \[
+   E\|\gamma'-\tilde\gamma'\|_{P_0}^2
+   \le\rho_{\mathrm{hi}}^2\,\|\gamma-\tilde\gamma\|_{P_0}^2.
+   \]
+   If every $A_i$ has rank one, which holds automatically when $p=1$ or
+   $q=1$, the contraction is pathwise:
+   $\|\gamma'-\tilde\gamma'\|_{P_0}
+   \le\rho_{\mathrm{hi}}\|\gamma-\tilde\gamma\|_{P_0}$.
+2. **Total variation.** For every $k\ge 1$ and every $c\in\mathcal{C}$,
+   \[
+   \bigl\|\mathcal{L}(\gamma^{(k)})-\pi_\gamma\bigr\|_{\mathrm{TV}}
+   \le
+   \frac{\rho_{\mathrm{hi}}^{\,k}}{\sqrt{2\pi}}
+   \Bigl(
+     \|\gamma^{(0)}-c\|_{P_0}
+     +\sqrt{\frac{p}{1-\rho_{\mathrm{hi}}}}
+   \Bigr),
+   \]
+   and the same bound holds for the joint law of
+   $(\gamma^{(k)},\beta^{(k+1)})$. In bounded form the right-hand side may
+   be replaced by $2\Phi(\tfrac12\rho_{\mathrm{hi}}^k D)-1$, with $D$ the
+   term in parentheses.
+3. **Rate sandwich.** $\rho_{\mathrm{lo}}\le\rho_\star\le\rho_{\mathrm{hi}}$.
+   The lower bound requires $C_{i,\max}$ finite.
+
+*Proof of 1.* Write $\Delta\gamma=\gamma-\tilde\gamma$.
+
+- If $A_i=a_i v_i^{\top}$ has rank one, the tilt is along $a_i$ with
+  parameter $s_i=v_i^{\top}\gamma$ (Lemma 3.1). Draw $w_i=a_i^{\top}\beta_i$
+  by inversion with a common uniform, and $\beta_i$ given $w_i$ with common
+  randomness. By Lemmas 3.4 and 3.5,
+  $w_i-\tilde w_i=D_i v_i^{\top}\Delta\gamma$ with
+  $0\le D_i\le a_i^{\top}(K_i^{\mathrm{lo}})^{-1}a_i$.
+- For any other $A_i$, use a $W_{2,K_i^{\mathrm{lo}}}$-optimal coupling.
+  By Lemma 3.6,
+  $E\|\Delta\beta_i\|_{K_i^{\mathrm{lo}}}^2
+  \le\|A_i\Delta\gamma\|_{(K_i^{\mathrm{lo}})^{-1}}^2$.
+  The rank-one coupling satisfies the same inequality pathwise.
+
+Block 2 uses common normal noise, so
+
+\[
+P_0^{1/2}(\gamma'-\tilde\gamma')
+=\sum_i P_0^{-1/2}A_i^{\top}\Delta\beta_i
+=Bv,
+\]
+
+with $v=\bigl((K_i^{\mathrm{lo}})^{1/2}\Delta\beta_i\bigr)_i$ and
+$B=\bigl[P_0^{-1/2}A_i^{\top}(K_i^{\mathrm{lo}})^{-1/2}\bigr]_i$.
+Since $BB^{\top}=\tilde A(C_{\min})$, pathwise
+$\|Bv\|^2\le\rho_{\mathrm{hi}}\|v\|^2$. Taking expectations,
+
+\[
+E\|\gamma'-\tilde\gamma'\|_{P_0}^2
+\le\rho_{\mathrm{hi}}\sum_i\|A_i\Delta\gamma\|_{(K_i^{\mathrm{lo}})^{-1}}^2
+=\rho_{\mathrm{hi}}\,\Delta\gamma^{\top} R_{\mathrm{hi}}\Delta\gamma
+\le\rho_{\mathrm{hi}}^2\|\Delta\gamma\|_{P_0}^2.
+\]
+
+If every $A_i$ has rank one,
+$P_0^{1/2}(\gamma'-\tilde\gamma')$ is a symmetric matrix between $0$ and
+$\tilde A(C_{\min})$ applied to $P_0^{1/2}\Delta\gamma$. That is the
+pathwise bound.
+
+*Proof of 2.* Couple the chain with a stationary copy, using the coupling
+of part 1 at each step and common noise in the final $\gamma$-update.
+
+1. By convexity of total variation and Lemma 3.9,
+   $\|\mathcal{L}(\gamma^{(k)})-\pi_\gamma\|_{\mathrm{TV}}
+   \le E\|\gamma^{(k)}-\tilde\gamma^{(k)}\|_{P_0}/\sqrt{2\pi}$.
+2. Iterating part 1,
+   $E\|\gamma^{(k)}-\tilde\gamma^{(k)}\|_{P_0}
+   \le\rho_{\mathrm{hi}}^k
+   \bigl(E\|\gamma^{(0)}-\tilde\gamma^{(0)}\|_{P_0}^2\bigr)^{1/2}$.
+3. By Minkowski's inequality and $c\in\mathcal{C}$,
+   $\bigl(E\|\gamma^{(0)}-\tilde\gamma^{(0)}\|_{P_0}^2\bigr)^{1/2}
+   \le\|\gamma^{(0)}-c\|_{P_0}+\sqrt{p/(1-\rho_{\mathrm{hi}})}$.
+
+The bounded form uses Jensen's inequality for the concave map
+$x\mapsto 2\Phi(x/2)-1$. The joint statement holds because
+$\beta^{(k+1)}$ is drawn from the same conditional in both chains.
+
+*Proof of 3.* For the upper bound, $W_1\le W_2$, so part 1 and Lemma 3.10
+apply. For the lower bound, take $f$ linear. Summing the coordinate
+autocorrelations of $x=P_0^{1/2}\gamma$, Lemma 3.3 gives
+
+\[
+\tfrac12 E\bigl[(X-X')^{\top}(\tilde d(X)-\tilde d(X'))\bigr]
+\ge\rho_{\mathrm{lo}}\,\operatorname{tr}\operatorname{Cov}(X).
+\]
+
+Parts 1 and 3 compare rates. $\rho^{\mathrm{G}}$ is the exact rate of a
+Gaussian model, so the true sampler's contraction and its $L^2$ rate sit
+between exact Gaussian rates. Part 2 is a bound that uses a Gaussian rate.
+It is not a comparison with the Gaussian sampler's actual distance from
+stationarity. It decays like $\rho^k$. The exact Gaussian analysis decays
+like $a^{2k}$ from the center [@Nygren2020].
+
+No small set is required. The contraction holds for every pair of states,
+because the curvature floor $C_{i,\min}+\Psi_i^{-1}$ is uniform, and the
+Gaussian final step plays the role a minorization plays in a
+drift--minorization argument [@Rosenthal1995; @RobertsRosenthal2002;
+@MadrasSezer2010]. The set $\mathcal{C}$ is not a small set. It only
+bounds the expected distance from the start to a stationary draw.
+
+## 4. Corollaries
+
+**Corollary 5.1 (start in the admissible set).**
+
+1. For any start, Theorem 4.1(2) holds with $\|\gamma^{(0)}-c\|_{P_0}$
+   replaced by the $P_0$-distance from $\gamma^{(0)}$ to $\mathcal{C}$.
+2. If $\gamma^{(0)}\in\mathcal{C}$, in particular if the chain starts at
+   the posterior mode, the posterior mean, or any point between them,
+   \[
+   \bigl\|\mathcal{L}(\gamma^{(k)})-\pi_\gamma\bigr\|_{\mathrm{TV}}
+   \le
+   \rho_{\mathrm{hi}}^{\,k}
+   \sqrt{\frac{p}{2\pi(1-\rho_{\mathrm{hi}})}}
+   \qquad(k\ge 1).
+   \]
+3. From such a start the total variation is at most $\tau$ once
+   \[
+   k\ge\max\Biggl\{1,\;
+   \Biggl\lceil
+   \frac{\log\bigl(\sqrt{p/(1-\rho_{\mathrm{hi}})}\,/\,z_\tau\bigr)}
+        {\log(1/\rho_{\mathrm{hi}})}
+   \Biggr\rceil
+   \Biggr\},
+   \qquad
+   z_\tau=2\,\Phi^{-1}\bigl((1+\tau)/2\bigr).
+   \]
+
+*Proof.* Minimize over $c\in\mathcal{C}$, and use Lemma 3.8 together with
+the bounded form of Theorem 4.1(2).
+
+The value of this bound is the same for every start in $\mathcal{C}$.
+That is the worst-case spread $p/(1-\rho_{\mathrm{hi}})$ used in the
+bound, not a property of the chain. The sharper quantity
+$E\|\gamma^{(0)}-\tilde\gamma\|_{P_0}$ is smaller at the posterior mean
+than at the mode when $\pi_\gamma$ is skewed.
+
+The Gaussian engines store `m_convergence = k + 1`. The same rule applies
+here. Corollary 5.1 certifies $\gamma^{(k)}$ and the following group-effect
+draw $\beta^{(k+1)}$. One sweep updates block 1 and then block 2, so the
+stored group effect from those $k$ sweeps was drawn before the certified
+$\gamma$.
+
+**Corollary 5.2 (a proper prior gives a rate below one).** Since
+$C_{i,\min}\succeq 0$,
+
+\[
+\rho_{\mathrm{hi}}
+\le\rho^{\mathrm{G}}(0)
+=1-\lambda_{\min}\bigl(P_0^{-1/2}\Lambda P_0^{-1/2}\bigr).
+\]
+
+This is strictly below $1$ whenever $\Lambda\succ 0$, for every
+hierarchical model with log-concave group likelihoods. For scalar
+$\gamma$, $\rho^{\mathrm{G}}(0)=1-\Lambda/P_0$.
+
+**Corollary 5.3 (zero curvature floor).** If the curvature of $\ell_i$
+tends to $0$ in some direction, then $C_{i,\min}=0$ is the best global
+floor, and Theorem 4.1 gives only the prior-only rate
+$\rho^{\mathrm{G}}(0)$. That rate is close to $1$ when the prior on
+$\gamma$ is weak.
+
+## 5. Ridge modification
+
+### 5.1 A floor that does not depend on the prior
+
+**Proposition 6.1.** For $\omega\in(0,1]$ and reference points $m_i$, let
+
+\[
+\ell_i^{\omega}(\beta)=(1-\omega)\,\ell_i(\beta)+\omega\, T_{m_i}(\beta),
+\]
+
+where $T_{m_i}$ is the second-order Taylor polynomial of $\ell_i$ at
+$m_i$, and $C_i^Q=-\nabla^2\ell_i(m_i)$. Then $\ell_i^{\omega}$ satisfies
+Assumption LC with
+
+\[
+C^{\omega}_{i,\min}
+=(1-\omega)C_{i,\min}+\omega C_i^Q
+\succeq\omega C_i^Q,
+\qquad
+C^{\omega}_{i,\max}
+=(1-\omega)C_{i,\max}+\omega C_i^Q.
+\]
+
+Theorem 4.1 applies to the modified model with rate at most
+$\rho^{\mathrm{G}}(\omega C^Q)$.
+
+A natural choice of $m_i$ is the mode of $\beta_i$ given
+$\eta_i=H_i\gamma^\star$, with $\gamma^\star$ a mode of $\pi_\gamma$.
+
+For scalar $\gamma$ and $\beta_i$, as $\Lambda\to 0$,
+
+\[
+\rho^{\mathrm{G}}(\omega C^Q)
+\to
+\frac{\sum_i (H_i^2/\Psi_i)\,(1+\omega c_i^Q\Psi_i)^{-1}}
+     {\sum_i H_i^2/\Psi_i}
+\le
+\max_i\frac{1}{1+\omega c_i^Q\Psi_i}
+<1.
+\]
+
+For small $\omega$,
+
+\[
+1-\rho^{\mathrm{G}}(\omega C^Q)
+\approx
+\frac{\Lambda+\omega\sum_i H_i^2 c_i^Q}{P_0}.
+\]
+
+The ridge acts like adding prior precision equal to a fraction $\omega$ of
+the data's information about $\gamma$, evaluated at the reference points.
+Unlike $\Lambda$, it remains when the prior on $\gamma$ is flat.
+
+The conditional $e^{\ell_i^\omega}\phi$ is log-concave, so block 1 can be
+drawn by the likelihood-subgradient accept--reject sampler
+[@Nygren2006].
+
+### 5.2 Distance between the true and modified posteriors
+
+Let $d_i=T_{m_i}-\ell_i$ and $S(\beta)=\sum_i d_i(\beta_i)$. Then
+
+\[
+\pi^{\omega}(\gamma,\beta)\propto\pi(\gamma,\beta)\,e^{\omega S(\beta)},
+\qquad
+\pi^{\omega}_\gamma(\gamma)\propto\pi_\gamma(\gamma)\,E_\pi[e^{\omega S}\mid\gamma].
+\]
+
+**Proposition 6.2.** If $E_\pi e^{\omega_0 S}<\infty$ for some $\omega_0>0$,
+then as $\omega\to 0$
+
+\[
+\|\pi-\pi^{\omega}\|_{\mathrm{TV}}
+=\tfrac{\omega}{2}E_\pi|S-E_\pi S|+O(\omega^2),
+\]
+\[
+\|\pi_\gamma-\pi^{\omega}_\gamma\|_{\mathrm{TV}}
+=\tfrac{\omega}{2}E_\pi\bigl|E_\pi[S\mid\gamma]-E_\pi S\bigr|+O(\omega^2).
+\]
+
+*Proof.* Expand $e^{\omega S}/E_\pi e^{\omega S}$ to first order in
+$L^1(\pi)$.
+
+**Proposition 6.3.** Let
+$\Lambda_S(\omega)=\log E_\pi e^{\omega(S-E_\pi S)}$. Then
+$\|\pi_\gamma-\pi^{\omega}_\gamma\|_{\mathrm{TV}}
+\le\|\pi-\pi^{\omega}\|_{\mathrm{TV}}$, and:
+
+(a) In general,
+
+\[
+\|\pi-\pi^{\omega}\|_{\mathrm{TV}}
+\le
+\frac{\omega}{2}
+\Bigl(\operatorname{Var}_\pi S+(\Lambda_S(\omega)/\omega)^2\Bigr)^{1/2}
+\Bigl(1+E_\pi e^{2\omega(S-E_\pi S)}\Bigr)^{1/2}.
+\]
+
+(b) If $S\le M$, with $\Delta=M-E_\pi S$,
+
+\[
+\|\pi-\pi^{\omega}\|_{\mathrm{TV}}
+\le
+\frac{\omega}{2}e^{\omega\Delta}
+\Bigl(
+  E_\pi|S-E_\pi S|
+  +\frac{\omega}{2}e^{\omega\Delta}\operatorname{Var}_\pi S
+\Bigr).
+\]
+
+*Proof.* Write the distance as
+$\tfrac12 E_\pi|e^{\omega(S-c)}-1|$ with
+$c=\omega^{-1}\log E_\pi e^{\omega S}\ge E_\pi S$. Use
+$|e^x-1|\le|x|e^{x^+}$ and Cauchy--Schwarz for (a). For (b), use
+$\omega(S-c)\le\omega\Delta$ and $e^x\le 1+x+\tfrac12 x^2 e^{x^+}$.
+
+**Theorem 6.4 (end-to-end bound).** For the sampler targeting
+$\pi^{\omega}$, with exact block-1 draws and a start in the admissible set
+of the modified model,
+
+\[
+\bigl\|\mathcal{L}^{\omega}(\gamma^{(k)})-\pi_\gamma\bigr\|_{\mathrm{TV}}
+\le
+\rho^{\mathrm{G}}(\omega C^Q)^{\,k}
+\sqrt{\frac{p}{2\pi\bigl(1-\rho^{\mathrm{G}}(\omega C^Q)\bigr)}}
++\|\pi_\gamma-\pi^{\omega}_\gamma\|_{\mathrm{TV}}.
+\]
+
+*Proof.* The triangle inequality, Corollary 5.1 for the modified model,
+and Proposition 6.3.
+
+The first term decreases in $\omega$ and the second increases, about
+linearly. The sum bounds the distance to the true posterior. Since
+$\pi\propto\pi^{\omega}e^{-\omega S}$, draws from the modified sampler can
+be reweighted by $e^{-\omega S}$ to estimate true-posterior expectations.
+
+## 6. Families
+
+### 6.1 Binomial logit
+
+For $\ell_i(\beta)=y_i\beta-n_i\log(1+e^{\beta})$,
+$-\ell_i''=n_i w(\beta)\in(0,n_i/4]$, with $w=p(1-p)$.
+
+The global floor is $0$, so Corollary 5.3 applies. The upper bound
+$n_i/4$ gives $\rho_\star\ge\rho^{\mathrm{G}}(n/4)$: no logit hierarchical
+model mixes faster than the Gaussian model with group precisions $n_i/4$.
+
+The difference $d_i=T_{m_i}-\ell_i$ is bounded above. The tangent quadratic
+exceeds $\ell_i$ only on a bounded interval, and $d_i\to-\infty$
+quadratically. Proposition 6.3(b) applies, with $M$ from a one-dimensional
+maximization.
+
+### 6.2 Poisson
+
+For $\ell_i(\beta)=y_i\beta-n_i e^{\beta}$,
+$-\ell_i''=n_i e^{\beta}\in(0,\infty)$.
+
+The global floor is $0$, and there is no finite upper bound, so the lower
+end of the rate sandwich is not available globally. The difference $d_i$
+is unbounded above, but $E_\pi e^{2\omega S}<\infty$ for $\omega<1/2$.
+Propositions 6.2 and 6.3(a) apply.
+
+## 7. Example
+
+Logit, $J=20$ groups, $n_i=10$, $H_i$ evenly spaced on $[-1,1]$,
+$\Psi_i=0.5$, $\Lambda=0.01$, so $P_0=14.75$. The counts are simulated
+from $\gamma=0.6$ and $\beta_i=0.6 H_i+e_i$ with
+$e_i\sim\mathcal{N}(0,0.5)$:
+
+```{r y-example}
+y <- c(10, 3, 4, 2, 5, 4, 1, 5, 1, 9,
+        6, 3, 6, 7, 3, 5, 8, 5, 7, 7)
+```
+
+The ridge reference points $m_i$ are the modes of $\beta_i$ given
+$\eta_i=0.445 H_i$, and $c_i^Q=10\,w(m_i)$ lies in $[1.96, 2.50]$. Starts
+are in $\mathcal{C}$ and $\tau=0.01$. The marginal total-variation
+distances below were computed by quadrature for this design.
+
+| model | rate, $\Lambda=0.01$ | iterations | rate, $\Lambda=0$ | iterations | marginal TV |
+|-------|----------------------|------------|-------------------|------------|-------------|
+| true logit ($C_{\min}=0$) | 0.9993 | 10813 | 1 | none | 0 |
+| ridge $\omega=0.01$ | 0.98810 | 494 | 0.98877 | 526 | $3.1\times 10^{-4}$ |
+| ridge $\omega=0.05$ | 0.94565 | 93 | 0.94629 | 94 | $1.6\times 10^{-3}$ |
+| ridge $\omega=0.10$ | 0.8975 | 45 | 0.8981 | 45 | $3.1\times 10^{-3}$ |
+
+Corollary 5.1, evaluated at $P_0=14.75$ and $\Lambda=0.01$ for the logit
+floor, and at the three ridge rates:
+
+```{r run-length}
+k_for <- function(rho, tau = 0.01, p = 1) {
+  z_tau <- 2 * qnorm((1 + tau) / 2)
+  D <- sqrt(p / (1 - rho))
+  max(1L, as.integer(ceiling(log(D / z_tau) / log(1 / rho))))
+}
+data.frame(
+  model = c("logit floor 0", "omega = 0.01", "omega = 0.05", "omega = 0.10"),
+  rho = c(1 - 0.01 / 14.75, 0.98810, 0.94565, 0.8975),
+  k = c(
+    k_for(1 - 0.01 / 14.75),
+    k_for(0.98810),
+    k_for(0.94565),
+    k_for(0.8975)
+  )
+)
+```
+
+The iteration column of the table is the count reported for this design.
+The chunk evaluates Corollary 5.1 directly. At the unrounded prior-only
+rate $1-\Lambda/P_0$ that is $10815$ sweeps, and at the listed ridge
+rates $493$, $93$, and $45$. The gaps are rounding of $\rho$.
+
+The first-order prediction of Proposition 6.2 matches those marginal
+distances to within about one percent. For $\omega=0.01$ the sampler's
+contribution at $k=494$ is already far smaller than the posterior
+discrepancy $3.1\times 10^{-4}$, so Theorem 6.4 is then limited by the
+ridge bias rather than by mixing.
+
+## 8. Open problems
+
+1. **Comparison of distances.** The natural strengthening of Theorem 4.1
+   is that the true sampler's total variation is at most the Gaussian
+   sampler's, for precisions $C_{\min}$ and a matched start. That would
+   let the $a^{2k}$ formulas of @Nygren2020 be used directly. It is not
+   established.
+2. **Decay from the center.** The coupling bound does not keep the
+   variance-deficit structure that gives $a^{2k}$ decay in the Gaussian
+   case. That is why `two_block_l_for_tv(method = "theorem3")` can certify
+   a smaller sweep count than Corollary 5.1 when the likelihood is
+   Gaussian and the two rates coincide.
+3. **Local floors.** For GLMs the curvature is positive where the
+   posterior mass is and tends to $0$ in the tails. A bound that uses a
+   floor on a region of high posterior probability, with control of the
+   chance of leaving it, would avoid both the prior-only rate and the
+   ridge bias. Piecewise-quadratic approximations of the likelihood are
+   one device for this. That construction is reserved for Core 31.
+4. **Directional rates** for $p\ge 2$ when the rate matrices do not share
+   eigenvectors.
+5. **Random variance components** $\Psi_i$ and $\Lambda$. The sweep count
+   above treats both as fixed.
+6. **Tighter bias bounds** for the ridge, without moments of $S$ under the
+   true posterior.

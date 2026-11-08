@@ -407,14 +407,21 @@ objects. The user-level tutorials are **glmbayes** Chapters 17 and 18.
   - **Core 20-S04 — Row-group priors and samplers** (`Prior_SetupGroup()`, `normalize_group()`, `rNormal_reg_group()`, `rNormalGLM_reg_group()`)  
     https://knygren.r-universe.dev/articles/glmbayesCore/Core-20-S04.html
 
-### Part 5: Two-block Gibbs engines (reserved)
+### Part 5: Two-block Gibbs engines
 
 Numbers **Core 25–29** are reserved for the two-block Gibbs engines
-(`rlmerb()`, `rglmerb()`, `rLMM_reg*`, `rGLMM_reg*`, `two_block_*`). Until
-those engines move back from
-[lmebayesCore](https://github.com/knygren/lmebayesCore), their
-documentation lives in that package. **Core 12** is reserved for a
-developer guide on adding a new `pfamily` (today in `inst/ADDING_PFAMILY.md`).
+(`rlmerb()`, `rglmerb()`, `rLMM_reg*`, `rGLMM_reg*`, `two_block_*`).
+Core 25 and Core 26 document the helpers and C++ already in this package.
+Until the remaining engines move back from
+[lmebayesCore](https://github.com/knygren/lmebayesCore), the rest of that
+engine documentation lives there. **Core 30** gives the sweep count for
+`rglmerb()` when group log-likelihoods are log-concave, including a ridge
+modification that supplies a curvature floor.
+**Core 31** is reserved for the piecewise-quadratic approximation.
+**Core 12** is reserved for a developer guide on adding a new `pfamily`
+(today in `inst/ADDING_PFAMILY.md`).
+
+- **Core 30 — Sweep length for rglmerb: convergence bounds for log-concave group likelihoods**
 
 ---
 

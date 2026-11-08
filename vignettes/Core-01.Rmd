@@ -98,6 +98,7 @@ Subsections use the `Core-NN-S0M` pattern.
 |----------|--------|
 | **Core-25** | R helpers: sweep, posterior mean, rate bound, pilot |
 | **Core-26** | C++: population update, `build_mu_all`, independent-block envelopes |
+| **Core-30** | Sweep length for `rglmerb()`: convergence bounds for log-concave group likelihoods |
 
 In R after install: `browseVignettes("glmbayesCore")`,
 `vignette("Core-06", package = "glmbayesCore")` for the envelope overview, or
@@ -133,5 +134,7 @@ A04 (directional tail diagnostics). User OpenCL tutorial with **`glmb()`**:
   **lmebayesCore** (user tutorials stay in glmbayes Ch 17–18). Core-25 and
   Core-26 document the helpers, the `rLMM*` engines, and the C++ already
   in this package.
+- **Core-31** — companion to Core-30: construction and accuracy of the
+  piecewise-quadratic group-likelihood approximation. Not yet written.
 
 No placeholder `.Rmd` files are shipped for these slots; this section records intent only.

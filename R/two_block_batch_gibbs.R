@@ -796,6 +796,8 @@ two_block_block2_one_chain_cpp <- function(
 #' @param use_cpp_tau2_row Retained for \code{rGLMM_sweep} API compatibility (unused).
 #' @param use_cpp_b_slice Retained for \code{rGLMM_sweep} API compatibility (unused).
 #' @param use_cpp_iters_ranef_add Retained for API compatibility (unused).
+#' @param rwt Ridge weight in \code{(0, 1]}, default \code{0.01}. Accepted
+#'   and not used by the current Block~1 draw.
 #' @return List with \code{b} and \code{iters_ranef}.
 #' @noRd
 .two_block_block1_all_chains <- function(
@@ -820,7 +822,8 @@ two_block_block2_one_chain_cpp <- function(
     use_cpp_reorder = FALSE,
     use_cpp_iters = FALSE,
     use_cpp_mu_all = FALSE,
-    use_cpp_prior_tau2 = FALSE
+    use_cpp_prior_tau2 = FALSE,
+    rwt = 0.01
 ) {
   if (!is.null(n_cores) && as.integer(n_cores[1L]) >= 2L) {
     warning(
