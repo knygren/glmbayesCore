@@ -1003,6 +1003,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// register_glmbayesCore_ccallables_cpp_export
+void register_glmbayesCore_ccallables_cpp_export();
+RcppExport SEXP _glmbayesCore_register_glmbayesCore_ccallables_cpp_export() {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    register_glmbayesCore_ccallables_cpp_export();
+    return R_NilValue;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_glmbayesCore_rNormalGLM_cpp_export", (DL_FUNC) &_glmbayesCore_rNormalGLM_cpp_export, 18},
@@ -1052,6 +1061,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayesCore_BlockEnvelopeDispersionBuildInd_cpp_export", (DL_FUNC) &_glmbayesCore_BlockEnvelopeDispersionBuildInd_cpp_export, 15},
     {"_glmbayesCore_BlockEnvelopeSimInd_cpp_export", (DL_FUNC) &_glmbayesCore_BlockEnvelopeSimInd_cpp_export, 4},
     {"_glmbayesCore_rIndepNormalGammaRegBlockInd_cpp_export", (DL_FUNC) &_glmbayesCore_rIndepNormalGammaRegBlockInd_cpp_export, 19},
+    {"_glmbayesCore_register_glmbayesCore_ccallables_cpp_export", (DL_FUNC) &_glmbayesCore_register_glmbayesCore_ccallables_cpp_export, 0},
     {NULL, NULL, 0}
 };
 

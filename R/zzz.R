@@ -57,6 +57,10 @@
   invisible()
 }
 
+.onLoad <- function(libname, pkgname) {
+  register_glmbayesCore_ccallables_cpp_export()
+}
+
 .onAttach <- function(libname, pkgname) {
   .opencl_startup_message()
 }

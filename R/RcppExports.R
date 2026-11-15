@@ -189,3 +189,7 @@ rIndepNormalGammaRegBlockInd_cpp_export <- function(n, y, x, block, prior_list, 
     .Call(`_glmbayesCore_rIndepNormalGammaRegBlockInd_cpp_export`, n, y, x, block, prior_list, prior_lists, offset, wt, p_re, n_rss_iter, Gridtype, n_envopt, RSS_ML, use_parallel, use_opencl, progbar, verbose, group_levels, re_names)
 }
 
+register_glmbayesCore_ccallables_cpp_export <- function() {
+    invisible(.Call(`_glmbayesCore_register_glmbayesCore_ccallables_cpp_export`))
+}
+
