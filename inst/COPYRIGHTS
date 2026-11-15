@@ -17,14 +17,6 @@ Foundation, Ross Ihaka, Robert Gentleman, Morten Welinder, and Martin Maechler.
 The applicable licenses are GPL-2-or-later and/or LGPL-2.1-or-later as
 indicated in the individual source file headers.
 
-OpenCL API Headers
-------------------
-
-The bundled OpenCL API headers inst/include/CL/cl.h and
-inst/include/CL/cl_platform.h are Copyright (c) 2008-2020 The Khronos Group
-Inc. and are licensed under the Apache License, Version 2.0. The original
-copyright and license notices are preserved in the file headers.
-
 R stats Modeling Conventions
 ----------------------------
 

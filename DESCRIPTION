@@ -31,9 +31,7 @@ Authors@R: c(
     person("Mollie", "Brooks", role = "ctb",
            comment = "glmmTMB reference-fit API for per-group dispersion (dispformula)"),
     person("Kasper", "Kristensen", role = "ctb",
-           comment = "glmmTMB reference-fit API for per-group dispersion (dispformula)"),
-    person("The Khronos Group Inc", role = "cph",
-           comment = "OpenCL API headers in inst/include/CL (Apache License 2.0)")
+           comment = "glmmTMB reference-fit API for per-group dispersion (dispformula)")
     )
 Description: Core C++ engine for 'glmbayes': envelope-based iid linear and
     generalized linear model samplers, prior-family routing, and optional

@@ -58,7 +58,6 @@ Other contributors:
   \item Anna Ly (random-effects formula parsing via the reformulas API) [contributor]
   \item Mollie Brooks (glmmTMB reference-fit API for per-group dispersion (dispformula)) [contributor]
   \item Kasper Kristensen (glmmTMB reference-fit API for per-group dispersion (dispformula)) [contributor]
-  \item The Khronos Group Inc (OpenCL API headers in inst/include/CL (Apache License 2.0)) [copyright holder]
 }
 
 }
