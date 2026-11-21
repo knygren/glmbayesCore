@@ -1,5 +1,11 @@
 # glmbayesCore 0.6.0
 
+## New function
+
+* **`dbinom_raw()`**: binomial density through Rmath's C-level `dbinom_raw()`,
+  allowing non-integer `x` and `n` (matches `stats::dbinom()` for integers).
+  Not yet used by the binomial likelihoods in `glmbfamfunc()`.
+
 ## Mixed-model design (Steps 1–3 migration)
 
 * **`Imports: lme4, Matrix, reformulas, glmmTMB`** for experimental mixed-model

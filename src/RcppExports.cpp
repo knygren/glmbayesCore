@@ -540,6 +540,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dbinom_raw_cpp_export
+Rcpp::NumericVector dbinom_raw_cpp_export(const Rcpp::NumericVector& x, const Rcpp::NumericVector& n, const Rcpp::NumericVector& p, const Rcpp::NumericVector& q, bool give_log);
+RcppExport SEXP _glmbayesCore_dbinom_raw_cpp_export(SEXP xSEXP, SEXP nSEXP, SEXP pSEXP, SEXP qSEXP, SEXP give_logSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type p(pSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type q(qSEXP);
+    Rcpp::traits::input_parameter< bool >::type give_log(give_logSEXP);
+    rcpp_result_gen = Rcpp::wrap(dbinom_raw_cpp_export(x, n, p, q, give_log));
+    return rcpp_result_gen;
+END_RCPP
+}
 // glmbayesCore_has_opencl_cpp_export
 bool glmbayesCore_has_opencl_cpp_export();
 RcppExport SEXP _glmbayesCore_glmbayesCore_has_opencl_cpp_export() {
@@ -1037,6 +1052,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_glmbayesCore_rIndepNormalGammaReg_std_cpp_export", (DL_FUNC) &_glmbayesCore_rIndepNormalGammaReg_std_cpp_export, 15},
     {"_glmbayesCore_rIndepNormalGammaReg_std_parallel_cpp_export", (DL_FUNC) &_glmbayesCore_rIndepNormalGammaReg_std_parallel_cpp_export, 15},
     {"_glmbayesCore_glmb_Standardize_Model_cpp_export", (DL_FUNC) &_glmbayesCore_glmb_Standardize_Model_cpp_export, 5},
+    {"_glmbayesCore_dbinom_raw_cpp_export", (DL_FUNC) &_glmbayesCore_dbinom_raw_cpp_export, 5},
     {"_glmbayesCore_glmbayesCore_has_opencl_cpp_export", (DL_FUNC) &_glmbayesCore_glmbayesCore_has_opencl_cpp_export, 0},
     {"_glmbayesCore_gpu_names_cpp_export", (DL_FUNC) &_glmbayesCore_gpu_names_cpp_export, 0},
     {"_glmbayesCore_two_block_rNormal_reg_cpp_export", (DL_FUNC) &_glmbayesCore_two_block_rNormal_reg_cpp_export, 26},

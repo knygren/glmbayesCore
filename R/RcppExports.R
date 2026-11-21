@@ -93,6 +93,10 @@ glmb_Standardize_Model_cpp_export <- function(y, x, P, bstar, A1) {
     .Call(`_glmbayesCore_glmb_Standardize_Model_cpp_export`, y, x, P, bstar, A1)
 }
 
+dbinom_raw_cpp_export <- function(x, n, p, q, give_log = FALSE) {
+    .Call(`_glmbayesCore_dbinom_raw_cpp_export`, x, n, p, q, give_log)
+}
+
 glmbayesCore_has_opencl_cpp_export <- function() {
     .Call(`_glmbayesCore_glmbayesCore_has_opencl_cpp_export`)
 }

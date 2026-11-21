@@ -643,6 +643,39 @@ Rcpp::List glmb_Standardize_Model_cpp_export(
   );
 }
 
+// Inputs must already be recycled to a common length (done in R dbinom_raw()).
+// Invalid parameters (n < 0, p or q outside [0, 1], |p + q - 1| > 1e-10) give
+// NaN; the R wrapper issues the warning. x and n need not be integers.
+// [[Rcpp::export]]
+Rcpp::NumericVector dbinom_raw_cpp_export(
+    const Rcpp::NumericVector& x,
+    const Rcpp::NumericVector& n,
+    const Rcpp::NumericVector& p,
+    const Rcpp::NumericVector& q,
+    bool give_log = false
+) {
+  const R_xlen_t len = x.size();
+  if (n.size() != len || p.size() != len || q.size() != len) {
+    Rcpp::stop("dbinom_raw: x, n, p and q must have the same length");
+  }
+  const double pq_tol = 1e-10;
+  Rcpp::NumericVector out(len);
+  for (R_xlen_t i = 0; i < len; ++i) {
+    const double xi = x[i], ni = n[i], pi = p[i], qi = q[i];
+    if (ISNAN(xi) || ISNAN(ni) || ISNAN(pi) || ISNAN(qi)) {
+      out[i] = xi + ni + pi + qi;
+    } else if (ni < 0 || pi < 0 || pi > 1 || qi < 0 || qi > 1 ||
+               std::fabs(pi + qi - 1.0) > pq_tol) {
+      out[i] = R_NaN;
+    } else if (xi < 0 || !R_FINITE(xi)) {
+      out[i] = give_log ? R_NegInf : 0.0;
+    } else {
+      out[i] = ::Rf_dbinom_raw(xi, ni, pi, qi, give_log ? 1 : 0);
+    }
+  }
+  return out;
+}
+
 
 // =============================================================================
 // Tier 5: OpenCL / GPU
