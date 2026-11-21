@@ -1,6 +1,7 @@
-## Stage 2 check for the switch of the binomial likelihoods to dbinom_raw():
-## compare glmbfamfunc() f1/f2/f4 against the previous stats::dbinom formulas,
-## then fit glmb() models for each link.
+## Checks for the binomial likelihoods after the switch to dbinom_raw() and the
+## removal of rounding: glmbfamfunc() f1/f2/f4 against an exact reference and
+## the previous stats::dbinom formulas, then rglmb() fits for each link with
+## integer and fractional weights.
 ## Run after reinstalling glmbayesCore:
 ##   Rscript data-raw/check_binomial_dbinom_raw_switch.R
 
@@ -30,9 +31,10 @@ log_pq <- list(
   cloglog = function(eta) cbind(log(-expm1(-exp(eta))), -exp(eta))
 )
 exact_f1 <- function(lnk, b, y, x, wt) {
-  s <- round(wt * y); n <- round(wt)
+  s <- wt * y; n <- wt
   lpq <- log_pq[[lnk]](as.vector(x %*% b))
-  ll <- lchoose(n, s) + ifelse(s > 0, s * lpq[, 1], 0) + ifelse(n > s, (n - s) * lpq[, 2], 0)
+  lch <- lgamma(n + 1) - lgamma(s + 1) - lgamma(n - s + 1)
+  ll <- lch + ifelse(s > 0, s * lpq[, 1], 0) + ifelse(n > s, (n - s) * lpq[, 2], 0)
   -sum(ll)
 }
 
@@ -88,6 +90,29 @@ for (lnk in names(old_f1)) {
                   paste(signif(fit$coef.mode - ref$coefficients, 3), collapse = ", "),
                   mean(fit$iters)))
   print(summary(fit))
+}
+
+## 4. Fractional weights (no rounding): closures match the exact reference, and
+##    the posterior mode under a diffuse prior is close to glm.fit() with the same
+##    weights (the tempered-likelihood case, wt2 = (1 - rwt) * wt)
+for (c_wt in c(0.25, 0.6)) {
+  wt_c <- c_wt * wt
+  for (lnk in names(old_f1)) {
+    fam <- binomial(link = lnk)
+    ff <- glmbfamfunc(fam)
+    b <- rnorm(3, sd = 0.5)
+    ex <- exact_f1(lnk, b, y, x, wt_c)
+    rel <- abs(ff$f1(b, y, x, wt = wt_c) - ex) / max(1, abs(ex))
+    stopifnot(rel < 1e-10)
+    fit <- rglmb(n = 1000, y = y, x = x, family = fam,
+                 pfamily = dNormal(mu = rep(0, 3), Sigma = diag(1e4, 3)),
+                 weights = wt_c)
+    ref <- suppressWarnings(glm.fit(x, y, weights = wt_c, family = fam))
+    message(sprintf("4. wt x %.2f %-7s |f1 - exact| rel %.2g | coef.mode - glm: %s | iters/draw %.3f",
+                    c_wt, lnk, rel,
+                    paste(signif(fit$coef.mode - ref$coefficients, 3), collapse = ", "),
+                    mean(fit$iters)))
+  }
 }
 
 message("check_binomial_dbinom_raw_switch.R: done")

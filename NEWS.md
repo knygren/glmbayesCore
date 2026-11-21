@@ -9,7 +9,12 @@
   success and failure probabilities computed directly from the linear
   predictor, as the parallel path already did. This is more accurate when
   `p` is near 0 or 1 (the logit `f1`/`f2` previously gave `NaN` for very
-  large linear predictors). Counts are still rounded.
+  large linear predictors).
+* Binomial likelihoods no longer round `wt * y` and `wt` to integers (R
+  closures, serial and parallel C++, and the OpenCL `f2_f3_binomial_*`
+  kernels). Results are unchanged for integer counts; non-integer weights,
+  such as tempered weights `(1 - rwt) * wt`, are now used as given instead of
+  being silently rounded.
 
 ## Mixed-model design (Steps 1–3 migration)
 

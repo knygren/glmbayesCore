@@ -46,8 +46,10 @@ void neg_dbinom_glmb_rmat(const RVector<double>& x,          // success proporti
     res.resize(n);
   
   for (std::size_t i = 0; i < n; ++i) {
-    double trials  = std::round(N[i]);
-    double success = std::round(x[i] * N[i]);
+    // double trials  = std::round(N[i]);
+    // double success = std::round(x[i] * N[i]);
+    double trials  = N[i];
+    double success = x[i] * N[i];
     double p       = p_vec[i];
     double q       = q_vec[i];
     
@@ -77,8 +79,10 @@ NumericVector dbinom_glmb(NumericVector x, NumericVector N, NumericVector means,
   
   for (int i = 0; i < n; i++) {
     // Round to nearest integer for trial count and success count
-    int trials  = static_cast<int>(std::round(N[i]));
-    int success = static_cast<int>(std::round(x[i] * N[i]));
+    // int trials  = static_cast<int>(std::round(N[i]));
+    // int success = static_cast<int>(std::round(x[i] * N[i]));
+    double trials  = N[i];
+    double success = x[i] * N[i];
     
     // Clamp probabilities to avoid extreme values
     double p = std::min(1.0, std::max(0.0, means[i]));
@@ -123,8 +127,10 @@ NumericVector dbinom_glmb_eta(const NumericVector& x, const NumericVector& N,
   NumericVector res(n);
   
   for (R_xlen_t i = 0; i < n; i++) {
-    double trials  = std::round(N[i]);
-    double success = std::round(x[i] * N[i]);
+    // double trials  = std::round(N[i]);
+    // double success = std::round(x[i] * N[i]);
+    double trials  = N[i];
+    double success = x[i] * N[i];
     double p = R_NaN, q = R_NaN;
     binom_pq_from_eta(eta[i], link, p, q);
     res[i] = ::Rf_dbinom_raw(success, trials, p, q, lg);

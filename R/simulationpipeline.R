@@ -267,18 +267,21 @@ glmbfamfunc<-function(family, lik_shape = 1){
   {
     f1<-function(b,y,x,alpha=0,wt=1){
       eta<-as.vector(alpha+x%*%b)
-      -sum(dbinom_raw(round(wt*y),round(wt),plogis(eta),plogis(-eta),log=TRUE))
+      # -sum(dbinom_raw(round(wt*y),round(wt),plogis(eta),plogis(-eta),log=TRUE))
+      -sum(dbinom_raw(wt*y,wt,plogis(eta),plogis(-eta),log=TRUE))
     }
     f2<-function(b,y,x,mu,P,alpha=0,wt=1){
       eta<-as.vector(alpha+x%*%b)
-      -sum(dbinom_raw(round(wt*y),round(wt),plogis(eta),plogis(-eta),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
+      # -sum(dbinom_raw(round(wt*y),round(wt),plogis(eta),plogis(-eta),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
+      -sum(dbinom_raw(wt*y,wt,plogis(eta),plogis(-eta),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
     }
     f3<-function(b,y,x,mu,P,alpha=0,wt=1){
       p<-1/(1+t(exp(-alpha-x%*%b)))
       t(x)%*%((t(p)-y)*wt)+P%*%(b-mu)
     }
     f4<-function(b,y,x,alpha=0,wt=1,dispersion=1){
-      (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw(round((wt/dispersion)*y),round(wt/dispersion),y,log=TRUE)))
+      # (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw(round((wt/dispersion)*y),round(wt/dispersion),y,log=TRUE)))
+      (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw((wt/dispersion)*y,wt/dispersion,y,log=TRUE)))
     }
     
     f7<-function(b,y,x,mu,P,alpha=0,wt=1){
@@ -312,11 +315,13 @@ glmbfamfunc<-function(family, lik_shape = 1){
   {
     f1<-function(b,y,x,alpha=0,wt=1){
       eta<-as.vector(alpha+x%*%b)
-      -sum(dbinom_raw(round(wt*y),round(wt),pnorm(eta),pnorm(-eta),log=TRUE))
+      # -sum(dbinom_raw(round(wt*y),round(wt),pnorm(eta),pnorm(-eta),log=TRUE))
+      -sum(dbinom_raw(wt*y,wt,pnorm(eta),pnorm(-eta),log=TRUE))
     }
     f2<-function(b,y,x,mu,P,alpha=0,wt=1){
       eta<-as.vector(alpha+x%*%b)
-      -sum(dbinom_raw(round(wt*y),round(wt),pnorm(eta),pnorm(-eta),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
+      # -sum(dbinom_raw(round(wt*y),round(wt),pnorm(eta),pnorm(-eta),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
+      -sum(dbinom_raw(wt*y,wt,pnorm(eta),pnorm(-eta),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
     }
     
     
@@ -327,7 +332,8 @@ glmbfamfunc<-function(family, lik_shape = 1){
     }
     
     f4<-function(b,y,x,alpha=0,wt=1,dispersion=1){
-      (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw(round((wt/dispersion)*y),round(wt/dispersion),y,log=TRUE)))
+      # (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw(round((wt/dispersion)*y),round(wt/dispersion),y,log=TRUE)))
+      (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw((wt/dispersion)*y,wt/dispersion,y,log=TRUE)))
     }
     
     f7<-function(b,y,x,mu,P,alpha=0,wt=1){
@@ -363,11 +369,13 @@ glmbfamfunc<-function(family, lik_shape = 1){
   {
     f1<-function(b,y,x,alpha=0,wt=1){
       eXb<-exp(as.vector(alpha+x%*%b))
-      -sum(dbinom_raw(round(wt*y),round(wt),-expm1(-eXb),exp(-eXb),log=TRUE))
+      # -sum(dbinom_raw(round(wt*y),round(wt),-expm1(-eXb),exp(-eXb),log=TRUE))
+      -sum(dbinom_raw(wt*y,wt,-expm1(-eXb),exp(-eXb),log=TRUE))
     }
     f2<-function(b,y,x,mu,P,alpha=0,wt=1){
       eXb<-exp(as.vector(alpha+x%*%b))
-      -sum(dbinom_raw(round(wt*y),round(wt),-expm1(-eXb),exp(-eXb),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
+      # -sum(dbinom_raw(round(wt*y),round(wt),-expm1(-eXb),exp(-eXb),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
+      -sum(dbinom_raw(wt*y,wt,-expm1(-eXb),exp(-eXb),log=TRUE))+0.5*t((b-mu))%*%P%*%(b-mu)
     }
     f3<-function(b,y,x,mu,P,alpha=0,wt=1){
       Xb<-alpha+x%*%b
@@ -377,7 +385,8 @@ glmbfamfunc<-function(family, lik_shape = 1){
       -t(x)%*%as.matrix(((y*atemp/p1)-(1-y)*atemp/p2)*wt)+P%*%(b-mu)
     }
     f4<-function(b,y,x,alpha=0,wt=1,dispersion=1){
-      (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw(round((wt/dispersion)*y),round(wt/dispersion),y,log=TRUE)))
+      # (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw(round((wt/dispersion)*y),round(wt/dispersion),y,log=TRUE)))
+      (2*f1(b,y,x,alpha,wt/dispersion)+2*sum(dbinom_raw((wt/dispersion)*y,wt/dispersion,y,log=TRUE)))
     }
     
     f7<-function(b,y,x,mu,P,alpha=0,wt=1){
@@ -413,12 +422,15 @@ glmbfamfunc<-function(family, lik_shape = 1){
 
     f1 <- function(b, y, x, alpha = 0, wt = 1) {
       theta <- as.vector(alpha + x %*% b)
-      -sum(dbinom_raw(round(wt * y), round(wt), theta, log = TRUE))
+      # -sum(dbinom_raw(round(wt * y), round(wt), theta, log = TRUE))
+      -sum(dbinom_raw(wt * y, wt, theta, log = TRUE))
     }
 
     f2 <- function(b, y, x, mu, P, alpha = 0, wt = 1) {
       theta <- as.vector(alpha + x %*% b)
-      -sum(dbinom_raw(round(wt * y), round(wt), theta, log = TRUE)) +
+      # -sum(dbinom_raw(round(wt * y), round(wt), theta, log = TRUE)) +
+      #   0.5 * t(b - mu) %*% P %*% (b - mu)
+      -sum(dbinom_raw(wt * y, wt, theta, log = TRUE)) +
         0.5 * t(b - mu) %*% P %*% (b - mu)
     }
 
@@ -431,9 +443,11 @@ glmbfamfunc<-function(family, lik_shape = 1){
 
     ## Deviance: 2 × (fitted NLL − saturated NLL).
     f4 <- function(b, y, x, alpha = 0, wt = 1, dispersion = 1) {
+      # (2 * f1(b, y, x, alpha, wt / dispersion) +
+      #    2 * sum(dbinom_raw(round((wt / dispersion) * y),
+      #                       round(wt / dispersion), y, log = TRUE)))
       (2 * f1(b, y, x, alpha, wt / dispersion) +
-         2 * sum(dbinom_raw(round((wt / dispersion) * y),
-                            round(wt / dispersion), y, log = TRUE)))
+         2 * sum(dbinom_raw((wt / dispersion) * y, wt / dispersion, y, log = TRUE)))
     }
 
     ## Fisher information: I(b) = X' diag(wt / (θ(1−θ))) X.

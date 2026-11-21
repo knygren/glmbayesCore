@@ -11,11 +11,14 @@
 #define MAX_L2 64
 
 static inline double nll_binomial_glmb_ocl(double y_prop, double wt, double mean_p_raw) {
-    int trials  = (int)round(wt);
-    int success = (int)round(y_prop * wt);
+    // int trials  = (int)round(wt);
+    // int success = (int)round(y_prop * wt);
+    double trials  = wt;
+    double success = y_prop * wt;
     double p = fmin(1.0, fmax(0.0, mean_p_raw));
     double q = 1.0 - p;
-    double logpmf = dbinom_raw((double)success, (double)trials, p, q, 1);
+    // double logpmf = dbinom_raw((double)success, (double)trials, p, q, 1);
+    double logpmf = dbinom_raw(success, trials, p, q, 1);
     return -logpmf;
 }
 
