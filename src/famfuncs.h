@@ -54,6 +54,13 @@ namespace glmbayes{
 namespace fam {
 
 NumericVector dbinom_glmb( NumericVector x, NumericVector N, NumericVector means, int lg);
+
+enum class BinomLink { logit, probit, cloglog };
+
+// Binomial log density (lg = 1) or density at linear predictor eta, with p and
+// q = 1 - p computed directly from eta for the link (accurate when p is near 0 or 1).
+NumericVector dbinom_glmb_eta(const NumericVector& x, const NumericVector& N,
+                              const NumericVector& eta, BinomLink link, int lg);
 NumericVector dpois_glmb( NumericVector x, NumericVector means, int lg);
 NumericVector dgamma_glmb( NumericVector x, NumericVector shape, NumericVector scale, int lg);
 NumericVector dnorm_glmb( NumericVector x, NumericVector means, NumericVector sds,int lg);

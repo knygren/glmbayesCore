@@ -4,7 +4,12 @@
 
 * **`dbinom_raw()`**: binomial density through Rmath's C-level `dbinom_raw()`,
   allowing non-integer `x` and `n` (matches `stats::dbinom()` for integers).
-  Not yet used by the binomial likelihoods in `glmbfamfunc()`.
+* Binomial likelihoods (`glmbfamfunc()` `f1`/`f2`/`f4` and the serial C++
+  `f1`/`f2`/`f2_f3` for logit, probit and cloglog) now use `dbinom_raw` with
+  success and failure probabilities computed directly from the linear
+  predictor, as the parallel path already did. This is more accurate when
+  `p` is near 0 or 1 (the logit `f1`/`f2` previously gave `NaN` for very
+  large linear predictors). Counts are still rounded.
 
 ## Mixed-model design (Steps 1–3 migration)
 

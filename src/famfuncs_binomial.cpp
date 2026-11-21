@@ -83,12 +83,52 @@ NumericVector dbinom_glmb(NumericVector x, NumericVector N, NumericVector means,
     // Clamp probabilities to avoid extreme values
     double p = std::min(1.0, std::max(0.0, means[i]));
     
-    // Replaced R::dbinom with libR Mathlib Rf_dbinom (<Rmath.h>).
-    //res[i] = R::dbinom(success, trials, p, lg);
-    res[i] = ::Rf_dbinom(success, trials, p, lg);
+    res[i] = ::Rf_dbinom_raw(success, trials, p, 1.0 - p, lg);
+  }
+  
+  return res;
+}
 
-    
-      }
+
+static inline void binom_pq_from_eta(double eta, BinomLink link, double& p, double& q) {
+  switch (link) {
+  case BinomLink::logit:
+    if (eta >= 0) {
+      double e = std::exp(-eta);
+      p = 1.0 / (1.0 + e);
+      q = e / (1.0 + e);
+    } else {
+      double e = std::exp(eta);
+      p = e / (1.0 + e);
+      q = 1.0 / (1.0 + e);
+    }
+    break;
+  case BinomLink::probit:
+    p = ::Rf_pnorm5(eta, 0.0, 1.0, /*lower_tail=*/1, /*log_p=*/0);
+    q = ::Rf_pnorm5(eta, 0.0, 1.0, /*lower_tail=*/0, /*log_p=*/0);
+    break;
+  case BinomLink::cloglog: {
+    double t = std::exp(eta);
+    q = std::exp(-t);
+    p = -std::expm1(-t);
+    break;
+  }
+  }
+}
+
+
+NumericVector dbinom_glmb_eta(const NumericVector& x, const NumericVector& N,
+                              const NumericVector& eta, BinomLink link, int lg) {
+  R_xlen_t n = x.size();
+  NumericVector res(n);
+  
+  for (R_xlen_t i = 0; i < n; i++) {
+    double trials  = std::round(N[i]);
+    double success = std::round(x[i] * N[i]);
+    double p = R_NaN, q = R_NaN;
+    binom_pq_from_eta(eta[i], link, p, q);
+    res[i] = ::Rf_dbinom_raw(success, trials, p, q, lg);
+  }
   
   return res;
 }
@@ -130,13 +170,9 @@ NumericVector  f1_binomial_logit(NumericMatrix b,NumericVector y,NumericMatrix x
     arma::mat b2(b2temp.begin(), l2, 1, false); 
   
     
-    xb2=exp(-alpha2- x2 * b2);
+    xb2=alpha2+ x2 * b2;
 
-    for(int j=0;j<l1;j++){
-    xb(j)=1/(1+xb(j));
-    }
-
-    yy=-dbinom_glmb(y,wt,xb,true);
+    yy=-dbinom_glmb_eta(y,wt,xb,BinomLink::logit,true);
     
 
     res(i) =std::accumulate(yy.begin(), yy.end(), 0.0);
@@ -205,17 +241,9 @@ NumericVector  f2_binomial_logit(NumericMatrix b,NumericVector y, NumericMatrix 
         
     res1=0.5*arma::as_scalar(bmu2.t() * P2 *  bmu2);
     
-    xb2=exp(-alpha2- x2 * b2);
+    xb2=alpha2+ x2 * b2;
 
-    for(int j=0;j<l1;j++){
-    xb(j)=1/(1+xb(j));
-    }
-
-
-    
-    
-    yy=-dbinom_glmb(y,wt,xb,true);
-    //yy=-dbinom_glmb_raw(y,wt,xb,true);
+    yy=-dbinom_glmb_eta(y,wt,xb,BinomLink::logit,true);
     
 
     res(i) =std::accumulate(yy.begin(), yy.end(), res1);
@@ -439,21 +467,16 @@ Rcpp::List f2_f3_binomial_logit(
     bmu2 = b2 - mu2;
     double prior = 0.5 * arma::as_scalar(bmu2.t() * P2 * bmu2);
     
-    // Linear predictor and logistic transform
-    // xb2(j) = exp(-alpha - x b), xb(j) = p_j after the loop below
-    xb2 = exp(-alpha2 - x2 * b2);
-    
-    for (int j = 0; j < l1; ++j) {
-      xb(j) = 1.0 / (1.0 + xb(j));  // p_j = logistic(η_j)
-    }
+    // Linear predictor η = alpha + x b
+    xb2 = alpha2 + x2 * b2;
     
     // f2: negative binomial log-likelihood (vectorized)
-    yy = -dbinom_glmb(y, wt, xb, /*lg=*/1);
+    yy = -dbinom_glmb_eta(y, wt, xb, BinomLink::logit, /*lg=*/1);
     qf(i) = std::accumulate(yy.begin(), yy.end(), prior);
     
-    // f3 residuals: (p - y) * wt, reusing xb / xb2 buffer
+    // f3 residuals: (p - y) * wt with p = logistic(η), reusing xb / xb2 buffer
     for (int j = 0; j < l1; ++j) {
-      xb(j) = (xb(j) - y(j)) * wt(j);
+      xb(j) = (1.0 / (1.0 + std::exp(-xb(j))) - y(j)) * wt(j);
     }
     
     // Gradient: P (b - mu) + X' * residual
@@ -513,10 +536,8 @@ NumericVector  f1_binomial_probit(NumericMatrix b,NumericVector y,NumericMatrix 
     arma::mat b2(b2temp.begin(), l2, 1, false); 
  
     xb2=alpha2+ x2 * b2;   
-    xb=pnorm(xb,0.0,1.0);
-	
 
-    yy=-dbinom_glmb(y,wt,xb,true);
+    yy=-dbinom_glmb_eta(y,wt,xb,BinomLink::probit,true);
     
 
     res(i) =std::accumulate(yy.begin(), yy.end(), 0.0);
@@ -586,9 +607,8 @@ NumericVector  f2_binomial_probit(NumericMatrix b,NumericVector y, NumericMatrix
     
   
     xb2=alpha2+ x2 * b2;   
-    xb=pnorm(xb,0.0,1.0);
 
-    yy=-dbinom_glmb(y,wt,xb,true);
+    yy=-dbinom_glmb_eta(y,wt,xb,BinomLink::probit,true);
 
 
     res(i) =std::accumulate(yy.begin(), yy.end(), res1);
@@ -908,11 +928,7 @@ Rcpp::List f2_f3_binomial_probit(
     // =========================
     // f2 part (matches f2_binomial_probit)
     // =========================
-    for (int j = 0; j < l1; j++) {
-      xb[j] = R::pnorm(eta[j], 0.0, 1.0, 1, 0);   // p = Φ(eta)
-    }
-    
-    yy   = -dbinom_glmb(y, wt, xb, true);
+    yy   = -dbinom_glmb_eta(y, wt, eta, BinomLink::probit, true);
     qf[i] = std::accumulate(yy.begin(), yy.end(), mahal);
     
     // =========================
@@ -984,14 +1000,8 @@ NumericVector  f1_binomial_cloglog(NumericMatrix b,NumericVector y,NumericMatrix
     arma::mat b2(b2temp.begin(), l2, 1, false); 
  
     xb2=alpha2+ x2 * b2;   
-    xb=exp(-exp(xb));
-  
-    for(int j=0;j<l1;j++){
-    xb(j)=1-xb(j);
-    }
-  
 
-    yy=-dbinom_glmb(y,wt,xb,true);
+    yy=-dbinom_glmb_eta(y,wt,xb,BinomLink::cloglog,true);
     
 
     res(i) =std::accumulate(yy.begin(), yy.end(), 0.0);
@@ -1060,12 +1070,8 @@ NumericVector  f2_binomial_cloglog(NumericMatrix b,NumericVector y, NumericMatri
     res1=0.5*arma::as_scalar(bmu2.t() * P2 *  bmu2);
     
     xb2=alpha2+ x2 * b2;   
-    
-    for(int j=0;j<l1;j++){
-    xb(j)=1-exp(-exp(xb(j)));
-    }
 
-    yy=-dbinom_glmb(y,wt,xb,true);
+    yy=-dbinom_glmb_eta(y,wt,xb,BinomLink::cloglog,true);
 
 
     res(i) =std::accumulate(yy.begin(), yy.end(), res1);
@@ -1386,12 +1392,7 @@ Rcpp::List f2_f3_binomial_cloglog(
     // =========================
     // f2 part (matches f2_binomial_cloglog)
     // =========================
-    for (int j = 0; j < l1; j++) {
-      double e_eta = std::exp(eta[j]);
-      xb[j] = 1.0 - std::exp(-e_eta);   // p = 1 - exp(-exp(eta))
-    }
-    
-    yy   = -dbinom_glmb(y, wt, xb, true);
+    yy   = -dbinom_glmb_eta(y, wt, eta, BinomLink::cloglog, true);
     qf[i] = std::accumulate(yy.begin(), yy.end(), mahal);
     
     // =========================
