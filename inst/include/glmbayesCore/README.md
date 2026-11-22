@@ -25,6 +25,7 @@ SEXP out = glmbayesCore_rNormalReg(n, y, x, mu, P, offset, wt, dispersion,
 | C API | Wraps |
 |---|---|
 | `glmbayesCore_rNormalGLMGroups` | `glmbayes::sim::group::rNormalGLMGroups` |
+| `glmbayesCore_rNormalGLMGroupChains` | `glmbayes::sim::group::rNormalGLMGroupChains` |
 | `glmbayesCore_rNormalReg` | `glmbayes::sim::rNormalReg` |
 | `glmbayesCore_group_rNormalGLM` | `glmbayes::sim::group::group_rNormalGLM_cpp_export` |
 | `glmbayesCore_group_rNormalReg` | `glmbayes::sim::group::group_rNormalReg_cpp_export` |

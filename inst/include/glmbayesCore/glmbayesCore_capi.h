@@ -45,6 +45,11 @@ extern "C" {
       SEXP f2, SEXP f3, SEXP family, SEXP link, SEXP Gridtype,
       SEXP n_envopt, SEXP use_parallel, SEXP use_opencl, SEXP verbose);
 
+  typedef SEXP (*glmbayesCore_rNormalGLMGroupChains_t)(
+      SEXP y, SEXP x, SEXP offset, SEXP wt, SEXP dispersion, SEXP mu,
+      SEXP P, SEXP f2, SEXP f3, SEXP family, SEXP link, SEXP Gridtype,
+      SEXP n_envopt, SEXP use_opencl, SEXP check, SEXP verbose);
+
   typedef SEXP (*glmbayesCore_rNormalReg_t)(
       SEXP n, SEXP y, SEXP x, SEXP mu, SEXP P, SEXP offset, SEXP wt,
       SEXP dispersion, SEXP f2, SEXP f3, SEXP start, SEXP family,
@@ -125,6 +130,7 @@ extern "C" {
 
   GLMBAYESCORE_CAPI_ACCESSOR_(glmbayesCore_api_version)
   GLMBAYESCORE_CAPI_ACCESSOR_(glmbayesCore_rNormalGLMGroups)
+  GLMBAYESCORE_CAPI_ACCESSOR_(glmbayesCore_rNormalGLMGroupChains)
   GLMBAYESCORE_CAPI_ACCESSOR_(glmbayesCore_rNormalReg)
   GLMBAYESCORE_CAPI_ACCESSOR_(glmbayesCore_group_rNormalGLM)
   GLMBAYESCORE_CAPI_ACCESSOR_(glmbayesCore_group_rNormalReg)
@@ -160,6 +166,17 @@ extern "C" {
         n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block,
         row_blocks, f2, f3, family, link, Gridtype, n_envopt, use_parallel,
         use_opencl, verbose);
+  }
+
+  /* Wraps glmbayes::sim::group::rNormalGLMGroupChains: one group, one draw
+   * per chain (column of mu). */
+  static inline SEXP glmbayesCore_rNormalGLMGroupChains(
+      SEXP y, SEXP x, SEXP offset, SEXP wt, SEXP dispersion, SEXP mu,
+      SEXP P, SEXP f2, SEXP f3, SEXP family, SEXP link, SEXP Gridtype,
+      SEXP n_envopt, SEXP use_opencl, SEXP check, SEXP verbose) {
+    return glmbayesCore_rNormalGLMGroupChains_fn()(
+        y, x, offset, wt, dispersion, mu, P, f2, f3, family, link, Gridtype,
+        n_envopt, use_opencl, check, verbose);
   }
 
   /* Wraps glmbayes::sim::rNormalReg. */

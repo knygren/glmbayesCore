@@ -59,7 +59,6 @@
 .rNormalGLMGroups_cpp <- function(n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, family = "binomial", link = "logit", Gridtype = 2L, n_envopt = -1L, use_parallel = TRUE, use_opencl = FALSE, verbose = FALSE) {
   .Call(`_glmbayesCore_rNormalGLMGroups_cpp_export`, n, y, x, offset, wt, dispersion, mu, P_blocks, prior_by_block, row_blocks, f2, f3, family, link, Gridtype, n_envopt, use_parallel, use_opencl, verbose)
 }
-
 #' @noRd
 #' @keywords internal
 .rNormalRegGroups_cpp <- function(

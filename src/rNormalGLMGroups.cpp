@@ -6,7 +6,10 @@
 
 #include "simfuncs.h"
 #include "simfuncs_groups.h"
+#include "simfuncs_groups_split.h"
 
+#include <chrono>
+#include <cmath>
 #include <string>
 
 namespace glmbayes {
@@ -149,6 +152,48 @@ NumericMatrix coef_mode_row_from_block(const List& out_b, int l1) {
   return out;
 }
 
+// Exact element-wise equality of two numeric (or integer) objects; NaN
+// matches NaN.
+bool same_numeric(SEXP a, SEXP b) {
+  if (Rf_isNull(a) || Rf_isNull(b)) return Rf_isNull(a) && Rf_isNull(b);
+  NumericVector va = Rcpp::as<NumericVector>(a);
+  NumericVector vb = Rcpp::as<NumericVector>(b);
+  if (va.size() != vb.size()) return false;
+  for (R_xlen_t i = 0; i < va.size(); ++i) {
+    const double x = va[i];
+    const double y = vb[i];
+    if (std::isnan(x) && std::isnan(y)) continue;
+    if (x != y) return false;
+  }
+  return true;
+}
+
+// Stop when the split mode or envelope differs from rNormalGLM's.
+void check_split_matches(const List& out_b, const NumericMatrix& split_mode,
+                         const List& split_env, int b) {
+  if (!same_numeric(out_b["coef.mode"], split_mode)) {
+    Rcpp::stop("rNormalGLMGroups split check: mode differs for group %d", b + 1);
+  }
+  const List env = out_b["Envelope"];
+  const CharacterVector nm = env.names();
+  for (int f = 0; f < env.size(); ++f) {
+    const std::string field = Rcpp::as<std::string>(nm[f]);
+    if (!split_env.containsElementNamed(field.c_str())) {
+      Rcpp::stop("rNormalGLMGroups split check: envelope field '%s' missing "
+                 "for group %d", field, b + 1);
+    }
+    if (!same_numeric(env[f], split_env[field])) {
+      Rcpp::stop("rNormalGLMGroups split check: envelope field '%s' differs "
+                 "for group %d", field, b + 1);
+    }
+  }
+}
+
+double seconds_since(std::chrono::steady_clock::time_point t0) {
+  return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0)
+      .count();
+}
+
 } // namespace
 
 Rcpp::List rNormalGLMGroups(
@@ -227,6 +272,10 @@ Rcpp::List rNormalGLMGroups(
   const int n_envopt_b = (n_envopt < 0) ? n : n_envopt;
   const bool use_parallel_b = use_parallel && (n > 1);
 
+  NumericMatrix coef_split(k, l1);
+  double t_orig = 0.0, t_mode = 0.0, t_env = 0.0, t_sim = 0.0;
+  EnvTiming t_env_parts;
+
   for (int b = 0; b < k; ++b) {
     IntegerVector rows = row_blocks[b];
     NumericVector y_b = slice_numeric(y, rows);
@@ -240,6 +289,15 @@ Rcpp::List rNormalGLMGroups(
 
     NumericVector start_b = Rcpp::clone(mu_b);
 
+    // Untouched copies of the inputs for the split check below.
+    NumericVector y_s = Rcpp::clone(y_b);
+    NumericMatrix x_s = Rcpp::clone(x_b);
+    NumericVector offset_s = Rcpp::clone(offset_b);
+    NumericVector wt_s = Rcpp::clone(wt_b);
+    NumericVector mu_s = Rcpp::clone(mu_b);
+    NumericMatrix P_s = Rcpp::clone(P_b);
+
+    auto t0 = std::chrono::steady_clock::now();
     List out_b = glmbayes::sim::rNormalGLM(
       n,
       y_b,
@@ -260,6 +318,29 @@ Rcpp::List rNormalGLMGroups(
       use_opencl,
       verbose && (b == 0)
     );
+    t_orig += seconds_since(t0);
+
+    // Split check: the same group through the three phase functions. The
+    // mode and envelope must equal rNormalGLM's; the draw is kept separately.
+    t0 = std::chrono::steady_clock::now();
+    const GroupStd g_s = group_mode(y_s, x_s, offset_s, wt_s, mu_s, P_s,
+                                    disp_b, f2, f3, family, false);
+    t_mode += seconds_since(t0);
+    t0 = std::chrono::steady_clock::now();
+    const List env_s = group_envelope(g_s, family, link, Gridtype, n,
+                                      n_envopt_b, use_opencl, false,
+                                      &t_env_parts);
+    t_env += seconds_since(t0);
+    t0 = std::chrono::steady_clock::now();
+    const List sim_s = group_simulate(g_s, env_s, n, f2, family, link,
+                                      use_parallel_b, false);
+    t_sim += seconds_since(t0);
+    check_split_matches(out_b, Rcpp::as<NumericMatrix>(sim_s["coef.mode"]),
+                        env_s, b);
+    const NumericMatrix coef_s = Rcpp::as<NumericMatrix>(sim_s["coefficients"]);
+    for (int j = 0; j < l1; ++j) {
+      coef_split(b, j) = coef_s(0, j);
+    }
 
     group_results[b] = out_b;
     envelope_blocks[b] = out_b["Envelope"];
@@ -286,7 +367,16 @@ Rcpp::List rNormalGLMGroups(
     Rcpp::Named("offset") = offset,
     Rcpp::Named("prior.weights") = wt,
     Rcpp::Named("family") = family_cv,
-    Rcpp::Named("link") = link_cv
+    Rcpp::Named("link") = link_cv,
+    Rcpp::Named("coefficients_split") = coef_split,
+    Rcpp::Named("timing") = NumericVector::create(
+      Rcpp::Named("rNormalGLM") = t_orig,
+      Rcpp::Named("mode") = t_mode,
+      Rcpp::Named("envelope") = t_env,
+      Rcpp::Named("env_setup") = t_env_parts.setup,
+      Rcpp::Named("env_eval") = t_env_parts.eval,
+      Rcpp::Named("env_finalize") = t_env_parts.finalize,
+      Rcpp::Named("simulate") = t_sim)
   );
 }
 

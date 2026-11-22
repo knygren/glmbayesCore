@@ -6,6 +6,7 @@
 #include "RcppArmadillo.h"
 #include "simfuncs.h"
 #include "simfuncs_groups.h"
+#include "simfuncs_groups_split.h"
 #include "simfuncs_twoblock.h"
 #include "progress_utils.h"
 
@@ -57,6 +58,38 @@ SEXP glmbayesCore_rNormalGLMGroups(SEXP n, SEXP y, SEXP x, SEXP offset,
     Rf_error("%s", e.what());
   } catch (...) {
     Rf_error("glmbayesCore_rNormalGLMGroups failed");
+  }
+  return R_NilValue;
+}
+
+SEXP glmbayesCore_rNormalGLMGroupChains(SEXP y, SEXP x, SEXP offset, SEXP wt,
+                                        SEXP dispersion, SEXP mu, SEXP P,
+                                        SEXP f2, SEXP f3, SEXP family,
+                                        SEXP link, SEXP Gridtype,
+                                        SEXP n_envopt, SEXP use_opencl,
+                                        SEXP check, SEXP verbose) {
+  try {
+    return Rcpp::wrap(glmbayes::sim::group::rNormalGLMGroupChains(
+        Rcpp::as<NumericVector>(y),
+        Rcpp::as<NumericMatrix>(x),
+        Rcpp::as<NumericVector>(offset),
+        Rcpp::as<NumericVector>(wt),
+        Rcpp::as<double>(dispersion),
+        Rcpp::as<NumericMatrix>(mu),
+        Rcpp::as<NumericMatrix>(P),
+        Rcpp::as<Function>(f2),
+        Rcpp::as<Function>(f3),
+        Rcpp::as<std::string>(family),
+        Rcpp::as<std::string>(link),
+        Rcpp::as<int>(Gridtype),
+        Rcpp::as<int>(n_envopt),
+        Rcpp::as<bool>(use_opencl),
+        Rcpp::as<bool>(check),
+        Rcpp::as<bool>(verbose)));
+  } catch (const std::exception& e) {
+    Rf_error("%s", e.what());
+  } catch (...) {
+    Rf_error("glmbayesCore_rNormalGLMGroupChains failed");
   }
   return R_NilValue;
 }
@@ -370,6 +403,7 @@ SEXP glmbayesCore_progress_bar_finish(SEXP newline) {
 void register_glmbayesCore_ccallables_cpp_export() {
   R_RegisterCCallable("glmbayesCore", "glmbayesCore_api_version",       (DL_FUNC) &glmbayesCore_api_version);
   R_RegisterCCallable("glmbayesCore", "glmbayesCore_rNormalGLMGroups",  (DL_FUNC) &glmbayesCore_rNormalGLMGroups);
+  R_RegisterCCallable("glmbayesCore", "glmbayesCore_rNormalGLMGroupChains",  (DL_FUNC) &glmbayesCore_rNormalGLMGroupChains);
   R_RegisterCCallable("glmbayesCore", "glmbayesCore_rNormalReg",        (DL_FUNC) &glmbayesCore_rNormalReg);
   R_RegisterCCallable("glmbayesCore", "glmbayesCore_group_rNormalGLM",  (DL_FUNC) &glmbayesCore_group_rNormalGLM);
   R_RegisterCCallable("glmbayesCore", "glmbayesCore_group_rNormalReg",  (DL_FUNC) &glmbayesCore_group_rNormalReg);
