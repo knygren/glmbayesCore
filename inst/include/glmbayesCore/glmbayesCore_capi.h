@@ -48,7 +48,9 @@ extern "C" {
   typedef SEXP (*glmbayesCore_rNormalGLMGroupChains_t)(
       SEXP y, SEXP x, SEXP offset, SEXP wt, SEXP dispersion, SEXP mu,
       SEXP P, SEXP f2, SEXP f3, SEXP family, SEXP link, SEXP Gridtype,
-      SEXP n_envopt, SEXP use_opencl, SEXP check, SEXP verbose);
+      SEXP n_envopt, SEXP use_opencl, SEXP check, SEXP verbose,
+      SEXP mode_method, SEXP setup_method, SEXP start, SEXP warm_method,
+      SEXP hess_method);
 
   typedef SEXP (*glmbayesCore_rNormalReg_t)(
       SEXP n, SEXP y, SEXP x, SEXP mu, SEXP P, SEXP offset, SEXP wt,
@@ -169,14 +171,26 @@ extern "C" {
   }
 
   /* Wraps glmbayes::sim::group::rNormalGLMGroupChains: one group, one draw
-   * per chain (column of mu). */
+   * per chain (column of mu). mode_method: 0 optim, 1 vmmin with C++ f2/f3,
+   * 2 optim plus comparison against vmmin (result field mode_compare).
+   * setup_method: 0 R grid setup, 1 C++, 2 both with an exact comparison
+   * (R kept; result field setup_compare). start: R_NilValue or an
+   * ncol(x) x ncol(mu) matrix of starting modes (NA column = cold);
+   * warm_method: 0 cold, 1 warm start, 2 both with comparison (cold kept;
+   * result field warm_compare). hess_method: 0 finite differences, 1 exact
+   * (finite differences if not finite or not PD), 2 both with comparison
+   * (finite differences kept; result field hessian_compare). The result
+   * also has mode_hessian. */
   static inline SEXP glmbayesCore_rNormalGLMGroupChains(
       SEXP y, SEXP x, SEXP offset, SEXP wt, SEXP dispersion, SEXP mu,
       SEXP P, SEXP f2, SEXP f3, SEXP family, SEXP link, SEXP Gridtype,
-      SEXP n_envopt, SEXP use_opencl, SEXP check, SEXP verbose) {
+      SEXP n_envopt, SEXP use_opencl, SEXP check, SEXP verbose,
+      SEXP mode_method, SEXP setup_method, SEXP start, SEXP warm_method,
+      SEXP hess_method) {
     return glmbayesCore_rNormalGLMGroupChains_fn()(
         y, x, offset, wt, dispersion, mu, P, f2, f3, family, link, Gridtype,
-        n_envopt, use_opencl, check, verbose);
+        n_envopt, use_opencl, check, verbose, mode_method, setup_method,
+        start, warm_method, hess_method);
   }
 
   /* Wraps glmbayes::sim::rNormalReg. */

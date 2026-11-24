@@ -102,13 +102,33 @@ inline void check_disp_bounds_or_stop(
   check_disp_bounds_or_stop(lo_v[0], up_v[0], fn_name);
 }
 
+/// Seconds in the parts of EnvelopeGridSetup (accumulated). core_count,
+/// envelope_opt and size_lists are inside EnvelopeSize (R path); cpp_opt
+/// and cpp_grid are the C++ path. `compared` counts setup_method = 2 calls
+/// (not seconds).
+struct GridSetupTiming {
+    double core_count = 0.0;     // opencl_core_count_for_scaling()
+    double envelope_opt = 0.0;   // R EnvelopeOpt()
+    double size_lists = 0.0;     // G2 / GIndex1 lists
+    double arith = 0.0;          // diag(A), omega, G1, Lint
+    double gindex_expand = 0.0;  // expand.grid(GIndex1)
+    double gindex_asmat = 0.0;   // as.matrix of that
+    double g3_expand = 0.0;      // expand.grid(G2)
+    double g3_asmat = 0.0;       // as.matrix of that
+    double g4 = 0.0;             // G4 = t(G3)
+    double cpp_opt = 0.0;        // C++ pattern, E_draws (and core count)
+    double cpp_grid = 0.0;       // C++ GIndex, G3, G4
+    double compared = 0.0;
+};
+
 Rcpp::List EnvelopeSize(const arma::vec& a,
                         const Rcpp::NumericMatrix& G1,
                         int Gridtype   = 2,
                         int n          = 1000,
                         int n_envopt   = -1,
                         bool use_opencl = false,
-                        bool verbose    = false);
+                        bool verbose    = false,
+                        GridSetupTiming* timing = nullptr);
 
 List EnvelopeBuild(NumericVector bStar,
                        NumericMatrix A,

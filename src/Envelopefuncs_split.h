@@ -24,6 +24,7 @@
 #define GLMBAYES_ENVELOPEFUNCS_SPLIT_H
 
 #include "RcppArmadillo.h"
+#include "Envelopefuncs.h"
 
 namespace glmbayes {
 
@@ -44,13 +45,25 @@ struct EnvGrid {
 /// EnvelopeBuild's compile-time OpenCL fallback.
 bool envelope_use_opencl(bool use_opencl, bool verbose);
 
+/// How EnvelopeGridSetup builds the grid.
+enum SetupMethod {
+    SETUP_R = 0,        // EnvelopeSize (R EnvelopeOpt), expand.grid, as.matrix
+    SETUP_CPP = 1,      // the same steps in C++
+    SETUP_COMPARE = 2   // both; R result kept; stop on any difference
+};
+
+/// With SETUP_COMPARE, gridindex (Gridtype 2), E_draws, GIndex, G3 and G4
+/// from the C++ build must equal the R build in type, dim, dimnames,
+/// attributes and every bit of every value, or the call stops.
 EnvGrid EnvelopeGridSetup(Rcpp::NumericVector bStar,
                           Rcpp::NumericMatrix A,
                           int Gridtype,
                           int n,
                           int n_envopt,
                           bool use_opencl,
-                          bool verbose);
+                          bool verbose,
+                          GridSetupTiming* timing = nullptr,
+                          int setup_method = SETUP_R);
 
 /// x is only used for the diagnostic when the PLSD construction fails.
 Rcpp::List EnvelopeFinalize(const EnvGrid& grid,

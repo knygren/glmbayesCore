@@ -14,12 +14,21 @@
 #include "openclPort.h"
 #include "R_interface.h"
 
+#include <chrono>
+
 
 using namespace Rcpp;
 using namespace openclPort;
 using namespace glmbayes::env;
 
 // no export tag
+
+namespace {
+double seconds_since_(std::chrono::steady_clock::time_point t0) {
+  return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0)
+      .count();
+}
+}  // namespace
 
 namespace glmbayes {
 
@@ -30,7 +39,8 @@ Rcpp::List EnvelopeSize(const arma::vec& a,
                         int n          ,
                         int n_envopt   ,
                         bool use_opencl ,
-                        bool verbose    ) 
+                        bool verbose    ,
+                        GridSetupTiming* timing) 
 {
   
   
@@ -41,7 +51,9 @@ Rcpp::List EnvelopeSize(const arma::vec& a,
   
   
   // core count for scaling
+  auto t0 = std::chrono::steady_clock::now();
   int core_CNT = opencl_core_count_for_scaling();
+  if (timing) timing->core_count += seconds_since_(t0);
   if (verbose) {
     Rcpp::Rcout << "[EnvelopeBuild:EnvelopeSize] OpenCL core count = "
                 << core_CNT << "\n";
@@ -68,6 +80,7 @@ Rcpp::List EnvelopeSize(const arma::vec& a,
   Rcpp::Function EnvelopeOpt = glmbayes_R::r_envelope_opt();
   Rcpp::NumericVector gridindex(l1);
   
+  t0 = std::chrono::steady_clock::now();
   if (Gridtype == 2) {
     if (use_opencl) {
       gridindex = EnvelopeOpt(a, n_envopt, core_CNT);
@@ -75,7 +88,9 @@ Rcpp::List EnvelopeSize(const arma::vec& a,
       gridindex = EnvelopeOpt(a, n_envopt, 1);
     }
   }
+  if (timing) timing->envelope_opt += seconds_since_(t0);
   
+  t0 = std::chrono::steady_clock::now();
   
   
   // Loop over dimensions
@@ -116,6 +131,7 @@ Rcpp::List EnvelopeSize(const arma::vec& a,
       E_draws *= std::sqrt(1 + a[i]);
     }
   }
+  if (timing) timing->size_lists += seconds_since_(t0);
   
   
   return Rcpp::List::create(

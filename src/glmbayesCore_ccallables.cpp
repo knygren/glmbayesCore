@@ -67,7 +67,10 @@ SEXP glmbayesCore_rNormalGLMGroupChains(SEXP y, SEXP x, SEXP offset, SEXP wt,
                                         SEXP f2, SEXP f3, SEXP family,
                                         SEXP link, SEXP Gridtype,
                                         SEXP n_envopt, SEXP use_opencl,
-                                        SEXP check, SEXP verbose) {
+                                        SEXP check, SEXP verbose,
+                                        SEXP mode_method,
+                                        SEXP setup_method, SEXP start,
+                                        SEXP warm_method, SEXP hess_method) {
   try {
     return Rcpp::wrap(glmbayes::sim::group::rNormalGLMGroupChains(
         Rcpp::as<NumericVector>(y),
@@ -85,7 +88,12 @@ SEXP glmbayesCore_rNormalGLMGroupChains(SEXP y, SEXP x, SEXP offset, SEXP wt,
         Rcpp::as<int>(n_envopt),
         Rcpp::as<bool>(use_opencl),
         Rcpp::as<bool>(check),
-        Rcpp::as<bool>(verbose)));
+        Rcpp::as<bool>(verbose),
+        Rcpp::as<int>(mode_method),
+        Rcpp::as<int>(setup_method),
+        start,
+        Rcpp::as<int>(warm_method),
+        Rcpp::as<int>(hess_method)));
   } catch (const std::exception& e) {
     Rf_error("%s", e.what());
   } catch (...) {

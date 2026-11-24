@@ -1018,11 +1018,13 @@ plot_mean_convergence.default <- function(
 #' @noRd
 .convergence_render_groups <- function(groups, stage_label, ylab, sub, engine, band,
                                         ref_line, floor_at_ref) {
-  for (g in names(groups)) {
+  ## By position: the single unsplit group is named "", and [[""]] is NULL.
+  for (i in seq_along(groups)) {
+    g <- names(groups)[i]
     stage_label_g <- if (nzchar(g)) paste0(stage_label, " -- ", g) else stage_label
     cat(sprintf("\n=== %s sweep history (%s; %s) ===\n\n", stage_label_g, ylab, engine))
     .convergence_render(
-      groups[[g]], stage_label_g, ylab, sub, engine, band, ref_line, floor_at_ref
+      groups[[i]], stage_label_g, ylab, sub, engine, band, ref_line, floor_at_ref
     )
   }
   invisible(NULL)
