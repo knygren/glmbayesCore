@@ -1430,6 +1430,123 @@ Rcpp::List f2_f3_binomial_cloglog(
   );
 }
 
+///////////////////////// f2_f3_f4 (single point) ///////////////////////////////
+
+double f2_f3_f4_binomial_logit(int l1, int l2, const double* x, const double* y,
+                               const double* alpha, const double* wt,
+                               const double* mu, const double* P, const double* b,
+                               double* grad, double* H, double* work) {
+  double* eta = work;
+  double* r = work + l1;
+  double* w = work + 2 * l1;
+  double* bmu = work + 3 * l1;
+  double f = f2_f3_f4_prior(l2, P, mu, b, bmu, grad);
+  f2_f3_f4_eta(l1, l2, x, alpha, b, eta);
+  for (int j = 0; j < l1; ++j) {
+    double p, q;
+    binom_pq_from_eta(eta[j], BinomLink::logit, p, q);
+    f += -::Rf_dbinom_raw(y[j] * wt[j], wt[j], p, q, 1);
+    if (grad) r[j] = (1.0 / (1.0 + std::exp(-eta[j])) - y[j]) * wt[j];
+    if (H) w[j] = wt[j] * p * q;
+  }
+  f2_f3_f4_finish(l1, l2, x, P, r, w, grad, H);
+  return f;
+}
+
+double f2_f3_f4_binomial_probit(int l1, int l2, const double* x, const double* y,
+                                const double* alpha, const double* wt,
+                                const double* mu, const double* P, const double* b,
+                                double* grad, double* H, double* work) {
+  double* eta = work;
+  double* r = work + l1;
+  double* w = work + 2 * l1;
+  double* bmu = work + 3 * l1;
+  double f = f2_f3_f4_prior(l2, P, mu, b, bmu, grad);
+  f2_f3_f4_eta(l1, l2, x, alpha, b, eta);
+  for (int j = 0; j < l1; ++j) {
+    const double e = eta[j];
+    double p, q;
+    binom_pq_from_eta(e, BinomLink::probit, p, q);
+    f += -::Rf_dbinom_raw(y[j] * wt[j], wt[j], p, q, 1);
+    if (grad) {
+      const double pg = ::Rf_pnorm5(e, 0.0, 1.0, 1, 0);
+      const double qg = ::Rf_pnorm5(-e, 0.0, 1.0, 1, 0);
+      const double d = ::Rf_dnorm4(e, 0.0, 1.0, 0);
+      r[j] = -((y[j] * d / pg - (1.0 - y[j]) * d / qg) * wt[j]);
+    }
+    if (H) {
+      // lam1 = phi / Phi(eta), lam0 = phi / Phi(-eta) on the log scale so the
+      // tails do not underflow to 0 / 0.
+      const double lphi = ::Rf_dnorm4(e, 0.0, 1.0, 1);
+      const double lam1 = std::exp(lphi - ::Rf_pnorm5(e, 0.0, 1.0, 1, 1));
+      const double lam0 = std::exp(lphi - ::Rf_pnorm5(e, 0.0, 1.0, 0, 1));
+      const double v =
+          y[j] * lam1 * (e + lam1) + (1.0 - y[j]) * lam0 * (lam0 - e);
+      w[j] = wt[j] * (v < 0.0 ? 0.0 : v);
+    }
+  }
+  f2_f3_f4_finish(l1, l2, x, P, r, w, grad, H);
+  return f;
+}
+
+double f2_f3_f4_binomial_cloglog(int l1, int l2, const double* x, const double* y,
+                                 const double* alpha, const double* wt,
+                                 const double* mu, const double* P, const double* b,
+                                 double* grad, double* H, double* work) {
+  double* eta = work;
+  double* r = work + l1;
+  double* w = work + 2 * l1;
+  double* bmu = work + 3 * l1;
+  double f = f2_f3_f4_prior(l2, P, mu, b, bmu, grad);
+  f2_f3_f4_eta(l1, l2, x, alpha, b, eta);
+  for (int j = 0; j < l1; ++j) {
+    double p, q;
+    binom_pq_from_eta(eta[j], BinomLink::cloglog, p, q);
+    f += -::Rf_dbinom_raw(y[j] * wt[j], wt[j], p, q, 1);
+    const double u = std::exp(eta[j]);
+    if (grad) {
+      const double pg = 1.0 - std::exp(-u);
+      const double qg = std::exp(-u);
+      const double a = std::exp(eta[j] - u);
+      r[j] = -(((y[j] * a / pg) - ((1.0 - y[j]) * a / qg)) * wt[j]);
+    }
+    if (H) {
+      // g = u / expm1(u) is -d/deta log p, with d2/deta2 (-log p) =
+      // g (u + g - 1) and d2/deta2 (-log(1 - p)) = u.
+      double gpart;
+      if (u < 1e-4) {
+        gpart = (1.0 - 0.5 * u) * (0.5 * u + u * u / 12.0);
+      } else {
+        const double em = std::expm1(u);
+        const double g = R_FINITE(em) ? u / em : 0.0;
+        gpart = g * (u + g - 1.0);
+      }
+      const double v = y[j] * gpart + (1.0 - y[j]) * u;
+      w[j] = wt[j] * (v < 0.0 ? 0.0 : v);
+    }
+  }
+  f2_f3_f4_finish(l1, l2, x, P, r, w, grad, H);
+  return f;
+}
+
+arma::cube f4_binomial_logit(NumericMatrix b, NumericVector y, NumericMatrix x,
+                             NumericMatrix mu, NumericMatrix P,
+                             NumericVector alpha, NumericVector wt) {
+  return f4_multi(f2_f3_f4_binomial_logit, b, y, x, mu, P, alpha, wt);
+}
+
+arma::cube f4_binomial_probit(NumericMatrix b, NumericVector y, NumericMatrix x,
+                              NumericMatrix mu, NumericMatrix P,
+                              NumericVector alpha, NumericVector wt) {
+  return f4_multi(f2_f3_f4_binomial_probit, b, y, x, mu, P, alpha, wt);
+}
+
+arma::cube f4_binomial_cloglog(NumericMatrix b, NumericVector y, NumericMatrix x,
+                               NumericMatrix mu, NumericMatrix P,
+                               NumericVector alpha, NumericVector wt) {
+  return f4_multi(f2_f3_f4_binomial_cloglog, b, y, x, mu, P, alpha, wt);
+}
+
 
 }  //famfuncs
 }  //glmbayes

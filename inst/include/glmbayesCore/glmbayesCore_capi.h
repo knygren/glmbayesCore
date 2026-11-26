@@ -172,7 +172,11 @@ extern "C" {
 
   /* Wraps glmbayes::sim::group::rNormalGLMGroupChains: one group, one draw
    * per chain (column of mu). mode_method: 0 optim, 1 vmmin with C++ f2/f3,
-   * 2 optim plus comparison against vmmin (result field mode_compare).
+   * 2 optim plus comparison against vmmin (result field mode_compare),
+   * 3 Newton on the C++ f2/f3 and exact Hessian, 4 vmmin plus comparison
+   * against 3, 5 Newton on the allocation-free fam f2_f3_f4 kernels, 6 vmmin
+   * plus comparison against 5 (result field newton_compare; Newton falls
+   * back to vmmin when it fails).
    * setup_method: 0 R grid setup, 1 C++, 2 both with an exact comparison
    * (R kept; result field setup_compare). start: R_NilValue or an
    * ncol(x) x ncol(mu) matrix of starting modes (NA column = cold);

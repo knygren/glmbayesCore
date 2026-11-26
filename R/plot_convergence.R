@@ -146,10 +146,32 @@
 #' \code{Var_ref} is the exact posterior variance when \code{design} and
 #' \code{measurement_prior_list} are both supplied (only possible when
 #' \eqn{\sigma^2} and the RE variance components are all fixed), and
-#' otherwise the empirical last-sweep variance.  The empirical fallback
+#' otherwise empirical: pooled over a window of final sweeps when the
+#' history stores per-sweep TV bounds (see below), else the last-sweep
+#' variance.  The empirical reference
 #' cannot detect a run that has not converged \emph{at all}, since the
 #' denominator is then drawn from the same unconverged distribution; prefer
 #' the exact reference whenever the model allows it.
+#'
+#' ## Pooled reference
+#'
+#' With few chains the last sweep alone is a noisy reference that shifts the
+#' whole curve.  When the history carries per-sweep TV bounds
+#' (\code{hist$tv_bound}, \code{hist$tv_tol}; stored by the GLMM samplers
+#' from the local-Gaussian approximation at the mode, whose rate reflects the
+#' actual correlation between successive sweeps better than the
+#' conservative ridge certificate), the reference is the mean over a
+#' trailing window of sweeps, chosen in two steps.  First, a screen: only
+#' sweeps whose approximate TV bound is at most twice \code{tv_tol} are
+#' eligible.  Second, starting from the last sweep, earlier
+#' eligible sweeps are added until the pooled reference is precise enough
+#' (relative SE about 1 percent), a trend appears within the window, or the next
+#' sweep is not eligible.  Each series gets its own window; whitened charts
+#' share one.  The band then allows for the reference's own error, using an
+#' effective number of sweeps that accounts for correlation between
+#' consecutive sweeps, taken from the same rate (or from the data, if
+#' larger).  The subtitle reports the window and why it stopped,
+#' and a dotted vertical line marks the earliest window start.
 #'
 #' ## Reading it alongside the mean chart
 #'
@@ -284,11 +306,14 @@ plot_var_convergence.default <- function(
   ## Var_final reference => both numerator and denominator are sample
   ## variances across the same n_chains chains (two-sample F). The former is
   ## the df2 = Inf limit of the latter, so one qf() call covers both.
-  band <- .convergence_var_band(n_chains, conf_level, identical(ref_source, "exact"))
+  ref_ctx <- if (is.null(exact_ref)) .convergence_ref_context(hist, n_chains) else NULL
+  if (!is.null(ref_ctx)) {
+    ref_source <- "empirical (pooled window)"
+  }
 
   metric_label <- if (identical(component, "precision")) "RE precision (1/tau^2)" else "cross-chain variance"
   if (isTRUE(whitened)) {
-    var_ratio_full <- .convergence_var_whitened_series(hist, coef_focus, exact_ref)
+    var_ratio_full <- .convergence_var_whitened_series(hist, coef_focus, exact_ref, ref_ctx)
     ylab <- "Whitened variance ratio (eigenvalue)"
     sub <- sprintf(
       "(whitened cross-chain covariance eigenvalues; reference = %s; Claim 3: I - A^(2l))",
@@ -298,32 +323,60 @@ plot_var_convergence.default <- function(
   } else {
     ylab <- if (identical(ref_source, "exact")) {
       "Var / Var_exact ratio"
+    } else if (!is.null(ref_ctx)) {
+      "Var / Var_ref ratio"
     } else {
       "Var / Var_final ratio"
     }
     sub <- sprintf("(%s from sweep history; reference = %s)", metric_label, ref_source)
     groups <- .convergence_named_groups(
-      sh_sweeps, coef_focus, exact_ref, .convergence_var_named_series, split
-    )
-  }
-  if (!is.null(band)) {
-    ref_note <- if (identical(ref_source, "exact")) {
-      "chi-sq"
-    } else {
-      "F, Var_ref also estimated"
-    }
-    sub <- paste0(
-      sub,
-      sprintf(
-        "\ndotted: naive %.0f%% band around 1 (%s; n_chains = %d%s)",
-        conf_level * 100, ref_note, n_chains,
-        if (isTRUE(whitened)) "; approx. for eigenvalues" else ""
-      )
+      sh_sweeps, coef_focus, exact_ref, .convergence_var_named_series, split, ref_ctx
     )
   }
 
+  band_list <- vector("list", length(groups))
+  sub_list  <- vector("list", length(groups))
+  vline_list <- vector("list", length(groups))
+  for (i in seq_along(groups)) {
+    wins <- .convergence_group_windows(groups[[i]])
+    nu_ref <- NULL
+    sub_i <- sub
+    if (!is.null(wins)) {
+      sub_i <- paste0(sub_i, "\n", .convergence_window_text(
+        wins, ref_ctx$tv_mult, "tau", ref_ctx$tv_source
+      ))
+      vline_list[i] <- list(.convergence_window_start(wins))
+      if (!is.null(n_chains)) {
+        nu_ref <- min(vapply(wins, function(x) {
+          (as.integer(n_chains)[1L] - 1) * x$w / x$tau
+        }, numeric(1L)))
+      }
+    }
+    band_i <- .convergence_var_band(n_chains, conf_level, identical(ref_source, "exact"), nu_ref)
+    if (!is.null(band_i)) {
+      ref_note <- if (identical(ref_source, "exact")) {
+        "chi-sq"
+      } else if (!is.null(nu_ref)) {
+        sprintf("F(n_chains - 1, nu_ref = %.0f), Var_ref pooled", nu_ref)
+      } else {
+        "F, Var_ref also estimated"
+      }
+      sub_i <- paste0(
+        sub_i,
+        sprintf(
+          "\ndotted: naive %.0f%% band around 1 (%s; n_chains = %d%s)",
+          conf_level * 100, ref_note, as.integer(n_chains)[1L],
+          if (isTRUE(whitened)) "; approx. for eigenvalues" else ""
+        )
+      )
+    }
+    band_list[i] <- list(band_i)
+    sub_list[[i]] <- sub_i
+  }
+
   .convergence_render_groups(
-    groups, stage_label, ylab, sub, engine, band, ref_line = 1, floor_at_ref = TRUE
+    groups, stage_label, ylab, sub_list, engine, band_list,
+    ref_line = 1, floor_at_ref = TRUE, vline = vline_list
   )
 
   invisible(hist)
@@ -384,8 +437,14 @@ plot_var_convergence.default <- function(
 #' \code{mean_ref} is the exact posterior mean when \code{design} and
 #' \code{measurement_prior_list} are supplied (only possible when
 #' \eqn{\sigma^2} and the RE variance components are all fixed), and
-#' otherwise the empirical last-sweep mean.  As with
-#' \code{\link{plot_var_convergence}}, the empirical fallback cannot detect a
+#' otherwise empirical: the mean over a window of final sweeps when the
+#' history stores per-sweep TV bounds, chosen as described under
+#' "Pooled reference" in \code{\link{plot_var_convergence}}, else the
+#' last-sweep mean.  The band is then widened by
+#' \eqn{\sqrt{1 + \tau_m / |W|}} for the pooled reference's own error, where
+#' \eqn{|W|} is the window length and \eqn{\tau_m} the correlation time of the
+#' mean between sweeps.  As with
+#' \code{\link{plot_var_convergence}}, the empirical reference cannot detect a
 #' run that never converged, because the reference is drawn from the same
 #' unconverged distribution.
 #'
@@ -505,7 +564,10 @@ plot_mean_convergence.default <- function(
   ## the same n_chains chains, so both the sweep-l and reference sampling
   ## error are naively combined (same "df2 = Inf limit" trick as the
   ## variance band via qt(df = Inf) == qnorm()).
-  band <- .convergence_mean_band(n_chains, conf_level, identical(ref_source, "exact"))
+  ref_ctx <- if (is.null(exact_ref)) .convergence_ref_context(hist, n_chains) else NULL
+  if (!is.null(ref_ctx)) {
+    ref_source <- "empirical (pooled window)"
+  }
 
   metric_label <- if (identical(component, "precision")) {
     "RE precision (1/tau^2) cross-chain mean deviation"
@@ -513,7 +575,7 @@ plot_mean_convergence.default <- function(
     "cross-chain mean deviation"
   }
   if (isTRUE(whitened)) {
-    z_series_full <- .convergence_mean_whitened_series(hist, coef_focus, exact_ref)
+    z_series_full <- .convergence_mean_whitened_series(hist, coef_focus, exact_ref, ref_ctx)
     ylab <- "Whitened mean deviation (z-score)"
     sub <- sprintf(
       "(whitened cross-chain mean deviation; reference = %s; Claim 1: A^l bias decay)",
@@ -524,6 +586,8 @@ plot_mean_convergence.default <- function(
     exact_ref_mean <- if (!is.null(exact_ref)) exact_ref$mean else NULL
     ylab <- if (identical(ref_source, "exact")) {
       "(mean - mean_exact) / SD"
+    } else if (!is.null(ref_ctx)) {
+      "(mean - mean_ref) / SD"
     } else {
       "(mean - mean_final) / SD"
     }
@@ -532,27 +596,51 @@ plot_mean_convergence.default <- function(
       metric_label, ref_source
     )
     groups <- .convergence_named_groups(
-      sh_sweeps, coef_focus, exact_ref_mean, .convergence_mean_named_series, split
-    )
-  }
-  if (!is.null(band)) {
-    ref_note <- if (identical(ref_source, "exact")) {
-      "normal"
-    } else {
-      "t, mean_ref also estimated"
-    }
-    sub <- paste0(
-      sub,
-      sprintf(
-        "\ndotted: naive %.0f%% band around 0 (%s; n_chains = %d%s)",
-        conf_level * 100, ref_note, n_chains,
-        if (isTRUE(whitened)) "; approx. for whitened components" else ""
-      )
+      sh_sweeps, coef_focus, exact_ref_mean, .convergence_mean_named_series, split, ref_ctx
     )
   }
 
+  band_list  <- vector("list", length(groups))
+  sub_list   <- vector("list", length(groups))
+  vline_list <- vector("list", length(groups))
+  for (i in seq_along(groups)) {
+    wins <- .convergence_group_windows(groups[[i]])
+    inflate <- 1
+    sub_i <- sub
+    if (!is.null(wins)) {
+      sub_i <- paste0(sub_i, "\n", .convergence_window_text(
+        wins, ref_ctx$tv_mult, "tau_m", ref_ctx$tv_source
+      ))
+      vline_list[i] <- list(.convergence_window_start(wins))
+      inflate <- max(vapply(wins, function(x) sqrt(1 + x$tau / x$w), numeric(1L)))
+    }
+    band_i <- .convergence_mean_band(
+      n_chains, conf_level, identical(ref_source, "exact"), inflate
+    )
+    if (!is.null(band_i)) {
+      ref_note <- if (identical(ref_source, "exact")) {
+        "normal"
+      } else if (!is.null(wins)) {
+        sprintf("t, widened by %.2f for the pooled mean_ref", inflate)
+      } else {
+        "t, mean_ref also estimated"
+      }
+      sub_i <- paste0(
+        sub_i,
+        sprintf(
+          "\ndotted: naive %.0f%% band around 0 (%s; n_chains = %d%s)",
+          conf_level * 100, ref_note, as.integer(n_chains)[1L],
+          if (isTRUE(whitened)) "; approx. for whitened components" else ""
+        )
+      )
+    }
+    band_list[i] <- list(band_i)
+    sub_list[[i]] <- sub_i
+  }
+
   .convergence_render_groups(
-    groups, stage_label, ylab, sub, engine, band, ref_line = 0, floor_at_ref = FALSE
+    groups, stage_label, ylab, sub_list, engine, band_list,
+    ref_line = 0, floor_at_ref = FALSE, vline = vline_list
   )
 
   invisible(hist)
@@ -585,7 +673,7 @@ plot_mean_convergence.default <- function(
 #' approximation for whitened eigenvalues (see
 #' \code{\link{plot_var_convergence}}'s \code{n_chains} docs).
 #' @noRd
-.convergence_var_band <- function(n_chains, conf_level, exact_ref) {
+.convergence_var_band <- function(n_chains, conf_level, exact_ref, nu_ref = NULL) {
   if (is.null(n_chains)) {
     return(NULL)
   }
@@ -598,7 +686,7 @@ plot_mean_convergence.default <- function(
     stop("'conf_level' must be a single value strictly between 0 and 1.", call. = FALSE)
   }
   df1 <- n_chains - 1L
-  df2 <- if (isTRUE(exact_ref)) Inf else df1
+  df2 <- if (isTRUE(exact_ref)) Inf else if (!is.null(nu_ref)) nu_ref else df1
   alpha <- 1 - conf_level
   stats::qf(c(alpha / 2, 1 - alpha / 2), df1 = df1, df2 = df2)
 }
@@ -619,7 +707,7 @@ plot_mean_convergence.default <- function(
 #' \code{df2 = Inf} trick, \code{stats::qt(p, df = Inf) == stats::qnorm(p)}
 #' exactly, so a single \code{stats::qt()} call covers both cases.
 #' @noRd
-.convergence_mean_band <- function(n_chains, conf_level, exact_ref) {
+.convergence_mean_band <- function(n_chains, conf_level, exact_ref, inflate = 1) {
   if (is.null(n_chains)) {
     return(NULL)
   }
@@ -634,7 +722,230 @@ plot_mean_convergence.default <- function(
   df <- if (isTRUE(exact_ref)) Inf else n_chains - 1L
   alpha <- 1 - conf_level
   q <- stats::qt(1 - alpha / 2, df = df)
-  c(-q, q) / sqrt(n_chains)
+  c(-q, q) * inflate / sqrt(n_chains)
+}
+
+#' Settings for the pooled convergence reference
+#'
+#' \code{reference = "window"} pools the reference over a trailing window of
+#' sweeps; \code{"final"} uses the last sweep alone. \code{tv_mult} sets the
+#' TV screen (sweeps whose certified bound is at most \code{tv_mult * tv_tol}
+#' are eligible); \code{ref_se} is the precision at which the window stops
+#' growing.
+#' @noRd
+.convergence_ref_settings <- function() {
+  list(reference = "window", tv_mult = 2, ref_se = 0.01)
+}
+
+#' Window context for a sweep history, or \code{NULL} for the last-sweep
+#' reference (setting \code{"final"}, or no stored TV bounds)
+#' @noRd
+.convergence_ref_context <- function(hist, n_chains) {
+  s <- .convergence_ref_settings()
+  tv  <- hist$tv_bound
+  tol <- hist$tv_tol
+  if (!identical(s$reference, "window") || is.null(tv) || is.null(tol) ||
+      !is.finite(tol)) {
+    return(NULL)
+  }
+  list(
+    eligible = is.finite(tv) & tv <= s$tv_mult * tol,
+    tv_mult  = s$tv_mult,
+    ref_se   = s$ref_se,
+    rho      = if (is.null(hist$rho)) NA_real_ else as.numeric(hist$rho)[1L],
+    n_chains = if (is.null(n_chains)) NULL else as.integer(n_chains)[1L],
+    tv_source = if (is.null(hist$tv_source)) "TV" else paste(hist$tv_source, "TV")
+  )
+}
+
+#' Integrated autocorrelation time, truncated at the first negative lag
+#' @noRd
+.convergence_iact <- function(x) {
+  x <- x[is.finite(x)]
+  n <- length(x)
+  if (n < 3L || !(stats::var(x) > 0)) {
+    return(1)
+  }
+  r <- stats::acf(x, lag.max = n - 1L, plot = FALSE, demean = TRUE)$acf[-1L]
+  first_neg <- which(!is.finite(r) | r < 0)
+  if (length(first_neg)) {
+    r <- r[seq_len(first_neg[1L] - 1L)]
+  }
+  1 + 2 * sum(r)
+}
+
+#' Correlation time between sweeps: the larger of theory and data, in
+#' \code{[1, length(stat)]}
+#'
+#' The cross-chain variance decays like \code{A^(2l)} and the mean like
+#' \code{A^l}, so lag-one correlations are about \code{rho^2} and \code{rho}.
+#' @noRd
+.convergence_tau <- function(stat, kind, rho) {
+  w <- length(stat)
+  tau <- 1
+  if (is.finite(rho) && rho > 0) {
+    tau <- if (rho >= 1) {
+      Inf
+    } else if (identical(kind, "var")) {
+      (1 + rho^2) / (1 - rho^2)
+    } else {
+      (1 + rho) / (1 - rho)
+    }
+  }
+  if (w >= 5L) {
+    tau <- max(tau, .convergence_iact(stat))
+  }
+  min(max(tau, 1), w)
+}
+
+#' Trend test over a window, with the slope SE inflated by \code{sqrt(tau)}
+#' @return \code{TRUE} when \code{|t| > 2}.
+#' @noRd
+.convergence_drift <- function(stat, sweeps, tau) {
+  ok <- is.finite(stat)
+  y <- stat[ok]
+  x <- as.numeric(sweeps[ok])
+  n <- length(y)
+  if (n < 5L) {
+    return(FALSE)
+  }
+  sxx <- sum((x - mean(x))^2)
+  if (!(sxx > 0)) {
+    return(FALSE)
+  }
+  b <- sum((x - mean(x)) * (y - mean(y))) / sxx
+  s2 <- sum((y - mean(y) - b * (x - mean(x)))^2) / (n - 2L)
+  se <- sqrt(s2 / sxx * tau)
+  is.finite(se) && se > 0 && abs(b / se) > 2
+}
+
+#' Trailing reference window for one per-sweep statistic
+#'
+#' Eligible sweeps pass the TV screen in \code{ctx$eligible}. Starting from
+#' the last sweep, earlier eligible sweeps are added one at a time until the
+#' pooled reference's SE reaches \code{ctx$ref_se} (\code{"precision"}), a
+#' trend appears (\code{"drift"}, last addition dropped), or the next sweep
+#' is not eligible (\code{"screen"}).
+#' @param stat Per-sweep statistic: \code{log Var(l)} (\code{kind = "var"})
+#'   or \code{mean(l)} (\code{kind = "mean"}).
+#' @param sweeps Sweep indices of \code{stat}.
+#' @return \code{list(sweeps, w, n_eligible, tau, stop)}.
+#' @noRd
+.convergence_ref_window <- function(stat, sweeps, ctx, kind) {
+  ord <- order(sweeps)
+  stat <- stat[ord]
+  sweeps <- as.integer(sweeps[ord])
+  L <- length(sweeps)
+  elig <- ctx$eligible[sweeps]
+  elig[is.na(elig)] <- FALSE
+  run <- 0L
+  for (j in rev(seq_len(L))) {
+    if (elig[j]) run <- run + 1L else break
+  }
+  n <- ctx$n_chains
+  ref_se_at <- function(tau, w) {
+    if (is.null(n) || n <= 1L) return(Inf)
+    if (identical(kind, "var")) sqrt(2 * tau / ((n - 1) * w)) else sqrt(tau / (n * w))
+  }
+
+  w <- 1L
+  tau <- 1
+  reason <- if (ref_se_at(1, 1L) <= ctx$ref_se) "precision" else NULL
+  if (is.null(reason) && run >= 2L) {
+    for (w_try in 2:run) {
+      idx <- (L - w_try + 1L):L
+      tau_try <- .convergence_tau(stat[idx], kind, ctx$rho)
+      ## A trend test over fewer than two correlation times is mostly noise.
+      if (w_try >= max(5, 2 * tau_try) &&
+          .convergence_drift(stat[idx], sweeps[idx], tau_try)) {
+        reason <- "drift"
+        break
+      }
+      w <- w_try
+      tau <- tau_try
+      if (ref_se_at(tau, w) <= ctx$ref_se) {
+        reason <- "precision"
+        break
+      }
+    }
+  }
+  if (is.null(reason)) reason <- "screen"
+  list(
+    sweeps     = sweeps[(L - w + 1L):L],
+    w          = w,
+    n_eligible = sum(elig),
+    tau        = tau,
+    stop       = reason
+  )
+}
+
+#' One window shared by several coordinates (whitened charts)
+#'
+#' The shortest per-coordinate window, so drift in any coordinate stops it;
+#' \code{tau} is the largest over coordinates on that window.
+#' @param stat_mat Sweeps-by-coordinates matrix, rows in sweep order.
+#' @noRd
+.convergence_shared_window <- function(stat_mat, sweeps, ctx, kind) {
+  wins <- lapply(seq_len(ncol(stat_mat)), function(j) {
+    .convergence_ref_window(stat_mat[, j], sweeps, ctx, kind)
+  })
+  ws <- vapply(wins, function(x) x$w, integer(1L))
+  j <- which.min(ws)
+  w <- ws[j]
+  L <- length(sweeps)
+  idx <- (L - w + 1L):L
+  tau <- max(vapply(seq_len(ncol(stat_mat)), function(k) {
+    .convergence_tau(stat_mat[idx, k], kind, ctx$rho)
+  }, numeric(1L)))
+  list(
+    sweeps     = as.integer(sweeps[idx]),
+    w          = w,
+    n_eligible = wins[[j]]$n_eligible,
+    tau        = tau,
+    stop       = wins[[j]]$stop
+  )
+}
+
+#' Reference windows attached to a group's series (\code{NULL} if none)
+#' @noRd
+.convergence_group_windows <- function(series) {
+  wins <- lapply(series, function(s) attr(s, "ref_window"))
+  wins <- wins[!vapply(wins, is.null, logical(1L))]
+  if (length(wins)) wins else NULL
+}
+
+#' Subtitle lines describing a group's reference windows
+#' @noRd
+.convergence_window_text <- function(wins, tv_mult, tau_label, tv_source = "TV") {
+  rng <- function(x, fmt) {
+    lo <- sprintf(fmt, min(x))
+    hi <- sprintf(fmt, max(x))
+    if (identical(lo, hi)) lo else paste0(lo, "-", hi)
+  }
+  starts <- vapply(wins, function(x) min(x$sweeps), integer(1L))
+  L      <- max(vapply(wins, function(x) max(x$sweeps), integer(1L)))
+  ws     <- vapply(wins, function(x) x$w, integer(1L))
+  taus   <- vapply(wins, function(x) x$tau, numeric(1L))
+  n_el   <- max(vapply(wins, function(x) x$n_eligible, integer(1L)))
+  stops  <- unique(vapply(wins, function(x) x$stop, character(1L)))
+  paste0(
+    sprintf(
+      "reference = mean of sweeps %s to %d (%s of %d eligible; about %s effective, %s = %s)",
+      rng(starts, "%d"), L, rng(ws, "%d"), n_el, rng(ws / taus, "%.1f"),
+      tau_label, rng(taus, "%.1f")
+    ),
+    sprintf(
+      "\nwindow: %s bound at most %g x tv_tol; stopped by %s; dotted vertical = earliest window start",
+      tv_source, tv_mult, paste(stops, collapse = " / ")
+    )
+  )
+}
+
+#' Earliest window start in a group (for the vertical marker)
+#' @noRd
+.convergence_window_start <- function(wins) {
+  if (is.null(wins)) return(NULL)
+  min(vapply(wins, function(x) min(x$sweeps), integer(1L)))
 }
 
 #' Flatten \code{lmerb_posterior_mean()$fixef} into a \code{"re_component |
@@ -696,7 +1007,7 @@ plot_mean_convergence.default <- function(
 
 #' Named-coefficient \code{Var(l) / Var_ref} series (non-whitened mode)
 #' @noRd
-.convergence_var_named_series <- function(sh_sweeps, coef_focus, exact_ref) {
+.convergence_var_named_series <- function(sh_sweeps, coef_focus, exact_ref, ref_ctx = NULL) {
   keys <- .convergence_resolve_keys(coef_focus, sh_sweeps)
   lbl  <- .convergence_labels(keys)
   if (!is.null(exact_ref)) {
@@ -720,18 +1031,30 @@ plot_mean_convergence.default <- function(
     lbl
   )
 
+  wins <- lapply(seq_along(var_list), function(i) {
+    if (!is.null(exact_ref) || is.null(ref_ctx)) return(NULL)
+    v <- var_list[[i]]
+    .convergence_ref_window(log(v), as.integer(names(v)), ref_ctx, "var")
+  })
+
   var_ref <- stats::setNames(vapply(seq_along(var_list), function(i) {
+    v <- var_list[[i]]
     if (!is.null(exact_ref)) {
       exact_ref[lbl[[i]], lbl[[i]]]
+    } else if (!is.null(wins[[i]])) {
+      mean(as.numeric(v[as.character(wins[[i]]$sweeps)]))
     } else {
-      v <- var_list[[i]]
       m_final <- max(as.integer(names(v)))
       as.numeric(v[as.character(m_final)])
     }
   }, numeric(1L)), lbl)
 
   stats::setNames(
-    lapply(seq_along(var_list), function(i) var_list[[i]] / var_ref[[i]]),
+    lapply(seq_along(var_list), function(i) {
+      r <- var_list[[i]] / var_ref[[i]]
+      attr(r, "ref_window") <- wins[[i]]
+      r
+    }),
     lbl
   )
 }
@@ -739,7 +1062,7 @@ plot_mean_convergence.default <- function(
 #' Named-coefficient \code{Z(l) = (mean(l) - mean_ref) / sd(l)} series
 #' (non-whitened mode)
 #' @noRd
-.convergence_mean_named_series <- function(sh_sweeps, coef_focus, exact_ref) {
+.convergence_mean_named_series <- function(sh_sweeps, coef_focus, exact_ref, ref_ctx = NULL) {
   keys <- .convergence_resolve_keys(coef_focus, sh_sweeps)
   lbl  <- .convergence_labels(keys)
   if (!is.null(exact_ref)) {
@@ -764,14 +1087,23 @@ plot_mean_convergence.default <- function(
         stop("No sweep rows for ", lbl[i], call. = FALSE)
       }
       sub <- sub[order(sub$sweep), , drop = FALSE]
+      win <- if (is.null(exact_ref) && !is.null(ref_ctx)) {
+        .convergence_ref_window(sub$mean, sub$sweep, ref_ctx, "mean")
+      } else {
+        NULL
+      }
       ref_i <- if (!is.null(exact_ref)) {
         exact_ref[[lbl[i]]]
+      } else if (!is.null(win)) {
+        mean(sub$mean[sub$sweep %in% win$sweeps])
       } else {
         sub$mean[[which.max(sub$sweep)]]
       }
       sd_i <- sub$sd
       sd_i[!is.finite(sd_i) | sd_i <= 0] <- NA_real_
-      stats::setNames((sub$mean - ref_i) / sd_i, sub$sweep)
+      z <- stats::setNames((sub$mean - ref_i) / sd_i, sub$sweep)
+      attr(z, "ref_window") <- win
+      z
     }),
     lbl
   )
@@ -779,7 +1111,7 @@ plot_mean_convergence.default <- function(
 
 #' Whitened \code{Var(l) / Var_ref} eigenvalue series (whitened mode)
 #' @noRd
-.convergence_var_whitened_series <- function(hist, coef_focus, exact_ref) {
+.convergence_var_whitened_series <- function(hist, coef_focus, exact_ref, ref_ctx = NULL) {
   if (is.null(hist$cov_by_sweep) || !length(hist$cov_by_sweep)) {
     stop(
       "'hist' has no per-sweep covariance ('cov_by_sweep') -- whitened = TRUE ",
@@ -796,9 +1128,21 @@ plot_mean_convergence.default <- function(
   n_sweeps <- length(hist$cov_by_sweep)
   .convergence_check_labels(hist$cov_by_sweep[[n_sweeps]], lbl, "Sweep-history covariance")
 
+  win <- NULL
+  if (is.null(exact_ref) && !is.null(ref_ctx)) {
+    log_diag <- do.call(rbind, lapply(seq_len(n_sweeps), function(m) {
+      log(diag(hist$cov_by_sweep[[m]][lbl, lbl, drop = FALSE]))
+    }))
+    win <- .convergence_shared_window(
+      matrix(log_diag, nrow = n_sweeps), seq_len(n_sweeps), ref_ctx, "var"
+    )
+  }
+
   Sigma_ref <- if (!is.null(exact_ref)) {
     .convergence_check_labels(exact_ref, lbl, "Exact reference covariance")
     exact_ref[lbl, lbl, drop = FALSE]
+  } else if (!is.null(win)) {
+    .convergence_pooled_cov(hist$cov_by_sweep, win$sweeps, lbl)
   } else {
     hist$cov_by_sweep[[n_sweeps]][lbl, lbl, drop = FALSE]
   }
@@ -819,10 +1163,19 @@ plot_mean_convergence.default <- function(
   var_names <- paste0("var", seq_len(P))
   stats::setNames(
     lapply(seq_len(P), function(j) {
-      stats::setNames(eig_by_sweep[, j], seq_len(n_sweeps))
+      s <- stats::setNames(eig_by_sweep[, j], seq_len(n_sweeps))
+      attr(s, "ref_window") <- win
+      s
     }),
     var_names
   )
+}
+
+#' Element-wise mean of the per-sweep covariances over \code{sweeps}
+#' @noRd
+.convergence_pooled_cov <- function(cov_by_sweep, sweeps, lbl) {
+  mats <- lapply(sweeps, function(m) cov_by_sweep[[m]][lbl, lbl, drop = FALSE])
+  Reduce(`+`, mats) / length(mats)
 }
 
 #' Whitened mean-deviation series (whitened mode)
@@ -832,7 +1185,7 @@ plot_mean_convergence.default <- function(
 #' by the reference covariance's inverse square root, computed once:
 #' \eqn{z^{(l)} = \Sigma_{ref}^{-1/2} (\mathrm{mean}(l) - \mathrm{mean}_{ref})}.
 #' @noRd
-.convergence_mean_whitened_series <- function(hist, coef_focus, exact_ref) {
+.convergence_mean_whitened_series <- function(hist, coef_focus, exact_ref, ref_ctx = NULL) {
   if (is.null(hist$cov_by_sweep) || !length(hist$cov_by_sweep)) {
     stop(
       "'hist' has no per-sweep covariance ('cov_by_sweep') -- whitened = TRUE ",
@@ -854,9 +1207,32 @@ plot_mean_convergence.default <- function(
   sh_tab$covariate    <- as.character(sh_tab$covariate)
   sh_sweeps <- sh_tab[sh_tab$sweep > 0L, , drop = FALSE]
 
+  P <- length(lbl)
+  mean_by_sweep <- matrix(
+    do.call(rbind, lapply(seq_len(n_sweeps), function(m) {
+      vapply(seq_len(nrow(keys)), function(i) {
+        v <- sh_sweeps$mean[
+          sh_sweeps$re_component == keys$re_component[i] &
+            sh_sweeps$covariate == keys$covariate[i] &
+            sh_sweeps$sweep == m
+        ]
+        if (length(v) == 1L) v else NA_real_
+      }, numeric(1L))
+    })),
+    nrow = n_sweeps
+  )
+
+  win <- if (is.null(exact_ref) && !is.null(ref_ctx)) {
+    .convergence_shared_window(mean_by_sweep, seq_len(n_sweeps), ref_ctx, "mean")
+  } else {
+    NULL
+  }
+
   Sigma_ref <- if (!is.null(exact_ref)) {
     .convergence_check_labels(exact_ref$cov, lbl, "Exact reference covariance")
     exact_ref$cov[lbl, lbl, drop = FALSE]
+  } else if (!is.null(win)) {
+    .convergence_pooled_cov(hist$cov_by_sweep, win$sweeps, lbl)
   } else {
     hist$cov_by_sweep[[n_sweeps]][lbl, lbl, drop = FALSE]
   }
@@ -870,6 +1246,8 @@ plot_mean_convergence.default <- function(
       )
     }
     as.numeric(exact_ref$mean[lbl])
+  } else if (!is.null(win)) {
+    colMeans(mean_by_sweep[win$sweeps, , drop = FALSE])
   } else {
     vapply(seq_len(nrow(keys)), function(i) {
       sub <- sh_sweeps[
@@ -886,18 +1264,6 @@ plot_mean_convergence.default <- function(
   d_inv_sqrt <- ifelse(eg$values > .Machine$double.eps, 1 / sqrt(eg$values), 0)
   Sigma_ref_inv_sqrt <- eg$vectors %*% (d_inv_sqrt * t(eg$vectors))
 
-  P <- length(lbl)
-  mean_by_sweep <- do.call(rbind, lapply(seq_len(n_sweeps), function(m) {
-    vapply(seq_len(nrow(keys)), function(i) {
-      v <- sh_sweeps$mean[
-        sh_sweeps$re_component == keys$re_component[i] &
-          sh_sweeps$covariate == keys$covariate[i] &
-          sh_sweeps$sweep == m
-      ]
-      if (length(v) == 1L) v else NA_real_
-    }, numeric(1L))
-  }))
-
   z_by_sweep <- matrix(NA_real_, nrow = n_sweeps, ncol = P)
   for (m in seq_len(n_sweeps)) {
     dev <- as.numeric(mean_by_sweep[m, ] - mean_ref)
@@ -907,7 +1273,9 @@ plot_mean_convergence.default <- function(
   z_names <- paste0("z", seq_len(P))
   stats::setNames(
     lapply(seq_len(P), function(j) {
-      stats::setNames(z_by_sweep[, j], seq_len(n_sweeps))
+      s <- stats::setNames(z_by_sweep[, j], seq_len(n_sweeps))
+      attr(s, "ref_window") <- win
+      s
     }),
     z_names
   )
@@ -983,14 +1351,15 @@ plot_mean_convergence.default <- function(
 #' once on the original (unsplit) \code{coef_focus}, i.e. the pre-\code{split}
 #' single-combined-chart behaviour.
 #' @noRd
-.convergence_named_groups <- function(sh_sweeps, coef_focus, exact_ref, series_fn, split) {
+.convergence_named_groups <- function(sh_sweeps, coef_focus, exact_ref, series_fn, split,
+                                      ref_ctx = NULL) {
   if (identical(split, "none")) {
-    return(stats::setNames(list(series_fn(sh_sweeps, coef_focus, exact_ref)), ""))
+    return(stats::setNames(list(series_fn(sh_sweeps, coef_focus, exact_ref, ref_ctx)), ""))
   }
   keys <- .convergence_resolve_keys(coef_focus, sh_sweeps)
   coef_focus_groups <- .convergence_split_coef_focus(keys)
   stats::setNames(
-    lapply(coef_focus_groups, function(cf) series_fn(sh_sweeps, cf, exact_ref)),
+    lapply(coef_focus_groups, function(cf) series_fn(sh_sweeps, cf, exact_ref, ref_ctx)),
     names(coef_focus_groups)
   )
 }
@@ -1016,15 +1385,20 @@ plot_mean_convergence.default <- function(
 #' file device (e.g. \code{\link[grDevices]{pdf}}) each group becomes its
 #' own page.
 #' @noRd
+#' @param sub,band,vline Either one value for every group, or a list with one
+#'   entry per group.
+#' @noRd
 .convergence_render_groups <- function(groups, stage_label, ylab, sub, engine, band,
-                                        ref_line, floor_at_ref) {
+                                        ref_line, floor_at_ref, vline = NULL) {
+  per_group <- function(x, i) if (is.list(x)) x[[i]] else x
   ## By position: the single unsplit group is named "", and [[""]] is NULL.
   for (i in seq_along(groups)) {
     g <- names(groups)[i]
     stage_label_g <- if (nzchar(g)) paste0(stage_label, " -- ", g) else stage_label
     cat(sprintf("\n=== %s sweep history (%s; %s) ===\n\n", stage_label_g, ylab, engine))
     .convergence_render(
-      groups[[i]], stage_label_g, ylab, sub, engine, band, ref_line, floor_at_ref
+      groups[[i]], stage_label_g, ylab, per_group(sub, i), engine,
+      per_group(band, i), ref_line, floor_at_ref, per_group(vline, i)
     )
   }
   invisible(NULL)
@@ -1033,15 +1407,15 @@ plot_mean_convergence.default <- function(
 #' Render one combined convergence chart (base or ggplot)
 #' @noRd
 .convergence_render <- function(series, stage_label, ylab, sub, engine, band = NULL,
-                                 ref_line = 1, floor_at_ref = TRUE) {
+                                 ref_line = 1, floor_at_ref = TRUE, vline = NULL) {
   if (!length(series)) {
     warning("No convergence series to plot for stage ", stage_label, call. = FALSE)
     return(invisible(NULL))
   }
   if (identical(engine, "base")) {
-    .convergence_plot_base(series, stage_label, ylab, sub, band, ref_line, floor_at_ref)
+    .convergence_plot_base(series, stage_label, ylab, sub, band, ref_line, floor_at_ref, vline)
   } else {
-    .convergence_plot_ggplot(series, stage_label, ylab, sub, band, ref_line)
+    .convergence_plot_ggplot(series, stage_label, ylab, sub, band, ref_line, vline)
   }
 }
 
@@ -1110,7 +1484,7 @@ plot_mean_convergence.default <- function(
 #'   padded, symmetric-ish range around the data/band/\code{ref_line}.
 #' @noRd
 .convergence_plot_base <- function(series, stage_label, ylab, sub, band = NULL,
-                                    ref_line = 1, floor_at_ref = TRUE) {
+                                    ref_line = 1, floor_at_ref = TRUE, vline = NULL) {
   sweeps <- sort(unique(as.integer(unlist(lapply(series, names)))))
   if (!length(sweeps)) {
     warning("No sweep rows to plot for stage ", stage_label, call. = FALSE)
@@ -1188,6 +1562,9 @@ plot_mean_convergence.default <- function(
   if (!is.null(band)) {
     graphics::abline(h = band, lty = 3, col = "gray50")
   }
+  if (!is.null(vline)) {
+    graphics::abline(v = vline, lty = 3, col = "gray50")
+  }
   for (i in seq_len(n_series)) {
     v <- series[[i]]
     x <- as.integer(names(v))
@@ -1223,7 +1600,8 @@ plot_mean_convergence.default <- function(
 #' @param ref_line Horizontal dashed reference line (\code{1} for the
 #'   variance-ratio chart, \code{0} for the mean-deviation chart).
 #' @noRd
-.convergence_plot_ggplot <- function(series, stage_label, ylab, sub, band = NULL, ref_line = 1) {
+.convergence_plot_ggplot <- function(series, stage_label, ylab, sub, band = NULL, ref_line = 1,
+                                      vline = NULL) {
   coef_levels <- names(series)
   shapes <- .convergence_shapes(length(coef_levels))
 
@@ -1262,6 +1640,9 @@ plot_mean_convergence.default <- function(
     )
   if (!is.null(band)) {
     p <- p + ggplot2::geom_hline(yintercept = band, linetype = "dotted", colour = "gray50")
+  }
+  if (!is.null(vline)) {
+    p <- p + ggplot2::geom_vline(xintercept = vline, linetype = "dotted", colour = "gray50")
   }
   print(p)
   invisible(series)

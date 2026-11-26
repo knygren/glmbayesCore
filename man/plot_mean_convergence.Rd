@@ -130,8 +130,14 @@ Monte Carlo noise from genuine bias.
 \code{mean_ref} is the exact posterior mean when \code{design} and
 \code{measurement_prior_list} are supplied (only possible when
 \eqn{\sigma^2} and the RE variance components are all fixed), and
-otherwise the empirical last-sweep mean.  As with
-\code{\link{plot_var_convergence}}, the empirical fallback cannot detect a
+otherwise empirical: the mean over a window of final sweeps when the
+history stores per-sweep TV bounds, chosen as described under
+"Pooled reference" in \code{\link{plot_var_convergence}}, else the
+last-sweep mean.  The band is then widened by
+\eqn{\sqrt{1 + \tau_m / |W|}} for the pooled reference's own error, where
+\eqn{|W|} is the window length and \eqn{\tau_m} the correlation time of the
+mean between sweeps.  As with
+\code{\link{plot_var_convergence}}, the empirical reference cannot detect a
 run that never converged, because the reference is drawn from the same
 unconverged distribution.
 }

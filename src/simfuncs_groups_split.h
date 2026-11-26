@@ -20,6 +20,8 @@
  *   - rNormalGLMGroups_split.cpp
  *   - group_mode_vmmin.cpp (vmmin_mode, mode_compare_update)
  *   - group_mode_hessian.cpp (exact_hessian)
+ *   - group_mode_newton.cpp (newton_minimize, newton_mode,
+ *     newton_compare_update)
  *
  * @section UsedBy
  *   - rNormalGLMGroups.cpp
@@ -74,7 +76,50 @@ struct GroupStd {
 enum ModeMethod {
     MODE_OPTIM = 0,    // R optim (BFGS) with the R f2/f3 and optimhess
     MODE_VMMIN = 1,    // vmmin with the C++ f2/f3 and an optimhess replica
-    MODE_COMPARE = 2   // optim kept downstream; both vmmin variants compared
+    MODE_COMPARE = 2,  // optim kept downstream; both vmmin variants compared
+    MODE_NEWTON = 3,   // Newton on f2_f3_non_opencl + exact_hessian
+    MODE_NEWTON_COMPARE = 4,     // vmmin kept downstream; MODE_NEWTON compared
+    MODE_NEWTON_F4 = 5,          // Newton on fam::f2_f3_f4_*
+    MODE_NEWTON_F4_COMPARE = 6   // vmmin kept downstream; MODE_NEWTON_F4 compared
+};
+
+/// Evaluator behind newton_mode.
+enum NewtonBackend {
+    NEWTON_ENV = 0,    // env f2_f3_non_opencl for f and grad, exact_hessian for H
+    NEWTON_FAM = 1     // fam::f2_f3_f4_* (allocation-free)
+};
+
+/// Diagnostics accumulated over group_mode calls with a Newton mode_method.
+/// cold_retry counts warm-started Newton runs that failed and were redone
+/// cold; fallback counts calls where the cold run also failed (vmmin is
+/// used instead). The rest is counted for the compare modes only: calls,
+/// flagged (the MODE_COMPARE tolerances in group_mode_vmmin.cpp, or a
+/// failed Newton run), newton_lower (Newton reached the lower f2), max_d
+/// (mode difference in the vmmin A1 metric), max_df (|f difference| /
+/// (1 + |f_vmmin|), f2 from f2_f3_non_opencl at both points), max_hess
+/// (relative Frobenius Hessian difference), the Newton iteration, value,
+/// gradient and backtrack counts, and seconds in vmmin and Newton. With
+/// MODE_NEWTON_F4_COMPARE, max_kf, max_kgrad and max_kH compare
+/// fam::f2_f3_f4 at the Newton mode with f2_f3_non_opencl (relative value;
+/// gradient in the H^-1 metric) and exact_hessian (relative Frobenius).
+struct NewtonCompare {
+    double calls = 0.0;
+    double flagged = 0.0;
+    double cold_retry = 0.0;
+    double fallback = 0.0;
+    double newton_lower = 0.0;
+    double max_d = 0.0;
+    double max_df = 0.0;
+    double max_hess = 0.0;
+    double max_kf = 0.0;
+    double max_kgrad = 0.0;
+    double max_kH = 0.0;
+    double iters = 0.0;
+    double fevals = 0.0;
+    double gevals = 0.0;
+    double backtracks = 0.0;
+    double t_vmmin = 0.0;
+    double t_newton = 0.0;
 };
 
 /// Diagnostics accumulated over group_mode calls with MODE_COMPARE.
@@ -164,6 +209,10 @@ struct ModeTiming {
     double standardize = 0.0;     // glmb_Standardize_Model and unpacking
     double calls = 0.0;
     double kernel_calls = 0.0;
+    double newton = 0.0;          // newton_mode (MODE_NEWTON, MODE_NEWTON_F4)
+    double newton_kernel = 0.0;   // its evaluator calls
+    double newton_iters = 0.0;
+    double newton_backtracks = 0.0;
 };
 
 /// vmmin (R's C BFGS, as used by optim) from par = 0 (or `par0`, l1 values)
@@ -234,12 +283,97 @@ void mode_compare_update(
     Rcpp::Function f2
 );
 
+/// Evaluator for newton_minimize: f at b, plus the gradient (n values) and
+/// Hessian (n x n, column-major) when `grad` / `H` are non-null. Returns
+/// false when the evaluation failed.
+struct NewtonEval {
+    bool (*fn)(void* ctx, const double* b, double* f, double* grad, double* H);
+    void* ctx;
+};
+
+struct NewtonOpts {
+    double tol = 1e-10;       // stop when the Newton decrement g' H^-1 g / 2 <= tol
+    int maxit = 50;
+    int max_halvings = 40;    // backtracking steps per iteration
+    double armijo = 1e-4;
+};
+
+struct NewtonStats {
+    int iters = 0;
+    int fevals = 0;           // all evaluator calls
+    int gevals = 0;           // calls with gradient and Hessian
+    int backtracks = 0;
+};
+
+enum NewtonStatus {
+    NEWTON_OK = 0,
+    NEWTON_MAXIT = 1,
+    NEWTON_LINESEARCH = 2,
+    NEWTON_CHOL = 3,
+    NEWTON_EVAL = 4           // evaluation failed or not finite
+};
+
+/// newton_minimize workspace in doubles for n parameters.
+inline int newton_work_size(int n) { return 3 * n + n * n; }
+
+/// Damped Newton with Armijo backtracking from `b` (n values, overwritten
+/// with the minimizer). On NEWTON_OK, `H` is the Hessian at the returned
+/// `b` and `f_out` its value. Plain C style (no allocation, no exceptions;
+/// `work` holds newton_work_size(n) doubles) so it can be ported to a GPU
+/// work-item.
+int newton_minimize(int n, const NewtonEval& ev, double* b, double* H,
+                    double* f_out, double* work, const NewtonOpts& opts,
+                    NewtonStats& stats);
+
+/// Newton mode of the shifted model in `g`, from par = 0 (or `par0`), with
+/// the evaluator chosen by `backend` (NewtonBackend). b2a, A1 and an
+/// optim-shaped fit (counts are evaluator calls with and without the
+/// gradient; convergence is the NewtonStatus) as in VmminResult. `work` is
+/// resized as needed and can be reused across calls.
+struct NewtonResult {
+    Rcpp::NumericMatrix b2a;   // l1 x 1
+    Rcpp::NumericMatrix A1;    // l1 x l1
+    double value = 0.0;
+    int status = NEWTON_EVAL;
+    NewtonStats stats;
+    Rcpp::List fit;
+};
+
+NewtonResult newton_mode(
+    const GroupStd& g,
+    const std::string& family,
+    const std::string& link,
+    const double* par0,
+    int backend,
+    std::vector<double>& work,
+    ModeTiming* timing = nullptr
+);
+
+/// Fold one Newton compare call into `nc`: `vm` is the vmmin result kept
+/// downstream, `nt` the Newton result, `t_vm`/`t_nt` their seconds.
+/// `kernel_checks` adds the fam::f2_f3_f4 checks (max_kf, max_kgrad, max_kH).
+void newton_compare_update(
+    NewtonCompare& nc,
+    const GroupStd& g,
+    const std::string& family,
+    const std::string& link,
+    const VmminResult& vm,
+    const NewtonResult& nt,
+    double t_vm,
+    double t_nt,
+    bool kernel_checks
+);
+
 /// `link` is only needed for MODE_VMMIN / MODE_COMPARE. `cmp` receives the
 /// MODE_COMPARE diagnostics, `mt` the time per part. With MODE_VMMIN,
 /// `warm_start` (l1 values in the coordinates of `mu`, or nullptr for cold) and
 /// `warm_method` choose vmmin's starting point; `wc` receives the
 /// WarmCompare diagnostics; `hess_method` and `hc` are passed to
-/// vmmin_mode. The optim path ignores them.
+/// vmmin_mode. The optim path ignores them. The Newton modes start from the
+/// same point as vmmin (warm when a warm start is given and `warm_method`
+/// is not WARM_COLD); a failed warm run is redone cold, then vmmin is used.
+/// `ncmp` receives the NewtonCompare diagnostics and `nwork` is Newton's
+/// reusable workspace (a local one when nullptr).
 GroupStd group_mode(
     Rcpp::NumericVector y,
     Rcpp::NumericMatrix x,
@@ -260,7 +394,9 @@ GroupStd group_mode(
     int warm_method = WARM_COLD,
     WarmCompare* wc = nullptr,
     int hess_method = HESS_NUMERIC,
-    HessCompare* hc = nullptr
+    HessCompare* hc = nullptr,
+    NewtonCompare* ncmp = nullptr,
+    std::vector<double>* nwork = nullptr
 );
 
 /// Seconds spent in the three envelope parts (accumulated).
@@ -315,7 +451,9 @@ Rcpp::List group_simulate(
 /// is a WarmMethod and applies to MODE_VMMIN only. Also returned:
 /// mode_hessian (l1*l1 x n_chains; column c is chain c's A1, column-major)
 /// and warm_compare (the WarmCompare fields). `hess_method` is a HessMethod
-/// (MODE_VMMIN only); hessian_compare returns the HessCompare fields.
+/// (vmmin runs only); hessian_compare returns the HessCompare fields and
+/// newton_compare the NewtonCompare fields (MODE_NEWTON* only). `check`
+/// applies to MODE_OPTIM and MODE_COMPARE only.
 Rcpp::List rNormalGLMGroupChains(
     Rcpp::NumericVector y,
     Rcpp::NumericMatrix x,

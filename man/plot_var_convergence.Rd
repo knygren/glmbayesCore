@@ -239,10 +239,33 @@ that says how much overshoot is expected.
 \code{Var_ref} is the exact posterior variance when \code{design} and
 \code{measurement_prior_list} are both supplied (only possible when
 \eqn{\sigma^2} and the RE variance components are all fixed), and
-otherwise the empirical last-sweep variance.  The empirical fallback
+otherwise empirical: pooled over a window of final sweeps when the
+history stores per-sweep TV bounds (see below), else the last-sweep
+variance.  The empirical reference
 cannot detect a run that has not converged \emph{at all}, since the
 denominator is then drawn from the same unconverged distribution; prefer
 the exact reference whenever the model allows it.
+}
+
+\subsection{Pooled reference}{
+
+With few chains the last sweep alone is a noisy reference that shifts the
+whole curve.  When the history carries per-sweep TV bounds
+(\code{hist$tv_bound}, \code{hist$tv_tol}; stored by the GLMM samplers
+from the local-Gaussian approximation at the mode, whose rate reflects the
+actual correlation between successive sweeps better than the
+conservative ridge certificate), the reference is the mean over a
+trailing window of sweeps, chosen in two steps.  First, a screen: only
+sweeps whose approximate TV bound is at most twice \code{tv_tol} are
+eligible.  Second, starting from the last sweep, earlier
+eligible sweeps are added until the pooled reference is precise enough
+(relative SE about 1 percent), a trend appears within the window, or the next
+sweep is not eligible.  Each series gets its own window; whitened charts
+share one.  The band then allows for the reference's own error, using an
+effective number of sweeps that accounts for correlation between
+consecutive sweeps, taken from the same rate (or from the data, if
+larger).  The subtitle reports the window and why it stopped,
+and a dotted vertical line marks the earliest window start.
 }
 
 \subsection{Reading it alongside the mean chart}{

@@ -92,11 +92,9 @@ GroupStd group_mode(NumericVector y, NumericMatrix x, NumericVector offset,
                     const std::string& link, int mode_method,
                     ModeCompare* cmp, ModeTiming* mt, const double* warm_start,
                     int warm_method, WarmCompare* wc, int hess_method,
-                    HessCompare* hc) {
+                    HessCompare* hc, NewtonCompare* ncmp,
+                    std::vector<double>* nwork) {
   auto t_part = std::chrono::steady_clock::now();
-  Rcpp::Function asMat("as.matrix");
-  Rcpp::Function optfun("optim");
-  Rcpp::Function tryfun("try");
 
   GroupStd g;
   g.y = y;
@@ -114,28 +112,60 @@ GroupStd group_mode(NumericVector y, NumericMatrix x, NumericVector offset,
   g.wt2 = wt / g.dispersion;
 
   g.alpha = NumericVector(l2);
-  NumericMatrix mu2a = asMat(mu);
   arma::mat x2(x.begin(), l2, l1, false);
   arma::vec alpha2(g.alpha.begin(), l2, false);
   arma::vec offset2b(offset.begin(), l2, false);
-  arma::mat mu2(mu2a.begin(), mu2a.nrow(), mu2a.ncol(), false);
+  arma::vec mu2(mu.begin(), l1, false);
   alpha2 = x2 * mu2 + offset2b;
-
-  NumericVector start = Rcpp::clone(mu);
-  NumericVector parin = start - mu;
-  NumericVector mu1 = mu - mu;
 
   if (mode_method != MODE_OPTIM && !vmmin_supported(family, link)) {
     mode_method = MODE_OPTIM;
   }
   if (mt) mt->prep += seconds_since(t_part);
 
-  if (mode_method == MODE_VMMIN) {
-    std::vector<double> par0;
-    if (warm_start != nullptr && warm_method != WARM_COLD) {
-      par0.resize(l1);
-      for (int i = 0; i < l1; ++i) par0[i] = warm_start[i] - mu[i];
+  const bool newton_primary =
+      mode_method == MODE_NEWTON || mode_method == MODE_NEWTON_F4;
+  const bool newton_cmp = mode_method == MODE_NEWTON_COMPARE ||
+                          mode_method == MODE_NEWTON_F4_COMPARE;
+  const int backend = (mode_method == MODE_NEWTON_F4 ||
+                       mode_method == MODE_NEWTON_F4_COMPARE)
+                          ? NEWTON_FAM
+                          : NEWTON_ENV;
+  std::vector<double> par0;
+  if (warm_start != nullptr && warm_method != WARM_COLD) {
+    par0.resize(l1);
+    for (int i = 0; i < l1; ++i) par0[i] = warm_start[i] - mu[i];
+  }
+  std::vector<double> nwork_local;
+  std::vector<double>& nw = nwork ? *nwork : nwork_local;
+
+  // Warm (when par0 is set) then cold; status != NEWTON_OK if both fail.
+  auto run_newton = [&](ModeTiming* timing) {
+    NewtonResult r;
+    if (!par0.empty()) {
+      r = newton_mode(g, family, link, par0.data(), backend, nw, timing);
+      if (r.status == NEWTON_OK) return r;
+      if (ncmp) ncmp->cold_retry += 1.0;
     }
+    r = newton_mode(g, family, link, nullptr, backend, nw, timing);
+    if (r.status != NEWTON_OK && ncmp) ncmp->fallback += 1.0;
+    return r;
+  };
+
+  bool use_vmmin = mode_method == MODE_VMMIN || newton_cmp;
+  if (newton_primary) {
+    const NewtonResult r = run_newton(mt);
+    if (r.status == NEWTON_OK) {
+      g.fit = r.fit;
+      g.b2a = r.b2a;
+      g.A1 = r.A1;
+    } else {
+      use_vmmin = true;
+    }
+  }
+
+  if (use_vmmin) {
+    const auto t_vm0 = std::chrono::steady_clock::now();
     VmminResult v;
     if (par0.empty()) {
       v = vmmin_mode(g, f2, f3, family, link, false, mt, nullptr, hess_method,
@@ -187,8 +217,23 @@ GroupStd group_mode(NumericVector y, NumericMatrix x, NumericVector offset,
     g.fit = v.fit;
     g.b2a = v.b2a;
     g.A1 = v.A1;
-  } else {
+    if (newton_cmp && ncmp) {
+      const double t_vm = seconds_since(t_vm0);
+      const auto t_cmp = std::chrono::steady_clock::now();
+      const NewtonResult r = run_newton(nullptr);
+      const double t_nt = seconds_since(t_cmp);
+      newton_compare_update(*ncmp, g, family, link, v, r, t_vm, t_nt,
+                            backend == NEWTON_FAM);
+      if (mt) mt->compare += seconds_since(t_cmp);
+    }
+  } else if (!newton_primary) {
     auto t0 = std::chrono::steady_clock::now();
+    Rcpp::Function asMat("as.matrix");
+    Rcpp::Function optfun("optim");
+    Rcpp::Function tryfun("try");
+    NumericVector start = Rcpp::clone(mu);
+    NumericVector parin = start - mu;
+    NumericVector mu1 = mu - mu;
     Rcpp::Shield<SEXP> optSEXP(tryfun(
         optfun(Rcpp::_["par"] = parin, Rcpp::_["fn"] = f2,
                Rcpp::_["gr"] = f3, Rcpp::_["y"] = y, Rcpp::_["x"] = x,
@@ -357,9 +402,12 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
   ModeTiming mtm;
   WarmCompare wcm;
   HessCompare hcm;
+  NewtonCompare ncm;
+  std::vector<double> nwork;
   glmbayes::env::GridSetupTiming gst;
   // rNormalGLM uses optim, so its mode only matches when optim is kept.
-  const bool do_check = check && mode_method != MODE_VMMIN;
+  const bool do_check =
+      check && (mode_method == MODE_OPTIM || mode_method == MODE_COMPARE);
 
   // 1. Mode and grid setup for every chain.
   std::vector<GroupStd> st;
@@ -382,7 +430,7 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
     st.push_back(group_mode(y, x, offset, wt, mu_c, P, dispersion, f2, f3,
                             family, verbose && (c == 0), link, mode_method,
                             &cmp, &mtm, start_c, warm_method, &wcm,
-                            hess_method, &hcm));
+                            hess_method, &hcm, &ncm, &nwork));
     t_mode += seconds_since(t0);
     t0 = std::chrono::steady_clock::now();
     grids.push_back(glmbayes::env::EnvelopeGridSetup(
@@ -478,7 +526,11 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
           Rcpp::Named("compare") = mtm.compare,
           Rcpp::Named("standardize") = mtm.standardize,
           Rcpp::Named("calls") = mtm.calls,
-          Rcpp::Named("kernel_calls") = mtm.kernel_calls),
+          Rcpp::Named("kernel_calls") = mtm.kernel_calls,
+          Rcpp::Named("newton") = mtm.newton,
+          Rcpp::Named("newton_kernel") = mtm.newton_kernel,
+          Rcpp::Named("newton_iters") = mtm.newton_iters,
+          Rcpp::Named("newton_backtracks") = mtm.newton_backtracks),
       Rcpp::Named("setup_compare") = NumericVector::create(
           Rcpp::Named("calls") = gst.compared),
       Rcpp::Named("mode_compare") = NumericVector::create(
@@ -514,7 +566,25 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
           Rcpp::Named("fallback") = hcm.fallback,
           Rcpp::Named("max_hess") = hcm.max_hess,
           Rcpp::Named("t_numeric") = hcm.t_numeric,
-          Rcpp::Named("t_exact") = hcm.t_exact));
+          Rcpp::Named("t_exact") = hcm.t_exact),
+      Rcpp::Named("newton_compare") = NumericVector::create(
+          Rcpp::Named("calls") = ncm.calls,
+          Rcpp::Named("flagged") = ncm.flagged,
+          Rcpp::Named("cold_retry") = ncm.cold_retry,
+          Rcpp::Named("fallback") = ncm.fallback,
+          Rcpp::Named("newton_lower") = ncm.newton_lower,
+          Rcpp::Named("max_d") = ncm.max_d,
+          Rcpp::Named("max_df") = ncm.max_df,
+          Rcpp::Named("max_hess") = ncm.max_hess,
+          Rcpp::Named("max_kf") = ncm.max_kf,
+          Rcpp::Named("max_kgrad") = ncm.max_kgrad,
+          Rcpp::Named("max_kH") = ncm.max_kH,
+          Rcpp::Named("iters") = ncm.iters,
+          Rcpp::Named("fevals") = ncm.fevals,
+          Rcpp::Named("gevals") = ncm.gevals,
+          Rcpp::Named("backtracks") = ncm.backtracks,
+          Rcpp::Named("t_vmmin") = ncm.t_vmmin,
+          Rcpp::Named("t_newton") = ncm.t_newton));
 }
 
 }  // namespace group

@@ -548,6 +548,32 @@ Rcpp::List f2_f3_gamma(
   );
 }
 
+double f2_f3_f4_gamma(int l1, int l2, const double* x, const double* y,
+                      const double* alpha, const double* wt,
+                      const double* mu, const double* P, const double* b,
+                      double* grad, double* H, double* work) {
+  double* eta = work;
+  double* r = work + l1;
+  double* w = work + 2 * l1;
+  double* bmu = work + 3 * l1;
+  double f = f2_f3_f4_prior(l2, P, mu, b, bmu, grad);
+  f2_f3_f4_eta(l1, l2, x, alpha, b, eta);
+  for (int j = 0; j < l1; ++j) {
+    const double m = std::exp(eta[j]);
+    f += -::Rf_dgamma(y[j], wt[j], m / wt[j], 1);
+    if (grad) r[j] = (1.0 - y[j] / m) * wt[j];
+    if (H) w[j] = wt[j] * y[j] * std::exp(-eta[j]);
+  }
+  f2_f3_f4_finish(l1, l2, x, P, r, w, grad, H);
+  return f;
+}
+
+arma::cube f4_gamma(NumericMatrix b, NumericVector y, NumericMatrix x,
+                    NumericMatrix mu, NumericMatrix P,
+                    NumericVector alpha, NumericVector wt) {
+  return f4_multi(f2_f3_f4_gamma, b, y, x, mu, P, alpha, wt);
+}
+
 } //famfuncs
 
 } //glmbayes
