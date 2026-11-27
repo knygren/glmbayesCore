@@ -35,7 +35,8 @@
  *   f2_f3_f4 functions are the allocation-free single-point variant: raw
  *   pointers and a caller-supplied workspace, no Rcpp objects, so the same
  *   steps can be ported to OpenCL. They return the f2 value and fill the f3
- *   gradient and f4 Hessian when those outputs are non-null.
+ *   gradient and f4 Hessian when those outputs are non-null. f2_value
+ *   functions are their value-only form (grad and H null).
  *
  *   Functions are used during both envelope construction and simulation
  *   
@@ -344,6 +345,86 @@ inline F2F3F4Fn f2_f3_f4_select(const std::string& family,
   if (family == "poisson" || family == "quasipoisson") return f2_f3_f4_poisson;
   if (family == "Gamma") return f2_f3_f4_gamma;
   if (family == "gaussian") return f2_f3_f4_gaussian;
+  return nullptr;
+}
+
+//----------------- f2_value (allocation-free, value only) ----------------------
+//
+// The f2 value alone: the f2_f3_f4 function with grad and H null, so the
+// same arguments, workspace (f2_value_work_size doubles) and scalar
+// formulas. No Rcpp objects and no locks, so safe inside RcppParallel
+// workers.
+
+typedef double (*F2ValueFn)(int l1, int l2, const double* x, const double* y,
+                            const double* alpha, const double* wt,
+                            const double* mu, const double* P, const double* b,
+                            double* work);
+
+inline int f2_value_work_size(int l1, int l2) {
+  return f2_f3_f4_work_size(l1, l2);
+}
+
+inline double f2_value_binomial_logit(int l1, int l2, const double* x,
+                                      const double* y, const double* alpha,
+                                      const double* wt, const double* mu,
+                                      const double* P, const double* b,
+                                      double* work) {
+  return f2_f3_f4_binomial_logit(l1, l2, x, y, alpha, wt, mu, P, b, nullptr,
+                                 nullptr, work);
+}
+inline double f2_value_binomial_probit(int l1, int l2, const double* x,
+                                       const double* y, const double* alpha,
+                                       const double* wt, const double* mu,
+                                       const double* P, const double* b,
+                                       double* work) {
+  return f2_f3_f4_binomial_probit(l1, l2, x, y, alpha, wt, mu, P, b, nullptr,
+                                  nullptr, work);
+}
+inline double f2_value_binomial_cloglog(int l1, int l2, const double* x,
+                                        const double* y, const double* alpha,
+                                        const double* wt, const double* mu,
+                                        const double* P, const double* b,
+                                        double* work) {
+  return f2_f3_f4_binomial_cloglog(l1, l2, x, y, alpha, wt, mu, P, b, nullptr,
+                                   nullptr, work);
+}
+inline double f2_value_poisson(int l1, int l2, const double* x,
+                               const double* y, const double* alpha,
+                               const double* wt, const double* mu,
+                               const double* P, const double* b,
+                               double* work) {
+  return f2_f3_f4_poisson(l1, l2, x, y, alpha, wt, mu, P, b, nullptr, nullptr,
+                          work);
+}
+inline double f2_value_gamma(int l1, int l2, const double* x, const double* y,
+                             const double* alpha, const double* wt,
+                             const double* mu, const double* P,
+                             const double* b, double* work) {
+  return f2_f3_f4_gamma(l1, l2, x, y, alpha, wt, mu, P, b, nullptr, nullptr,
+                        work);
+}
+inline double f2_value_gaussian(int l1, int l2, const double* x,
+                                const double* y, const double* alpha,
+                                const double* wt, const double* mu,
+                                const double* P, const double* b,
+                                double* work) {
+  return f2_f3_f4_gaussian(l1, l2, x, y, alpha, wt, mu, P, b, nullptr, nullptr,
+                           work);
+}
+
+// The f2_value function for a family/link pair (the f2_f3_f4_select pairs),
+// or nullptr.
+inline F2ValueFn f2_value_select(const std::string& family,
+                                 const std::string& link) {
+  if (family == "binomial" || family == "quasibinomial") {
+    if (link == "logit") return f2_value_binomial_logit;
+    if (link == "probit") return f2_value_binomial_probit;
+    if (link == "cloglog") return f2_value_binomial_cloglog;
+    return nullptr;
+  }
+  if (family == "poisson" || family == "quasipoisson") return f2_value_poisson;
+  if (family == "Gamma") return f2_value_gamma;
+  if (family == "gaussian") return f2_value_gaussian;
   return nullptr;
 }
 

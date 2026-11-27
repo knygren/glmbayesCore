@@ -184,7 +184,10 @@ extern "C" {
    * result field warm_compare). hess_method: 0 finite differences, 1 exact
    * (finite differences if not finite or not PD), 2 both with comparison
    * (finite differences kept; result field hessian_compare). The result
-   * also has mode_hessian. */
+   * also has mode_hessian. The draws follow
+   * getOption("glmbayesCore.group_sim"): "parallel" (default;
+   * RcppParallel across chains; thread-local RNG, so set.seed() does not
+   * fix the draws), "serial" or "compare" (serial kept; result field sim_compare). */
   static inline SEXP glmbayesCore_rNormalGLMGroupChains(
       SEXP y, SEXP x, SEXP offset, SEXP wt, SEXP dispersion, SEXP mu,
       SEXP P, SEXP f2, SEXP f3, SEXP family, SEXP link, SEXP Gridtype,

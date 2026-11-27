@@ -22,6 +22,8 @@
  *   - group_mode_hessian.cpp (exact_hessian)
  *   - group_mode_newton.cpp (newton_minimize, newton_mode,
  *     newton_compare_update)
+ *   - group_simulate_parallel.cpp (group_draw_in, group_draw_one,
+ *     group_simulate_chains, sim_compare_update)
  *
  * @section UsedBy
  *   - rNormalGLMGroups.cpp
@@ -37,6 +39,15 @@
 #include <vector>
 
 namespace glmbayes {
+
+namespace fam {
+// As in famfuncs.h, which is not included here because of its
+// namespace-scope using directives.
+typedef double (*F2ValueFn)(int l1, int l2, const double* x, const double* y,
+                            const double* alpha, const double* wt,
+                            const double* mu, const double* P, const double* b,
+                            double* work);
+}  // namespace fam
 
 namespace sim {
 
@@ -432,11 +443,99 @@ Rcpp::List group_simulate(
     bool verbose = false
 );
 
+/// Simulation path in rNormalGLMGroupChains, from
+/// getOption("glmbayesCore.group_sim").
+enum SimMethod {
+    SIM_SERIAL = 0,    // group_simulate per chain (R's RNG)
+    SIM_PARALLEL = 1,  // group_simulate_chains (thread-local RNG)
+    SIM_COMPARE = 2    // serial draws kept; kernels, transform and timing compared
+};
+
+/// Raw views of one chain's standardized model and envelope for
+/// group_draw_one. The pointers refer to the GroupStd and envelope List the
+/// view was built from, which must outlive it. Matrices are column-major.
+struct GroupDrawIn {
+    int l1 = 0;               // coefficients
+    int nobs = 0;             // observations
+    int n_cells = 0;          // envelope cells
+    const double* y = nullptr;
+    const double* x2 = nullptr;      // nobs x l1
+    const double* alpha = nullptr;
+    const double* wt2 = nullptr;
+    const double* mu2 = nullptr;     // l1
+    const double* P2 = nullptr;      // l1 x l1
+    const double* L2Inv = nullptr;   // l1 x l1
+    const double* L3Inv = nullptr;   // l1 x l1
+    const double* mu = nullptr;      // prior mean, l1
+    const double* PLSD = nullptr;    // n_cells
+    const double* LLconst = nullptr; // n_cells
+    const double* loglt = nullptr;   // n_cells x l1
+    const double* logrt = nullptr;   // n_cells x l1
+    const double* cbars = nullptr;   // n_cells x l1
+};
+
+/// Views into `g` and `envelope` (an EnvelopeFinalize result). Uses the R
+/// API, so call it outside parallel regions.
+GroupDrawIn group_draw_in(const GroupStd& g, const Rcpp::List& envelope);
+
+/// group_draw_one workspace in doubles.
+int group_draw_work_size(int l1, int nobs);
+
+/// fam::f2_value_select(family, link): nullptr for pairs without one.
+glmbayes::fam::F2ValueFn group_f2_value(const std::string& family,
+                                        const std::string& link);
+
+/// SimMethod from getOption("glmbayesCore.group_sim"): "serial",
+/// "parallel" (or unset) or "compare". Uses the R API.
+int group_sim_method();
+
+/// One accept-reject draw as in rNormalGLM_std (slice from PLSD, truncated
+/// normals per coordinate, test LLconst + b'cbar - log U2 - f2(b) >= 0),
+/// then L2Inv L3Inv b + mu into `coef_out` (l1). Draws from the thread-local
+/// RNG (runif_safe), not R's. No R API, no allocation; `work` holds
+/// group_draw_work_size doubles. Returns the number of candidates.
+int group_draw_one(const GroupDrawIn& in, glmbayes::fam::F2ValueFn f2v,
+                   double* work, double* coef_out);
+
+/// group_draw_one for every chain in parallel (RcppParallel::parallelFor).
+/// coef is n_chains x l1 (column-major), iters n_chains.
+void group_simulate_chains(const std::vector<GroupDrawIn>& in,
+                           glmbayes::fam::F2ValueFn f2v, double* coef,
+                           double* iters);
+
+/// Diagnostics accumulated with SIM_COMPARE: calls (chains), flagged
+/// (max_kf or max_transform above 1e-10), max_kf (|f2_value - f2| /
+/// (1 + |f2|) at bstar2 and the first and last tangent points), max_transform
+/// (|L2Inv L3Inv bstar2 + mu - coef.mode| / (1 + |coef.mode|)), seconds in
+/// the serial and parallel simulation, and candidates summed over draws.
+struct SimCompare {
+    double calls = 0.0;
+    double flagged = 0.0;
+    double max_kf = 0.0;
+    double max_transform = 0.0;
+    double t_serial = 0.0;
+    double t_parallel = 0.0;
+    double iters_serial = 0.0;
+    double iters_parallel = 0.0;
+};
+
+/// Fold one chain into `sc` (kernel and transform checks).
+void sim_compare_update(SimCompare& sc, const GroupStd& g,
+                        const Rcpp::List& envelope, const GroupDrawIn& in,
+                        glmbayes::fam::F2ValueFn f2v,
+                        const std::string& family, const std::string& link);
+
 /// One group drawn for every chain (one draw per chain). Column c of `mu`
 /// is chain c's prior mean. Runs group_mode and EnvelopeGridSetup for all
 /// chains, then EnvelopeEval for all chains (the step to batch across
-/// chains), then EnvelopeFinalize and group_simulate per chain, releasing
-/// each envelope after its draw. With `check`, each chain is also run
+/// chains), then EnvelopeFinalize for all chains, then the draws.
+/// getOption("glmbayesCore.group_sim") picks them (group_sim_method):
+/// "serial" runs group_simulate per chain; "parallel" (default) runs
+/// group_simulate_chains, whose draws come from the thread-local RNG
+/// (runif_safe) rather than R's, so set.seed() does not fix them; "compare"
+/// keeps the serial draws and fills sim_compare (SimCompare fields; all zero
+/// otherwise). Pairs without an f2_value kernel always run serially. With
+/// `check`, each chain is also run
 /// through rNormalGLM on cloned inputs and the call stops if the mode or
 /// envelope differs.
 /// Returns coefficients and coef.mode (n_chains x l1), iters (n_chains), and

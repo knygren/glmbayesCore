@@ -452,7 +452,7 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
     t_eval += seconds_since(t0);
   }
 
-  // 3. Finalize, draw, release.
+  // 3. Finalize every chain, then draw (serial or parallel), then collect.
   NumericMatrix coef(nc, l1);
   NumericMatrix coef_mode(nc, l1);
   NumericMatrix mode_hessian(l1 * l1, nc);
@@ -461,37 +461,77 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
     const NumericMatrix& A1 = st[c].A1;
     for (int k = 0; k < l1 * l1; ++k) mode_hessian(k, c) = A1[k];
   }
+  std::vector<List> envs(nc);
   for (int c = 0; c < nc; ++c) {
-    auto t0 = std::chrono::steady_clock::now();
-    List env = glmbayes::env::EnvelopeFinalize(
+    const auto t0 = std::chrono::steady_clock::now();
+    envs[c] = glmbayes::env::EnvelopeFinalize(
         grids[c], Rcpp::as<NumericVector>(evals[c]["NegLL"]),
         Rcpp::as<arma::mat>(evals[c]["cbars"]), st[c].x2, n > 1, false);
     t_fin += seconds_since(t0);
-    t0 = std::chrono::steady_clock::now();
-    const List sim = group_simulate(st[c], env, n, f2, family, link, false,
-                                    false);
-    t_sim += seconds_since(t0);
-    const NumericMatrix cs = Rcpp::as<NumericMatrix>(sim["coefficients"]);
-    const NumericMatrix cm = Rcpp::as<NumericMatrix>(sim["coef.mode"]);
-
-    if (do_check) {
-      NumericVector mu_c = Rcpp::clone(st[c].mu);
-      const List ref = glmbayes::sim::rNormalGLM(
-          n, Rcpp::clone(y), Rcpp::clone(x), mu_c, Rcpp::clone(P),
-          Rcpp::clone(offset), Rcpp::clone(wt), dispersion, f2, f3,
-          Rcpp::clone(mu_c), family, link, Gridtype, n_envopt_b, false,
-          use_opencl, false);
-      check_against_rNormalGLM(ref, cm, env, c);
-    }
-
-    for (int j = 0; j < l1; ++j) {
-      coef(c, j) = cs(0, j);
-      coef_mode(c, j) = cm(0, j);
-    }
-    iters[c] = Rcpp::as<NumericVector>(sim["iters"])[0];
-
     evals[c] = List();
     grids[c] = glmbayes::env::EnvGrid();
+  }
+
+  int sim_method = group_sim_method();
+  const glmbayes::fam::F2ValueFn f2v = group_f2_value(family, link);
+  if (f2v == nullptr) sim_method = SIM_SERIAL;
+  SimCompare scm;
+  auto run_check = [&](int c) {
+    NumericVector mu_c = Rcpp::clone(st[c].mu);
+    const List ref = glmbayes::sim::rNormalGLM(
+        n, Rcpp::clone(y), Rcpp::clone(x), mu_c, Rcpp::clone(P),
+        Rcpp::clone(offset), Rcpp::clone(wt), dispersion, f2, f3,
+        Rcpp::clone(mu_c), family, link, Gridtype, n_envopt_b, false,
+        use_opencl, false);
+    NumericMatrix cm(1, l1);
+    for (int j = 0; j < l1; ++j) cm(0, j) = coef_mode(c, j);
+    check_against_rNormalGLM(ref, cm, envs[c], c);
+  };
+  std::vector<GroupDrawIn> din;
+  if (sim_method != SIM_SERIAL) {
+    din.reserve(nc);
+    for (int c = 0; c < nc; ++c) din.push_back(group_draw_in(st[c], envs[c]));
+  }
+
+  if (sim_method == SIM_PARALLEL) {
+    const auto t0 = std::chrono::steady_clock::now();
+    group_simulate_chains(din, f2v, coef.begin(), iters.begin());
+    t_sim += seconds_since(t0);
+    for (int c = 0; c < nc; ++c) {
+      for (int j = 0; j < l1; ++j) {
+        coef_mode(c, j) = st[c].b2a[j] + st[c].mu[j];
+      }
+      if (do_check) run_check(c);
+    }
+  } else {
+    for (int c = 0; c < nc; ++c) {
+      const auto t0 = std::chrono::steady_clock::now();
+      const List sim = group_simulate(st[c], envs[c], n, f2, family, link,
+                                      false, false);
+      const double t_c = seconds_since(t0);
+      t_sim += t_c;
+      const NumericMatrix cs = Rcpp::as<NumericMatrix>(sim["coefficients"]);
+      const NumericMatrix cm = Rcpp::as<NumericMatrix>(sim["coef.mode"]);
+      for (int j = 0; j < l1; ++j) {
+        coef(c, j) = cs(0, j);
+        coef_mode(c, j) = cm(0, j);
+      }
+      iters[c] = Rcpp::as<NumericVector>(sim["iters"])[0];
+      if (do_check) run_check(c);
+      if (sim_method == SIM_COMPARE) {
+        scm.t_serial += t_c;
+        scm.iters_serial += iters[c];
+        sim_compare_update(scm, st[c], envs[c], din[c], f2v, family, link);
+      }
+    }
+    if (sim_method == SIM_COMPARE) {
+      NumericMatrix coef_p(nc, l1);
+      NumericVector iters_p(nc);
+      const auto t0 = std::chrono::steady_clock::now();
+      group_simulate_chains(din, f2v, coef_p.begin(), iters_p.begin());
+      scm.t_parallel += seconds_since(t0);
+      for (int c = 0; c < nc; ++c) scm.iters_parallel += iters_p[c];
+    }
   }
 
   return List::create(
@@ -584,7 +624,16 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
           Rcpp::Named("gevals") = ncm.gevals,
           Rcpp::Named("backtracks") = ncm.backtracks,
           Rcpp::Named("t_vmmin") = ncm.t_vmmin,
-          Rcpp::Named("t_newton") = ncm.t_newton));
+          Rcpp::Named("t_newton") = ncm.t_newton),
+      Rcpp::Named("sim_compare") = NumericVector::create(
+          Rcpp::Named("calls") = scm.calls,
+          Rcpp::Named("flagged") = scm.flagged,
+          Rcpp::Named("max_kf") = scm.max_kf,
+          Rcpp::Named("max_transform") = scm.max_transform,
+          Rcpp::Named("t_serial") = scm.t_serial,
+          Rcpp::Named("t_parallel") = scm.t_parallel,
+          Rcpp::Named("iters_serial") = scm.iters_serial,
+          Rcpp::Named("iters_parallel") = scm.iters_parallel));
 }
 
 }  // namespace group
