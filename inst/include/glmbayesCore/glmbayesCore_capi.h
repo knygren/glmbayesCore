@@ -187,7 +187,11 @@ extern "C" {
    * also has mode_hessian. The draws follow
    * getOption("glmbayesCore.group_sim"): "parallel" (default;
    * RcppParallel across chains; thread-local RNG, so set.seed() does not
-   * fix the draws), "serial" or "compare" (serial kept; result field sim_compare). */
+   * fix the draws), "serial" or "compare" (serial kept; result field sim_compare).
+   * The envelope evaluation follows getOption("glmbayesCore.group_eval"):
+   * "batch" (default; poisson and quasipoisson on the CPU, all chains at
+   * once), "legacy" (EnvelopeEval per chain) or "compare" (legacy kept;
+   * result field eval_compare). */
   static inline SEXP glmbayesCore_rNormalGLMGroupChains(
       SEXP y, SEXP x, SEXP offset, SEXP wt, SEXP dispersion, SEXP mu,
       SEXP P, SEXP f2, SEXP f3, SEXP family, SEXP link, SEXP Gridtype,

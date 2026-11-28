@@ -24,6 +24,8 @@
  *     newton_compare_update)
  *   - group_simulate_parallel.cpp (group_draw_in, group_draw_one,
  *     group_simulate_chains, sim_compare_update)
+ *   - envelope_eval_batch.cpp (group_eval_method, eval_batch_pack,
+ *     poisson_eval_batch)
  *
  * @section UsedBy
  *   - rNormalGLMGroups.cpp
@@ -525,6 +527,74 @@ void sim_compare_update(SimCompare& sc, const GroupStd& g,
                         glmbayes::fam::F2ValueFn f2v,
                         const std::string& family, const std::string& link);
 
+/// Envelope evaluation path in rNormalGLMGroupChains, from
+/// getOption("glmbayesCore.group_eval").
+enum EvalMethod {
+    EVAL_LEGACY = 0,   // EnvelopeEval per chain
+    EVAL_BATCH = 1,    // poisson_eval_batch over every chain's grid points
+    EVAL_COMPARE = 2   // legacy results kept; batch compared
+};
+
+/// EvalMethod from getOption("glmbayesCore.group_eval"): "legacy",
+/// "batch" (or unset) or "compare". Uses the R API.
+int group_eval_method();
+
+/// Families poisson_eval_batch handles (poisson and quasipoisson, log link).
+bool eval_batch_supported(const std::string& family);
+
+/// Every chain's envelope evaluation for one group in flat, column-major
+/// buffers. The group part (y, wt2, lg_const) is shared by all chains; the
+/// chain part is stacked chain by chain: chain c's x2 starts at
+/// c * nobs * l1, alpha at c * nobs, mu2 at c * l1, P2 at c * l1 * l1, and
+/// its m[c] grid points (columns of G, l1 each) at column m_off[c]. Work
+/// item t in [0, n_points) is grid point t - m_off[c] of the chain c with
+/// m_off[c] <= t < m_off[c + 1].
+struct EvalBatch {
+    int nobs = 0;
+    int l1 = 0;
+    int n_chains = 0;
+    int n_points = 0;
+    std::vector<double> y;
+    std::vector<double> wt2;
+    double lg_const = 0.0;    // sum_i wt2[i] lgamma(y[i] + 1)
+    std::vector<int> m;
+    std::vector<int> m_off;   // n_chains + 1
+    std::vector<double> x2;
+    std::vector<double> alpha;
+    std::vector<double> mu2;
+    std::vector<double> P2;
+    std::vector<double> G;
+};
+
+/// sum_i wt[i] lgamma(y[i] + 1): the y-only part of the Poisson negative
+/// log-likelihood.
+double poisson_eval_constant(const double* y, const double* wt, int nobs);
+
+/// Pack st[c] (x2, alpha, mu2, P2) and G4[c] (l1 x m_c grid) for every
+/// chain; y and wt2 come from st[0], which all chains of a call share. Uses
+/// the R API, so call it outside parallel regions.
+EvalBatch eval_batch_pack(const std::vector<GroupStd>& st,
+                          const std::vector<Rcpp::NumericMatrix>& G4);
+
+/// Negative log-posterior qf (n_points) and its gradient grad (l1 x
+/// n_points, column t for work item t) at every grid point, with the values
+/// of f2_f3_poisson. The data term is wt2 (exp(eta) - y eta) plus lg_const,
+/// so each observation costs one exp. No R API, no allocation beyond an l1
+/// workspace.
+void poisson_eval_batch(const EvalBatch& b, double* qf, double* grad);
+
+/// Diagnostics accumulated with EVAL_COMPARE: calls (chains), flagged
+/// (max_qf or max_grad above 1e-10 for a chain), max_qf and max_grad
+/// (|batch - legacy| / (1 + |legacy|)), and seconds in each path.
+struct EvalCompare {
+    double calls = 0.0;
+    double flagged = 0.0;
+    double max_qf = 0.0;
+    double max_grad = 0.0;
+    double t_legacy = 0.0;
+    double t_batch = 0.0;
+};
+
 /// One group drawn for every chain (one draw per chain). Column c of `mu`
 /// is chain c's prior mean. Runs group_mode and EnvelopeGridSetup for all
 /// chains, then EnvelopeEval for all chains (the step to batch across
@@ -553,6 +623,12 @@ void sim_compare_update(SimCompare& sc, const GroupStd& g,
 /// (vmmin runs only); hessian_compare returns the HessCompare fields and
 /// newton_compare the NewtonCompare fields (MODE_NEWTON* only). `check`
 /// applies to MODE_OPTIM and MODE_COMPARE only.
+/// getOption("glmbayesCore.group_eval") picks the evaluation
+/// (group_eval_method): "batch" (default) runs poisson_eval_batch for
+/// poisson and quasipoisson, "legacy" runs EnvelopeEval per chain, and
+/// "compare" keeps EnvelopeEval and fills eval_compare (EvalCompare fields;
+/// all zero otherwise). Other families and the OpenCL path always use
+/// EnvelopeEval.
 Rcpp::List rNormalGLMGroupChains(
     Rcpp::NumericVector y,
     Rcpp::NumericMatrix x,

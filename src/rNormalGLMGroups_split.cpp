@@ -10,6 +10,7 @@
 #include "Envelopefuncs_split.h"
 #include "simfuncs_groups_split.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <exception>
@@ -439,17 +440,76 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
     t_setup += seconds_since(t0);
   }
 
-  // 2. EnvelopeEval for every chain.
+  // 2. Envelope evaluation for every chain.
   std::vector<List> evals(nc);
+  EvalCompare ecm;
   {
-    const auto t0 = std::chrono::steady_clock::now();
-    for (int c = 0; c < nc; ++c) {
-      const GroupStd& g = st[c];
-      evals[c] = glmbayes::env::EnvelopeEval(grids[c].G4, g.y, g.x2, g.mu2,
-                                             g.P2, g.alpha, g.wt2, family,
-                                             link, use_ocl, false);
+    int eval_method = group_eval_method();
+    if (use_ocl || !eval_batch_supported(family)) eval_method = EVAL_LEGACY;
+
+    if (eval_method != EVAL_BATCH) {
+      const auto t0 = std::chrono::steady_clock::now();
+      for (int c = 0; c < nc; ++c) {
+        const GroupStd& g = st[c];
+        evals[c] = glmbayes::env::EnvelopeEval(grids[c].G4, g.y, g.x2, g.mu2,
+                                               g.P2, g.alpha, g.wt2, family,
+                                               link, use_ocl, false);
+      }
+      const double t_l = seconds_since(t0);
+      t_eval += t_l;
+      ecm.t_legacy += (eval_method == EVAL_COMPARE) ? t_l : 0.0;
     }
-    t_eval += seconds_since(t0);
+
+    if (eval_method != EVAL_LEGACY) {
+      const auto t0 = std::chrono::steady_clock::now();
+      std::vector<NumericMatrix> G4(nc);
+      for (int c = 0; c < nc; ++c) G4[c] = grids[c].G4;
+      const EvalBatch eb = eval_batch_pack(st, G4);
+      std::vector<double> qf(eb.n_points);
+      std::vector<double> gr(static_cast<std::size_t>(eb.n_points) * l1);
+      poisson_eval_batch(eb, qf.data(), gr.data());
+
+      for (int c = 0; c < nc; ++c) {
+        const int mc = eb.m[c];
+        const int off = eb.m_off[c];
+        if (eval_method == EVAL_BATCH) {
+          NumericVector NegLL(mc);
+          arma::mat cbars(mc, l1);
+          for (int j = 0; j < mc; ++j) {
+            NegLL[j] = qf[off + j];
+            for (int k = 0; k < l1; ++k) {
+              cbars(j, k) = gr[static_cast<std::size_t>(off + j) * l1 + k];
+            }
+          }
+          evals[c] = List::create(Rcpp::Named("NegLL") = NegLL,
+                                  Rcpp::Named("cbars") = cbars);
+        } else {
+          const NumericVector NegLL =
+              Rcpp::as<NumericVector>(evals[c]["NegLL"]);
+          const arma::mat cbars = Rcpp::as<arma::mat>(evals[c]["cbars"]);
+          double dq = 0.0, dg = 0.0;
+          for (int j = 0; j < mc; ++j) {
+            dq = std::max(dq, std::abs(qf[off + j] - NegLL[j]) /
+                                  (1.0 + std::abs(NegLL[j])));
+            for (int k = 0; k < l1; ++k) {
+              const double ref = cbars(j, k);
+              const double v = gr[static_cast<std::size_t>(off + j) * l1 + k];
+              dg = std::max(dg, std::abs(v - ref) / (1.0 + std::abs(ref)));
+            }
+          }
+          ecm.calls += 1.0;
+          if (dq > 1e-10 || dg > 1e-10) ecm.flagged += 1.0;
+          ecm.max_qf = std::max(ecm.max_qf, dq);
+          ecm.max_grad = std::max(ecm.max_grad, dg);
+        }
+      }
+      const double t_b = seconds_since(t0);
+      if (eval_method == EVAL_BATCH) {
+        t_eval += t_b;
+      } else {
+        ecm.t_batch += t_b;
+      }
+    }
   }
 
   // 3. Finalize every chain, then draw (serial or parallel), then collect.
@@ -633,7 +693,14 @@ List rNormalGLMGroupChains(NumericVector y, NumericMatrix x,
           Rcpp::Named("t_serial") = scm.t_serial,
           Rcpp::Named("t_parallel") = scm.t_parallel,
           Rcpp::Named("iters_serial") = scm.iters_serial,
-          Rcpp::Named("iters_parallel") = scm.iters_parallel));
+          Rcpp::Named("iters_parallel") = scm.iters_parallel),
+      Rcpp::Named("eval_compare") = NumericVector::create(
+          Rcpp::Named("calls") = ecm.calls,
+          Rcpp::Named("flagged") = ecm.flagged,
+          Rcpp::Named("max_qf") = ecm.max_qf,
+          Rcpp::Named("max_grad") = ecm.max_grad,
+          Rcpp::Named("t_legacy") = ecm.t_legacy,
+          Rcpp::Named("t_batch") = ecm.t_batch));
 }
 
 }  // namespace group
